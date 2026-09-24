@@ -2,7 +2,7 @@ import { Component, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
-import { METHOD_LABEL, REGISTRATION_STATUS, fmtDate, scoreText } from '../../core/format';
+import { REGISTRATION_STATUS, fmtDate, matchScoreText, methodText } from '../../core/format';
 import { PersonHistory } from '../../core/models';
 import { Hanko } from '../../shared/hanko';
 
@@ -85,14 +85,14 @@ import { Hanko } from '../../shared/hanko';
                         <span class="badge nezumi">Perdió</span>
                       }
                     </td>
-                    <td class="center nowrap score">{{ score(m.score) }}</td>
+                    <td class="center nowrap score" [class.muted]="m.method === 'flags'" [class.flags]="m.method === 'flags'">{{ score(m.score, m.method) }}</td>
                     <td>
                       {{ m.opponent || '—' }}
                       @if (m.opponent_dojo) {
                         <span class="muted"> · {{ m.opponent_dojo }}</span>
                       }
                     </td>
-                    <td class="muted">{{ m.method ? methodLabel[m.method] || m.method : '—' }}</td>
+                    <td class="muted">{{ method(m.method) }}</td>
                   </tr>
                 }
               </tbody>
@@ -255,6 +255,9 @@ import { Hanko } from '../../shared/hanko';
       }
       .score {
         font-weight: 700;
+        &.flags {
+          font-weight: 400;
+        }
       }
     }
     .strip {
@@ -282,8 +285,8 @@ export class PersonHistoryView {
   readonly history = signal<PersonHistory | null>(null);
   readonly error = signal('');
   readonly fdate = fmtDate;
-  readonly score = scoreText;
-  readonly methodLabel = METHOD_LABEL;
+  readonly score = matchScoreText;
+  readonly method = methodText;
   readonly regStatus = REGISTRATION_STATUS;
 
   constructor() {

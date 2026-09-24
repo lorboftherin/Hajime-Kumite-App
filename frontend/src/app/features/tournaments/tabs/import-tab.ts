@@ -5,6 +5,7 @@ import { ApiError } from '../../../core/api-error';
 import { ApiService } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
+import { DUPLICATE_REASON, IMPORT_BATCH_STATUS, plural } from '../../../core/format';
 import { ImportBatch, ImportRow } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
@@ -44,13 +45,21 @@ interface Decision {
     @if (batch(); as b) {
       <div class="card">
         <div class="row">
-          <h2 class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ b.status }}</span></h2>
-          <span class="badge matcha">{{ counts().new }} nuevas</span>
-          <span class="badge yamabuki">{{ counts().duplicate }} posibles duplicados</span>
-          <span class="badge shu">{{ counts().error }} con error</span>
+          <h2 class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2>
+          <span class="badge matcha">{{ plural(counts().new, 'nueva', 'nuevas') }}</span>
+          <span class="badge yamabuki">{{ plural(counts().duplicate, 'posible duplicado', 'posibles duplicados') }}</span>
+          <span class="badge shu">{{ plural(counts().error, 'con error', 'con error') }}</span>
         </div>
         <div class="table-wrap mt">
-          <table class="table">
+          <table class="table preview-table">
+            <colgroup>
+              <col class="c-row" />
+              <col class="c-person" />
+              <col class="c-dojo" />
+              <col class="c-status" />
+              <col class="c-decision" />
+              <col />
+            </colgroup>
             <thead>
               <tr>
                 <th>Fila</th>
@@ -88,7 +97,7 @@ interface Decision {
                     @for (dup of r.duplicates; track $index) {
                       <div class="small">
                         @if (dup['person_id']) {
-                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}, {{ dup['reason'] }})
+                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) · {{ dupReasonText(dup['reason']) }}
                         } @else {
                           ≈ fila {{ dup['row_number'] }} del mismo archivo
                         }
@@ -99,7 +108,7 @@ interface Decision {
                     @if (r.status === 'error') {
                       <span class="muted small">Se omite</span>
                     } @else if (d) {
-                      <select [ngModel]="d.action" (ngModelChange)="setAction(r, $event)">
+                      <select class="cell-input" [ngModel]="d.action" (ngModelChange)="setAction(r, $event)" aria-label="Decisión">
                         <option value="create">Crear persona</option>
                         @if (personDups(r).length) {
                           <option value="use_existing">Usar existente</option>
@@ -107,7 +116,7 @@ interface Decision {
                         <option value="skip">Omitir</option>
                       </select>
                       @if (d.action === 'use_existing') {
-                        <select class="mt-xs" [ngModel]="d.person_id" (ngModelChange)="setPerson(r, $event)">
+                        <select class="mt-xs cell-input" [ngModel]="d.person_id" (ngModelChange)="setPerson(r, $event)">
                           @for (dup of personDups(r); track dup['person_id']) {
                             <option [ngValue]="dup['person_id']">{{ dup['full_name'] }} (#{{ dup['person_id'] }})</option>
                           }
@@ -163,6 +172,42 @@ interface Decision {
         margin: 0 0.35rem;
       }
     }
+    /* Anchos fijos: Persona y Categorías no se parten en muchas líneas. */
+    .preview-table {
+      table-layout: fixed;
+      min-width: 56rem;
+      th,
+      td {
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+        vertical-align: top;
+      }
+      .c-row {
+        width: 3.25rem;
+      }
+      .c-person {
+        width: 13.5rem;
+      }
+      .c-dojo {
+        width: 8.5rem;
+      }
+      .c-status {
+        width: 11.5rem;
+      }
+      .c-decision {
+        width: 10.5rem;
+      }
+      label.field.inline {
+        align-items: flex-start;
+        line-height: 1.35;
+        margin-bottom: 0.3rem;
+      }
+    }
+    .cell-input {
+      width: 100%;
+      min-width: 0;
+      font-size: var(--fs-14);
+    }
     .mt-xs {
       margin-top: 0.3rem;
       display: block;
@@ -180,6 +225,13 @@ export class ImportTab {
   private dialog = inject(DialogService);
   private toast = inject(ToastService);
 
+  batchStatusText(status: string): string {
+    return IMPORT_BATCH_STATUS[status] ?? status;
+  }
+  dupReasonText(reason: unknown): string {
+    return DUPLICATE_REASON[String(reason)] ?? String(reason ?? '');
+  }
+  readonly plural = plural;
   readonly resultLabel: Record<string, string | undefined> = {
     created_people: 'Personas creadas',
     registrations: 'Inscripciones creadas',

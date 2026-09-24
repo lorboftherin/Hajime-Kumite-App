@@ -346,6 +346,9 @@
         @if (suggestionText()) {
           <p class="sheet-sug {{ suggestionTone() }}">{{ suggestionText() }}</p>
         }
+        @if (timeEndText(); as te) {
+          <p class="sheet-sug {{ timeEndSuggestion()?.winner ? 'win' : 'needs' }}">{{ te }}</p>
+        }
         @if (!finishForm.winner) {
           <p class="sheet-warn">Sin sugerencia del servidor: elige el ganador.</p>
         }
@@ -371,7 +374,7 @@
               }
             </select>
           </label>
-          <label class="scheck"><input type="checkbox" [(ngModel)]="finishForm.time_over" /> Tiempo cumplido</label>
+          <label class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
         </div>
         <label class="sfield">
           <span>Motivo / observación {{ finished() ? '(corrección)' : '(opcional)' }}</span>

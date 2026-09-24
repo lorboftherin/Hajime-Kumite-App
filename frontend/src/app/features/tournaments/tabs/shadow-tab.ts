@@ -34,7 +34,16 @@ interface Draft {
     </div>
 
     <div class="table-wrap">
-      <table class="table">
+      <table class="table shadow-table">
+        <colgroup>
+          <col class="c-match" />
+          <col class="c-app" />
+          <col class="c-winner" />
+          <col class="c-score" />
+          <col />
+          <col class="c-source" />
+          <col class="c-save" />
+        </colgroup>
         <thead>
           <tr>
             <th>Combate</th>
@@ -50,6 +59,7 @@ interface Draft {
           @for (it of shown(); track it.match_id) {
             @let d = drafts()[it.match_id];
             @let m = matchInfo()[it.match_id];
+            @let flags = m?.method === 'flags';
             <tr [class.diff]="it.winner_matches === false || it.score_matches === false">
               <td>
                 <span class="code">{{ it.code }}</span>
@@ -57,11 +67,15 @@ interface Draft {
               </td>
               <td class="small">
                 <div><strong>{{ pname(it.app_winner_registration_id) }}</strong></div>
-                <div class="muted">{{ it.app_score[0] ?? '–' }} – {{ it.app_score[1] ?? '–' }}</div>
+                @if (flags) {
+                  <div class="muted">Banderas</div>
+                } @else {
+                  <div class="muted num">{{ it.app_score[0] ?? '–' }} – {{ it.app_score[1] ?? '–' }}</div>
+                }
               </td>
               <td>
                 @if (d) {
-                  <select [(ngModel)]="d.winner">
+                  <select class="cell-input" [(ngModel)]="d.winner" aria-label="Ganador oficial">
                     <option [ngValue]="null">—</option>
                     @if (m?.aka_registration_id) {
                       <option [ngValue]="m!.aka_registration_id">Aka: {{ pname(m!.aka_registration_id) }}</option>
@@ -76,18 +90,20 @@ interface Draft {
                 }
               </td>
               <td class="nowrap">
-                @if (d) {
-                  <input class="score aka-b" type="number" min="0" [(ngModel)]="d.aka" /> –
-                  <input class="score ao-b" type="number" min="0" [(ngModel)]="d.ao" />
+                @if (flags) {
+                  <span class="muted small" title="Decisión por banderas: no hay marcador que comparar">No aplica</span>
+                } @else if (d) {
+                  <input class="score aka-b" type="number" min="0" [(ngModel)]="d.aka" aria-label="Marcador oficial aka" /> –
+                  <input class="score ao-b" type="number" min="0" [(ngModel)]="d.ao" aria-label="Marcador oficial ao" />
                   @if (it.score_matches === false) {
                     <div class="error-text">≠ marcador</div>
                   }
                 }
               </td>
-              <td>@if (d) {<input [(ngModel)]="d.finding" placeholder="Descripción" />}</td>
+              <td>@if (d) {<textarea class="cell-input finding" [rows]="d.finding.length > 70 ? 3 : 2" [(ngModel)]="d.finding" placeholder="Descripción" aria-label="Hallazgo"></textarea>}</td>
               <td>
                 @if (d) {
-                  <select [(ngModel)]="d.error_source">
+                  <select class="cell-input" [(ngModel)]="d.error_source" aria-label="Origen del error">
                     <option [ngValue]="null">—</option>
                     <option value="none">Sin error</option>
                     <option value="app">App</option>
@@ -125,14 +141,67 @@ interface Draft {
         margin-bottom: 0.35rem;
       }
     }
-    .score {
-      width: 4rem;
+    /* Anchos fijos para que la tabla quepa en la tarjeta a 1366 px; en pantallas
+       más estrechas se desplaza dentro de .table-wrap. */
+    .shadow-table {
+      table-layout: fixed;
+      min-width: 58rem;
+      th,
+      td {
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+        vertical-align: top;
+      }
+      th {
+        white-space: normal;
+      }
+      .c-match {
+        width: 8.25rem;
+      }
+      .c-app {
+        width: 7.75rem;
+      }
+      .c-winner {
+        width: 10.5rem;
+      }
+      .c-score {
+        width: 7.5rem;
+      }
+      .c-source {
+        width: 7.6rem;
+      }
+      .c-save {
+        width: 5.75rem;
+      }
     }
-    td:first-child {
-      min-width: 11rem;
+    .cell-input {
+      width: 100%;
+      min-width: 0;
+      font-size: var(--fs-14);
     }
-    td:nth-child(2) {
-      min-width: 9rem;
+    textarea.finding {
+      resize: vertical;
+      min-height: 2.6rem;
+      font-size: var(--fs-14);
+      line-height: 1.35;
+    }
+    input.score {
+      width: 2.9rem;
+      padding: 0 0.25rem 0 0.45rem;
+      text-align: center;
+      font-size: var(--fs-14);
+      -moz-appearance: textfield;
+      appearance: textfield;
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+    select.cell-input {
+      padding-left: 0.6rem;
+      padding-right: 1.9rem;
+      background-position: right 0.5rem center;
     }
     .aka-b {
       box-shadow: inset 3px 0 0 var(--shu);

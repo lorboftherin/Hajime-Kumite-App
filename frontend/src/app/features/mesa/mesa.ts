@@ -6,7 +6,7 @@ import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
-import { Category, Color, EventIn, FinishOut, MatchEvent, Scoreboard, TatamiQueue, Tournament } from '../../core/models';
+import { Category, Color, EventIn, FinishOut, MatchEvent, Scoreboard, Suggestion, TatamiQueue, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
 import { LabelPipe } from '../../shared/pipes';
@@ -562,8 +562,50 @@ export class MesaPage {
       reason: '',
       time_over: this.timeOver(),
     };
+    this.timeEndPick = null;
+    if (this.finishForm.time_over) this.applyTimeEnd();
     this.finishId = newId();
     this.finishOpen.set(true);
+  }
+
+  /** Ganador preseleccionado por la sugerencia «si terminó el tiempo» (para poder quitarlo al desmarcar). */
+  private timeEndPick: Color | null = null;
+
+  /** Sugerencia a usar cuando el servidor no sugiere ganador pero el operador marca «Tiempo cumplido». */
+  timeEndSuggestion(): Suggestion | null {
+    const s = this.sb();
+    if (!s || this.finished() || this.isKata() || s.suggestion.winner) return null;
+    if (!this.finishForm.time_over) return null;
+    return s.suggestion_at_time_end ?? null;
+  }
+
+  timeEndText(): string {
+    const t = this.timeEndSuggestion();
+    if (!t) return '';
+    if (t.winner) return `Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[t.method ?? ''] ?? t.method}`;
+    if (t.needs === 'hantei') return 'Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)';
+    if (t.needs === 'golden_point') return 'Si terminó el tiempo: empate, punto de oro';
+    return t.reason ?? '';
+  }
+
+  onTimeOverChange(checked: boolean): void {
+    this.finishForm.time_over = checked;
+    if (checked) {
+      this.applyTimeEnd();
+    } else if (this.timeEndPick && this.finishForm.winner === this.timeEndPick) {
+      // Se desmarcó: se quita lo que se había preseleccionado; el operador vuelve a elegir.
+      this.finishForm.winner = null;
+      this.finishForm.method = 'points';
+      this.timeEndPick = null;
+    }
+  }
+
+  private applyTimeEnd(): void {
+    const t = this.timeEndSuggestion();
+    if (!t?.winner || this.finishForm.winner) return;
+    this.finishForm.winner = t.winner;
+    this.finishForm.method = t.method ?? 'points';
+    this.timeEndPick = t.winner;
   }
 
   async confirmFinish(): Promise<void> {

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { fmtDate, fmtDateTime, mmss, newId, parseUtc, placeLabel, scoreText } from './format';
+import {
+  fmtDate,
+  fmtDateTime,
+  matchScoreText,
+  methodText,
+  mmss,
+  newId,
+  parseUtc,
+  placeLabel,
+  plural,
+  scoreText,
+} from './format';
 
 describe('format', () => {
   it('interpreta fechas sin zona como UTC y las muestra en hora de Lima', () => {
@@ -27,5 +38,18 @@ describe('format', () => {
     expect(placeLabel(null)).toBe('Sin puesto');
     expect(scoreText([3, 1])).toBe('3 – 1');
     expect(scoreText([null, null])).toBe('—');
+  });
+
+  it('traduce métodos y no muestra marcador en decisiones por banderas', () => {
+    expect(methodText('points')).toBe('Puntos');
+    expect(methodText('flags')).toBe('Banderas');
+    expect(methodText('otro')).toBe('otro');
+    expect(matchScoreText([0, 0], 'flags')).toBe('Banderas');
+    expect(matchScoreText([4, 1], 'points')).toBe('4 – 1');
+  });
+
+  it('concuerda singular y plural', () => {
+    expect(plural(1, 'posible duplicado', 'posibles duplicados')).toBe('1 posible duplicado');
+    expect(plural(2, 'posible duplicado', 'posibles duplicados')).toBe('2 posibles duplicados');
   });
 });

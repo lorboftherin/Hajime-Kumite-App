@@ -74,16 +74,15 @@
 }
 .bracket {
   display: flex;
-  min-width: min-content;
 }
 .round {
   display: flex;
   flex-direction: column;
-  /* Crece con el espacio disponible para no cortar nombres; en pantallas
-     estrechas mantiene 250 px y la llave se desplaza horizontalmente. */
-  flex: 1 0 250px;
-  min-width: 250px;
-  max-width: 340px;
+  /* Las rondas se reparten el ancho disponible (hasta 5 caben a 1366 px);
+     por debajo de 190 px por ronda la llave se desplaza horizontalmente. */
+  flex: 1 1 0;
+  min-width: 190px;
+  max-width: 320px;
 }
 .round-head {
   text-align: left;
@@ -317,5 +316,24 @@
     align-items: center;
     gap: 0.35rem;
     padding: 0.25rem 0;
+  }
+}
+
+/* Notas de kata: las descartadas se tachan y se atenúan. */
+.scores {
+  white-space: nowrap;
+  .sep {
+    color: var(--nezumi-ink);
+  }
+}
+.sc.discarded {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: 0.5;
+}
+.legend {
+  margin-top: 0.6rem;
+  .sc {
+    margin-right: 0.35rem;
   }
 }

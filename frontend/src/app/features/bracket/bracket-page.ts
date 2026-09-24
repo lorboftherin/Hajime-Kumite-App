@@ -18,6 +18,12 @@ import { MoreMenu } from '../../shared/more-menu';
 import { PageHead } from '../../shared/page-head';
 import { LabelPipe, LimaPipe } from '../../shared/pipes';
 
+function fmtScore(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  return isNaN(n) ? String(v) : n.toFixed(1);
+}
+
 const PLACE: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const KIND_LABEL: Record<string, string> = {
   third_place: 'Combate por el 3.º puesto',
@@ -109,6 +115,28 @@ export class BracketPage {
     const method = c?.kata_method ?? d['method'] ?? 'flags';
     return Number(c?.kata_judges ?? d['judges'] ?? (method === 'scores' ? 5 : 3));
   });
+
+  /** Notas descartadas por lado; igual que el backend: 0 con 3 jueces, si no 1 (o la configuración del torneo). */
+  readonly discards = computed(() => {
+    const d = (this.tournament()?.kata_defaults ?? {}) as Record<string, any>;
+    const cfg = d['discard_each_side'];
+    if (cfg !== undefined && cfg !== null && cfg !== '') return Number(cfg);
+    return this.judges() === 3 ? 0 : 1;
+  });
+
+  /** Notas en orden de juez, con un decimal y marcando las descartadas (las k más bajas y las k más altas). */
+  scoreCells(scores: Array<number | string> | null | undefined): Array<{ text: string; discarded: boolean }> {
+    const vals = (scores ?? []).map((x) => Number(x));
+    const k = this.discards();
+    const out = vals.map((v) => ({ text: fmtScore(v), discarded: false }));
+    if (k > 0 && vals.length > 2 * k) {
+      const order = vals.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v || a.i - b.i);
+      for (const { i } of [...order.slice(0, k), ...order.slice(-k)]) out[i].discarded = true;
+    }
+    return out;
+  }
+
+  readonly fmtScore = fmtScore;
 
   readonly podium = computed(() => {
     const b = this.bracket();

@@ -79,18 +79,18 @@ import { TournamentContext } from '../tournament-context';
                 <th class="center"><span class="ring kin" aria-hidden="true"></span><span class="sr-only">Oro</span></th>
                 <th class="center"><span class="ring gin" aria-hidden="true"></span><span class="sr-only">Plata</span></th>
                 <th class="center"><span class="ring dou" aria-hidden="true"></span><span class="sr-only">Bronce</span></th>
-                <th class="center">Total</th>
+                <th class="right">Total</th>
               </tr>
             </thead>
             <tbody>
               @for (r of medals()?.rows ?? []; track r.dojo_id) {
                 <tr>
                   <td class="center rank">{{ r.rank }}</td>
-                  <td><a [routerLink]="['/dojos', r.dojo_id]" title="Historial del dojo">{{ r.dojo_name }}</a></td>
+                  <td><a [routerLink]="['/dojos', r.dojo_id]" [attr.title]="r.dojo_name + ' · historial del dojo'">{{ r.dojo_name }}</a></td>
                   <td class="center" [class.zero]="!r.gold">{{ r.gold }}</td>
                   <td class="center" [class.zero]="!r.silver">{{ r.silver }}</td>
                   <td class="center" [class.zero]="!r.bronze">{{ r.bronze }}</td>
-                  <td class="center total">{{ r.total }}</td>
+                  <td class="total">{{ r.total }}</td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="empty">Sin medallas todavía. Solo cuentan las categorías finalizadas.</td></tr>
@@ -105,7 +105,7 @@ import { TournamentContext } from '../tournament-context';
   styles: `
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2.25fr);
       gap: 2rem;
       align-items: start;
     }
@@ -179,17 +179,42 @@ import { TournamentContext } from '../tournament-context';
       }
     }
     .medal-table {
-      th:nth-child(n + 3),
-      td:nth-child(n + 3) {
-        width: 3.25rem;
-        padding-left: 0.4rem;
+      table-layout: fixed;
+      th:first-child,
+      td:first-child {
+        width: 2.5rem;
+        padding-left: 0.9rem;
+        padding-right: 0.25rem;
+      }
+      th:nth-child(2),
+      td:nth-child(2) {
+        padding-left: 0.6rem;
         padding-right: 0.4rem;
+      }
+      /* El nombre del dojo ocupa una línea; si no cabe, se corta con puntos suspensivos. */
+      td:nth-child(2) a {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      th:nth-child(n + 3):nth-child(-n + 5),
+      td:nth-child(n + 3):nth-child(-n + 5) {
+        width: 2.4rem;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+      }
+      th:last-child,
+      td:last-child {
+        width: 4.25rem;
+        padding-left: 0.4rem;
+        padding-right: 1.1rem;
+        text-align: right;
       }
       .rank {
         font-family: var(--font-display);
         font-weight: 700;
         color: var(--sumi-2);
-        width: 3rem;
       }
       td.zero {
         color: var(--nezumi);

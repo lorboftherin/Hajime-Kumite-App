@@ -5,7 +5,8 @@ import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
-import { Person, User } from '../../core/models';
+import { Dojo, Person, RoleOut, Tournament, User } from '../../core/models';
+import { ROLE_LABEL, SCOPE_LABEL } from '../../core/format';
 import { MutationService } from '../../core/mutation.service';
 import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
@@ -56,11 +57,17 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                   }
                 </td>
                 <td>
-                  @if (u.is_admin) {
-                    <span class="badge sumi">Administrador</span>
-                  } @else {
-                    <span class="badge plain">Operador</span>
-                  }
+                  <div class="row roles">
+                    @if (u.is_admin) {
+                      <span class="badge sumi">Admin</span>
+                    }
+                    @for (r of u.roles ?? []; track r.id) {
+                      <span class="badge plain">{{ roleText(r) }}</span>
+                    }
+                    @if (!u.is_admin && !(u.roles ?? []).length) {
+                      <span class="muted small">Sin rol</span>
+                    }
+                  </div>
                 </td>
                 <td>
                   <div class="row states">
@@ -216,7 +223,8 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
       font-weight: 700;
       font-size: var(--fs-14);
     }
-    .states {
+    .states,
+    .roles {
       gap: 0.35rem;
     }
     tr.inactive td {
@@ -264,6 +272,25 @@ export class UsersPage {
 
   load(): void {
     this.api.get<User[]>('/users').subscribe({ next: (u) => this.users.set(u), error: () => {} });
+    // Nombres de torneos y dojos para mostrar el alcance de cada rol.
+    this.api.get<Tournament[]>('/tournaments').subscribe({
+      next: (ts) => this.scopeNames.update((m) => ({ ...m, ...Object.fromEntries(ts.map((t) => [`tournament:${t.id}`, t.name])) })),
+      error: () => {},
+    });
+    this.api.get<Dojo[]>('/dojos').subscribe({
+      next: (ds) => this.scopeNames.update((m) => ({ ...m, ...Object.fromEntries(ds.map((d) => [`dojo:${d.id}`, d.name])) })),
+      error: () => {},
+    });
+  }
+
+  readonly scopeNames = signal<Record<string, string>>({});
+
+  /** "Organizador · Copa Primavera 2026", "Operador de mesa · torneo 3", "Árbitro" (global). */
+  roleText(r: RoleOut): string {
+    const label = ROLE_LABEL[r.role] ?? r.role;
+    if (r.scope_type === 'global' || r.scope_id === null) return label;
+    const name = this.scopeNames()[`${r.scope_type}:${r.scope_id}`];
+    return `${label} · ${name ?? `${SCOPE_LABEL[r.scope_type] ?? r.scope_type} ${r.scope_id}`}`;
   }
 
   generate(): string {

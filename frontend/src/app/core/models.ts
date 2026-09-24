@@ -7,6 +7,13 @@ export interface Override {
   reason: string;
 }
 
+export interface Suggestion {
+  winner: Color | null;
+  method: string | null;
+  needs: string | null;
+  reason: string | null;
+}
+
 export interface RoleOut {
   id: number;
   role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee' | string;
@@ -336,7 +343,9 @@ export interface Scoreboard {
   started: boolean;
   winner: Color | null;
   method: string | null;
-  suggestion: { winner: Color | null; method: string | null; needs: string | null; reason: string | null };
+  suggestion: Suggestion;
+  /** Lo que sugeriría el marcador si el tiempo terminara ahora (para «Tiempo cumplido» en la hoja de cierre). */
+  suggestion_at_time_end?: Suggestion;
   events: MatchEvent[];
   annulled_event_ids: string[];
   aka: Participant | null;

@@ -98,6 +98,25 @@ export const IMPORT_ROW_STATUS: Record<string, string> = {
   error: 'Con error',
 };
 
+export const IMPORT_BATCH_STATUS: Record<string, string> = {
+  preview: 'Vista previa',
+  confirmed: 'Confirmada',
+  cancelled: 'Cancelada',
+};
+
+export const DUPLICATE_REASON: Record<string, string> = {
+  document: 'Mismo documento',
+  name_birth: 'Mismo nombre y fecha',
+  similar_name_birth: 'Nombre parecido y misma fecha',
+  name_only: 'Mismo nombre',
+  same_file: 'Repetido en el archivo',
+};
+
+/** "1 posible duplicado", "2 posibles duplicados". */
+export function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 export const FORMAT_LABEL: Record<string, string> = {
   single_elimination: 'Eliminación directa',
   round_robin: 'Round robin',
@@ -112,7 +131,7 @@ export const THIRD_PLACE_LABEL: Record<string, string> = {
 
 export const METHOD_LABEL: Record<string, string> = {
   points: 'Puntos',
-  point_gap: 'Diferencia de puntos',
+  point_gap: 'Diferencia de 8',
   senshu: 'Senshu',
   hantei: 'Hantei (jueces)',
   golden_point: 'Punto de oro',
@@ -124,6 +143,15 @@ export const METHOD_LABEL: Record<string, string> = {
   flags: 'Banderas',
   bye: 'Bye',
 };
+
+export const ROLE_LABEL: Record<string, string> = {
+  organizer: 'Organizador',
+  table_operator: 'Operador de mesa',
+  dojo_admin: 'Admin de dojo',
+  referee: 'Árbitro',
+};
+
+export const SCOPE_LABEL: Record<string, string> = { tournament: 'torneo', dojo: 'dojo' };
 
 export const EVENT_LABEL: Record<string, string> = {
   point: 'Punto',
@@ -211,3 +239,66 @@ export function scoreText(score: [number | null, number | null] | null | undefin
   if (!score || (score[0] === null && score[1] === null)) return '—';
   return `${score[0] ?? 0} – ${score[1] ?? 0}`;
 }
+
+/** Etiqueta en español de un método de victoria; el código tal cual si no se conoce. */
+export function methodText(method: string | null | undefined): string {
+  if (!method) return '—';
+  return METHOD_LABEL[method] ?? method;
+}
+
+/** Marcador de un combate; una decisión por banderas (kata) no tiene marcador. */
+export function matchScoreText(
+  score: [number | null, number | null] | null | undefined,
+  method: string | null | undefined,
+): string {
+  return method === 'flags' ? 'Banderas' : scoreText(score);
+}
+
+export const AUDIT_ACTION: Record<string, string> = {
+  create: 'Creación',
+  update: 'Edición',
+  status: 'Cambio de estado',
+  reopen: 'Reapertura',
+  finish: 'Cierre de combate',
+  refinish: 'Cierre tras reapertura',
+  correct_winner: 'Corrección de ganador',
+  correct_score: 'Corrección de marcador',
+  official_result: 'Resultado oficial',
+  merge: 'Fusión',
+  unmerge: 'Fusión deshecha',
+  revert_merge: 'Fusión revertida',
+  withdraw: 'Retiro',
+  generate: 'Generación de llave',
+  swap: 'Intercambio en llave',
+  generate_categories: 'Categorías desde plantilla',
+  preview: 'Vista previa de importación',
+  confirm: 'Importación confirmada',
+  cancel: 'Cancelación',
+  add_role: 'Rol asignado',
+  remove_role: 'Rol quitado',
+  change_password: 'Cambio de contraseña',
+  anonymize: 'Anonimización',
+  score: 'Notas de kata',
+  correct_scores: 'Corrección de notas de kata',
+  kata_tie_break: 'Desempate de kata',
+  add_tatami: 'Tatami agregado',
+  add_grade: 'Grado registrado',
+  change_dojo: 'Cambio de dojo',
+  add_consent: 'Consentimiento registrado',
+  add_branch: 'Sede agregada',
+  create_despite_duplicates: 'Creación pese a posibles duplicados',
+};
+
+export const AUDIT_ENTITY: Record<string, string> = {
+  match: 'Combate',
+  category: 'Categoría',
+  tournament: 'Torneo',
+  registration: 'Inscripción',
+  person: 'Persona',
+  bracket: 'Llave',
+  dojo: 'Dojo',
+  import: 'Importación',
+  user: 'Usuario',
+  kata_performance: 'Ejecución de kata',
+  template: 'Plantilla',
+};

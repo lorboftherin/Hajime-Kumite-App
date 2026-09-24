@@ -178,8 +178,12 @@
                   </td>
                 } @else {
                   <td>{{ row['kata_name'] }}</td>
-                  <td class="mono small">{{ (row['scores'] ?? []).join(' · ') }}</td>
-                  <td class="center"><strong>{{ row['total'] ?? '—' }}</strong></td>
+                  <td class="mono small scores">
+                    @for (sc of scoreCells(row['scores']); track $index; let l = $last) {
+                      <span class="sc" [class.discarded]="sc.discarded" [attr.title]="sc.discarded ? 'Nota descartada' : null">{{ sc.text }}</span>@if (!l) {<span class="sep" aria-hidden="true"> · </span>}
+                    }
+                  </td>
+                  <td class="center"><strong class="num">{{ fmtScore(row['total']) }}</strong></td>
                   <td class="center">{{ row['rank'] ?? '—' }} @if (row['tied']) {<span class="badge warn">empate</span>}</td>
                   <td><button class="btn sm" (click)="startScore(row)">{{ row['scores']?.length ? 'Corregir' : 'Puntuar' }}</button></td>
                 }
@@ -188,6 +192,9 @@
           </tbody>
         </table>
       </div>
+      @if (discards() > 0) {
+        <p class="small muted legend"><span class="sc discarded mono">8.0</span> tachadas: notas descartadas ({{ discards() }} más alta y {{ discards() }} más baja por ejecución)</p>
+      }
       @if (tiedRows().length) {
         <div class="card mt">
           <h3>Desempate</h3>
@@ -246,7 +253,7 @@
             <em class="tbd">{{ sourceHint(src) || 'Por definir' }}</em>
           }
         </span>
-        <span class="score">{{ color === 'aka' ? (m.aka_score ?? '') : (m.ao_score ?? '') }}</span>
+        <span class="score">{{ m.method === 'flags' ? '' : color === 'aka' ? (m.aka_score ?? '') : (m.ao_score ?? '') }}</span>
       </div>
     }
   </div>
