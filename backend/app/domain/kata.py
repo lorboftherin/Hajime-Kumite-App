@@ -27,7 +27,10 @@ class FlagsResult:
 
 
 def decide_flags(votes: list[str | None], judges: int, head_judge_vote: str | None = None) -> FlagsResult:
-    """Gana la mayoría. Si faltan votos y hay empate, decide el juez principal."""
+    """Gana quien reúne la mayoría de los jueces (más de la mitad del panel).
+
+    Si faltan votos y ningún color alcanza la mayoría, decide el juez principal.
+    """
     if judges not in (3, 5):
         raise KataError("El número de jueces para banderas debe ser 3 o 5")
     if len(votes) > judges:
@@ -37,8 +40,11 @@ def decide_flags(votes: list[str | None], judges: int, head_judge_vote: str | No
             raise KataError(f"Voto inválido: {v}")
     c = Counter(v for v in votes if v)
     a, b = c[AKA], c[AO]
-    if a != b:
-        return FlagsResult(AKA if a > b else AO, a, b, False)
+    majority = judges // 2 + 1
+    if a >= majority:
+        return FlagsResult(AKA, a, b, False)
+    if b >= majority:
+        return FlagsResult(AO, a, b, False)
     if head_judge_vote in (AKA, AO):
         return FlagsResult(head_judge_vote, a, b, False)
     return FlagsResult(None, a, b, True)
@@ -106,8 +112,9 @@ def validate_scores(scores: list[Decimal | float | str], rules: ScoringRules) ->
 def score_performance(scores: list[Decimal | float | str], rules: ScoringRules) -> ScoreResult:
     vals = sorted(validate_scores(scores, rules))
     k = rules.discards
-    low, high = tuple(vals[:k]), tuple(vals[len(vals) - k :]) if k else ()
-    kept = tuple(vals[k : len(vals) - k]) if k else tuple(vals)
+    if k == 0:
+        return ScoreResult(sum(vals, Decimal("0")), tuple(vals), (), ())
+    low, high, kept = tuple(vals[:k]), tuple(vals[-k:]), tuple(vals[k:-k])
     return ScoreResult(sum(kept, Decimal("0")), kept, low, high)
 
 
@@ -159,13 +166,22 @@ def rank_performances(results: dict[str, ScoreResult]) -> list[RankedPerformance
 
 def kata_round_medals(ranked: list[RankedPerformance], bronzes: int = 2) -> dict[int, list[str]]:
     """Medallas de una ronda única: oro, plata y 1 o 2 bronces (según la regla
-    de terceros lugares). Puestos empatados sin resolver no reciben medalla
-    hasta que se desempate.
+    de terceros lugares).
+
+    Un empate sin resolver solo bloquea las medallas cuando los empatados
+    recibirían medallas distintas (p. ej. 1.º/2.º, o 3.º/4.º con un solo
+    bronce). Si todos los empatados reciben la misma medalla, se entrega.
     """
     out: dict[int, list[str]] = {1: [], 2: [], 3: []}
     places = [1, 2] + [3] * bronzes
-    for place, perf in zip(places, ranked, strict=False):
-        if perf.unresolved_tie:
+    i = 0
+    while i < len(ranked) and i < len(places):
+        group = [p for p in ranked if p.rank == ranked[i].rank]
+        medals = {places[j] if j < len(places) else None for j in range(i, i + len(group))}
+        if ranked[i].unresolved_tie and len(medals) > 1:
             break
-        out[place].append(perf.entrant)
+        for p in group:
+            if places[i] is not None:
+                out[places[i]].append(p.entrant)
+        i += len(group)
     return out

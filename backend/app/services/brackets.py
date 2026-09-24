@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
@@ -715,7 +716,14 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
         c = get_category(db, m.category_id)
         if c.status == "ready":
             c.status = "in_progress"
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # Dos reintentos del mismo evento llegaron a la vez: el otro ya lo
+        # guardó. Idempotencia también bajo concurrencia.
+        db.rollback()
+        m = get_match(db, mid)
+        return scoreboard(db, m), False
     sb = scoreboard(db, m)
     m.aka_score, m.ao_score = sb.score["aka"], sb.score["ao"]
     db.commit()

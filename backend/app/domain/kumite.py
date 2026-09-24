@@ -129,8 +129,17 @@ def compute_scoreboard(events: list[MatchEvent], rules: KumiteRules, now: dateti
 
     run_since: datetime | None = None
     senshu_cancelled: set[str] = set()
+    auto_pause = rules.time_mode == TimeMode.EFFECTIVE and rules.auto_pause_on_point
 
-    for e in active:
+    # Un punto anulado no cuenta para el marcador, pero la pausa automática que
+    # provocó sí ocurrió en el tatami: el reloj estuvo detenido hasta el
+    # siguiente "resume". Por eso el efecto sobre el tiempo se conserva.
+    for e in ordered:
+        if e.type == EventType.POINT and e.id in annulled and auto_pause and run_since is not None:
+            sb.elapsed_seconds += (e.at - run_since).total_seconds()
+            run_since = None
+        if e.id in annulled or e.type == EventType.ANNUL:
+            continue
         if e.type == EventType.START:
             sb.started = True
             if run_since is None:
@@ -148,7 +157,7 @@ def compute_scoreboard(events: list[MatchEvent], rules: KumiteRules, now: dateti
             if sb.senshu is None and sb.score[AKA] == 0 and sb.score[AO] == 0:
                 sb.senshu = e.color
             sb.score[e.color] += int(e.value or 0)
-            if rules.time_mode == TimeMode.EFFECTIVE and rules.auto_pause_on_point and run_since is not None:
+            if auto_pause and run_since is not None:
                 sb.elapsed_seconds += (e.at - run_since).total_seconds()
                 run_since = None
         elif e.type == EventType.SANCTION and e.color in COLORS:

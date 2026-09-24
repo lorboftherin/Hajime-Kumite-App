@@ -14,7 +14,7 @@ from app.db.base import Base, get_engine
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
-    if settings.environment == "prod" and (
+    if settings.environment not in ("dev", "test") and (
         settings.jwt_secret == "cambiar-en-produccion" or len(settings.jwt_secret) < 32
     ):
         raise RuntimeError("HAJIME_JWT_SECRET debe configurarse (mínimo 32 caracteres) en producción")

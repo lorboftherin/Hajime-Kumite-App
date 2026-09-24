@@ -47,7 +47,9 @@ def is_organizer(db: Session, user: User, tournament_id: int | None) -> bool:
         select(PersonRole).where(PersonRole.person_id == user.person_id, PersonRole.role == "organizer")
     ).all()
     return any(
-        r.scope_type == "global" or (r.scope_type == "tournament" and r.scope_id == tournament_id) for r in roles
+        r.scope_type == "global"
+        or (r.scope_type == "tournament" and r.scope_id is not None and r.scope_id == tournament_id)
+        for r in roles
     )
 
 

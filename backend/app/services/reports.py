@@ -26,6 +26,13 @@ from app.services.tournaments import get_tournament
 PLACE_LABEL = {1: "Oro", 2: "Plata", 3: "Bronce"}
 
 
+def _cell(v):
+    """Evita que un nombre como "=HYPERLINK(...)" se interprete como fórmula en Excel."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def category_results(db: Session, tid: int) -> list[dict[str, Any]]:
     cats = db.scalars(
         select(Category).where(Category.tournament_id == tid).order_by(Category.sort_order, Category.id)
@@ -303,13 +310,20 @@ def results_excel(db: Session, tid: int) -> bytes:
         cell.font = Font(bold=True)
     for cat in category_results(db, tid):
         for p in cat["places"]:
-            ws.append([cat["category_name"], PLACE_LABEL.get(p["place"], p["place"]), p["name"], p["dojo_name"]])
+            ws.append(
+                [
+                    _cell(cat["category_name"]),
+                    PLACE_LABEL.get(p["place"], p["place"]),
+                    _cell(p["name"]),
+                    _cell(p["dojo_name"]),
+                ]
+            )
     mt = wb.create_sheet("Medallero")
     mt.append(["Puesto", "Dojo", "Oro", "Plata", "Bronce", "Total"])
     for cell in mt[1]:
         cell.font = Font(bold=True)
     for r in medal_table(db, tid)["rows"]:
-        mt.append([r["rank"], r["dojo_name"], r["gold"], r["silver"], r["bronze"], r["total"]])
+        mt.append([r["rank"], _cell(r["dojo_name"]), r["gold"], r["silver"], r["bronze"], r["total"]])
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()

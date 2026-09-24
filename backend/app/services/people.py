@@ -174,7 +174,9 @@ def detect_duplicates(
     ]
 
 
-def create_person(db: Session, user: User | None, data: s.PersonCreate, *, commit: bool = True) -> Person:
+def create_person(
+    db: Session, user: User | None, data: s.PersonCreate, *, commit: bool = True, is_test_data: bool = False
+) -> Person:
     dups = detect_duplicates(
         db,
         data.first_names,
@@ -208,6 +210,7 @@ def create_person(db: Session, user: User | None, data: s.PersonCreate, *, commi
         birth_date=data.birth_date,
         sex=data.sex,
         identity_incomplete=data.document is None,
+        is_test_data=is_test_data,
         updated_by_id=user.id if user else None,
     )
     db.add(p)

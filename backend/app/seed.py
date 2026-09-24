@@ -11,6 +11,8 @@ grados) es una decisión abierta del documento maestro (sección 30).
 from __future__ import annotations
 
 import argparse
+import getpass
+import os
 import random
 from datetime import date
 
@@ -18,6 +20,7 @@ from sqlalchemy import select
 
 import app.db.models  # noqa: F401
 from app.api import schemas as s
+from app.config import get_settings
 from app.db.base import Base, get_engine, get_session
 from app.db.models import CategoryTemplate, User
 from app.domain.categories import grade_to_ordinal
@@ -116,10 +119,12 @@ def ensure_schema() -> None:
         Base.metadata.create_all(get_engine())
 
 
-def cmd_admin(username: str, password: str) -> None:
+def cmd_admin(username: str, password: str, force: bool = False) -> None:
     db = next(get_session())
     u = db.scalar(select(User).where(User.username == username.lower()))
     if u:
+        if not force:
+            raise SystemExit(f"El usuario {username} ya existe; use --force para cambiar su contraseña")
         u.password_hash = hash_password(password)
         u.is_admin = True
         print(f"Contraseña actualizada para {username}")
@@ -176,6 +181,8 @@ LAST = [
 
 
 def cmd_demo() -> None:
+    if get_settings().environment not in ("dev", "test"):
+        raise SystemExit("Los datos de demostración solo se cargan en DEV o TEST (sección 11: datos de prueba)")
     db = next(get_session())
     admin = _admin(db)
     tpl_id = cmd_template()
@@ -214,7 +221,8 @@ def cmd_demo() -> None:
         p = people.create_person(
             db,
             admin,
-            s.PersonCreate(
+            is_test_data=True,
+            data=s.PersonCreate(
                 first_names=first,
                 last_names=last,
                 birth_date=birth,
@@ -235,13 +243,17 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("admin")
     a.add_argument("--username", default="admin")
-    a.add_argument("--password", required=True)
+    a.add_argument("--password", help="Si se omite, se lee de HAJIME_ADMIN_PASSWORD o se pide por consola")
+    a.add_argument("--force", action="store_true", help="Cambiar la contraseña si el usuario ya existe")
     sub.add_parser("template")
     sub.add_parser("demo")
     args = ap.parse_args()
     ensure_schema()
     if args.cmd == "admin":
-        cmd_admin(args.username, args.password)
+        password = args.password or os.environ.get("HAJIME_ADMIN_PASSWORD") or getpass.getpass("Contraseña: ")
+        if len(password) < 8:
+            raise SystemExit("La contraseña debe tener al menos 8 caracteres")
+        cmd_admin(args.username, password, args.force)
     elif args.cmd == "template":
         cmd_template()
     else:

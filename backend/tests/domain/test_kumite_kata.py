@@ -42,16 +42,17 @@ def test_scoreboard_from_events_with_annulment():
         ev(1, "start", 0),
         ev(2, "point", 10, color="aka", value=2),
         ev(3, "resume", 12),
-        ev(4, "point", 20, color="ao", value=1),  # color equivocado
+        ev(4, "point", 20, color="ao", value=1),  # color equivocado: el reloj se detuvo igual
         ev(5, "annul", 21, target_id="e4"),
-        ev(6, "point", 22, color="aka", value=1),
+        ev(6, "resume", 25),
+        ev(7, "point", 30, color="aka", value=1),
     ]
     sb = compute_scoreboard(events, KumiteRules())
     assert sb.score == {"aka": 3, "ao": 0}
     assert sb.senshu == "aka"
     assert "e4" in sb.annulled_event_ids
-    # tiempo efectivo: 0-10 corre, pausa por punto, 12-22 corre (el punto anulado no pausa) -> 20 s
-    assert sb.elapsed_seconds == pytest.approx(20)
+    # tiempo efectivo: 0-10, 12-20 (pausa por el punto, aunque se anule), 25-30 -> 23 s
+    assert sb.elapsed_seconds == pytest.approx(23)
 
 
 def test_annul_of_annul_restores_event():
@@ -92,6 +93,10 @@ def test_flags():
     assert decide_flags(["aka", "ao", "aka"], 3).winner == "aka"
     r = decide_flags(["aka", "ao", None, None], 5)
     assert r.needs_head_judge and r.winner is None
+    # 2-1 con dos jueces sin votar no es mayoría de un panel de 5
+    r = decide_flags(["aka", "ao", "aka", None, None], 5)
+    assert r.needs_head_judge and r.winner is None
+    assert decide_flags(["aka", "ao", "aka", "aka", None], 5).winner == "aka"
     assert decide_flags(["aka", "ao"], 3, head_judge_vote="ao").winner == "ao"
     with pytest.raises(KataError):
         decide_flags(["aka"], 4)
@@ -182,3 +187,22 @@ def test_duplicate_detection():
     assert found["4"] == "document"
     assert "5" not in found
     assert normalize_name("  ÁNGEL   Ñuñez ") == "angel nunez"
+
+
+def test_kata_tie_inside_same_medal_tier_does_not_block():
+    r = ScoringRules(judges=3)
+    res = {
+        "a": score_performance(["9", "9", "9"], r),
+        "b": score_performance(["8", "8", "8"], r),
+        "c": score_performance(["7", "7", "7"], r),
+        "d": score_performance(["7", "7", "7"], r),
+        "e": score_performance(["6", "6", "6"], r),
+    }
+    ranked = rank_performances(res)
+    medals = kata_round_medals(ranked, bronzes=2)
+    assert medals[1] == ["a"] and medals[2] == ["b"] and set(medals[3]) == {"c", "d"}
+    # Con un solo bronce, el empate 3.º/4.º sí bloquea el bronce
+    assert kata_round_medals(ranked, bronzes=1) == {1: ["a"], 2: ["b"], 3: []}
+    # Empate 1.º/2.º bloquea todo
+    res["b"] = score_performance(["9", "9", "9"], r)
+    assert kata_round_medals(rank_performances(res)) == {1: [], 2: [], 3: []}

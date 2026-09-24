@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import itertools
+import zipfile
 from datetime import date, datetime
 from typing import Any
 
@@ -303,13 +305,22 @@ def _cell(v: Any) -> str:
     return str(v).strip()
 
 
+MAX_IMPORT_ROWS = 2000
+MAX_UNCOMPRESSED = 50 * 1024 * 1024
+
+
 def parse_excel(content: bytes) -> list[dict[str, Any]]:
     try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            if sum(i.file_size for i in zf.infolist()) > MAX_UNCOMPRESSED:
+                raise AppError("El archivo es demasiado grande al descomprimir", code="FILE_TOO_LARGE")
         wb = load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+    except AppError:
+        raise
     except Exception as e:  # noqa: BLE001 - cualquier archivo corrupto
         raise AppError("El archivo no es un Excel válido (.xlsx)", code="INVALID_FILE") from e
     ws = wb.worksheets[0]
-    rows = list(ws.iter_rows(values_only=True))
+    rows = list(itertools.islice(ws.iter_rows(values_only=True), MAX_IMPORT_ROWS + 1))
     if not rows:
         return []
     out = []
