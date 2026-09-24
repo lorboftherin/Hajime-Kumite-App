@@ -77,7 +77,7 @@ def category_results(db: Session, tid: int) -> list[dict[str, Any]]:
                     {
                         "place": res.place,
                         "registration_id": reg.id,
-                        "name": f"{reg.person.first_names} {reg.person.last_names}" if reg.person else "",
+                        "name": reg.display_name,
                         "dojo_id": reg.dojo_id,
                         "dojo_name": reg.dojo.name,
                     }
@@ -153,7 +153,10 @@ def comparison_report(db: Session, tid: int) -> dict[str, Any]:
         select(Match, Category)
         .join(Category, Category.id == Match.category_id)
         .where(
-            Category.tournament_id == tid, Match.is_current.is_(True), Match.status.in_(("finished", "needs_review"))
+            Category.tournament_id == tid,
+            Match.is_current.is_(True),
+            Match.parent_match_id.is_(None),
+            Match.status.in_(("finished", "needs_review")),
         )
         .order_by(Category.id, Match.round, Match.position)
     ).all()

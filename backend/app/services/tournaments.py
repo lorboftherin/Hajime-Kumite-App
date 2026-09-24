@@ -292,6 +292,8 @@ def merge_categories(db: Session, user: User, tid: int, data: s.CategoryMergeIn)
         target = get_category(db, data.target_id)
         if target.id in data.source_ids:
             raise InvalidState("El destino no puede estar entre los orígenes")
+        if any(c.is_team != target.is_team for c in sources):
+            raise InvalidState("No se fusionan categorías individuales con categorías por equipos")
         if target.status in ("merged", "cancelled", "in_progress", "finished"):
             raise InvalidState("La categoría destino no admite fusiones")
         if target.status == "ready":
@@ -310,6 +312,8 @@ def merge_categories(db: Session, user: User, tid: int, data: s.CategoryMergeIn)
             )
     else:
         base = sources[0]
+        if any(c.is_team != base.is_team for c in sources):
+            raise InvalidState("No se fusionan categorías individuales con categorías por equipos")
         fields = {f: getattr(base, f) for f in CATEGORY_FIELDS}
         # El rango de la categoría nueva cubre a todas las de origen.
         for f, agg in (("age_min", min), ("grade_min", min), ("age_max", max), ("grade_max", max)):

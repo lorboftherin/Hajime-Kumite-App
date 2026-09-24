@@ -10,6 +10,7 @@ from app.api.deps import DB, CurrentUser, ensure_organizer
 from app.api.errors import AppError
 from app.db.models import Category, Registration, Tournament
 from app.services import registrations as regs
+from app.services import teams
 from app.services import tournaments as svc
 from app.services.brackets import tatami_queue
 
@@ -179,6 +180,19 @@ def update_registration(rid: int, data: s.RegistrationUpdate, db: DB, user: Curr
     r = regs.get_registration(db, rid)
     ensure_organizer(db, user, r.tournament_id)
     return regs.registration_out(regs.update_registration(db, user, rid, data))
+
+
+@router.post("/tournaments/{tid}/teams", response_model=s.RegistrationOut, status_code=201, tags=["teams"])
+def create_team(tid: int, data: s.TeamCreate, db: DB, user: CurrentUser):
+    """Inscribe un equipo temporal (nombre, dojo, titulares y suplentes) en una categoría por equipos."""
+    ensure_organizer(db, user, tid)
+    return regs.registration_out(teams.create_team(db, user, tid, data))
+
+
+@router.patch("/teams/{team_id}", response_model=s.RegistrationOut, tags=["teams"])
+def update_team(team_id: int, data: s.TeamUpdate, db: DB, user: CurrentUser):
+    ensure_organizer(db, user, teams.get_team(db, team_id).tournament_id)
+    return regs.registration_out(teams.update_team(db, user, team_id, data))
 
 
 @router.post("/registrations/{rid}/withdraw", tags=["registrations"])

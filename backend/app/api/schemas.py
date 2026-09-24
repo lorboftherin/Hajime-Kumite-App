@@ -423,8 +423,47 @@ class RegistrationOut(ORM):
     withdrawn_reason: str | None
     seed: int | None
     version: int
-    person_name: str = ""
+    person_name: str = ""  # en categorías por equipos, el nombre del equipo
     dojo_name: str = ""
+    team_id: int | None = None
+    team_version: int | None = None
+    team_members: list[dict[str, Any]] = []
+
+
+class TeamMemberIn(BaseModel):
+    person_id: int
+    role: Literal["starter", "substitute"] = "starter"
+
+
+class TeamCreate(BaseModel):
+    category_id: int
+    dojo_id: int
+    name: str = Field(min_length=1, max_length=120)
+    members: list[TeamMemberIn] = Field(min_length=1)
+    seed: int | None = None
+    override: Override | None = None
+
+
+class TeamUpdate(BaseModel):
+    version: int
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    dojo_id: int | None = None
+    members: list[TeamMemberIn] | None = Field(default=None, min_length=1)
+    override: Override | None = None
+
+
+class LineupBoutIn(BaseModel):
+    aka_person_id: int | None = None
+    ao_person_id: int | None = None
+
+
+class LineupIn(BaseModel):
+    """Alineación de un enfrentamiento por equipos, combate por combate."""
+
+    bouts: list[LineupBoutIn] = Field(min_length=1, max_length=10)
+    extra: bool = False  # agrega un combate extra de desempate
+    version: int | None = None
+    override: Override | None = None
 
 
 class SuggestionOut(BaseModel):
@@ -512,6 +551,10 @@ class MatchOut(ORM):
     started_at: datetime | None
     finished_at: datetime | None
     version: int
+    parent_match_id: int | None = None
+    bout_number: int | None = None
+    aka_person_id: int | None = None
+    ao_person_id: int | None = None
 
 
 class BracketOut(BaseModel):
@@ -586,12 +629,14 @@ class ScoreboardOut(BaseModel):
     annulled_event_ids: list[str]
     aka: ParticipantOut | None
     ao: ParticipantOut | None
+    is_team_match: bool = False  # enfrentamiento entre equipos: se opera por combates
+    bout: dict[str, Any] | None = None  # combate individual de un enfrentamiento por equipos
 
 
 class FinishIn(BaseModel):
     id: str = Field(min_length=8, max_length=36)
     at: datetime
-    winner: Color
+    winner: Literal["aka", "ao", "draw"]  # "draw" solo en combates individuales por equipos
     method: str = "points"
     reason: str | None = None
     time_over: bool = True

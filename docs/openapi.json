@@ -2666,6 +2666,121 @@
     }
    }
   },
+  "/api/v1/tournaments/{tid}/teams": {
+   "post": {
+    "tags": [
+     "teams"
+    ],
+    "summary": "Create Team",
+    "description": "Inscribe un equipo temporal (nombre, dojo, titulares y suplentes) en una categoría por equipos.",
+    "operationId": "create_team_api_v1_tournaments__tid__teams_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TeamCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/teams/{team_id}": {
+   "patch": {
+    "tags": [
+     "teams"
+    ],
+    "summary": "Update Team",
+    "operationId": "update_team_api_v1_teams__team_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "team_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Team Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TeamUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/registrations/{rid}/withdraw": {
    "post": {
     "tags": [
@@ -3469,6 +3584,107 @@
       "application/json": {
        "schema": {
         "$ref": "#/components/schemas/FinishIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/team": {
+   "get": {
+    "tags": [
+     "teams"
+    ],
+    "summary": "Team Match",
+    "description": "Enfrentamiento por equipos: integrantes, alineación, combates y marcador de victorias.",
+    "operationId": "team_match_api_v1_matches__mid__team_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/lineup": {
+   "put": {
+    "tags": [
+     "teams"
+    ],
+    "summary": "Set Lineup",
+    "operationId": "set_lineup_api_v1_matches__mid__lineup_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LineupIn"
        }
       }
      }
@@ -5691,7 +5907,8 @@
       "type": "string",
       "enum": [
        "aka",
-       "ao"
+       "ao",
+       "draw"
       ],
       "title": "Winner"
      },
@@ -6103,6 +6320,79 @@
     ],
     "title": "KataScoreIn"
    },
+   "LineupBoutIn": {
+    "properties": {
+     "aka_person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Person Id"
+     },
+     "ao_person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Person Id"
+     }
+    },
+    "type": "object",
+    "title": "LineupBoutIn"
+   },
+   "LineupIn": {
+    "properties": {
+     "bouts": {
+      "items": {
+       "$ref": "#/components/schemas/LineupBoutIn"
+      },
+      "type": "array",
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Bouts"
+     },
+     "extra": {
+      "type": "boolean",
+      "title": "Extra",
+      "default": false
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "bouts"
+    ],
+    "title": "LineupIn",
+    "description": "Alineación de un enfrentamiento por equipos, combate por combate."
+   },
    "LoginIn": {
     "properties": {
      "username": {
@@ -6252,6 +6542,50 @@
      "version": {
       "type": "integer",
       "title": "Version"
+     },
+     "parent_match_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parent Match Id"
+     },
+     "bout_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bout Number"
+     },
+     "aka_person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Person Id"
+     },
+     "ao_person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Person Id"
      }
     },
     "type": "object",
@@ -6952,6 +7286,37 @@
       "type": "string",
       "title": "Dojo Name",
       "default": ""
+     },
+     "team_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Team Id"
+     },
+     "team_version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Team Version"
+     },
+     "team_members": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Team Members",
+      "default": []
      }
     },
     "type": "object",
@@ -7251,6 +7616,23 @@
         "type": "null"
        }
       ]
+     },
+     "is_team_match": {
+      "type": "boolean",
+      "title": "Is Team Match",
+      "default": false
+     },
+     "bout": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bout"
      }
     },
     "type": "object",
@@ -7407,6 +7789,145 @@
      "name"
     ],
     "title": "TatamiOut"
+   },
+   "TeamCreate": {
+    "properties": {
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "members": {
+      "items": {
+       "$ref": "#/components/schemas/TeamMemberIn"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Members"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_id",
+     "dojo_id",
+     "name",
+     "members"
+    ],
+    "title": "TeamCreate"
+   },
+   "TeamMemberIn": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "starter",
+       "substitute"
+      ],
+      "title": "Role",
+      "default": "starter"
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id"
+    ],
+    "title": "TeamMemberIn"
+   },
+   "TeamUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "members": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/TeamMemberIn"
+        },
+        "type": "array",
+        "minItems": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Members"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "TeamUpdate"
    },
    "TemplateCreate": {
     "properties": {

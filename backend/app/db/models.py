@@ -293,7 +293,7 @@ class Registration(Base, Timestamped, Versioned):
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     original_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True, index=True)
-    team_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # MVP-3
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True, index=True)
     # Foto al momento del torneo
     dojo_id: Mapped[int] = mapped_column(ForeignKey("dojos.id"))
     branch_id: Mapped[int | None] = mapped_column(ForeignKey("branches.id"), nullable=True)
@@ -307,6 +307,44 @@ class Registration(Base, Timestamped, Versioned):
 
     person: Mapped[Person | None] = relationship(lazy="joined")
     dojo: Mapped[Dojo] = relationship(lazy="joined")
+    team: Mapped[Team | None] = relationship(lazy="joined")
+
+    @property
+    def display_name(self) -> str:
+        """Nombre del participante: la persona o, en categorías por equipos, el equipo."""
+        if self.person is not None:
+            return f"{self.person.first_names} {self.person.last_names}"
+        if self.team is not None:
+            return self.team.name
+        return ""
+
+
+class Team(Base, Timestamped, Versioned):
+    """EquipoTorneo: existe solo dentro de un torneo (sección 15). Se inscribe
+    en su categoría con una Inscripcion que apunta al equipo."""
+
+    __tablename__ = "teams"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    dojo_id: Mapped[int] = mapped_column(ForeignKey("dojos.id"))
+    name: Mapped[str] = mapped_column(Unicode(120))
+    members: Mapped[list[TeamMember]] = relationship(
+        back_populates="team", lazy="selectin", order_by="TeamMember.order"
+    )
+
+
+class TeamMember(Base):
+    """EquipoIntegrante: titular o suplente."""
+
+    __tablename__ = "team_members"
+    __table_args__ = (UniqueConstraint("team_id", "person_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    role: Mapped[str] = mapped_column(String(20), default="starter")  # starter | substitute
+    order: Mapped[int] = mapped_column(Integer, default=0)
+    team: Mapped[Team] = relationship(back_populates="members")
+    person: Mapped[Person] = relationship(lazy="joined")
 
 
 class RuleOverride(Base):
@@ -414,6 +452,12 @@ class Match(Base, Timestamped, Versioned):
     started_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True)  # False si su versión de llave fue reemplazada
+    # Kumite por equipos: cada combate individual ("bout" o "bout_extra") cuelga
+    # del enfrentamiento entre equipos y guarda qué integrante peleó por cada lado.
+    parent_match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), nullable=True, index=True)
+    bout_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    aka_person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
+    ao_person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
 
 
 class MatchEventRow(Base):

@@ -27,6 +27,7 @@ from app.db.models import (
     KataPerformance,
     Match,
     MatchEventRow,
+    Person,
     Registration,
     Tatami,
     Tournament,
@@ -77,14 +78,14 @@ def _bracket(db: Session, cid: int) -> Bracket | None:
     return db.scalar(select(Bracket).where(Bracket.category_id == cid))
 
 
-def current_matches(db: Session, cid: int) -> list[Match]:
-    return list(
-        db.scalars(
-            select(Match)
-            .where(Match.category_id == cid, Match.is_current.is_(True))
-            .order_by(Match.round, Match.position)
-        ).all()
-    )
+def current_matches(db: Session, cid: int, *, bouts: bool = False) -> list[Match]:
+    """Combates vigentes de la llave. Los combates individuales de un
+    enfrentamiento por equipos no son parte de la llave: solo se incluyen
+    con ``bouts=True``."""
+    stmt = select(Match).where(Match.category_id == cid, Match.is_current.is_(True))
+    if not bouts:
+        stmt = stmt.where(Match.parent_match_id.is_(None))
+    return list(db.scalars(stmt.order_by(Match.round, Match.position)).all())
 
 
 def _active_regs(db: Session, cid: int) -> list[Registration]:
@@ -250,7 +251,7 @@ def generate(db: Session, user: User, cid: int, data: s.BracketGenerateIn) -> Br
 
 
 def _retire_current(db: Session, cid: int) -> None:
-    for m in current_matches(db, cid):
+    for m in current_matches(db, cid, bouts=True):
         m.is_current = False
     db.execute(delete(CategoryResult).where(CategoryResult.category_id == cid))
 
@@ -322,7 +323,7 @@ def swap_slots(db: Session, user: User, bracket_id: int, data: s.SlotSwapIn) -> 
     )
     db.add(v)
     db.flush()
-    for m in matches:  # los combates siguen siendo los mismos, ahora sobre la nueva versión
+    for m in current_matches(db, c.id, bouts=True):  # mismos combates, ahora sobre la nueva versión
         m.bracket_version_id = v.id
     b.current_version_id = v.id
     bump(b, user)
@@ -400,6 +401,8 @@ def sync(db: Session, c: Category) -> dict[str, Any]:
 
 def _update_status(db: Session, m: Match, ready: bool, is_bye: bool, winner: str | None) -> None:
     has_events = db.scalar(select(func.count()).select_from(MatchEventRow).where(MatchEventRow.match_id == m.id))
+    if not has_events:  # enfrentamiento por equipos con alineación: ya empezó
+        has_events = db.scalar(select(func.count()).select_from(Match).where(Match.parent_match_id == m.id))
     if is_bye:
         m.status = "bye"
         m.winner_registration_id = _to_int(winner)
@@ -544,8 +547,9 @@ def participants(db: Session, ids: set[int]) -> dict[int, s.ParticipantOut]:
     regs = db.scalars(select(Registration).where(Registration.id.in_(ids))).all()
     out = {}
     for r in regs:
-        name = f"{r.person.first_names} {r.person.last_names}" if r.person else f"Equipo {r.team_id}"
-        out[r.id] = s.ParticipantOut(registration_id=r.id, name=name, dojo_id=r.dojo_id, dojo_name=r.dojo.name)
+        out[r.id] = s.ParticipantOut(
+            registration_id=r.id, name=r.display_name, dojo_id=r.dojo_id, dojo_name=r.dojo.name
+        )
     return out
 
 
@@ -692,6 +696,7 @@ def scoreboard(db: Session, m: Match) -> s.ScoreboardOut:
     time_over = sb.elapsed_seconds >= rules.duration_seconds
     d = suggest_decision(sb, rules, time_over)
     parts = participants(db, {x for x in (m.aka_registration_id, m.ao_registration_id) if x})
+    bout = _bout_info(db, m, parts) if m.parent_match_id else None
     return s.ScoreboardOut(
         match=s.MatchOut.model_validate(m),
         rules={
@@ -724,7 +729,36 @@ def scoreboard(db: Session, m: Match) -> s.ScoreboardOut:
         annulled_event_ids=sb.annulled_event_ids,
         aka=parts.get(m.aka_registration_id) if m.aka_registration_id else None,
         ao=parts.get(m.ao_registration_id) if m.ao_registration_id else None,
+        is_team_match=c.is_team and c.modality == "kumite" and m.parent_match_id is None,
+        bout=bout,
     )
+
+
+def _bout_info(db: Session, m: Match, parts: dict[int, s.ParticipantOut]) -> dict[str, Any]:
+    """Combate individual de un enfrentamiento por equipos: en el marcador se
+    muestra al integrante; el equipo pasa a ser el subtítulo."""
+    from app.services import teams
+
+    parent = get_match(db, m.parent_match_id)
+    team_names = {rid: p.name for rid, p in parts.items()}
+    for color, pid in (("aka", m.aka_person_id), ("ao", m.ao_person_id)):
+        rid = getattr(m, f"{color}_registration_id")
+        team = parts.get(rid)
+        if team is not None and pid is not None:
+            p = db.get(Person, pid)
+            if p is not None:
+                parts[rid] = team.model_copy(update={"name": f"{p.first_names} {p.last_names}", "dojo_name": team.name})
+    d = teams.decision_for(db, parent)
+    return {
+        "parent_match_id": parent.id,
+        "parent_code": parent.code,
+        "bout_number": m.bout_number,
+        "is_extra": m.kind == "bout_extra",
+        "aka_team": team_names.get(m.aka_registration_id),
+        "ao_team": team_names.get(m.ao_registration_id),
+        "wins": d.wins,
+        "team_winner": d.winner,
+    }
 
 
 def _require_two(m: Match) -> None:
@@ -803,6 +837,10 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
     m.aka_score, m.ao_score = sb.score["aka"], sb.score["ao"]
     if finished_before:
         c = get_category(db, m.category_id)
+        if m.parent_match_id:  # los puntos del combate cuentan para el enfrentamiento
+            from app.services import teams
+
+            teams.settle(db, user, get_match(db, m.parent_match_id), _naive_utc(data.at), data.override.reason)
         sync(db, c)  # round robin usa los marcadores para la clasificación
         audit(
             db,
@@ -823,6 +861,9 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
     """Cierra el combate con ganador. Corregir un ganador es volver a llamar
     con otro ganador: se agrega un nuevo evento ``finish`` y se informan los
     combates siguientes afectados.
+
+    Un combate individual de kumite por equipos puede terminar en empate
+    (``winner="draw"``); al cerrarlo se recalcula el enfrentamiento.
     """
     m = get_match(db, mid)
     existing = db.get(MatchEventRow, data.id)
@@ -832,20 +873,35 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
         return scoreboard(db, m), []
     _require_two(m)
     c, t = _ctx(db, m)
+    is_bout = m.parent_match_id is not None
+    draw = data.winner == "draw"
+    if draw and not is_bout:
+        raise InvalidState("Solo un combate individual por equipos puede terminar en empate", code="DRAW_NOT_ALLOWED")
     rules = effective_kumite_rules(c, t)
     rows = _events(db, m.id)
     sb = compute_scoreboard(_domain_events(rows), rules)
-    winner_id = m.aka_registration_id if data.winner == "aka" else m.ao_registration_id
+    method = "draw" if draw else data.method
+    winner_id = None if draw else (m.aka_registration_id if data.winner == "aka" else m.ao_registration_id)
     ws: list[dict[str, str]] = []
-    if c.modality == "kumite" and data.method not in ("walkover", "kiken", "shikkaku", "hantei", "decision"):
-        ws += [
-            {"code": "SCORE_MISMATCH", "message": w} for w in finish_warnings(sb, rules, data.winner, data.time_over)
-        ]
+    if c.modality == "kumite" and method not in ("walkover", "kiken", "shikkaku", "hantei", "decision"):
+        if draw:
+            if sb.score["aka"] != sb.score["ao"]:
+                ws.append({"code": "SCORE_MISMATCH", "message": "El marcador no está empatado"})
+        else:
+            ws += [
+                {"code": "SCORE_MISMATCH", "message": w}
+                for w in finish_warnings(sb, rules, data.winner, data.time_over)
+            ]
     affected: list[str] = []
-    if m.winner_registration_id is not None and m.winner_registration_id != winner_id:
-        codes = bd.dependents([_spec(x) for x in current_matches(db, c.id)], m.code)
-        by_code = {x.code: x for x in current_matches(db, c.id)}
-        affected = [code for code in codes if by_code.get(code) and by_code[code].status in ("in_progress", "finished")]
+    if is_bout:
+        from app.services import teams
+
+        if m.status in ("finished", "needs_review") and (m.winner_registration_id, m.method) != (winner_id, method):
+            ws.append({"code": "WINNER_CHANGE", "message": "Cambia el resultado de un combate cerrado"})
+        team_ws, affected = teams.bout_change_warnings(db, m, None if draw else data.winner, sb.score)
+        ws += team_ws
+    elif m.winner_registration_id is not None and m.winner_registration_id != winner_id:
+        affected = _affected_by(db, c, m)
         ws.append(
             {
                 "code": "WINNER_CHANGE",
@@ -857,23 +913,57 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
         ws.append({"code": "CATEGORY_FINISHED", "message": "La categoría o el torneo ya estaban finalizados"})
     apply_warnings(db, user, ws, data.override.reason if data.override else None, "match", lambda: m.id)
 
+    reason = data.reason or (data.override.reason if data.override else None)
+    record_finish(db, user, m, c, None if draw else data.winner, method, _naive_utc(data.at), data.id, reason, sb.score)
+    if is_bout:
+        teams.settle(db, user, get_match(db, m.parent_match_id), _naive_utc(data.at), reason)
+        sync(db, c)
+    db.commit()
+    return scoreboard(db, m), affected
+
+
+def _affected_by(db: Session, c: Category, m: Match) -> list[str]:
+    """Combates siguientes ya iniciados que dependen del resultado de ``m``."""
+    rows = current_matches(db, c.id)
+    codes = bd.dependents([_spec(x) for x in rows], m.code)
+    by_code = {x.code: x for x in rows}
+    return [code for code in codes if by_code.get(code) and by_code[code].status in ("in_progress", "finished")]
+
+
+def record_finish(
+    db: Session,
+    user: User,
+    m: Match,
+    c: Category,
+    color: str | None,
+    method: str,
+    at,
+    event_id: str,
+    reason: str | None,
+    score: dict[str, int] | None,
+) -> None:
+    """Escribe el cierre (evento ``finish``, ganador, auditoría) y resincroniza
+    la llave. No valida ni hace commit: eso le toca a quien llama."""
     db.add(
         MatchEventRow(
-            id=data.id,
-            match_id=mid,
+            id=event_id,
+            match_id=m.id,
             type="finish",
-            color=data.winner,
-            method=data.method,
-            reason=data.reason or (data.override.reason if data.override else None),
-            device_at=_naive_utc(data.at),
+            color=color,
+            method=method,
+            reason=reason,
+            device_at=at,
             user_id=user.id,
         )
     )
+    winner_id = None if color is None else (m.aka_registration_id if color == "aka" else m.ao_registration_id)
     before = {"winner": m.winner_registration_id, "method": m.method}
+    was_finished = m.status in ("finished", "needs_review")
     m.winner_registration_id = winner_id
-    m.method = data.method
-    m.aka_score, m.ao_score = sb.score["aka"], sb.score["ao"]
-    m.finished_at = _naive_utc(data.at)
+    m.method = method
+    if score is not None:
+        m.aka_score, m.ao_score = score["aka"], score["ao"]
+    m.finished_at = at
     if m.started_at is None:
         m.started_at = m.finished_at
     m.status = "finished"
@@ -886,14 +976,12 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
         user,
         "match",
         m.id,
-        "correct_winner" if before["winner"] else "finish",
+        "correct_winner" if was_finished else "finish",
         before,
-        {"winner": winner_id, "method": data.method},
-        reason=data.reason or (data.override.reason if data.override else None),
-        tournament_id=t.id,
+        {"winner": winner_id, "method": method},
+        reason=reason,
+        tournament_id=c.tournament_id,
     )
-    db.commit()
-    return scoreboard(db, m), affected
 
 
 # ---------------------------------------------------------------------------

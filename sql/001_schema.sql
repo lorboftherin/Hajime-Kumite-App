@@ -290,6 +290,22 @@ CREATE TABLE tatamis (
 );
 
 CREATE INDEX ix_tatamis_tournament_id ON tatamis (tournament_id);
+CREATE TABLE teams (
+	id INTEGER NOT NULL IDENTITY, 
+	tournament_id INTEGER NOT NULL, 
+	dojo_id INTEGER NOT NULL, 
+	name NVARCHAR(120) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	updated_by_id INTEGER NULL, 
+	version INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
+	FOREIGN KEY(updated_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_teams_tournament_id ON teams (tournament_id);
 CREATE TABLE categories (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -344,6 +360,20 @@ CREATE TABLE import_rows (
 );
 
 CREATE INDEX ix_import_rows_batch_id ON import_rows (batch_id);
+CREATE TABLE team_members (
+	id INTEGER NOT NULL IDENTITY, 
+	team_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	role VARCHAR(20) NOT NULL, 
+	[order] INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	UNIQUE (team_id, person_id), 
+	FOREIGN KEY(team_id) REFERENCES teams (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id)
+);
+
+CREATE INDEX ix_team_members_person_id ON team_members (person_id);
+CREATE INDEX ix_team_members_team_id ON team_members (team_id);
 CREATE TABLE brackets (
 	id INTEGER NOT NULL IDENTITY, 
 	category_id INTEGER NOT NULL, 
@@ -398,6 +428,7 @@ CREATE TABLE registrations (
 	FOREIGN KEY(category_id) REFERENCES categories (id), 
 	FOREIGN KEY(original_category_id) REFERENCES categories (id), 
 	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(team_id) REFERENCES teams (id), 
 	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
 	FOREIGN KEY(branch_id) REFERENCES branches (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
@@ -405,6 +436,7 @@ CREATE TABLE registrations (
 
 CREATE INDEX ix_registrations_category ON registrations (category_id, status);
 CREATE INDEX ix_registrations_person_id ON registrations (person_id);
+CREATE INDEX ix_registrations_team_id ON registrations (team_id);
 CREATE INDEX ix_registrations_tournament_id ON registrations (tournament_id);
 CREATE TABLE bracket_versions (
 	id INTEGER NOT NULL IDENTITY, 
@@ -458,6 +490,10 @@ CREATE TABLE matches (
 	started_at DATETIME2 NULL, 
 	finished_at DATETIME2 NULL, 
 	is_current BIT NOT NULL, 
+	parent_match_id INTEGER NULL, 
+	bout_number INTEGER NULL, 
+	aka_person_id INTEGER NULL, 
+	ao_person_id INTEGER NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -469,10 +505,14 @@ CREATE TABLE matches (
 	FOREIGN KEY(aka_registration_id) REFERENCES registrations (id), 
 	FOREIGN KEY(ao_registration_id) REFERENCES registrations (id), 
 	FOREIGN KEY(winner_registration_id) REFERENCES registrations (id), 
+	FOREIGN KEY(parent_match_id) REFERENCES matches (id), 
+	FOREIGN KEY(aka_person_id) REFERENCES persons (id), 
+	FOREIGN KEY(ao_person_id) REFERENCES persons (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
 CREATE INDEX ix_matches_category ON matches (category_id, status);
+CREATE INDEX ix_matches_parent_match_id ON matches (parent_match_id);
 CREATE TABLE judge_votes (
 	id INTEGER NOT NULL IDENTITY, 
 	match_id INTEGER NOT NULL, 

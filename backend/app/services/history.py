@@ -10,7 +10,17 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Category, CategoryResult, Dojo, GradeRecord, Match, Registration, Tournament
+from app.db.models import (
+    Category,
+    CategoryResult,
+    Dojo,
+    GradeRecord,
+    Match,
+    Person,
+    Registration,
+    TeamMember,
+    Tournament,
+)
 from app.services.people import get_dojo, get_person
 
 
@@ -22,19 +32,64 @@ def _match_rows(db: Session, reg_ids: list[int]) -> list[Match]:
             select(Match).where(
                 Match.is_current.is_(True),
                 Match.status == "finished",
+                Match.parent_match_id.is_(None),
                 or_(Match.aka_registration_id.in_(reg_ids), Match.ao_registration_id.in_(reg_ids)),
             )
         ).all()
     )
 
 
+def _team_registrations(db: Session, person_id: int) -> tuple[dict[int, str], set[int], list[Match]]:
+    """Equipos en los que participó la persona (sección 15).
+
+    Devuelve el rol por equipo, las inscripciones de equipo que cuentan para
+    su historial y sus combates individuales. Cuenta si peleó al menos un
+    combate del equipo; si el equipo no registró combates individuales
+    (kata, walkover), cuentan los titulares.
+    """
+    roles = {
+        tid: role
+        for tid, role in db.execute(
+            select(TeamMember.team_id, TeamMember.role).where(TeamMember.person_id == person_id)
+        ).all()
+    }
+    if not roles:
+        return {}, set(), []
+    regs = db.scalars(select(Registration).where(Registration.team_id.in_(roles))).all()
+    reg_ids = [r.id for r in regs]
+    bouts = db.scalars(
+        select(Match).where(
+            Match.is_current.is_(True),
+            Match.parent_match_id.is_not(None),
+            or_(Match.aka_registration_id.in_(reg_ids), Match.ao_registration_id.in_(reg_ids)),
+        )
+    ).all()
+    with_bouts = {rid for b in bouts for rid in (b.aka_registration_id, b.ao_registration_id)}
+    mine = [
+        b
+        for b in bouts
+        if b.status == "finished"
+        and (
+            (b.aka_person_id == person_id and b.aka_registration_id in reg_ids)
+            or (b.ao_person_id == person_id and b.ao_registration_id in reg_ids)
+        )
+    ]
+    fought = {b.aka_registration_id if b.aka_person_id == person_id else b.ao_registration_id for b in mine}
+    counted = {r.id for r in regs if r.id in fought or (r.id not in with_bouts and roles.get(r.team_id) == "starter")}
+    return roles, counted, mine
+
+
 def person_history(db: Session, person_id: int) -> dict[str, Any]:
     p = get_person(db, person_id)
+    _, team_regs, bouts = _team_registrations(db, p.id)
     rows = db.execute(
         select(Registration, Category, Tournament)
         .join(Category, Category.id == Registration.category_id)
         .join(Tournament, Tournament.id == Registration.tournament_id)
-        .where(Registration.person_id == p.id, Tournament.is_test.is_(False))
+        .where(
+            or_(Registration.person_id == p.id, Registration.id.in_(team_regs or {0})),
+            Tournament.is_test.is_(False),
+        )
         .order_by(Tournament.start_date.desc())
     ).all()
     reg_ids = [r.id for r, _, _ in rows]
@@ -44,26 +99,52 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
     }
     matches = _match_rows(db, reg_ids)
     opp_ids = {(m.ao_registration_id if m.aka_registration_id in reg_ids else m.aka_registration_id) for m in matches}
+    opp_ids |= {x for b in bouts for x in (b.aka_registration_id, b.ao_registration_id)}
     opps = {r.id: r for r in db.scalars(select(Registration).where(Registration.id.in_(opp_ids or {0}))).all()}
+    opp_people = {b.ao_person_id if b.aka_person_id == p.id else b.aka_person_id for b in bouts} - {None}
+    people_names = {
+        x.id: f"{x.first_names} {x.last_names}"
+        for x in db.scalars(select(Person).where(Person.id.in_(opp_people or {0}))).all()
+    }
     dojos = {d.id: d.name for d in db.scalars(select(Dojo)).all()}
     entries = []
     for reg, cat, t in rows:
         fights = []
-        for m in (m for m in matches if reg.id in (m.aka_registration_id, m.ao_registration_id)):
-            mine_aka = m.aka_registration_id == reg.id
-            opp = opps.get(m.ao_registration_id if mine_aka else m.aka_registration_id)
-            fights.append(
-                {
-                    "match_id": m.id,
-                    "code": m.code,
-                    "color": "aka" if mine_aka else "ao",
-                    "won": m.winner_registration_id == reg.id,
-                    "method": m.method,
-                    "score": [m.aka_score, m.ao_score] if mine_aka else [m.ao_score, m.aka_score],
-                    "opponent": f"{opp.person.first_names} {opp.person.last_names}" if opp and opp.person else None,
-                    "opponent_dojo": dojos.get(opp.dojo_id) if opp else None,
-                }
-            )
+        if reg.team_id is not None and cat.modality == "kumite":
+            # Por equipos: los combates individuales que peleó la persona.
+            for b in bouts:
+                mine_aka = b.aka_person_id == p.id and b.aka_registration_id == reg.id
+                if not mine_aka and not (b.ao_person_id == p.id and b.ao_registration_id == reg.id):
+                    continue
+                opp = opps.get(b.ao_registration_id if mine_aka else b.aka_registration_id)
+                fights.append(
+                    {
+                        "match_id": b.id,
+                        "code": b.code,
+                        "color": "aka" if mine_aka else "ao",
+                        "won": b.winner_registration_id == reg.id,
+                        "method": b.method,
+                        "score": [b.aka_score, b.ao_score] if mine_aka else [b.ao_score, b.aka_score],
+                        "opponent": people_names.get(b.ao_person_id if mine_aka else b.aka_person_id),
+                        "opponent_dojo": opp.display_name if opp else None,
+                    }
+                )
+        else:
+            for m in (m for m in matches if reg.id in (m.aka_registration_id, m.ao_registration_id)):
+                mine_aka = m.aka_registration_id == reg.id
+                opp = opps.get(m.ao_registration_id if mine_aka else m.aka_registration_id)
+                fights.append(
+                    {
+                        "match_id": m.id,
+                        "code": m.code,
+                        "color": "aka" if mine_aka else "ao",
+                        "won": m.winner_registration_id == reg.id,
+                        "method": m.method,
+                        "score": [m.aka_score, m.ao_score] if mine_aka else [m.ao_score, m.aka_score],
+                        "opponent": opp.display_name if opp else None,
+                        "opponent_dojo": dojos.get(opp.dojo_id) if opp else None,
+                    }
+                )
         entries.append(
             {
                 "tournament_id": t.id,
@@ -74,6 +155,7 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
                 "original_category_id": reg.original_category_id,
                 "merged": reg.original_category_id != reg.category_id,
                 "dojo_name": dojos.get(reg.dojo_id),
+                "team_name": reg.team.name if reg.team else None,
                 "grade": reg.grade,
                 "weight_class": reg.weight_class,
                 "status": reg.status,
@@ -128,7 +210,7 @@ def dojo_history(db: Session, dojo_id: int) -> dict[str, Any]:
             {
                 "place": cr.place,
                 "category_name": cat.name,
-                "name": f"{reg.person.first_names} {reg.person.last_names}" if reg.person else "",
+                "name": reg.display_name,
                 "person_id": reg.person_id,
             }
         )

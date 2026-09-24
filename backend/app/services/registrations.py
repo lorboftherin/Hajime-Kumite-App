@@ -66,10 +66,14 @@ def _warnings(p: Person, grade_ord: int | None, weight: str | None, c: Category,
 
 
 def registration_out(r: Registration) -> s.RegistrationOut:
+    from app.services.teams import members_out
+
     out = s.RegistrationOut.model_validate(r)
-    if r.person:
-        out.person_name = f"{r.person.first_names} {r.person.last_names}"
+    out.person_name = r.display_name
     out.dojo_name = r.dojo.name if r.dojo else ""
+    if r.team is not None:
+        out.team_version = r.team.version
+        out.team_members = members_out(r.team)
     return out
 
 
@@ -84,6 +88,8 @@ def create_registration(
         raise InvalidState("La categoría no pertenece al torneo")
     if c.status in ("merged", "cancelled"):
         raise InvalidState("La categoría está fusionada o cancelada; inscribe en la categoría destino")
+    if c.is_team:
+        raise InvalidState("La categoría es por equipos: inscribe un equipo", code="TEAM_CATEGORY")
     p = people.get_person(db, data.person_id)
     if p.merged_into_id:
         raise InvalidState("La persona fue fusionada; usa la persona conservada", details={"use": p.merged_into_id})
@@ -150,6 +156,8 @@ def update_registration(db: Session, user: User, rid: int, data: s.RegistrationU
         new_cat = get_category(db, changes["category_id"])
         if new_cat.tournament_id != r.tournament_id or new_cat.status in ("merged", "cancelled"):
             raise InvalidState("Categoría destino inválida")
+        if new_cat.is_team != old_cat.is_team:
+            raise InvalidState("No se mueve una inscripción entre categorías individuales y por equipos")
         if old_cat.status in ("ready", "in_progress", "finished"):
             raise InvalidState("La categoría actual ya tiene llave; retira la inscripción o regenera la llave")
         if r.person_id and db.scalar(
@@ -202,6 +210,7 @@ def withdraw(db: Session, user: User, rid: int, reason: str, version: int | None
         select(Match).where(
             Match.category_id == c.id,
             Match.is_current.is_(True),
+            Match.parent_match_id.is_(None),
             Match.status.in_(("pending", "ready", "in_progress")),
             (Match.aka_registration_id == r.id) | (Match.ao_registration_id == r.id),
         )

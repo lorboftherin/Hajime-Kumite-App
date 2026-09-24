@@ -10,7 +10,7 @@ from app.api.deps import DB, CurrentUser, ensure_operator, ensure_organizer
 from app.api.errors import NotFound
 from app.db.models import Bracket
 from app.services import brackets as svc
-from app.services import reports
+from app.services import reports, teams
 from app.services.tournaments import get_category
 
 router = APIRouter()
@@ -90,6 +90,18 @@ def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser):
     ensure_operator(db, user, _tid_of_match(db, mid))
     sb, affected = svc.finish(db, user, mid, data)
     return {"scoreboard": sb.model_dump(mode="json"), "affected_matches": affected}
+
+
+@router.get("/matches/{mid}/team", tags=["teams"])
+def team_match(mid: int, db: DB, _: CurrentUser):
+    """Enfrentamiento por equipos: integrantes, alineación, combates y marcador de victorias."""
+    return teams.team_match_out(db, svc.get_match(db, mid))
+
+
+@router.put("/matches/{mid}/lineup", tags=["teams"])
+def set_lineup(mid: int, data: s.LineupIn, db: DB, user: CurrentUser):
+    ensure_operator(db, user, _tid_of_match(db, mid))
+    return teams.set_lineup(db, user, mid, data)
 
 
 @router.post("/matches/{mid}/official-result", tags=["shadow"])
