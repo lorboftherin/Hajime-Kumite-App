@@ -25,6 +25,26 @@ from app.services.tournaments import get_tournament
 
 PLACE_LABEL = {1: "Oro", 2: "Plata", 3: "Bronce"}
 
+# Paleta «Dō» (docs/diseno.md): pigmentos tradicionales, igual que la interfaz.
+SHU = colors.HexColor("#B8322A")  # aka
+AI = colors.HexColor("#24477A")  # ao
+SUMI = colors.HexColor("#1E1C1A")
+USUZUMI = colors.HexColor("#4A463F")
+NEZUMI = colors.HexColor("#8A8377")
+KASUMI = colors.HexColor("#E3DBCB")
+
+
+def _enso(pdf: canvas.Canvas, cx: float, cy: float, r: float) -> None:
+    """Ensō: círculo abierto de un trazo, la marca de Hajime en papel."""
+    pdf.saveState()
+    pdf.setStrokeColor(SUMI)
+    pdf.setLineCap(1)
+    # Trazo con grosor decreciente: tres arcos superpuestos simulan el pincel.
+    for width, start, extent in ((r * 0.26, 40, 250), (r * 0.18, 40, 290), (r * 0.10, 40, 318)):
+        pdf.setLineWidth(width)
+        pdf.arc(cx - r, cy - r, cx + r, cy + r, startAng=start, extent=extent)
+    pdf.restoreState()
+
 
 def _cell(v):
     """Evita que un nombre como "=HYPERLINK(...)" se interprete como fórmula en Excel."""
@@ -193,7 +213,8 @@ def bracket_pdf(db: Session, cid: int, with_results: bool = True) -> bytes:
     W, H = page
     pdf.setTitle(f"Llave - {c.name if c else cid}")
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(30, H - 30, f"{t.name if t else ''} — {c.name if c else ''}")
+    _enso(pdf, 38, H - 26, 8)
+    pdf.drawString(54, H - 30, f"{t.name if t else ''} — {c.name if c else ''}")
     pdf.setFont("Helvetica", 8)
     pdf.drawString(30, H - 44, f"Versión {b.version_number} · semilla {b.seed} · formato {b.format}")
 
@@ -243,9 +264,9 @@ def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, p
             if r == 1 and m.status == "bye":
                 a = a or "— bye —"
                 o = o or "— bye —"
-            pdf.setFillColor(colors.HexColor("#B91C1C"))
+            pdf.setFillColor(SHU)
             pdf.drawString(x + 2, ya + 2, a[:40])
-            pdf.setFillColor(colors.HexColor("#1D4ED8"))
+            pdf.setFillColor(AI)
             pdf.drawString(x + 2, yb + 2, o[:40])
             pdf.setFillColor(colors.black)
             if with_results and m.status == "finished" and m.aka_score is not None:
@@ -254,7 +275,7 @@ def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, p
                 # Código del combate: el mismo que usa la planilla de mesa y la app.
                 # Debajo de la línea que sale hacia la siguiente ronda: no choca con nombres.
                 pdf.setFont("Helvetica", 6)
-                pdf.setFillColor(colors.HexColor("#6B7280"))
+                pdf.setFillColor(NEZUMI)
                 pdf.drawString(x + col_w - 7, mid - 8, m.code)
                 pdf.setFillColor(colors.black)
                 pdf.setFont("Helvetica", font)
@@ -344,7 +365,8 @@ def results_pdf(db: Session, tid: int) -> bytes:
     W, H = A4
     y = H - 40
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(40, y, f"Resultados — {t.name}" + (" (PRUEBA)" if t.is_test else ""))
+    _enso(pdf, 48, y + 4, 8)
+    pdf.drawString(64, y, f"Resultados — {t.name}" + (" (PRUEBA)" if t.is_test else ""))
     y -= 24
 
     def line(txt: str, bold: bool = False, indent: int = 0) -> None:
@@ -413,7 +435,8 @@ def scoresheet_pdf(db: Session, tatami_id: int, with_results: bool = False) -> b
 
     def header(y: float) -> float:
         pdf.setFont("Helvetica-Bold", 13)
-        pdf.drawString(30, H - 30, f"{t.name if t else ''} — Planilla de mesa {tat.name}")
+        _enso(pdf, 38, H - 26, 8)
+        pdf.drawString(54, H - 30, f"{t.name if t else ''} — Planilla de mesa {tat.name}")
         pdf.setFont("Helvetica", 8)
         pdf.drawString(
             30,
@@ -440,15 +463,15 @@ def scoresheet_pdf(db: Session, tatami_id: int, with_results: bool = False) -> b
         pdf.drawString(82, y + 4, it["category_name"][:42])
         pdf.drawString(82, y - 5, f"Combate {m.code}")
         for (name, dojo), x, color in (
-            (who(m.aka_registration_id, m.aka_source), 262, "#B91C1C"),
-            (who(m.ao_registration_id, m.ao_source), 452, "#1D4ED8"),
+            (who(m.aka_registration_id, m.aka_source), 262, SHU),
+            (who(m.ao_registration_id, m.ao_source), 452, AI),
         ):
-            pdf.setFillColor(colors.HexColor(color))
+            pdf.setFillColor(color)
             pdf.setFont("Helvetica-Bold" if dojo else "Helvetica-Oblique", 8)
             pdf.drawString(x, y + 3, name[:40])
             if dojo:
                 pdf.setFont("Helvetica", 6.5)
-                pdf.setFillColor(colors.HexColor("#4B5563"))
+                pdf.setFillColor(USUZUMI)
                 pdf.drawString(x, y - 6, dojo[:52])
         pdf.setFillColor(colors.black)
         pdf.setFont("Helvetica", 8)
@@ -461,7 +484,7 @@ def scoresheet_pdf(db: Session, tatami_id: int, with_results: bool = False) -> b
             pdf.drawString(721, y, "AKA")
             pdf.rect(742, y - 1, 7, 7)
             pdf.drawString(751, y, "AO")
-        pdf.setStrokeColor(colors.HexColor("#D1D5DB"))
+        pdf.setStrokeColor(KASUMI)
         pdf.line(28, y - 11, W - 28, y - 11)
         pdf.setStrokeColor(colors.black)
         y -= row_h
