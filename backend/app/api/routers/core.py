@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from sqlalchemy import or_, select
 
 from app.api import schemas as s
@@ -18,10 +18,17 @@ from app.api.deps import (
     ensure_staff,
     roles_of,
 )
-from app.api.errors import Conflict, NotFound, Unauthorized
+from app.api.errors import Conflict, NotFound, TooManyRequests, Unauthorized
 from app.db.models import AuditEntry, CategoryTemplate, Dojo, IdentityDocument, Person, PersonRole, RuleOverride, User
 from app.domain.identity import normalize_document, normalize_name
-from app.security import create_token, hash_password, verify_password
+from app.security import (
+    clear_login_failures,
+    create_token,
+    hash_password,
+    login_locked_for,
+    register_login_failure,
+    verify_password,
+)
 from app.services import people
 from app.services.audit import audit, bump, check_version, snapshot
 from app.services.tournaments import create_template
@@ -33,11 +40,33 @@ router = APIRouter()
 
 
 @router.post("/auth/login", response_model=s.TokenOut, tags=["auth"])
-def login(data: s.LoginIn, db: DB):
-    u = db.scalar(select(User).where(User.username == data.username.strip().lower()))
+def login(data: s.LoginIn, db: DB, request: Request):
+    username = data.username.strip().lower()
+    key = f"{username}|{request.client.host if request.client else '-'}"
+    wait = login_locked_for(key)
+    if wait:
+        raise TooManyRequests(f"Demasiados intentos fallidos. Intenta de nuevo en {wait // 60 + 1} min.")
+    u = db.scalar(select(User).where(User.username == username))
     if u is None or not u.is_active or not verify_password(data.password, u.password_hash):
+        register_login_failure(key)
         raise Unauthorized("Usuario o contraseña incorrectos")
-    return s.TokenOut(access_token=create_token(u.id), user=user_out(db, u))
+    clear_login_failures(key)
+    return s.TokenOut(access_token=create_token(u.id, u.token_version or 0), user=user_out(db, u))
+
+
+@router.post("/auth/change-password", response_model=s.TokenOut, tags=["auth"])
+def change_password(data: s.PasswordChange, db: DB, user: CurrentUser):
+    """Cambia la contraseña propia. Invalida las demás sesiones y devuelve un token nuevo."""
+    if not verify_password(data.current_password, user.password_hash):
+        raise Unauthorized("La contraseña actual no es correcta")
+    if data.new_password == data.current_password:
+        raise Conflict("La nueva contraseña debe ser distinta")
+    user.password_hash = hash_password(data.new_password)
+    user.token_version = (user.token_version or 0) + 1
+    user.must_change_password = False
+    audit(db, user, "user", user.id, "change_password")
+    db.commit()
+    return s.TokenOut(access_token=create_token(user.id, user.token_version), user=user_out(db, user))
 
 
 def user_out(db, u: User) -> s.UserOut:
@@ -99,10 +128,36 @@ def create_user(data: s.UserCreate, db: DB, admin: AdminUser):
         display_name=data.display_name or username,
         is_admin=data.is_admin,
         person_id=data.person_id,
+        must_change_password=True,  # la clave la eligió el Admin
     )
     db.add(u)
     db.flush()
     audit(db, admin, "user", u.id, "create", after={"username": username, "is_admin": data.is_admin})
+    db.commit()
+    return user_out(db, u)
+
+
+@router.patch("/users/{user_id}", response_model=s.UserOut, tags=["auth"])
+def update_user(user_id: int, data: s.UserAdminUpdate, db: DB, admin: AdminUser):
+    u = db.get(User, user_id)
+    if u is None:
+        raise NotFound("Usuario no encontrado")
+    changes = data.model_dump(exclude_unset=True)
+    if u.id == admin.id and (changes.get("is_active") is False or changes.get("is_admin") is False):
+        raise Conflict("No puedes desactivarte ni quitarte el rol de Admin a ti mismo")
+    before = {k: getattr(u, k) for k in ("is_active", "is_admin", "display_name", "person_id")}
+    for k in ("is_active", "is_admin", "display_name", "person_id"):
+        if k in changes:
+            setattr(u, k, changes[k])
+    if data.reset_password:
+        u.password_hash = hash_password(data.reset_password)
+        u.must_change_password = True
+    if data.reset_password or changes.get("is_active") is False:
+        u.token_version = (u.token_version or 0) + 1  # cierra sus sesiones abiertas
+    after = {k: getattr(u, k) for k in ("is_active", "is_admin", "display_name", "person_id")}
+    if data.reset_password:
+        after["password"] = "reseteada"
+    audit(db, admin, "user", u.id, "update", before, after)
     db.commit()
     return user_out(db, u)
 

@@ -89,11 +89,22 @@ def update_tournament(db: Session, user: User, tid: int, data: s.TournamentUpdat
         raise Forbidden("Solo el Admin Global puede cambiar la marca de torneo de prueba")
     for k, v in changes.items():
         setattr(t, k, v)
+    if "age_reference_date" in changes and before.get("age_reference_date") != t.age_reference_date.isoformat():
+        _recompute_ages(db, t)
     bump(t, user)
     audit(db, user, "tournament", t.id, "update", before, snapshot(t), tournament_id=t.id)
     db.commit()
     db.refresh(t)
     return t
+
+
+def _recompute_ages(db: Session, t: Tournament) -> None:
+    """La edad de cada inscripción se calcula a la fecha de referencia (sección 13)."""
+    from app.domain.categories import age_at
+
+    for r in db.scalars(select(Registration).where(Registration.tournament_id == t.id)).all():
+        if r.person and r.person.birth_date:
+            r.age_at_reference = age_at(r.person.birth_date, t.age_reference_date)
 
 
 def change_status(db: Session, user: User, tid: int, data: s.StatusChange) -> Tournament:

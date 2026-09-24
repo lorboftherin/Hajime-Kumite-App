@@ -13,8 +13,39 @@ class Settings(BaseSettings):
     jwt_minutes: int = 12 * 60
     cors_origins: list[str] = ["http://localhost:4200"]
     timezone: str = "America/Lima"
+    # Instalación de un solo contenedor: carpeta con el frontend compilado.
+    static_dir: str | None = None
+    # Si no hay usuarios, crea el admin con esta contraseña al arrancar.
+    admin_password: str | None = None
+    admin_username: str = "admin"
+    # Carga la plantilla base de categorías si no hay ninguna.
+    load_base_template: bool = True
+    # SQL Server: crear tablas al arrancar (SQLite siempre las crea).
+    auto_create_schema: bool = False
+    # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.
+    secret_file: str | None = None
+
+
+DEFAULT_SECRET = "cambiar-en-produccion"
+
+
+def _load_or_create_secret(path: str) -> str:
+    import secrets
+    from pathlib import Path
+
+    f = Path(path)
+    if f.exists() and f.read_text().strip():
+        return f.read_text().strip()
+    f.parent.mkdir(parents=True, exist_ok=True)
+    value = secrets.token_urlsafe(48)
+    f.write_text(value)
+    f.chmod(0o600)
+    return value
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if s.jwt_secret == DEFAULT_SECRET and s.secret_file:
+        s.jwt_secret = _load_or_create_secret(s.secret_file)
+    return s

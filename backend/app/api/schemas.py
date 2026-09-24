@@ -46,6 +46,8 @@ class UserOut(ORM):
     username: str
     display_name: str
     is_admin: bool
+    is_active: bool = True
+    must_change_password: bool = False
     person_id: int | None
     roles: list[RoleOut] = []
     can_view_documents: bool = False
@@ -55,6 +57,21 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+class UserAdminUpdate(BaseModel):
+    """Acciones del Admin sobre una cuenta."""
+
+    is_active: bool | None = None
+    is_admin: bool | None = None
+    display_name: str | None = None
+    person_id: int | None = None
+    reset_password: str | None = Field(default=None, min_length=8, max_length=200)
 
 
 class UserCreate(BaseModel):

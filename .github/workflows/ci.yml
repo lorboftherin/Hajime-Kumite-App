@@ -20,6 +20,8 @@ jobs:
       - run: ruff check app tests
       - run: ruff format --check app tests
       - run: pytest -q
+      - name: Las migraciones cubren todos los cambios del modelo
+        run: HAJIME_DATABASE_URL=sqlite:///ci.db alembic upgrade head && HAJIME_DATABASE_URL=sqlite:///ci.db alembic check
       - name: El DDL de SQL Server está al día
         run: |
           python scripts/export_ddl.py
@@ -39,3 +41,38 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx ng build
+
+  docker:
+    # Construye la imagen "todo en uno", la prueba y la publica en GHCR.
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imagen
+        run: docker build -t hajime:ci .
+      - name: Prueba de humo del contenedor
+        run: |
+          docker run -d --name hajime -p 8000:8000 -e HAJIME_ADMIN_PASSWORD=ci-password-123 hajime:ci
+          for i in $(seq 1 30); do curl -sf localhost:8000/health && break; sleep 2; done
+          curl -sf localhost:8000/ | grep -qi "<app-root"
+          curl -sf localhost:8000/mesa/1 | grep -qi "<app-root"
+          TOKEN=$(curl -sf localhost:8000/api/v1/auth/login -H 'content-type: application/json' \
+            -d '{"username":"admin","password":"ci-password-123"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+          curl -sf localhost:8000/api/v1/templates -H "Authorization: Bearer $TOKEN" | python3 -c \
+            'import sys,json; t=json.load(sys.stdin); assert t and len(t[0]["items"]) > 0, t; print("plantilla:", len(t[0]["items"]), "categorías")'
+          docker logs hajime | tail -20
+      - name: Publicar en GitHub Container Registry
+        if: github.event_name == 'push'
+        run: |
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag hajime:ci "$IMAGE:$BRANCH"
+          docker tag hajime:ci "$IMAGE:sha-${GITHUB_SHA::7}"
+          docker push "$IMAGE:$BRANCH"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
+          if [ "$GITHUB_REF_NAME" = "main" ]; then docker tag hajime:ci "$IMAGE:latest" && docker push "$IMAGE:latest"; fi
+          echo "Imagen publicada: $IMAGE:$BRANCH" >> "$GITHUB_STEP_SUMMARY"

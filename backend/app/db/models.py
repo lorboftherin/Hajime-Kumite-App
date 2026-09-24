@@ -42,6 +42,9 @@ class User(Base, Timestamped):
     person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", use_alter=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)  # Admin Global
+    # Se incrementa al cambiar la contraseña o desactivar: invalida los tokens emitidos.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     display_name: Mapped[str] = mapped_column(Unicode(200), default="")
 
 

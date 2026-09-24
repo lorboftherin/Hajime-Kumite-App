@@ -25,7 +25,7 @@ def main() -> None:
     deferred = []
     for table in Base.metadata.sorted_tables:
         parts.append(str(CreateTable(table).compile(dialect=dialect)).strip() + ";\n")
-        for idx in table.indexes:
+        for idx in sorted(table.indexes, key=lambda i: i.name or ""):
             parts.append(str(CreateIndex(idx).compile(dialect=dialect)).strip() + ";")
         for fk in table.foreign_key_constraints:
             if fk.use_alter:

@@ -21,7 +21,7 @@ from sqlalchemy import select
 import app.db.models  # noqa: F401
 from app.api import schemas as s
 from app.config import get_settings
-from app.db.base import Base, get_engine, get_session
+from app.db.base import get_engine, get_session
 from app.db.models import CategoryTemplate, User
 from app.domain.categories import grade_to_ordinal
 from app.security import hash_password
@@ -116,7 +116,9 @@ def base_template_items() -> list[s.CategoryFields]:
 
 def ensure_schema() -> None:
     if get_engine().url.get_backend_name() == "sqlite":
-        Base.metadata.create_all(get_engine())
+        from app.db.migrate import upgrade_database
+
+        upgrade_database(get_engine())
 
 
 def cmd_admin(username: str, password: str, force: bool = False) -> None:

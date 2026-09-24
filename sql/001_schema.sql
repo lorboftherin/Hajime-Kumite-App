@@ -9,6 +9,8 @@ CREATE TABLE users (
 	person_id INTEGER NULL, 
 	is_active BIT NOT NULL, 
 	is_admin BIT NOT NULL, 
+	token_version INTEGER NOT NULL, 
+	must_change_password BIT NOT NULL, 
 	display_name NVARCHAR(200) NOT NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
@@ -401,9 +403,9 @@ CREATE TABLE registrations (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
-CREATE INDEX ix_registrations_tournament_id ON registrations (tournament_id);
-CREATE INDEX ix_registrations_person_id ON registrations (person_id);
 CREATE INDEX ix_registrations_category ON registrations (category_id, status);
+CREATE INDEX ix_registrations_person_id ON registrations (person_id);
+CREATE INDEX ix_registrations_tournament_id ON registrations (tournament_id);
 CREATE TABLE bracket_versions (
 	id INTEGER NOT NULL IDENTITY, 
 	bracket_id INTEGER NOT NULL, 

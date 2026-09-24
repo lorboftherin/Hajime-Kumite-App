@@ -36,9 +36,9 @@ ROLES = ("organizer", "table_operator", "dojo_admin", "referee")
 def current_user(db: DB, cred: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> User:
     if cred is None:
         raise Unauthorized("Se requiere iniciar sesión")
-    uid = decode_token(cred.credentials)
-    user = db.get(User, uid) if uid else None
-    if user is None or not user.is_active:
+    decoded = decode_token(cred.credentials)
+    user = db.get(User, decoded[0]) if decoded else None
+    if user is None or not user.is_active or decoded[1] != (user.token_version or 0):
         raise Unauthorized("Sesión inválida o expirada")
     return user
 

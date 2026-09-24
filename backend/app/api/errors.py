@@ -16,6 +16,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class AppError(Exception):
@@ -43,6 +44,11 @@ class Forbidden(AppError):
 class Unauthorized(AppError):
     status_code = 401
     code = "UNAUTHORIZED"
+
+
+class TooManyRequests(AppError):
+    status_code = 429
+    code = "TOO_MANY_ATTEMPTS"
 
 
 class Conflict(AppError):
@@ -81,6 +87,11 @@ def install_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
         return JSONResponse(_body(exc.code, exc.message, exc.details), status_code=exc.status_code)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(_: Request, exc: StarletteHTTPException):
+        code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED"}.get(exc.status_code, "HTTP_ERROR")
+        return JSONResponse(_body(code, str(exc.detail)), status_code=exc.status_code)
 
     @app.exception_handler(ValueError)
     async def _domain_value(_: Request, exc: ValueError):
