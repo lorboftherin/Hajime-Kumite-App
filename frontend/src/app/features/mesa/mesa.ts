@@ -5,12 +5,10 @@ import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
-import { EVENT_LABEL, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
+import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
 import { Category, Color, EventIn, FinishOut, MatchEvent, Scoreboard, TatamiQueue, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
-import { StatusBadge } from '../../shared/badge';
-import { Modal } from '../../shared/modal';
 import { LabelPipe } from '../../shared/pipes';
 import { Pending, SeqGuard, foldClock, loadPending, retryDecision, retryDelay, savePending } from './mesa-logic';
 
@@ -34,9 +32,9 @@ const UNDO_SKIP = new Set(['annul', 'finish']);
  */
 @Component({
   selector: 'app-mesa',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe],
+  imports: [FormsModule, RouterLink, LabelPipe],
   templateUrl: './mesa.html',
-  styleUrl: './mesa.scss',
+  styleUrls: ['./mesa.scss', './mesa-stage.scss', './mesa-center.scss', './mesa-kata.scss', './mesa-sheet.scss'],
 })
 export class MesaPage {
   private api = inject(ApiService);
@@ -49,6 +47,7 @@ export class MesaPage {
   readonly tatami = input<string | undefined>(undefined);
 
   readonly methodLabel = METHOD_LABEL;
+  readonly matchStatus = MATCH_STATUS;
   readonly methods = METHODS;
   readonly colors: Color[] = ['aka', 'ao'];
 
@@ -82,6 +81,11 @@ export class MesaPage {
   finishForm = { winner: null as Color | null, method: 'points', reason: '', time_over: true };
   private finishId = '';
   readonly finishing = signal(false);
+
+  /** Menú «Más» abierto (acciones raras) por lado. Solo presentación. */
+  readonly moreOpen = signal<Color | null>(null);
+  /** Tatami de origen (número y número de combate en la cola), solo para el encabezado. */
+  readonly tatamiInfo = signal<{ number: number; name: string; matchNumber: string | null } | null>(null);
 
   // Kata por banderas
   readonly votes = signal<Array<Color | null>>([]);
@@ -189,6 +193,55 @@ export class MesaPage {
     return sb ? this.describe(p.body, sb) : (EVENT_LABEL[p.body.type] ?? p.body.type);
   });
 
+  /** Estado visual del reloj. */
+  readonly clockState = computed<'over' | 'running' | 'paused' | 'idle'>(() => {
+    if (this.timeOver()) return 'over';
+    if (this.clock().running) return 'running';
+    return this.started() ? 'paused' : 'idle';
+  });
+  readonly clockLabel = computed(() => {
+    switch (this.clockState()) {
+      case 'over':
+        return '¡Tiempo!';
+      case 'running':
+        return 'En juego';
+      case 'paused':
+        return 'Yame';
+      default:
+        return 'Sin iniciar';
+    }
+  });
+  readonly durationText = computed(() => mmss(this.duration()));
+  readonly clockWarn = computed(() => !this.timeOver() && this.remaining() <= 15 && this.clock().running);
+
+  /** Tono del aviso del servidor: ganador sugerido (matcha) o decisión necesaria (yamabuki). */
+  readonly suggestionTone = computed(() => {
+    const s = this.sb()?.suggestion;
+    if (!s) return '';
+    return s.winner ? 'win' : s.needs ? 'needs' : 'info';
+  });
+
+  /** Qué deshará «Deshacer último». */
+  readonly undoText = computed(() => {
+    const t = this.undoTarget();
+    const sb = this.sb();
+    return t && sb ? this.describe(t, sb) : '';
+  });
+
+  readonly majority = computed(() => Math.floor(this.judges() / 2) + 1);
+
+  /** Vista previa de banderas con la misma regla del servidor (mayoría del panel). */
+  readonly kataPreview = computed(() => {
+    const n = this.judges();
+    const { aka, ao } = this.voteCount();
+    const missing = this.votes().filter((v) => !v).length;
+    const majority = this.majority();
+    if (aka >= majority) return { tone: 'aka', text: `Gana AKA · ${aka} de ${n} banderas` };
+    if (ao >= majority) return { tone: 'ao', text: `Gana AO · ${ao} de ${n} banderas` };
+    if (missing) return { tone: 'wait', text: `Faltan ${missing} voto(s) · sin mayoría todavía` };
+    return { tone: 'tie', text: 'Sin mayoría: decide el juez principal' };
+  });
+
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 200);
     const refresh = setInterval(() => {
@@ -211,10 +264,31 @@ export class MesaPage {
         this.needsHead.set(false);
         this.headVote.set(null);
         this.flagsId = newId();
+        this.moreOpen.set(null);
         this.restorePending(id);
         this.load(id);
       });
     });
+    effect(() => {
+      const t = this.tatami();
+      const id = this.id();
+      untracked(() => {
+        this.tatamiInfo.set(null);
+        if (t) this.loadTatami(t, id);
+      });
+    });
+  }
+
+  /** Número de tatami para el encabezado (informativo; si falla no afecta a la mesa). */
+  private async loadTatami(t: string, matchId: number): Promise<void> {
+    try {
+      const q = await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${t}/queue`));
+      if (this.destroyed) return;
+      const item = [q.current, ...q.queue].find((it) => it?.match.id === matchId) ?? null;
+      this.tatamiInfo.set({ number: q.tatami.number, name: q.tatami.name, matchNumber: item?.number ?? null });
+    } catch {
+      /* solo informativo */
+    }
   }
 
   /** Aviso del navegador al cerrar/recargar con eventos sin enviar (la cola igual queda guardada). */
@@ -226,6 +300,47 @@ export class MesaPage {
     const msg = `Hay ${n} evento(s) sin enviar`;
     ev.returnValue = msg;
     return msg;
+  }
+
+  /** Escape cierra el menú «Más» o la hoja de cierre (si no hay un diálogo encima). */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.dialog.stack().length) return;
+    if (this.moreOpen()) this.moreOpen.set(null);
+    else if (this.finishOpen() && !this.finishing()) this.finishOpen.set(false);
+  }
+
+  /** Un toque fuera del menú «Más» lo cierra. */
+  @HostListener('document:pointerdown', ['$event'])
+  onDocPointer(ev: PointerEvent): void {
+    if (!this.moreOpen()) return;
+    const t = ev.target as HTMLElement | null;
+    if (!t?.closest?.('.more')) this.moreOpen.set(null);
+  }
+
+  toggleMore(c: Color): void {
+    this.moreOpen.update((v) => (v === c ? null : c));
+  }
+
+  rare(type: 'senshu_cancel' | 'kiken' | 'shikkaku' | 'walkover' | 'hantei', c: Color): void {
+    this.moreOpen.set(null);
+    this.special(type, c);
+  }
+
+  /** Gota de tinta desde el punto tocado (solo efecto visual; CSS la desactiva con reduced-motion). */
+  ink(ev: PointerEvent): void {
+    const btn = ev.currentTarget as HTMLElement | null;
+    if (!btn || (btn as HTMLButtonElement).disabled) return;
+    const r = btn.getBoundingClientRect();
+    btn.style.setProperty('--ink-x', `${ev.clientX - r.left}px`);
+    btn.style.setProperty('--ink-y', `${ev.clientY - r.top}px`);
+    btn.classList.remove('inked');
+    void btn.offsetWidth; // reinicia la animación
+    btn.classList.add('inked');
+  }
+
+  onSheetBackdrop(ev: MouseEvent): void {
+    if (ev.target === ev.currentTarget && !this.finishing()) this.finishOpen.set(false);
   }
 
   // --- Carga ---
@@ -385,6 +500,8 @@ export class MesaPage {
     if (!ok) return;
     this.pending.update((q) => q.filter((x) => x !== p));
     this.stuck.set(null);
+    // Sin pendientes no hay nada "sin conexión"; si quedan, flush lo vuelve a marcar si falla.
+    if (!this.pending().length) this.offline.set(false);
     this.flush();
   }
 

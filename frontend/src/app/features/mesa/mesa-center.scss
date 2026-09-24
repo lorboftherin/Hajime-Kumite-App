@@ -1,0 +1,305 @@
+// Mesa de kumite — columna central (reloj y control). Se reparte en varios archivos por el presupuesto de estilos por archivo.
+
+/* ---------- Columna central ---------- */
+.center {
+  grid-area: center;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--y-panel);
+  border: 1px solid #2a2622;
+  overflow-y: auto;
+}
+.clock {
+  container-type: inline-size;
+  text-align: center;
+  padding: 10px 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--y-line);
+  background: var(--y-deep);
+  transition:
+    border-color 320ms var(--m-ease),
+    color 320ms var(--m-ease);
+}
+.clock-label {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--y-dim);
+}
+.digits {
+  font-weight: 900;
+  font-size: clamp(3rem, 12vh, 7rem);
+  font-size: min(36cqi, 17vh);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  margin: 4px 0 2px;
+  color: var(--y-text);
+  transition: color 320ms var(--m-ease);
+}
+.clock-sub {
+  font-size: 0.8125rem;
+  color: var(--y-faint);
+  font-variant-numeric: tabular-nums;
+}
+.clock.paused .clock-label {
+  color: var(--y-text);
+}
+.clock.running {
+  border-color: rgba(94, 122, 58, 0.8);
+  animation: breathe 3.2s ease-in-out infinite;
+  .digits,
+  .clock-label {
+    color: var(--m-matcha-soft);
+  }
+}
+.clock.running.warn {
+  .digits,
+  .clock-label {
+    color: var(--m-yamabuki-soft);
+  }
+}
+.clock.over {
+  border-color: var(--m-shu);
+  .digits,
+  .clock-label {
+    color: var(--aka-on-dark);
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(94, 122, 58, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(94, 122, 58, 0.28);
+  }
+}
+
+.go {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: clamp(64px, 10vh, 86px);
+  border: 0;
+  border-radius: 14px;
+  font-size: clamp(1.4rem, 2vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition:
+    background 180ms var(--m-ease),
+    transform 120ms var(--m-ease);
+  small {
+    font-family: var(--m-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0.75;
+  }
+  &:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &.hajime {
+    background: var(--m-matcha-deep);
+    color: var(--y-text);
+    box-shadow: inset 0 0 0 1px rgba(245, 240, 230, 0.25);
+    &:hover:not(:disabled) {
+      background: #40582a;
+    }
+  }
+  &.yame {
+    background: var(--y-text);
+    color: var(--m-sumi);
+    &:hover:not(:disabled) {
+      background: #fff;
+    }
+  }
+}
+
+.adjust {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--y-line);
+  border-radius: 10px;
+  overflow: hidden;
+  button {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-right: 1px solid var(--y-line);
+    background: transparent;
+    color: var(--y-dim);
+    font-weight: 700;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    &:last-child {
+      border-right: 0;
+    }
+    &:hover:not(:disabled) {
+      background: var(--y-panel-2);
+      color: var(--y-text);
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+  .adj-label {
+    display: grid;
+    place-items: center;
+    padding: 0 8px;
+    border-right: 1px solid var(--y-line);
+    font-size: 0.75rem;
+    color: var(--y-faint);
+  }
+}
+
+.slot {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sg-kicker {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.last-ev {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  text-align: center;
+  color: var(--y-dim);
+  .le-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--y-text);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .le-time {
+    font-family: var(--m-mono);
+    font-size: 0.75rem;
+    color: var(--y-faint);
+  }
+  &.annulled .le-text {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+}
+.suggest {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 4px solid var(--y-line);
+  background: var(--y-panel-2);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  animation: settle 320ms var(--m-ease);
+  &.needs {
+    border-left-color: var(--m-yamabuki);
+    background: rgba(184, 134, 43, 0.14);
+    color: var(--m-yamabuki-soft);
+  }
+  &.win {
+    border-left-color: var(--m-matcha);
+    background: rgba(94, 122, 58, 0.18);
+    color: var(--m-matcha-soft);
+  }
+}
+.sg-go {
+  align-self: flex-start;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover {
+    background: rgba(245, 240, 230, 0.06);
+  }
+}
+
+.center-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.undo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 240, 230, 0.4);
+  background: transparent;
+  cursor: pointer;
+  transition: background 180ms var(--m-ease);
+  .undo-main {
+    font-size: 1.0625rem;
+    font-weight: 800;
+  }
+  .undo-what {
+    max-width: 100%;
+    font-size: 0.8125rem;
+    color: var(--y-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &:hover:not(:disabled) {
+    background: var(--y-panel-2);
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+.finish {
+  min-height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--y-line);
+  background: var(--y-panel-2);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: #2e2a26;
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+

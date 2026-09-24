@@ -1,0 +1,526 @@
+// Mesa de kumite — hoja de cierre y diseños adaptables. Se reparte en varios archivos por el presupuesto de estilos por archivo.
+
+/* ======================= Hoja de cierre ======================= */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 7, 6, 0.74);
+  backdrop-filter: blur(3px);
+  animation: fade 200ms var(--m-ease);
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.sheet {
+  width: min(660px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 20px;
+  border-radius: 18px;
+  background: var(--y-panel);
+  border: 1px solid var(--y-line);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  color: var(--y-text);
+  animation: settle 260ms var(--m-ease);
+  h2 {
+    margin: 2px 0 0;
+    font-family: var(--m-display);
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: var(--y-text);
+  }
+}
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sheet-kicker {
+  font-size: 0.8125rem;
+  color: var(--y-dim);
+}
+.sheet-score {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 16px;
+  font-weight: 900;
+  font-size: 2.2rem;
+  font-variant-numeric: tabular-nums;
+  .dash {
+    color: var(--y-faint);
+  }
+}
+.aka-t {
+  color: var(--aka-on-dark);
+}
+.ao-t {
+  color: var(--ao-on-dark);
+}
+.sheet-sug,
+.sheet-warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  border-left: 4px solid var(--y-line);
+  background: var(--y-panel-2);
+}
+.sheet-sug.win {
+  border-left-color: var(--m-matcha);
+  color: var(--m-matcha-soft);
+}
+.sheet-sug.needs,
+.sheet-warn {
+  border-left-color: var(--m-yamabuki);
+  color: var(--m-yamabuki-soft);
+  background: rgba(184, 134, 43, 0.12);
+}
+.winner-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.wcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 132px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 3px solid transparent;
+  cursor: pointer;
+  color: var(--y-text);
+  transition:
+    opacity 200ms var(--m-ease),
+    border-color 200ms var(--m-ease);
+  &.aka {
+    background: var(--aka-panel);
+  }
+  &.ao {
+    background: var(--ao-panel);
+  }
+  &.on {
+    border-color: var(--y-text);
+  }
+  &.dim {
+    opacity: 0.5;
+  }
+  &:has(input:focus-visible) {
+    outline: 3px solid var(--m-kin);
+    outline-offset: 2px;
+  }
+  input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+}
+.wc-color {
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  font-size: 0.9375rem;
+}
+.wc-name {
+  margin-top: auto;
+  font-family: var(--m-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+.wc-dojo {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.1em;
+}
+.wc-seal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: var(--m-shu);
+  color: var(--y-text);
+  font-family: var(--m-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  border-radius: 5px 4px 6px 4px;
+  outline: 1.5px solid rgba(245, 240, 230, 0.8);
+  outline-offset: -5px;
+  transform: rotate(-4deg) scale(0.7);
+  opacity: 0;
+  transition:
+    opacity 220ms var(--m-ease),
+    transform 220ms var(--m-ease);
+}
+.wcard.ao .wc-seal {
+  box-shadow: 0 0 0 2px rgba(245, 240, 230, 0.2);
+}
+.wcard.on .wc-seal {
+  opacity: 1;
+  transform: rotate(-4deg) scale(1);
+}
+.sheet-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.sheet .sfield {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  span {
+    font-size: 0.8125rem;
+    color: var(--y-dim);
+  }
+  select,
+  input {
+    min-height: 46px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #3d3832;
+    background: var(--y-bg);
+    color: var(--y-text);
+    font: inherit;
+    font-size: 1rem;
+    color-scheme: dark;
+  }
+}
+.scheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--m-matcha);
+  }
+}
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.confirm {
+  flex: 1;
+  max-width: 360px;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--y-panel-2);
+  color: var(--y-dim);
+  font-weight: 800;
+  font-size: 1.0625rem;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(245, 240, 230, 0.15);
+  &.aka {
+    background: var(--aka-strong);
+    color: var(--y-text);
+  }
+  &.ao {
+    background: var(--ao-strong);
+    color: var(--y-text);
+  }
+  &:disabled {
+    cursor: not-allowed;
+  }
+  &.aka:disabled,
+  &.ao:disabled {
+    opacity: 0.55;
+  }
+}
+
+/* ======================= Pantallas intermedias ======================= */
+@media (max-width: 1100px) and (orientation: landscape) {
+  .stage {
+    grid-template-columns: minmax(0, 1fr) clamp(236px, 26vw, 280px) minmax(0, 1fr);
+  }
+  .result-band .hanko {
+    width: 54px;
+    height: 54px;
+  }
+}
+
+@media (max-height: 800px) and (orientation: landscape) {
+  .center {
+    gap: 8px;
+    padding: 10px;
+  }
+  .go {
+    min-height: 64px;
+  }
+  .undo {
+    min-height: 60px;
+  }
+  .finish {
+    min-height: 48px;
+  }
+}
+
+/* ======================= Vertical: AKA arriba, reloj, AO abajo ======================= */
+@media (orientation: portrait), (max-width: 700px) {
+  .mesa {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .stage,
+  .stage.kata {
+    flex: 1 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: 'aka' 'center' 'ao';
+  }
+  .stage.kata {
+    grid-template-areas: 'aka' 'ao' 'center' 'judges';
+  }
+  .side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'top top'
+      'who score'
+      'ladder ladder'
+      'points points';
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 12px 14px 14px;
+  }
+  .side-top {
+    grid-area: top;
+    min-height: 36px;
+  }
+  .pname {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .mark {
+    min-height: 52px;
+  }
+  .who {
+    grid-area: who;
+    text-align: left;
+  }
+  .score-box {
+    grid-area: score;
+    width: clamp(120px, 34vw, 220px);
+    height: clamp(96px, 15vh, 170px);
+    flex: none;
+    min-height: 0;
+  }
+  .score {
+    font-size: min(96cqh, 60cqw);
+  }
+  .senshu {
+    left: auto;
+    right: 100%;
+    margin: 0 6px 0 0;
+  }
+  .ladder {
+    grid-area: ladder;
+  }
+  .points {
+    grid-area: points;
+  }
+  .pbtn {
+    min-height: 60px;
+  }
+  .kcap {
+    display: none;
+  }
+  .center {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 10px;
+    overflow: visible;
+  }
+  .clock {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .digits {
+    font-size: min(30cqi, 5.5rem);
+  }
+  .go {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .adjust {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .slot {
+    grid-column: 1 / -1;
+  }
+  .slot:empty,
+  .last-ev {
+    display: none;
+  }
+  .center-foot {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    margin-top: 0;
+  }
+  .kpreview {
+    grid-column: 1 / -1;
+  }
+  .stage.kata .center-foot {
+    grid-template-columns: 1fr;
+  }
+  .center-foot .go {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .judges {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .log {
+    flex-direction: column;
+    gap: 6px;
+    ol {
+      flex-direction: column;
+      align-items: stretch;
+      max-height: 280px;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    li {
+      white-space: normal;
+    }
+  }
+  .log-head {
+    width: auto;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .result-band {
+    flex-wrap: wrap;
+  }
+  .rb-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: stretch;
+    .qbtn {
+      flex: 1;
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .hdr {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ident {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .conn {
+    margin-left: auto;
+  }
+  .hide-xs,
+  .hide-sm {
+    display: none;
+  }
+  .stage {
+    padding: 8px;
+    gap: 8px;
+  }
+  .side {
+    padding: 12px;
+  }
+  .pbtn {
+    min-height: 58px;
+  }
+  .mark {
+    min-height: 56px;
+  }
+  .mlabel {
+    font-size: 0.625rem;
+  }
+  .center {
+    grid-template-columns: 1fr;
+  }
+  .clock,
+  .go,
+  .adjust {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .clock {
+    padding: 8px 6px;
+  }
+  .digits {
+    font-size: 4.25rem;
+  }
+  .center-foot {
+    grid-template-columns: 1fr;
+  }
+  .winner-pick {
+    grid-template-columns: 1fr;
+  }
+  .wcard {
+    min-height: 100px;
+  }
+  .sheet-grid {
+    grid-template-columns: 1fr;
+  }
+  .sheet {
+    padding: 18px 16px;
+  }
+  .sheet-actions {
+    flex-direction: column-reverse;
+    .confirm {
+      max-width: none;
+    }
+  }
+}
+
+/* ======================= Movimiento reducido ======================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (orientation: portrait), (max-width: 700px) {
+  .stage.kata .suggest {
+    grid-column: 1 / -1;
+  }
+}

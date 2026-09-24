@@ -1,0 +1,333 @@
+// Mesa de kumite — kata por banderas, historial y utilidades. Se reparte en varios archivos por el presupuesto de estilos por archivo.
+
+/* ======================= Kata por banderas ======================= */
+.stage.kata {
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'aka center ao'
+    'judges judges judges';
+  .score-box {
+    min-height: 80px;
+  }
+}
+.kcap {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.kpreview {
+  text-align: center;
+  padding: 14px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--y-line);
+  background: var(--y-deep);
+  .kp-text {
+    margin: 8px 0 6px;
+    font-family: var(--m-display);
+    font-weight: 700;
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+  &.aka .kp-text {
+    color: var(--aka-on-dark);
+  }
+  &.ao .kp-text {
+    color: var(--ao-on-dark);
+  }
+  &.wait .kp-text {
+    color: var(--y-dim);
+  }
+  &.tie .kp-text {
+    color: var(--m-yamabuki-soft);
+  }
+}
+.head-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.hflag {
+  min-height: 56px;
+  border-radius: 10px;
+  border: 2px solid;
+  background: transparent;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  &.aka {
+    border-color: var(--aka-strong);
+    color: var(--aka-on-dark);
+  }
+  &.ao {
+    border-color: var(--ao-strong);
+    color: var(--ao-on-dark);
+  }
+  &.on {
+    color: var(--y-text);
+    border-color: var(--y-text);
+    &.aka {
+      background: var(--aka-strong);
+    }
+    &.ao {
+      background: var(--ao-strong);
+    }
+  }
+}
+.register {
+  width: 100%;
+  letter-spacing: 0.04em;
+  font-size: 1.25rem;
+}
+.judges {
+  grid-area: judges;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.judge {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--y-panel);
+  border: 1px solid #2a2622;
+}
+.jhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.jname {
+  font-weight: 800;
+  font-size: 0.9375rem;
+}
+.jstate {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  &.none {
+    color: var(--y-dim);
+    border: 1px dashed var(--y-line);
+  }
+  &.aka {
+    background: var(--aka-strong);
+  }
+  &.ao {
+    background: var(--ao-strong);
+  }
+}
+.jflags {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.flag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 84px;
+  border-radius: 12px;
+  border: 2px solid;
+  background: transparent;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition:
+    background 200ms var(--m-ease),
+    opacity 200ms var(--m-ease);
+  .cloth {
+    position: relative;
+    width: 30px;
+    height: 20px;
+    margin-left: 6px;
+    border-radius: 2px;
+    border: 2px solid currentColor;
+    &::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: -4px;
+      width: 2px;
+      height: 32px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+  }
+  &.aka {
+    border-color: var(--aka-strong);
+    color: var(--aka-on-dark);
+  }
+  &.ao {
+    border-color: var(--ao-strong);
+    color: var(--ao-on-dark);
+  }
+  &.on {
+    color: var(--y-text);
+    border-color: var(--y-text);
+    .cloth {
+      background: var(--y-text);
+    }
+    &.aka {
+      background: var(--aka-strong);
+    }
+    &.ao {
+      background: var(--ao-strong);
+    }
+  }
+  &.off {
+    opacity: 0.4;
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+/* ======================= Historial ======================= */
+.log {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  min-height: 62px;
+  padding: 8px 12px 10px;
+  background: var(--y-deep);
+  border-top: 1px solid var(--y-line);
+  ol {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 2px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--y-line) transparent;
+  }
+  li {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: var(--y-panel);
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+  li.latest {
+    border-color: rgba(245, 240, 230, 0.28);
+    animation: settle 280ms var(--m-ease);
+  }
+  li.annulled {
+    opacity: 0.5;
+    .txt {
+      text-decoration: line-through;
+    }
+  }
+  li.pending {
+    border: 1px dashed rgba(184, 134, 43, 0.7);
+  }
+  .empty-log {
+    background: transparent;
+    color: var(--y-faint);
+    padding: 0;
+  }
+}
+.log-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 112px;
+}
+.log-title {
+  font-weight: 800;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+}
+.log-note {
+  font-size: 0.6875rem;
+  color: var(--y-faint);
+  line-height: 1.2;
+}
+.time {
+  font-family: var(--m-mono);
+  font-size: 0.8125rem;
+  color: var(--y-dim);
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--y-faint);
+  &.aka {
+    background: #d9534a;
+  }
+  &.ao {
+    background: #5a83c0;
+  }
+}
+.tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--y-line);
+  color: var(--y-dim);
+  &.pend {
+    border-color: rgba(184, 134, 43, 0.7);
+    color: var(--m-yamabuki-soft);
+  }
+}
+
+.loading {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: var(--y-dim);
+}
+.spin {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 800ms linear infinite;
+  vertical-align: -3px;
+}
+.loading .spin {
+  width: 32px;
+  height: 32px;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
