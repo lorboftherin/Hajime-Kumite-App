@@ -32,17 +32,19 @@ SUMI = colors.HexColor("#1E1C1A")
 USUZUMI = colors.HexColor("#4A463F")
 NEZUMI = colors.HexColor("#8A8377")
 KASUMI = colors.HexColor("#E3DBCB")
+LOGO_AKA = colors.HexColor("#BE3B2C")
+LOGO_AO = colors.HexColor("#24477A")
 
 
 def _enso(pdf: canvas.Canvas, cx: float, cy: float, r: float) -> None:
-    """Ensō: círculo abierto de un trazo, la marca de Hajime en papel."""
+    """Ensō de la marca en papel: trazo aka (shu) a la izquierda y ao (ai) a la derecha (docs/marca)."""
     pdf.saveState()
-    pdf.setStrokeColor(SUMI)
     pdf.setLineCap(1)
-    # Trazo con grosor decreciente: tres arcos superpuestos simulan el pincel.
-    for width, start, extent in ((r * 0.26, 40, 250), (r * 0.18, 40, 290), (r * 0.10, 40, 318)):
-        pdf.setLineWidth(width)
-        pdf.arc(cx - r, cy - r, cx + r, cy + r, startAng=start, extent=extent)
+    pdf.setLineWidth(r * 0.42)
+    pdf.setStrokeColor(LOGO_AKA)
+    pdf.arc(cx - r, cy - r, cx + r, cy + r, startAng=104, extent=154)
+    pdf.setStrokeColor(LOGO_AO)
+    pdf.arc(cx - r, cy - r, cx + r, cy + r, startAng=-98, extent=150)
     pdf.restoreState()
 
 

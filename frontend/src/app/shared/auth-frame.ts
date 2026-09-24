@@ -27,7 +27,7 @@ import { Enso } from './enso';
         </defs>
         <rect width="100%" height="100%" fill="url(#seigaiha)" mask="url(#seigaiha-mask)" />
       </svg>
-      <app-enso class="enso-bg" />
+      <app-enso class="enso-bg" tone="mono" />
       <div class="content">
         <ng-content />
       </div>

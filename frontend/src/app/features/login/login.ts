@@ -4,18 +4,21 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { AuthService } from '../../core/auth.service';
 import { AuthFrame } from '../../shared/auth-frame';
-import { Enso } from '../../shared/enso';
+import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, AuthFrame, Enso],
+  imports: [FormsModule, AuthFrame, Enso, HajimeWord, HajimeTagline],
   template: `
     <app-auth-frame>
       <div class="login">
         <section class="intro">
-          <div class="wordmark">
+          <div class="wordmark" role="img" aria-label="Hajime, torneos de karate">
             <app-enso class="mark" />
-            <span class="word">Hajime</span>
+            <div class="words">
+              <app-hajime-word class="word" />
+              <app-hajime-tagline class="tag" />
+            </div>
           </div>
           <p class="tagline">Organiza torneos con calma.<br />Registra cada combate con respeto.</p>
           <p class="sub"><span class="kanji" aria-hidden="true">始め</span> Gestión de torneos de karate · Perú</p>
@@ -73,15 +76,19 @@ import { Enso } from '../../shared/enso';
       gap: 1.1rem;
       color: var(--sumi);
       .mark {
-        width: 4.25rem;
-        height: 4.25rem;
+        width: 6.5rem;
+        height: 6.5rem;
+      }
+      .words {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
       }
       .word {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 3.75rem;
-        line-height: 1;
-        letter-spacing: 0.02em;
+        height: 4.3rem;
+      }
+      .tag {
+        font-size: 1.05rem;
       }
     }
     .tagline {
@@ -147,11 +154,17 @@ import { Enso } from '../../shared/enso';
       .wordmark {
         justify-content: center;
         .mark {
-          width: 3rem;
-          height: 3rem;
+          width: 4rem;
+          height: 4rem;
+        }
+        .words {
+          align-items: flex-start;
         }
         .word {
-          font-size: 2.75rem;
+          height: 2.9rem;
+        }
+        .tag {
+          font-size: 0.8rem;
         }
       }
       .tagline {

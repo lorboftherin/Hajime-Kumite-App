@@ -31,7 +31,7 @@ const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', '
         <div class="empty"><span class="spinner"></span></div>
       } @else if (!tournaments().length) {
         <div class="card start" data-testid="getting-started">
-          <app-enso class="start-enso" />
+          <app-enso class="start-enso" tone="mono" />
           <div class="start-body">
             <h2>Primeros pasos</h2>
             <p class="muted">

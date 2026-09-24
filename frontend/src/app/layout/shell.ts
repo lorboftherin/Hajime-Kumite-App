@@ -5,7 +5,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
 import { ThemeMode, ThemeService } from '../core/theme.service';
-import { Enso } from '../shared/enso';
+import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
 
 interface NavItem {
@@ -35,7 +35,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
  */
 @Component({
   selector: 'app-shell',
-  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, Enso, Icon],
+  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, Enso, HajimeWord, Icon],
   host: {
     class: 'app-shell',
     '(document:click)': 'onDocClick($event)',
@@ -46,7 +46,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
       <div class="sidebar-inner">
       <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
         <app-enso class="mark" />
-        <span class="word">Hajime</span>
+        <app-hajime-word class="word" />
       </a>
       <nav class="nav">
         @for (it of items(); track it.path) {
@@ -65,7 +65,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     <header class="topbar no-print">
       <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
         <app-enso class="mark" />
-        <span class="word">Hajime</span>
+        <app-hajime-word class="word" />
       </a>
       <div class="user-slot" data-slot="top">
         <ng-container [ngTemplateOutlet]="userBtn" [ngTemplateOutletContext]="{ slot: 'top' }" />
@@ -142,15 +142,14 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
       color: var(--sumi);
       text-decoration: none !important;
       .mark {
-        width: 2rem;
-        height: 2rem;
+        width: 2.4rem;
+        height: 2.4rem;
         transition: transform var(--dur-3) var(--ease);
       }
       .word {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 1.4rem;
-        letter-spacing: 0.03em;
+        /* La palabra incluye el descendente de la «j»: se baja un poco para centrar las mayúsculas. */
+        height: 1.7rem;
+        margin-top: 0.45rem;
       }
       &:hover .mark {
         transform: rotate(-8deg);
@@ -394,8 +393,9 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
             height: 1.6rem;
           }
           .word {
-            display: inline;
-            font-size: 1.2rem;
+            display: inline-block;
+            height: 1.2rem;
+            margin-top: 0.3rem;
           }
         }
         .who {

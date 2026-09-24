@@ -70,8 +70,10 @@ marcador ocupa hasta un 40 % del alto de su panel.
 
 ## 4. Símbolos y texturas
 
-- **Logo: ensō** (円相). Círculo de un solo trazo de pincel, abierto e
-  imperfecto, junto a la palabra *Hajime* en Mincho.
+- **Logo: ensō** (円相) de dos pinceladas: **aka** en shu (bermellón) y
+  **ao** en ai (índigo), abierto arriba y con la cola seca del trazo ao,
+  junto a la palabra *Hajime* en Cormorant Garamond y el sello 始. Archivos
+  y reglas de uso en [`docs/marca/`](marca/README.md).
 - **Kanji como ornamento, nunca como único rótulo.** Cada sección lleva un
   kanji pequeño y tenue junto al nombre en español: 大会 Torneos,
   人 Personas, 道場 Dojos, 型 Plantillas, 表 Llave.
