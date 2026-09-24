@@ -1,12 +1,15 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { inject, untracked } from '@angular/core';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { AuthService } from './auth.service';
 
 /** Agrega el JWT como Bearer a las llamadas a la API. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = inject(AuthService).token();
+  // untracked: si la petición sale desde un effect(), el token no debe volverse dependencia
+  // (si no, cerrar sesión re-ejecutaría ese effect y dispararía peticiones sin token → 401).
+  const auth = inject(AuthService);
+  const token = untracked(() => auth.token());
   if (token && req.url.startsWith('/api/')) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   }
@@ -22,7 +25,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((err: unknown) => {
       if (!(err instanceof HttpErrorResponse)) return throwError(() => ApiError.from(err));
-      if (err.status === 401 && !req.url.endsWith('/auth/login')) {
+      // En login y cambio de contraseña, 401 = credenciales incorrectas (no sesión vencida).
+      if (err.status === 401 && !req.url.endsWith('/auth/login') && !req.url.endsWith('/auth/change-password')) {
         auth.logout(true);
       }
       if (err.error instanceof Blob) {

@@ -32,6 +32,7 @@ import { AuthService } from '../core/auth.service';
             @if (auth.isAdmin()) {
               <a routerLink="/usuarios">Usuarios</a>
             }
+            <a routerLink="/cambiar-clave">Cambiar contraseña</a>
             <button (click)="auth.logout()">Cerrar sesión</button>
           </div>
         }

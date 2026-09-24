@@ -26,7 +26,7 @@ import { AuthService } from '../../core/auth.service';
           <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required />
         </label>
         @if (error()) {
-          <div class="alert danger">{{ error() }}</div>
+          <div class="alert" [class.danger]="!locked()" [class.warn]="locked()" role="alert">{{ error() }}</div>
         }
         <button class="btn primary lg" type="submit" [disabled]="busy() || !username() || !password()">
           @if (busy()) {
@@ -91,16 +91,26 @@ export class LoginPage {
   readonly password = signal('');
   readonly busy = signal(false);
   readonly error = signal('');
+  /** 429 TOO_MANY_ATTEMPTS: el servidor bloqueó temporalmente los intentos. */
+  readonly locked = signal(false);
 
   async submit(): Promise<void> {
     this.busy.set(true);
     this.error.set('');
+    this.locked.set(false);
     try {
       await this.auth.login(this.username(), this.password());
+      // Si la cuenta debe cambiar su contraseña, el authGuard lleva a /cambiar-clave (conservando returnUrl).
       const ret = this.route.snapshot.queryParamMap.get('returnUrl');
       this.router.navigateByUrl(ret && ret.startsWith('/') ? ret : '/torneos');
     } catch (e) {
-      this.error.set(ApiError.from(e).fullMessage);
+      const err = ApiError.from(e);
+      this.locked.set(err.status === 429 || err.code === 'TOO_MANY_ATTEMPTS');
+      this.error.set(
+        this.locked()
+          ? err.message || 'Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.'
+          : err.fullMessage,
+      );
     } finally {
       this.busy.set(false);
     }

@@ -24,7 +24,22 @@ import { DatePipe } from '../../shared/pipes';
       @if (loading()) {
         <div class="empty"><span class="spinner"></span></div>
       } @else if (!tournaments().length) {
-        <div class="card empty">Aún no hay torneos. Crea el primero.</div>
+        <div class="card start" data-testid="getting-started">
+          <h2>Primeros pasos</h2>
+          <p class="muted small">
+            Aún no hay torneos@if (!includeTest) { (los de prueba están ocultos)}. Para probar Hajime de punta a punta:
+          </p>
+          <ol class="steps">
+            <li>
+              <strong>Crear torneo</strong>: elige la plantilla <em>"Plantilla base (borrador)"</em> y marca
+              <em>"Torneo de prueba"</em> para que no cuente en historial ni medallero.
+            </li>
+            <li><strong>Importar Excel o inscribir</strong> competidores (pestañas <em>Importar Excel</em> o <em>Inscripciones</em>).</li>
+            <li><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li>
+            <li><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el combate.</li>
+          </ol>
+          <div><button class="btn primary" (click)="openNew(true)">+ Crear torneo de prueba</button></div>
+        </div>
       } @else {
         <div class="cards">
           @for (t of tournaments(); track t.id) {
@@ -92,6 +107,20 @@ import { DatePipe } from '../../shared/pipes';
     }
   `,
   styles: `
+    .start {
+      max-width: 640px;
+      border-top: 4px solid var(--aka);
+      h2 {
+        margin-bottom: 0.25rem;
+      }
+    }
+    .steps {
+      margin: 0.5rem 0 1rem;
+      padding-left: 1.3rem;
+      li {
+        margin: 0.35rem 0;
+      }
+    }
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -161,13 +190,20 @@ export class TournamentListPage {
     });
   }
 
-  openNew(): void {
+  /** asTest: desde "Primeros pasos" se propone un torneo de prueba con la plantilla base. */
+  openNew(asTest = false): void {
     this.form = this.blank();
+    if (asTest) {
+      this.form.is_test = true;
+      this.form.name = 'Torneo de prueba';
+    }
     this.showNew.set(true);
     this.api.get<Template[]>('/templates').subscribe({
       next: (t) => {
         this.templates.set(t);
-        if (t.length && this.form.template_id === null) this.form.template_id = t[0].id;
+        if (t.length && this.form.template_id === null) {
+          this.form.template_id = (t.find((x) => x.name === 'Plantilla base (borrador)') ?? t[0]).id;
+        }
       },
       error: () => {},
     });

@@ -9,6 +9,8 @@ const TOKEN_KEY = 'hajime.token';
 const USER_KEY = 'hajime.user';
 /** Aviso no bloqueante cuando faltan menos de 10 minutos para que venza la sesión. */
 export const EXPIRY_WARNING_MS = 10 * 60 * 1000;
+/** Pantalla de cambio de contraseña (obligatoria si must_change_password). */
+export const CHANGE_PASSWORD_PATH = '/cambiar-clave';
 
 function read<T>(key: string): T | null {
   try {
@@ -44,6 +46,8 @@ export class AuthService {
   readonly user = signal<User | null>(read<User>(USER_KEY));
   readonly isLoggedIn = computed(() => !!this.token());
   readonly isAdmin = computed(() => !!this.user()?.is_admin);
+  /** La contraseña la asignó el Admin: hay que cambiarla antes de seguir. */
+  readonly mustChangePassword = computed(() => !!this.user()?.must_change_password);
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento (el servidor los omite si no). */
   readonly canViewDocuments = computed(() => !!this.user()?.is_admin || !!this.user()?.can_view_documents);
 
@@ -68,12 +72,28 @@ export class AuthService {
 
   async login(username: string, password: string): Promise<User> {
     const res = await firstValueFrom(this.api.post<TokenOut>('/auth/login', { username, password }));
+    this.setSession(res);
+    return res.user;
+  }
+
+  /**
+   * Cambia la contraseña propia. El servidor invalida los tokens anteriores
+   * y devuelve uno nuevo, que reemplaza al guardado.
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<User> {
+    const res = await firstValueFrom(
+      this.api.post<TokenOut>('/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
+    );
+    this.setSession(res);
+    return res.user;
+  }
+
+  private setSession(res: TokenOut): void {
     write(TOKEN_KEY, res.access_token);
     write(USER_KEY, res.user);
     this.token.set(res.access_token);
     this.user.set(res.user);
     this.now.set(Date.now());
-    return res.user;
   }
 
   /** Refresca los datos del usuario (p. ej. al iniciar la app). */
@@ -83,6 +103,12 @@ export class AuthService {
       const u = await firstValueFrom(this.api.get<User>('/auth/me'));
       this.user.set(u);
       write(USER_KEY, u);
+      if (u.must_change_password && !this.currentPath().startsWith(CHANGE_PASSWORD_PATH)) {
+        const current = this.currentPath();
+        this.router.navigate([CHANGE_PASSWORD_PATH], {
+          queryParams: current && current !== '/' && !current.startsWith('/login') ? { returnUrl: current } : {},
+        });
+      }
     } catch {
       /* el interceptor maneja 401 */
     }
@@ -104,6 +130,10 @@ export class AuthService {
       const returnUrl = !current || current === '/' || current.startsWith('/login') ? undefined : current;
       this.router.navigate(['/login'], { queryParams: returnUrl ? { returnUrl } : {} });
     }
+  }
+
+  private currentPath(): string {
+    return this.router.navigated ? this.router.url : this.currentLocation();
   }
 
   private currentLocation(): string {

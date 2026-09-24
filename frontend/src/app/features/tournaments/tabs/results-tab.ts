@@ -37,7 +37,7 @@ const MEDAL: Record<number, string> = { 1: '🥇 Oro', 2: '🥈 Plata', 3: '🥉
                     <tr>
                       <td class="nowrap medal">{{ medal(p.place) }}</td>
                       <td>{{ p.name }}</td>
-                      <td class="muted">{{ p.dojo_name }}</td>
+                      <td class="muted"><a class="muted" [routerLink]="['/dojos', p.dojo_id]">{{ p.dojo_name }}</a></td>
                     </tr>
                   }
                 </tbody>
@@ -64,7 +64,7 @@ const MEDAL: Record<number, string> = { 1: '🥇 Oro', 2: '🥈 Plata', 3: '🥉
               @for (r of medals()?.rows ?? []; track r.dojo_id) {
                 <tr>
                   <td>{{ r.rank }}</td>
-                  <td>{{ r.dojo_name }}</td>
+                  <td><a [routerLink]="['/dojos', r.dojo_id]" title="Historial del dojo">{{ r.dojo_name }}</a></td>
                   <td class="center">{{ r.gold }}</td>
                   <td class="center">{{ r.silver }}</td>
                   <td class="center">{{ r.bronze }}</td>

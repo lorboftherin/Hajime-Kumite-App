@@ -195,3 +195,19 @@ export const ADVICE_LABEL: Record<string, string> = {
   direct_final: 'Final directa',
   round_robin: 'Round robin',
 };
+
+/** Ícono de medalla por puesto (1-3); '' si no hay medalla. */
+export const MEDAL_ICON: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+/** "🥇 Oro", "🥈 Plata", "🥉 Bronce", "5.º puesto" o "Sin puesto". */
+export function placeLabel(place: number | null | undefined): string {
+  if (!place) return 'Sin puesto';
+  const name: Record<number, string> = { 1: 'Oro', 2: 'Plata', 3: 'Bronce' };
+  return name[place] ? `${MEDAL_ICON[place]} ${name[place]}` : `${place}.º puesto`;
+}
+
+/** Marcador "propio – rival"; guion si el combate no tiene puntaje (p. ej. kiken). */
+export function scoreText(score: [number | null, number | null] | null | undefined): string {
+  if (!score || (score[0] === null && score[1] === null)) return '—';
+  return `${score[0] ?? 0} – ${score[1] ?? 0}`;
+}

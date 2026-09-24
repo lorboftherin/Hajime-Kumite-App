@@ -25,6 +25,10 @@ export interface User {
   username: string;
   display_name: string;
   is_admin: boolean;
+  /** false = cuenta desactivada por el Admin (no puede ingresar). */
+  is_active?: boolean;
+  /** true = la contraseña la asignó el Admin: debe cambiarla antes de usar la app. */
+  must_change_password?: boolean;
   person_id: number | null;
   roles?: RoleOut[];
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento. */
@@ -417,4 +421,57 @@ export interface AuditEntry {
   before: unknown;
   after: unknown;
   reason: string | null;
+}
+
+// --- Historial deportivo (torneos de prueba excluidos por el servidor) ---
+export interface HistoryFight {
+  match_id: number;
+  code: string;
+  color: Color;
+  won: boolean;
+  method: string | null;
+  /** [propio, rival] */
+  score: [number | null, number | null];
+  opponent: string | null;
+  opponent_dojo: string | null;
+}
+
+export interface HistoryTournament {
+  tournament_id: number;
+  tournament_name: string;
+  date: string;
+  category_id: number;
+  category_name: string;
+  original_category_id?: number;
+  merged: boolean;
+  dojo_name: string | null;
+  grade: string | null;
+  weight_class: string | null;
+  status: string;
+  place: number | null;
+  matches: HistoryFight[];
+}
+
+export interface PersonHistory {
+  person_id: number;
+  name: string;
+  grades: Array<{ grade: string; awarded_on: string }>;
+  tournaments: HistoryTournament[];
+  medals: { gold: number; silver: number; bronze: number };
+}
+
+export interface DojoHistoryTournament {
+  tournament_id: number;
+  tournament_name: string;
+  date: string;
+  gold: number;
+  silver: number;
+  bronze: number;
+  results: Array<{ place: number; category_name: string; name: string; person_id: number | null }>;
+}
+
+export interface DojoHistory {
+  dojo_id: number;
+  name: string;
+  tournaments: DojoHistoryTournament[];
 }

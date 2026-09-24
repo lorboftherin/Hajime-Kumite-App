@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { Dojo } from '../../core/models';
@@ -8,7 +9,7 @@ import { Modal } from '../../shared/modal';
 
 @Component({
   selector: 'app-dojo-list',
-  imports: [FormsModule, Modal],
+  imports: [FormsModule, Modal, RouterLink],
   template: `
     <div class="container">
       <div class="page-header">
@@ -24,7 +25,7 @@ import { Modal } from '../../shared/modal';
           <tbody>
             @for (d of filtered(); track d.id) {
               <tr>
-                <td><strong>{{ d.name }}</strong></td>
+                <td><a [routerLink]="['/dojos', d.id]"><strong>{{ d.name }}</strong></a></td>
                 <td class="mono">{{ d.short_name }}</td>
                 <td>{{ d.city }}</td>
                 <td class="small">
@@ -45,6 +46,7 @@ import { Modal } from '../../shared/modal';
                   }
                 </td>
                 <td class="right nowrap">
+                  <a class="btn sm" [routerLink]="['/dojos', d.id]">Historial</a>
                   <button class="btn sm" (click)="openEdit(d)">Editar</button>
                   <button class="btn sm" (click)="addBranch(d)">+ Sede</button>
                 </td>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtDate, fmtDateTime, mmss, newId, parseUtc } from './format';
+import { fmtDate, fmtDateTime, mmss, newId, parseUtc, placeLabel, scoreText } from './format';
 
 describe('format', () => {
   it('interpreta fechas sin zona como UTC y las muestra en hora de Lima', () => {
@@ -18,5 +18,14 @@ describe('format', () => {
 
   it('genera UUIDs', () => {
     expect(newId()).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('etiqueta puestos y marcadores del historial', () => {
+    expect(placeLabel(1)).toBe('🥇 Oro');
+    expect(placeLabel(3)).toBe('🥉 Bronce');
+    expect(placeLabel(5)).toBe('5.º puesto');
+    expect(placeLabel(null)).toBe('Sin puesto');
+    expect(scoreText([3, 1])).toBe('3 – 1');
+    expect(scoreText([null, null])).toBe('—');
   });
 });

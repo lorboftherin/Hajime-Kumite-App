@@ -11,6 +11,7 @@ import { ConsentIn, Dojo, Duplicate, Person, RoleIn, RoleOut, Tournament } from 
 import { MutationService } from '../../core/mutation.service';
 import { Modal } from '../../shared/modal';
 import { DatePipe } from '../../shared/pipes';
+import { PersonHistoryView } from './person-history';
 
 interface MergeResult {
   id: number;
@@ -21,7 +22,7 @@ interface MergeResult {
 
 @Component({
   selector: 'app-person-detail',
-  imports: [FormsModule, RouterLink, Modal, DatePipe],
+  imports: [FormsModule, RouterLink, Modal, DatePipe, PersonHistoryView],
   template: `
     <div class="container">
       <div class="small"><a routerLink="/personas">← Personas</a></div>
@@ -63,6 +64,14 @@ interface MergeResult {
           </div>
         }
 
+        <nav class="tabs">
+          <a [routerLink]="[]" [queryParams]="{ tab: null }" [class.active]="tab() !== 'historial'">Ficha</a>
+          <a [routerLink]="[]" [queryParams]="{ tab: 'historial' }" [class.active]="tab() === 'historial'">Historial deportivo</a>
+        </nav>
+
+        @if (tab() === 'historial') {
+          <app-person-history [personId]="p.id" />
+        } @else {
         <div class="grid-2">
           <div class="card">
             <h3>Datos personales</h3>
@@ -103,7 +112,13 @@ interface MergeResult {
             <h3>Situación deportiva</h3>
             <dl class="dl">
               <dt>Dojo vigente</dt>
-              <dd>{{ dojoName(p.current_dojo_id) || '—' }}</dd>
+              <dd>
+                @if (p.current_dojo_id) {
+                  <a [routerLink]="['/dojos', p.current_dojo_id]">{{ dojoName(p.current_dojo_id) }}</a>
+                } @else {
+                  —
+                }
+              </dd>
               <dt>Grado vigente</dt>
               <dd>{{ p.current_grade || '—' }}</dd>
               @if (canViewDocs()) {
@@ -188,6 +203,7 @@ interface MergeResult {
             </div>
           }
         </div>
+        }
       } @else if (error()) {
         <div class="alert danger">{{ error() }}</div>
       } @else {
@@ -323,6 +339,8 @@ export class PersonDetailPage {
   readonly auth = inject(AuthService);
 
   readonly id = input.required<string>();
+  /** ?tab=historial abre el historial deportivo. */
+  readonly tab = input<string | undefined>();
   readonly grades = GRADES;
   readonly fdate = fmtDate;
   readonly person = signal<Person | null>(null);

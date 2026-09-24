@@ -6,6 +6,13 @@ import { Shell } from './layout/shell';
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login').then((m) => m.LoginPage), title: 'Ingresar · Hajime' },
   {
+    // Obligatoria si la contraseña la asignó el Admin (must_change_password); también desde el menú.
+    path: 'cambiar-clave',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/login/change-password').then((m) => m.ChangePasswordPage),
+    title: 'Cambiar contraseña · Hajime',
+  },
+  {
     // Mesa de kumite: pantalla completa, sin navegación.
     path: 'mesa/:matchId',
     canActivate: [authGuard],
@@ -48,6 +55,11 @@ export const routes: Routes = [
         path: 'dojos',
         loadComponent: () => import('./features/dojos/dojo-list').then((m) => m.DojoListPage),
         title: 'Dojos · Hajime',
+      },
+      {
+        path: 'dojos/:id',
+        loadComponent: () => import('./features/dojos/dojo-detail').then((m) => m.DojoDetailPage),
+        title: 'Dojo · Hajime',
       },
       {
         path: 'plantillas',

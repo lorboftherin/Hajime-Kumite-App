@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -111,6 +111,9 @@ export class PersonListPage {
   private q$ = new Subject<void>();
 
   constructor() {
+    // ?dojo=ID (desde la ficha del dojo) filtra por dojo.
+    const dojoParam = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('dojo'));
+    if (dojoParam) this.dojo.set(dojoParam);
     this.api.get<Dojo[]>('/dojos').subscribe({ next: (d) => this.dojos.set(d), error: () => {} });
     this.q$.pipe(debounceTime(250)).subscribe(() => this.load());
     this.load();
