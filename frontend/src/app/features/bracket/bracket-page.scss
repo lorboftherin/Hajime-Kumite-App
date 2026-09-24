@@ -1,0 +1,220 @@
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.75rem;
+  align-items: flex-end;
+  > div {
+    display: flex;
+    flex-direction: column;
+  }
+}
+.warn-text {
+  color: var(--warn);
+}
+.meta > .podium {
+  flex-basis: 100%;
+  border-top: 1px solid var(--gray-100);
+  padding-top: 0.5rem;
+  .row {
+    flex-direction: row;
+  }
+  .pod {
+    font-weight: 600;
+    margin-right: 0.75rem;
+  }
+}
+
+.bracket-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+.bracket {
+  display: flex;
+  min-width: min-content;
+}
+.round {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 280px;
+  width: 280px;
+}
+.round-head {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-600);
+  padding: 0.3rem 0;
+  margin: 0 20px 0.25rem;
+  border-bottom: 2px solid var(--gray-200);
+}
+.round-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.m-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 6px 20px;
+  position: relative;
+}
+/* Conectores del árbol */
+.round:not(.last) .m-wrap::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 20px;
+  border-top: 2px solid var(--gray-300);
+}
+.round:not(.last) .m-wrap:nth-child(odd)::before,
+.round:not(.last) .m-wrap:nth-child(even)::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  height: 50%;
+  border-right: 2px solid var(--gray-300);
+}
+.round:not(.last) .m-wrap:nth-child(odd)::before {
+  top: 50%;
+}
+.round:not(.last) .m-wrap:nth-child(even)::before {
+  top: 0;
+}
+.round:not(.first) .m-wrap .match::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 50%;
+  width: 20px;
+  border-top: 2px solid var(--gray-300);
+}
+
+.match {
+  position: relative;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  &.clickable {
+    cursor: pointer;
+    &:hover {
+      border-color: var(--gray-700);
+      box-shadow: var(--shadow-lg);
+    }
+  }
+}
+.m-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  border-bottom: 1px solid var(--gray-100);
+}
+.m-foot {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  padding: 0.1rem 0.45rem;
+  text-align: right;
+}
+.side {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border-left: 5px solid transparent;
+  min-height: 2rem;
+  &.aka {
+    border-left-color: var(--aka);
+  }
+  &.ao {
+    border-left-color: var(--ao);
+    border-top: 1px dashed var(--gray-200);
+  }
+  &.win {
+    font-weight: 700;
+    &.aka {
+      background: var(--aka-soft);
+    }
+    &.ao {
+      background: var(--ao-soft);
+    }
+  }
+  &.lose .name {
+    color: var(--gray-400);
+  }
+  &.swappable {
+    cursor: pointer;
+    outline: 1px dashed var(--gray-400);
+    &:hover {
+      background: var(--warn-soft);
+    }
+  }
+  &.picked {
+    background: var(--warn-soft) !important;
+    outline: 2px solid var(--warn);
+  }
+  .slot {
+    font-size: 0.65rem;
+    color: var(--gray-400);
+    min-width: 1.1rem;
+  }
+  .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    small {
+      color: var(--gray-500);
+      font-weight: 400;
+    }
+  }
+  .score {
+    font-weight: 800;
+    min-width: 1.3rem;
+    text-align: right;
+  }
+  .bye {
+    color: var(--gray-400);
+    letter-spacing: 0.08em;
+  }
+  .tbd {
+    color: var(--gray-400);
+  }
+}
+
+.extras {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+.grid-rr {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.25rem;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+.judge {
+  width: 4.5rem;
+  input {
+    width: 100%;
+  }
+}
+.tie {
+  padding-left: 1.2rem;
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+  }
+}

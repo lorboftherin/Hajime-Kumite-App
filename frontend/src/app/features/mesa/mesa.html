@@ -1,0 +1,235 @@
+<div class="mesa">
+  <header class="bar">
+    <a class="btn sm ghost back" [routerLink]="backLink()">← Salir</a>
+    <div class="title">
+      <strong>{{ category()?.name ?? 'Combate' }}</strong>
+      @if (match(); as m) {
+        <span class="mono">{{ m.code }}</span>
+        <app-status [status]="m.status" type="match" />
+      }
+    </div>
+    <div class="conn">
+      @if (offline()) {
+        <button class="badge danger pulse" (click)="retryNow()" title="Reintentar ahora">
+          Sin conexión · {{ pending().length }} pendiente(s)
+        </button>
+      } @else if (pending().length) {
+        <span class="badge warn">Enviando {{ pending().length }}…</span>
+      } @else {
+        <span class="badge ok">En línea</span>
+      }
+      <button class="btn sm ghost" (click)="reload()" title="Recargar">↻</button>
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="alert danger m">{{ loadError() }}</div>
+  }
+
+  @if (sb(); as s) {
+    @if (!playable()) {
+      <div class="alert warn m">El combate aún no tiene dos participantes definidos (estado: {{ s.match.status }}).</div>
+    }
+    @if (finished()) {
+      <div class="result-banner {{ s.winner }}">
+        <span>
+          Ganador: <strong>{{ s.winner === 'aka' ? 'AKA' : 'AO' }} · {{ name(s.winner!) }}</strong>
+          por {{ s.method | label: methodLabel }}
+        </span>
+        <span class="row">
+          @if (!unlocked()) {
+            <button class="btn sm" (click)="unlocked.set(true)">Desbloquear para corregir</button>
+          }
+          <button class="btn sm" (click)="openFinish()">Corregir resultado</button>
+          @if (tatami()) {
+            <button class="btn sm primary" (click)="nextMatch()">Siguiente combate →</button>
+          }
+        </span>
+      </div>
+    }
+
+    @if (!isKata()) {
+      <!-- ============ KUMITE ============ -->
+      <main class="board" [class.locked]="locked()">
+        @for (c of colors; track c) {
+          <section class="side {{ c }}" [style.order]="c === 'aka' ? 0 : 2">
+            <div class="who">
+              <div class="color-label">{{ c === 'aka' ? 'AKA' : 'AO' }}</div>
+              <div class="pname">{{ name(c) }}</div>
+              <div class="pdojo">{{ dojo(c) }}</div>
+            </div>
+            <div class="score-line">
+              <div class="score" [attr.aria-label]="'Puntaje ' + c">{{ s.score[c] }}</div>
+              <div class="flags">
+                @if (s.senshu === c) {
+                  <span class="senshu" title="Senshu (primera ventaja)">S</span>
+                }
+                @if (sanctionText(c)) {
+                  <span class="sanction-tag">{{ sanctionText(c) }}</span>
+                }
+              </div>
+            </div>
+            <div class="points">
+              <button class="pbtn" [disabled]="locked()" (click)="point(c, 1)"><span>Yuko</span><b>+1</b></button>
+              <button class="pbtn" [disabled]="locked()" (click)="point(c, 2)"><span>Waza-ari</span><b>+2</b></button>
+              <button class="pbtn" [disabled]="locked()" (click)="point(c, 3)"><span>Ippon</span><b>+3</b></button>
+            </div>
+            <div class="sanctions">
+              @for (label of s.sanction_labels; track $index) {
+                <button class="sbtn" [class.given]="s.sanction[c] >= $index + 1" [disabled]="locked()" (click)="sanction(c, $index + 1)">{{ label }}</button>
+              }
+            </div>
+            <div class="specials">
+              <button class="xbtn" [disabled]="locked() || s.senshu !== c" (click)="special('senshu_cancel', c)">Cancelar senshu</button>
+              <button class="xbtn" [disabled]="locked()" (click)="special('hantei', c)">Hantei (gana)</button>
+              <button class="xbtn" [disabled]="locked()" (click)="special('kiken', c)">Kiken</button>
+              <button class="xbtn" [disabled]="locked()" (click)="special('shikkaku', c)">Shikkaku</button>
+              <button class="xbtn" [disabled]="locked()" (click)="special('walkover', c)">Walkover</button>
+            </div>
+          </section>
+        }
+
+        <section class="controls" style="order: 1">
+          <div class="timer" [class.running]="clock().running" [class.over]="timeOver()" [class.warn]="!timeOver() && remaining() <= 15 && clock().running">
+            {{ timeOver() ? '0:00' : timerText() }}
+          </div>
+          <div class="timer-sub">
+            @if (timeOver()) {
+              <strong class="over-text">¡Tiempo!</strong>
+            } @else {
+              {{ clock().running ? 'En juego' : started() ? 'Pausado' : 'Sin iniciar' }} · {{ duration() }} s
+            }
+          </div>
+          @if (clock().running) {
+            <button class="btn lg yame" [disabled]="locked()" (click)="yame()">YAME</button>
+          } @else {
+            <button class="btn lg hajime" [disabled]="locked()" (click)="hajime()">HAJIME</button>
+          }
+          <div class="adjust" aria-label="Ajuste de tiempo (restante)">
+            <button class="btn sm" [disabled]="locked()" (click)="adjust(10)" title="Restar 10 s al tiempo restante">−10</button>
+            <button class="btn sm" [disabled]="locked()" (click)="adjust(1)" title="Restar 1 s">−1</button>
+            <button class="btn sm" [disabled]="locked()" (click)="adjust(-1)" title="Sumar 1 s">+1</button>
+            <button class="btn sm" [disabled]="locked()" (click)="adjust(-10)" title="Sumar 10 s">+10</button>
+          </div>
+          <div class="hint center">Ajuste del tiempo restante (s)</div>
+
+          <button class="btn undo" [disabled]="!undoTarget() || locked()" (click)="undo()">↶ Deshacer último</button>
+
+          @if (suggestionText()) {
+            <div class="suggestion">{{ suggestionText() }}</div>
+          }
+          <button class="btn primary lg finish" [disabled]="!playable()" (click)="openFinish()">
+            {{ finished() ? 'Corregir resultado' : 'Finalizar combate' }}
+          </button>
+        </section>
+      </main>
+    } @else {
+      <!-- ============ KATA POR BANDERAS ============ -->
+      <main class="kata">
+        <div class="kata-sides">
+          @for (c of colors; track c) {
+            <div class="kside {{ c }}">
+              <div class="color-label">{{ c === 'aka' ? 'AKA' : 'AO' }}</div>
+              <div class="pname">{{ name(c) }}</div>
+              <div class="pdojo">{{ dojo(c) }}</div>
+              <div class="kcount">{{ voteCount()[c] }}</div>
+            </div>
+          }
+        </div>
+        <h3>Banderas ({{ judges() }} jueces)</h3>
+        <div class="judges">
+          @for (v of votes(); track $index; let i = $index) {
+            <div class="judge">
+              <div class="small muted">Juez {{ i + 1 }}</div>
+              <div class="row">
+                <button class="flag aka" [class.on]="v === 'aka'" [disabled]="!playable()" (click)="vote(i, 'aka')">AKA</button>
+                <button class="flag ao" [class.on]="v === 'ao'" [disabled]="!playable()" (click)="vote(i, 'ao')">AO</button>
+              </div>
+            </div>
+          }
+        </div>
+        @if (needsHead()) {
+          <div class="alert warn">
+            Empate o votos incompletos: decide el juez principal.
+            <div class="row mt">
+              <button class="flag aka" [class.on]="headVote() === 'aka'" (click)="headVote.set('aka')">AKA</button>
+              <button class="flag ao" [class.on]="headVote() === 'ao'" (click)="headVote.set('ao')">AO</button>
+            </div>
+          </div>
+        }
+        <button class="btn lg light" [disabled]="!playable()" (click)="submitFlags()">Registrar decisión</button>
+      </main>
+    }
+
+    <section class="log">
+      <h3>Eventos <span class="muted small">(hora del dispositivo, Lima)</span></h3>
+      <ol>
+        @for (r of log(); track r.id) {
+          <li [class.annulled]="r.annulled" [class.pending]="r.pending">
+            <span class="time mono">{{ r.time }}</span>
+            @if (r.color) {
+              <span class="dot {{ r.color }}"></span>
+            }
+            <span class="txt">{{ r.text }}</span>
+            @if (r.pending) {
+              <span class="badge warn">pendiente</span>
+            }
+            @if (r.annulled) {
+              <span class="badge">anulado</span>
+            }
+          </li>
+        } @empty {
+          <li class="muted">Sin eventos todavía.</li>
+        }
+      </ol>
+    </section>
+  } @else if (!loadError()) {
+    <div class="empty"><span class="spinner"></span></div>
+  }
+</div>
+
+@if (finishOpen()) {
+  <app-modal [title]="finished() ? 'Corregir resultado' : 'Confirmar ganador'" (closed)="finishOpen.set(false)">
+    @if (sb(); as s) {
+      <p class="small">
+        Marcador: <strong class="aka-t">AKA {{ s.score.aka }}</strong> – <strong class="ao-t">{{ s.score.ao }} AO</strong>
+        @if (suggestionText()) {
+          <br /><span class="muted">{{ suggestionText() }}</span>
+        }
+      </p>
+      <div class="winner-pick">
+        @for (c of colors; track c) {
+          <label class="wp {{ c }}" [class.on]="finishForm.winner === c">
+            <input type="radio" name="winner" [value]="c" [(ngModel)]="finishForm.winner" />
+            <span class="cl">{{ c === 'aka' ? 'AKA' : 'AO' }}</span>
+            <span>{{ name(c) }}</span>
+          </label>
+        }
+      </div>
+      <div class="grid-2 mt">
+        <label class="field">
+          <span>Método</span>
+          <select [(ngModel)]="finishForm.method">
+            @for (m of methods; track m) {
+              <option [value]="m">{{ methodLabel[m] }}</option>
+            }
+          </select>
+        </label>
+        <label class="field inline"><input type="checkbox" [(ngModel)]="finishForm.time_over" /> Tiempo cumplido</label>
+      </div>
+      <label class="field mt">
+        <span>Motivo / observación {{ finished() ? '(corrección)' : '(opcional)' }}</span>
+        <input [(ngModel)]="finishForm.reason" />
+      </label>
+      @if (pending().length) {
+        <div class="alert warn small mt">Hay {{ pending().length }} evento(s) sin enviar. Espera a que se sincronicen.</div>
+      }
+      <div class="form-actions">
+        <button class="btn" (click)="finishOpen.set(false)">Volver</button>
+        <button class="btn lg" [class.aka]="finishForm.winner === 'aka'" [class.ao]="finishForm.winner === 'ao'" [disabled]="finishing()" (click)="confirmFinish()">
+          Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}
+        </button>
+      </div>
+    }
+  </app-modal>
+}

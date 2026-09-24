@@ -12,7 +12,7 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 
 | Capa | Tecnología | Carpeta |
 | --- | --- | --- |
-| Frontend | Angular (SPA, lista para PWA) | [`frontend/`](frontend/) |
+| Frontend | Angular 21 (SPA, lista para PWA; requiere Node 22) | [`frontend/`](frontend/) |
 | API | FastAPI, `/api/v1`, OpenAPI en `/docs` | [`backend/`](backend/) |
 | Dominio | Python puro, sin BD (llaves, marcador, kata, reglas) | [`backend/app/domain/`](backend/app/domain/) |
 | Persistencia | SQL Server / Azure SQL (SQLite en desarrollo) | [`sql/`](sql/) |
@@ -36,13 +36,15 @@ npm start                          # http://localhost:4200 (proxy de /api hacia 
 
 Usuario: `admin` / `admin12345` (solo para desarrollo).
 
+Capturas: [`docs/screenshots/`](docs/screenshots/).
+
 ## Estado del MVP
 
 | Incremento | Contenido | Estado |
 | --- | --- | --- |
 | MVP-1 | Torneo, dojos, personas (duplicados y fusión), plantilla y categorías, inscripciones e importación Excel, fusión de categorías, llaves con separación por dojo, edición e impresión de llaves, mesa de kumite, resultados | ✅ API + UI |
 | MVP-2 | Kata (banderas y puntuación en ronda única), final directa, round robin, terceros lugares configurables, medallero, reapertura auditada, reporte Shadow Mode | ✅ API + UI |
-| MVP-3 | Historial de competidor y dojo | ✅ API |
+| MVP-3 | Historial de competidor y dojo | ✅ API (UI pendiente) |
 | MVP-3 | Equipos temporales, registro de árbitros, operadores concurrentes por tatami (rol Operador de Mesa) | ⏳ Pendiente |
 
 ## Principios que guían el código
