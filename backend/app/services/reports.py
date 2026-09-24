@@ -250,6 +250,14 @@ def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, p
             pdf.setFillColor(colors.black)
             if with_results and m.status == "finished" and m.aka_score is not None:
                 pdf.drawRightString(x + col_w - 12, mid + 2, f"{m.aka_score}-{m.ao_score}")
+            if m.status != "bye":
+                # Código del combate: el mismo que usa la planilla de mesa y la app.
+                # Debajo de la línea que sale hacia la siguiente ronda: no choca con nombres.
+                pdf.setFont("Helvetica", 6)
+                pdf.setFillColor(colors.HexColor("#6B7280"))
+                pdf.drawString(x + col_w - 7, mid - 8, m.code)
+                pdf.setFillColor(colors.black)
+                pdf.setFont("Helvetica", font)
     x = left + rounds * col_w
     final = next((m for m in main if m.round == rounds), None)
     if final:
@@ -358,6 +366,108 @@ def results_pdf(db: Session, tid: int) -> bytes:
         line(cat["category_name"], bold=True)
         for p in cat["places"]:
             line(f"{PLACE_LABEL.get(p['place'], p['place'])}: {p['name']} ({p['dojo_name']})", indent=10)
+    pdf.showPage()
+    pdf.save()
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Planilla de mesa (Shadow Mode)
+# ---------------------------------------------------------------------------
+
+
+def scoresheet_pdf(db: Session, tatami_id: int, with_results: bool = False) -> bytes:
+    """Planilla imprimible por tatami: combates en orden con su número (T1-001),
+    y casillas en blanco para el marcador y el ganador oficiales. Es lo que la
+    mesa oficial llena a mano; luego se compara en el reporte de Shadow Mode.
+    """
+    from app.services.brackets import participants, tatami_schedule
+
+    sched = tatami_schedule(db, tatami_id)
+    tat = sched["tatami"]
+    t = db.get(Tournament, tat.tournament_id)
+    ids = {x for it in sched["items"] for x in (it["match"].aka_registration_id, it["match"].ao_registration_id) if x}
+    parts = participants(db, ids)
+
+    def who(rid, source: str) -> tuple[str, str]:
+        if rid and rid in parts:
+            p = parts[rid]
+            return p.name, p.dojo_name
+        kind, _, ref = source.partition(":")
+        return {"winner": f"Ganador {ref}", "loser": f"Perdedor {ref}"}.get(kind, ""), ""
+
+    buf = io.BytesIO()
+    page = landscape(A4)
+    pdf = canvas.Canvas(buf, pagesize=page)
+    W, H = page
+    pdf.setTitle(f"Planilla {tat.name}")
+    cols = [
+        ("N.°", 30, 52),
+        ("Categoría / combate", 82, 180),
+        ("AKA (rojo)", 262, 190),
+        ("AO (azul)", 452, 190),
+        ("Marcador", 642, 70),
+        ("Ganador", 712, 60),
+        ("Obs.", 772, 45),
+    ]
+
+    def header(y: float) -> float:
+        pdf.setFont("Helvetica-Bold", 13)
+        pdf.drawString(30, H - 30, f"{t.name if t else ''} — Planilla de mesa {tat.name}")
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(
+            30,
+            H - 43,
+            "Registro oficial en papel. Anotar marcador final y marcar ganador. "
+            "El número N.° es el mismo que muestra la app.",
+        )
+        pdf.setFont("Helvetica-Bold", 8)
+        for label, x, _w in cols:
+            pdf.drawString(x, y, label)
+        pdf.line(28, y - 4, W - 28, y - 4)
+        return y - 20
+
+    y = header(H - 64)
+    row_h = 26
+    for it in sched["items"]:
+        if y < 40:
+            pdf.showPage()
+            y = header(H - 64)
+        m = it["match"]
+        pdf.setFont("Helvetica-Bold", 9)
+        pdf.drawString(30, y, it["number"])
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(82, y + 4, it["category_name"][:42])
+        pdf.drawString(82, y - 5, f"Combate {m.code}")
+        for (name, dojo), x, color in (
+            (who(m.aka_registration_id, m.aka_source), 262, "#B91C1C"),
+            (who(m.ao_registration_id, m.ao_source), 452, "#1D4ED8"),
+        ):
+            pdf.setFillColor(colors.HexColor(color))
+            pdf.setFont("Helvetica-Bold" if dojo else "Helvetica-Oblique", 8)
+            pdf.drawString(x, y + 3, name[:40])
+            if dojo:
+                pdf.setFont("Helvetica", 6.5)
+                pdf.setFillColor(colors.HexColor("#4B5563"))
+                pdf.drawString(x, y - 6, dojo[:52])
+        pdf.setFillColor(colors.black)
+        pdf.setFont("Helvetica", 8)
+        if with_results and m.status == "finished":
+            pdf.drawString(642, y, f"{m.aka_score} - {m.ao_score}")
+            pdf.drawString(712, y, "AKA" if m.winner_registration_id == m.aka_registration_id else "AO")
+        else:
+            pdf.drawString(642, y, "____ - ____")
+            pdf.rect(712, y - 1, 7, 7)
+            pdf.drawString(721, y, "AKA")
+            pdf.rect(742, y - 1, 7, 7)
+            pdf.drawString(751, y, "AO")
+        pdf.setStrokeColor(colors.HexColor("#D1D5DB"))
+        pdf.line(28, y - 11, W - 28, y - 11)
+        pdf.setStrokeColor(colors.black)
+        y -= row_h
+    if not sched["items"]:
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(30, y, "No hay combates: asigna categorías con llave a este tatami.")
     pdf.showPage()
     pdf.save()
     return buf.getvalue()

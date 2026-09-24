@@ -1005,7 +1005,12 @@ def _queue_key(m: Match, final_round: int) -> tuple:
     return (m.round, m.position)
 
 
-def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
+def tatami_schedule(db: Session, tatami_id: int) -> dict[str, Any]:
+    """Orden completo de combates del tatami con número estable (T1-001…).
+
+    Incluye combates futuros (aún sin participantes) para que la planilla en
+    papel y la app usen la misma numeración. Excluye byes y combates anulados.
+    """
     tat = db.get(Tatami, tatami_id)
     if tat is None:
         raise NotFound("Tatami no encontrado")
@@ -1014,14 +1019,31 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
         .where(Category.tatami_id == tatami_id, Category.status.in_(("ready", "in_progress", "finished")))
         .order_by(Category.queue_position, Category.id)
     ).all()
-    queue: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for c in cats:
-        rows = [m for m in current_matches(db, c.id) if m.status in ("ready", "in_progress", "needs_review")]
-        if not rows:
+        rows = current_matches(db, c.id)
+        main = [m for m in rows if m.kind == "main"]
+        if not main:
             continue
-        final_round = max(m.round for m in current_matches(db, c.id) if m.kind == "main")
+        final_round = max(m.round for m in main)
         for m in sorted(rows, key=lambda x: _queue_key(x, final_round)):
-            queue.append({"category_id": c.id, "category_name": c.name, "match": s.MatchOut.model_validate(m)})
+            if m.status in ("bye", "void"):
+                continue
+            items.append(
+                {
+                    "number": f"T{tat.number}-{len(items) + 1:03d}",
+                    "category_id": c.id,
+                    "category_name": c.name,
+                    "match": s.MatchOut.model_validate(m),
+                }
+            )
+    return {"tatami": tat, "items": items}
+
+
+def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
+    sched = tatami_schedule(db, tatami_id)
+    tat = sched["tatami"]
+    queue = [it for it in sched["items"] if it["match"].status in ("ready", "in_progress", "needs_review")]
     ids = {x for q in queue for x in (q["match"].aka_registration_id, q["match"].ao_registration_id) if x}
     parts = participants(db, ids)
     # Advertencia: el mismo competidor con combates pendientes en dos tatamis.

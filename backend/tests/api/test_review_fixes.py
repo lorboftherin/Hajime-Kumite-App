@@ -156,3 +156,26 @@ def test_get_bracket_does_not_write(client):
         api.get(f"/categories/{c['id']}/bracket")
     assert api.get(f"/audit?tournament_id={t['id']}") == before
     assert api.get(f"/categories/{c['id']}")["version"] == api.get(f"/categories/{c['id']}")["version"]
+
+
+def test_tatami_numbering_and_scoresheet(client):
+    api = client
+    dojos = [api.dojo("Uno"), api.dojo("Dos")]
+    t = setup_tournament(api)
+    c, _ = cat_with(api, t["id"], dojos, 5)
+    api.post(f"/categories/{c['id']}/bracket", {"seed": 1})
+    tat = t["tatamis"][0]
+    cat = api.get(f"/categories/{c['id']}")
+    api.patch(f"/categories/{c['id']}", {"version": cat["version"], "tatami_id": tat["id"], "queue_position": 1})
+    q = api.get(f"/tatamis/{tat['id']}/queue")
+    # 5 inscritos en llave de 8: 1 combate real en R1 (3 byes), 2 semis, final
+    numbers = [it["number"] for it in q["queue"]]
+    assert numbers[0] == "T1-001"
+    pdf = api.raw("GET", f"/tatamis/{tat['id']}/scoresheet.pdf")
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    first = q["queue"][0]["match"]
+    api.finish(first["id"], "aka", override="papel")
+    q2 = api.get(f"/tatamis/{tat['id']}/queue")
+    # La numeración es estable: el siguiente combate conserva su número
+    assert q2["queue"][0]["number"] != "T1-001" and q2["queue"][0]["number"].startswith("T1-")
+    assert api.raw("GET", f"/categories/{c['id']}/bracket.pdf").content.startswith(b"%PDF")

@@ -69,6 +69,18 @@ def get_queue(tatami_id: int, db: DB, _: CurrentUser):
     return tatami_queue(db, tatami_id)
 
 
+@router.get("/tatamis/{tatami_id}/scoresheet.pdf", tags=["tatamis"])
+def scoresheet(tatami_id: int, db: DB, _: CurrentUser, with_results: bool = False):
+    """Planilla de mesa imprimible para el registro oficial en papel (Shadow Mode)."""
+    from app.services.reports import scoresheet_pdf
+
+    return Response(
+        scoresheet_pdf(db, tatami_id, with_results),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="planilla-tatami-{tatami_id}.pdf"'},
+    )
+
+
 # --- Categorías -----------------------------------------------------------------
 
 

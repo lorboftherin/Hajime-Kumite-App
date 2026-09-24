@@ -1994,6 +1994,62 @@
     }
    }
   },
+  "/api/v1/tatamis/{tatami_id}/scoresheet.pdf": {
+   "get": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Scoresheet",
+    "description": "Planilla de mesa imprimible para el registro oficial en papel (Shadow Mode).",
+    "operationId": "scoresheet_api_v1_tatamis__tatami_id__scoresheet_pdf_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     },
+     {
+      "name": "with_results",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "With Results"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/tournaments/{tid}/categories": {
    "get": {
     "tags": [
