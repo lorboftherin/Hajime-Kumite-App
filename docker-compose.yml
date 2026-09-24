@@ -35,10 +35,9 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     depends_on:
       db: { condition: service_healthy }
-    volumes: [./sql:/sql:ro]
+    # Solo crea la base vacía; las tablas las crean las migraciones de la app.
     entrypoint: >
-      bash -c "/opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P 'Hajime_Dev_2026!' -Q \"IF DB_ID('hajime') IS NULL CREATE DATABASE hajime\"
-      && /opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P 'Hajime_Dev_2026!' -d hajime -i /sql/001_schema.sql"
+      bash -c "/opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P 'Hajime_Dev_2026!' -Q \"IF DB_ID('hajime') IS NULL CREATE DATABASE hajime\""
 
   app-sqlserver:
     profiles: [sqlserver]
@@ -50,6 +49,7 @@ services:
       db: { condition: service_healthy }
     environment:
       HAJIME_DATABASE_URL: "mssql+pyodbc://sa:Hajime_Dev_2026!@db:1433/hajime?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+      HAJIME_AUTO_CREATE_SCHEMA: "true"
       HAJIME_ADMIN_PASSWORD: ${HAJIME_ADMIN_PASSWORD:-cambiar-esta-clave}
     volumes: [hajime-data:/data]
     ports: ["8000:8000"]

@@ -47,7 +47,7 @@ HAJIME_ADMIN_PASSWORD='una-clave' docker compose up -d --build   # http://localh
 
 ```bash
 docker compose --profile sqlserver up -d db
-docker compose --profile sqlserver run --rm init-db   # crea la base 'hajime' y aplica el esquema
+docker compose --profile sqlserver run --rm init-db   # crea la base 'hajime' (vacía)
 HAJIME_ADMIN_PASSWORD='una-clave' docker compose --profile sqlserver up -d app-sqlserver
 ```
 
