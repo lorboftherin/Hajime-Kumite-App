@@ -1,0 +1,7427 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Hajime — API de torneos de karate",
+  "description": "API First: toda acción es un endpoint. Errores con formato uniforme; advertencias de negocio con código WARNINGS que se aceptan reenviando `override`.",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/api/v1/auth/login": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Login",
+    "operationId": "login_api_v1_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Me",
+    "operationId": "me_api_v1_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/users": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "List Users",
+    "operationId": "list_users_api_v1_users_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/UserOut"
+         },
+         "type": "array",
+         "title": "Response List Users Api V1 Users Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Create User",
+    "operationId": "create_user_api_v1_users_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/dojos": {
+   "get": {
+    "tags": [
+     "dojos"
+    ],
+    "summary": "List Dojos",
+    "operationId": "list_dojos_api_v1_dojos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DojoOut"
+         },
+         "title": "Response List Dojos Api V1 Dojos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "dojos"
+    ],
+    "summary": "Create Dojo",
+    "operationId": "create_dojo_api_v1_dojos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DojoCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojos/{dojo_id}": {
+   "get": {
+    "tags": [
+     "dojos"
+    ],
+    "summary": "Get Dojo",
+    "operationId": "get_dojo_api_v1_dojos__dojo_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "dojos"
+    ],
+    "summary": "Update Dojo",
+    "operationId": "update_dojo_api_v1_dojos__dojo_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DojoUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojos/{dojo_id}/branches": {
+   "post": {
+    "tags": [
+     "dojos"
+    ],
+    "summary": "Add Branch",
+    "operationId": "add_branch_api_v1_dojos__dojo_id__branches_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BranchIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons": {
+   "get": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "List Persons",
+    "operationId": "list_persons_api_v1_persons_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     },
+     {
+      "name": "dojo_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "default": 50,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PersonOut"
+         },
+         "title": "Response List Persons Api V1 Persons Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Create Person",
+    "operationId": "create_person_api_v1_persons_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PersonCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/duplicates": {
+   "get": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Check Duplicates",
+    "operationId": "check_duplicates_api_v1_persons_duplicates_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "first_names",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "First Names"
+      }
+     },
+     {
+      "name": "last_names",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Last Names"
+      }
+     },
+     {
+      "name": "birth_date",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Birth Date"
+      }
+     },
+     {
+      "name": "doc_type",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Doc Type"
+      }
+     },
+     {
+      "name": "doc_number",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Doc Number"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DuplicateOut"
+         },
+         "title": "Response Check Duplicates Api V1 Persons Duplicates Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}": {
+   "get": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Get Person",
+    "operationId": "get_person_api_v1_persons__person_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Update Person",
+    "operationId": "update_person_api_v1_persons__person_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PersonUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}/grades": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Add Grade",
+    "operationId": "add_grade_api_v1_persons__person_id__grades_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GradeIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}/memberships": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Change Dojo",
+    "operationId": "change_dojo_api_v1_persons__person_id__memberships_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MembershipIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/merge": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Merge Persons",
+    "operationId": "merge_persons_api_v1_persons_merge_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PersonMergeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/persons/merges/{merge_id}/revert": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Revert Merge",
+    "operationId": "revert_merge_api_v1_persons_merges__merge_id__revert_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "merge_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Merge Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/templates": {
+   "get": {
+    "tags": [
+     "templates"
+    ],
+    "summary": "List Templates",
+    "operationId": "list_templates_api_v1_templates_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TemplateOut"
+         },
+         "type": "array",
+         "title": "Response List Templates Api V1 Templates Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "templates"
+    ],
+    "summary": "New Template",
+    "operationId": "new_template_api_v1_templates_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TemplateCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TemplateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/templates/{template_id}": {
+   "get": {
+    "tags": [
+     "templates"
+    ],
+    "summary": "Get Template",
+    "operationId": "get_template_api_v1_templates__template_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "template_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Template Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TemplateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/audit": {
+   "get": {
+    "tags": [
+     "audit"
+    ],
+    "summary": "Audit Log",
+    "operationId": "audit_log_api_v1_audit_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tournament_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tournament Id"
+      }
+     },
+     {
+      "name": "entity",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Entity"
+      }
+     },
+     {
+      "name": "entity_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Entity Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 1000,
+       "default": 200,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/overrides": {
+   "get": {
+    "tags": [
+     "audit"
+    ],
+    "summary": "Overrides",
+    "operationId": "overrides_api_v1_overrides_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "entity",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Entity"
+      }
+     },
+     {
+      "name": "entity_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Entity Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "List Tournaments",
+    "operationId": "list_tournaments_api_v1_tournaments_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "include_test",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Include Test"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TournamentOut"
+         },
+         "title": "Response List Tournaments Api V1 Tournaments Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Create Tournament",
+    "operationId": "create_tournament_api_v1_tournaments_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TournamentCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Get Tournament",
+    "operationId": "get_tournament_api_v1_tournaments__tid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Update Tournament",
+    "operationId": "update_tournament_api_v1_tournaments__tid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TournamentUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/status": {
+   "patch": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Change Status",
+    "operationId": "change_status_api_v1_tournaments__tid__status_patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StatusChange"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/generate-categories": {
+   "post": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Generate Categories",
+    "operationId": "generate_categories_api_v1_tournaments__tid__generate_categories_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GenerateCategoriesIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/tatamis": {
+   "post": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Add Tatami",
+    "operationId": "add_tatami_api_v1_tournaments__tid__tatamis_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TatamiOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tatamis/{tatami_id}/queue": {
+   "get": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Get Queue",
+    "operationId": "get_queue_api_v1_tatamis__tatami_id__queue_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/categories": {
+   "get": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "List Categories",
+    "operationId": "list_categories_api_v1_tournaments__tid__categories_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "name": "modality",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modality"
+      }
+     },
+     {
+      "name": "hide_empty",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Hide Empty"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryOut"
+         },
+         "title": "Response List Categories Api V1 Tournaments  Tid  Categories Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Create Category",
+    "operationId": "create_category_api_v1_tournaments__tid__categories_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}": {
+   "get": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Get Category",
+    "operationId": "get_category_api_v1_categories__cid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Update Category",
+    "operationId": "update_category_api_v1_categories__cid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/cancel": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Cancel Category",
+    "operationId": "cancel_category_api_v1_categories__cid__cancel_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryCancelIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/categories/merge": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Merge Categories",
+    "operationId": "merge_categories_api_v1_tournaments__tid__categories_merge_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryMergeIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/unmerge": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Unmerge",
+    "operationId": "unmerge_api_v1_categories__cid__unmerge_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/registrations": {
+   "get": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "List Registrations",
+    "operationId": "list_registrations_api_v1_tournaments__tid__registrations_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     },
+     {
+      "name": "category_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Category Id"
+      }
+     },
+     {
+      "name": "person_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Person Id"
+      }
+     },
+     {
+      "name": "include_withdrawn",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Include Withdrawn"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RegistrationOut"
+         },
+         "title": "Response List Registrations Api V1 Tournaments  Tid  Registrations Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Register",
+    "operationId": "register_api_v1_tournaments__tid__registrations_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RegistrationCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}": {
+   "patch": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Update Registration",
+    "operationId": "update_registration_api_v1_registrations__rid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RegistrationUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/withdraw": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Withdraw",
+    "operationId": "withdraw_api_v1_registrations__rid__withdraw_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WithdrawIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/suggestions": {
+   "get": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Suggest",
+    "operationId": "suggest_api_v1_tournaments__tid__suggestions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     },
+     {
+      "name": "person_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     },
+     {
+      "name": "modality",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modality"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SuggestionOut"
+         },
+         "title": "Response Suggest Api V1 Tournaments  Tid  Suggestions Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/template.xlsx": {
+   "get": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Import Template",
+    "operationId": "import_template_api_v1_imports_template_xlsx_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/tournaments/{tid}/imports": {
+   "post": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Upload Import",
+    "operationId": "upload_import_api_v1_tournaments__tid__imports_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_import_api_v1_tournaments__tid__imports_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportBatchOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/{bid}": {
+   "get": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Get Import",
+    "operationId": "get_import_api_v1_imports__bid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportBatchOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/{bid}/confirm": {
+   "post": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Confirm Import",
+    "operationId": "confirm_import_api_v1_imports__bid__confirm_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportConfirm"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/{bid}/cancel": {
+   "post": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Cancel Import",
+    "operationId": "cancel_import_api_v1_imports__bid__cancel_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Generate Bracket",
+    "operationId": "generate_bracket_api_v1_categories__cid__bracket_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketGenerateIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Get Bracket",
+    "operationId": "get_bracket_api_v1_categories__cid__bracket_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/versions": {
+   "get": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Bracket Versions",
+    "operationId": "bracket_versions_api_v1_categories__cid__bracket_versions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/brackets/{bid}/slots": {
+   "patch": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Swap Slots",
+    "operationId": "swap_slots_api_v1_brackets__bid__slots_patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SlotSwapIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket.pdf": {
+   "get": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Bracket Pdf",
+    "operationId": "bracket_pdf_api_v1_categories__cid__bracket_pdf_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     },
+     {
+      "name": "blank",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Blank"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}": {
+   "get": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Get Match",
+    "operationId": "get_match_api_v1_matches__mid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ScoreboardOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/events": {
+   "post": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Add Event",
+    "description": "Idempotente: reenviar el mismo ``id`` devuelve 200 sin duplicar.",
+    "operationId": "add_event_api_v1_matches__mid__events_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ScoreboardOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/finish": {
+   "post": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Finish",
+    "operationId": "finish_api_v1_matches__mid__finish_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FinishIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/official-result": {
+   "post": {
+    "tags": [
+     "shadow"
+    ],
+    "summary": "Official Result",
+    "operationId": "official_result_api_v1_matches__mid__official_result_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OfficialResultIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/flags": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Flags",
+    "operationId": "flags_api_v1_matches__mid__flags_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FlagsIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/kata-scores": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Score",
+    "operationId": "kata_score_api_v1_categories__cid__kata_scores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataScoreIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/kata-tie-break": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Tie Break",
+    "operationId": "kata_tie_break_api_v1_categories__cid__kata_tie_break_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TieBreakIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/results": {
+   "get": {
+    "tags": [
+     "results"
+    ],
+    "summary": "Results",
+    "operationId": "results_api_v1_tournaments__tid__results_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/medal-table": {
+   "get": {
+    "tags": [
+     "results"
+    ],
+    "summary": "Medal Table",
+    "operationId": "medal_table_api_v1_tournaments__tid__medal_table_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/comparison-report": {
+   "get": {
+    "tags": [
+     "shadow"
+    ],
+    "summary": "Comparison Report",
+    "operationId": "comparison_report_api_v1_tournaments__tid__comparison_report_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/results.xlsx": {
+   "get": {
+    "tags": [
+     "results"
+    ],
+    "summary": "Results Xlsx",
+    "operationId": "results_xlsx_api_v1_tournaments__tid__results_xlsx_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/results.pdf": {
+   "get": {
+    "tags": [
+     "results"
+    ],
+    "summary": "Results Pdf",
+    "operationId": "results_pdf_api_v1_tournaments__tid__results_pdf_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Body_upload_import_api_v1_tournaments__tid__imports_post": {
+    "properties": {
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_import_api_v1_tournaments__tid__imports_post"
+   },
+   "BracketGenerateIn": {
+    "properties": {
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "BracketGenerateIn"
+   },
+   "BracketOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "version_number": {
+      "type": "integer",
+      "title": "Version Number"
+     },
+     "format": {
+      "type": "string",
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "type": "string",
+      "title": "Third Place Rule"
+     },
+     "seed": {
+      "type": "integer",
+      "title": "Seed"
+     },
+     "size": {
+      "type": "integer",
+      "title": "Size"
+     },
+     "slots": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Slots"
+     },
+     "same_dojo_first_round": {
+      "type": "integer",
+      "title": "Same Dojo First Round"
+     },
+     "participants": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/ParticipantOut"
+      },
+      "type": "object",
+      "title": "Participants"
+     },
+     "matches": {
+      "items": {
+       "$ref": "#/components/schemas/MatchOut"
+      },
+      "type": "array",
+      "title": "Matches"
+     },
+     "podium": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Podium"
+     },
+     "standings": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Standings"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "category_id",
+     "version",
+     "version_number",
+     "format",
+     "third_place_rule",
+     "seed",
+     "size",
+     "slots",
+     "same_dojo_first_round",
+     "participants",
+     "matches",
+     "podium"
+    ],
+    "title": "BracketOut"
+   },
+   "BranchIn": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "BranchIn"
+   },
+   "BranchOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "BranchOut"
+   },
+   "CategoryCancelIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "CategoryCancelIn"
+   },
+   "CategoryCreate": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "modality": {
+      "type": "string",
+      "enum": [
+       "kumite",
+       "kata"
+      ],
+      "title": "Modality"
+     },
+     "is_team": {
+      "type": "boolean",
+      "title": "Is Team",
+      "default": false
+     },
+     "sex": {
+      "type": "string",
+      "enum": [
+       "M",
+       "F",
+       "X"
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "kata_rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_method": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "flags",
+         "scores"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Method"
+     },
+     "kata_structure": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "bracket",
+         "rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Structure"
+     },
+     "kata_judges": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Judges"
+     },
+     "sort_order": {
+      "type": "integer",
+      "title": "Sort Order",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "modality",
+     "sex"
+    ],
+    "title": "CategoryCreate"
+   },
+   "CategoryFields": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "modality": {
+      "type": "string",
+      "enum": [
+       "kumite",
+       "kata"
+      ],
+      "title": "Modality"
+     },
+     "is_team": {
+      "type": "boolean",
+      "title": "Is Team",
+      "default": false
+     },
+     "sex": {
+      "type": "string",
+      "enum": [
+       "M",
+       "F",
+       "X"
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "kata_rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_method": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "flags",
+         "scores"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Method"
+     },
+     "kata_structure": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "bracket",
+         "rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Structure"
+     },
+     "kata_judges": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Judges"
+     },
+     "sort_order": {
+      "type": "integer",
+      "title": "Sort Order",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "modality",
+     "sex"
+    ],
+    "title": "CategoryFields"
+   },
+   "CategoryMergeIn": {
+    "properties": {
+     "source_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "minItems": 1,
+      "title": "Source Ids"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     },
+     "new_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "New Name"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "source_ids"
+    ],
+    "title": "CategoryMergeIn"
+   },
+   "CategoryOut": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "modality": {
+      "type": "string",
+      "enum": [
+       "kumite",
+       "kata"
+      ],
+      "title": "Modality"
+     },
+     "is_team": {
+      "type": "boolean",
+      "title": "Is Team",
+      "default": false
+     },
+     "sex": {
+      "type": "string",
+      "enum": [
+       "M",
+       "F",
+       "X"
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "kata_rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_method": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "flags",
+         "scores"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Method"
+     },
+     "kata_structure": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "bracket",
+         "rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Structure"
+     },
+     "kata_judges": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Judges"
+     },
+     "sort_order": {
+      "type": "integer",
+      "title": "Sort Order",
+      "default": 0
+     },
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "tatami_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tatami Id"
+     },
+     "queue_position": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Queue Position"
+     },
+     "merged_into_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Merged Into Id"
+     },
+     "cancel_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cancel Reason"
+     },
+     "is_manual": {
+      "type": "boolean",
+      "title": "Is Manual"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "entrant_count": {
+      "type": "integer",
+      "title": "Entrant Count",
+      "default": 0
+     },
+     "advice": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advice",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "modality",
+     "sex",
+     "id",
+     "tournament_id",
+     "status",
+     "tatami_id",
+     "queue_position",
+     "merged_into_id",
+     "cancel_reason",
+     "is_manual",
+     "version"
+    ],
+    "title": "CategoryOut"
+   },
+   "CategoryUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "kata_rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_method": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "flags",
+         "scores"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Method"
+     },
+     "kata_structure": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "bracket",
+         "rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Structure"
+     },
+     "kata_judges": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Judges"
+     },
+     "tatami_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tatami Id"
+     },
+     "queue_position": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Queue Position"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "CategoryUpdate"
+   },
+   "ConsentIn": {
+    "properties": {
+     "given_by": {
+      "type": "string",
+      "title": "Given By"
+     },
+     "relationship_to_person": {
+      "type": "string",
+      "title": "Relationship To Person",
+      "default": "titular"
+     },
+     "given_on": {
+      "type": "string",
+      "format": "date",
+      "title": "Given On"
+     },
+     "medium": {
+      "type": "string",
+      "title": "Medium",
+      "default": "declaración del dojo"
+     },
+     "scope": {
+      "type": "string",
+      "title": "Scope",
+      "default": "competencia"
+     }
+    },
+    "type": "object",
+    "required": [
+     "given_by",
+     "given_on"
+    ],
+    "title": "ConsentIn"
+   },
+   "DocumentIn": {
+    "properties": {
+     "doc_type": {
+      "type": "string",
+      "enum": [
+       "DNI",
+       "CE",
+       "PASSPORT",
+       "OTHER"
+      ],
+      "title": "Doc Type"
+     },
+     "number": {
+      "type": "string",
+      "maxLength": 30,
+      "minLength": 3,
+      "title": "Number"
+     }
+    },
+    "type": "object",
+    "required": [
+     "doc_type",
+     "number"
+    ],
+    "title": "DocumentIn"
+   },
+   "DocumentOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "doc_type": {
+      "type": "string",
+      "title": "Doc Type"
+     },
+     "number": {
+      "type": "string",
+      "title": "Number"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "doc_type",
+     "number"
+    ],
+    "title": "DocumentOut"
+   },
+   "DojoCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "short_name": {
+      "type": "string",
+      "title": "Short Name",
+      "default": ""
+     },
+     "city": {
+      "type": "string",
+      "title": "City",
+      "default": ""
+     },
+     "is_independent": {
+      "type": "boolean",
+      "title": "Is Independent",
+      "default": false
+     },
+     "branches": {
+      "items": {
+       "$ref": "#/components/schemas/BranchIn"
+      },
+      "type": "array",
+      "title": "Branches",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "DojoCreate"
+   },
+   "DojoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "short_name": {
+      "type": "string",
+      "title": "Short Name"
+     },
+     "city": {
+      "type": "string",
+      "title": "City"
+     },
+     "is_claimed": {
+      "type": "boolean",
+      "title": "Is Claimed"
+     },
+     "is_independent": {
+      "type": "boolean",
+      "title": "Is Independent"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "branches": {
+      "items": {
+       "$ref": "#/components/schemas/BranchOut"
+      },
+      "type": "array",
+      "title": "Branches",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "short_name",
+     "city",
+     "is_claimed",
+     "is_independent",
+     "version"
+    ],
+    "title": "DojoOut"
+   },
+   "DojoUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "short_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Short Name"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "DojoUpdate"
+   },
+   "DuplicateOut": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     },
+     "score": {
+      "type": "number",
+      "title": "Score"
+     },
+     "full_name": {
+      "type": "string",
+      "title": "Full Name"
+     },
+     "birth_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Birth Date"
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id",
+     "reason",
+     "score",
+     "full_name",
+     "birth_date"
+    ],
+    "title": "DuplicateOut"
+   },
+   "EventIn": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Id"
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "point",
+       "sanction",
+       "start",
+       "pause",
+       "resume",
+       "time_adjust",
+       "annul",
+       "senshu_cancel",
+       "hantei",
+       "kiken",
+       "shikkaku",
+       "walkover"
+      ],
+      "title": "Type"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "aka",
+         "ao"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "type",
+     "at"
+    ],
+    "title": "EventIn"
+   },
+   "EventOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     },
+     "method": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Method"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "device_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Device At"
+     },
+     "received_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Received At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "type",
+     "color",
+     "value",
+     "target_id",
+     "method",
+     "reason",
+     "device_at",
+     "received_at"
+    ],
+    "title": "EventOut"
+   },
+   "FinishIn": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Id"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     },
+     "winner": {
+      "type": "string",
+      "enum": [
+       "aka",
+       "ao"
+      ],
+      "title": "Winner"
+     },
+     "method": {
+      "type": "string",
+      "title": "Method",
+      "default": "points"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "time_over": {
+      "type": "boolean",
+      "title": "Time Over",
+      "default": true
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "at",
+     "winner"
+    ],
+    "title": "FinishIn"
+   },
+   "FlagsIn": {
+    "properties": {
+     "votes": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string",
+         "enum": [
+          "aka",
+          "ao"
+         ]
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Votes"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
+     },
+     "head_judge_vote": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "aka",
+         "ao"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Head Judge Vote"
+     },
+     "event_id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Event Id"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "votes",
+     "event_id",
+     "at"
+    ],
+    "title": "FlagsIn"
+   },
+   "GenerateCategoriesIn": {
+    "properties": {
+     "template_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Template Id"
+     }
+    },
+    "type": "object",
+    "title": "GenerateCategoriesIn"
+   },
+   "GradeIn": {
+    "properties": {
+     "grade": {
+      "type": "string",
+      "title": "Grade"
+     },
+     "awarded_on": {
+      "type": "string",
+      "format": "date",
+      "title": "Awarded On"
+     }
+    },
+    "type": "object",
+    "required": [
+     "grade",
+     "awarded_on"
+    ],
+    "title": "GradeIn"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ImportBatchOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "filename": {
+      "type": "string",
+      "title": "Filename"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "rows": {
+      "items": {
+       "$ref": "#/components/schemas/ImportRowOut"
+      },
+      "type": "array",
+      "title": "Rows"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "tournament_id",
+     "filename",
+     "status",
+     "rows"
+    ],
+    "title": "ImportBatchOut"
+   },
+   "ImportConfirm": {
+    "properties": {
+     "decisions": {
+      "items": {
+       "$ref": "#/components/schemas/ImportRowDecision"
+      },
+      "type": "array",
+      "title": "Decisions",
+      "default": []
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "ImportConfirm"
+   },
+   "ImportRowDecision": {
+    "properties": {
+     "row_id": {
+      "type": "integer",
+      "title": "Row Id"
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "create",
+       "use_existing",
+       "skip"
+      ],
+      "title": "Action",
+      "default": "create"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "category_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Category Ids",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "row_id"
+    ],
+    "title": "ImportRowDecision"
+   },
+   "ImportRowOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "row_number": {
+      "type": "integer",
+      "title": "Row Number"
+     },
+     "data": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Data"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "errors": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Errors"
+     },
+     "duplicates": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Duplicates"
+     },
+     "suggested_category_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Suggested Category Ids"
+     },
+     "resolution": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Resolution"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "row_number",
+     "data",
+     "status",
+     "errors",
+     "duplicates",
+     "suggested_category_ids",
+     "resolution"
+    ],
+    "title": "ImportRowOut"
+   },
+   "KataScoreIn": {
+    "properties": {
+     "registration_id": {
+      "type": "integer",
+      "title": "Registration Id"
+     },
+     "scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Scores"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
+     },
+     "kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Name"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_id",
+     "scores"
+    ],
+    "title": "KataScoreIn"
+   },
+   "LoginIn": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "title": "Username"
+     },
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "LoginIn"
+   },
+   "MatchOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "round": {
+      "type": "integer",
+      "title": "Round"
+     },
+     "position": {
+      "type": "integer",
+      "title": "Position"
+     },
+     "aka_source": {
+      "type": "string",
+      "title": "Aka Source"
+     },
+     "ao_source": {
+      "type": "string",
+      "title": "Ao Source"
+     },
+     "aka_registration_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Registration Id"
+     },
+     "ao_registration_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Registration Id"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "winner_registration_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Winner Registration Id"
+     },
+     "method": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Method"
+     },
+     "aka_score": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Score"
+     },
+     "ao_score": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Score"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "category_id",
+     "code",
+     "kind",
+     "round",
+     "position",
+     "aka_source",
+     "ao_source",
+     "aka_registration_id",
+     "ao_registration_id",
+     "status",
+     "winner_registration_id",
+     "method",
+     "aka_score",
+     "ao_score",
+     "started_at",
+     "finished_at",
+     "version"
+    ],
+    "title": "MatchOut"
+   },
+   "MembershipIn": {
+    "properties": {
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "branch_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch Id"
+     },
+     "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+     }
+    },
+    "type": "object",
+    "required": [
+     "dojo_id",
+     "start_date"
+    ],
+    "title": "MembershipIn"
+   },
+   "OfficialResultIn": {
+    "properties": {
+     "official_winner_registration_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Official Winner Registration Id"
+     },
+     "official_aka_score": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Official Aka Score"
+     },
+     "official_ao_score": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Official Ao Score"
+     },
+     "finding": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finding"
+     },
+     "error_source": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "app",
+         "paper",
+         "none"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Source"
+     }
+    },
+    "type": "object",
+    "title": "OfficialResultIn"
+   },
+   "Override": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "Override",
+    "description": "Aceptación explícita de advertencias de negocio."
+   },
+   "ParticipantOut": {
+    "properties": {
+     "registration_id": {
+      "type": "integer",
+      "title": "Registration Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "dojo_name": {
+      "type": "string",
+      "title": "Dojo Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_id",
+     "name",
+     "dojo_id",
+     "dojo_name"
+    ],
+    "title": "ParticipantOut"
+   },
+   "PersonCreate": {
+    "properties": {
+     "first_names": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "First Names"
+     },
+     "last_names": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Last Names"
+     },
+     "birth_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Birth Date"
+     },
+     "sex": {
+      "type": "string",
+      "enum": [
+       "M",
+       "F"
+      ],
+      "title": "Sex"
+     },
+     "document": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DocumentIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "branch_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch Id"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "consent": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ConsentIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "first_names",
+     "last_names",
+     "sex"
+    ],
+    "title": "PersonCreate"
+   },
+   "PersonMergeIn": {
+    "properties": {
+     "keep_id": {
+      "type": "integer",
+      "title": "Keep Id"
+     },
+     "merge_id": {
+      "type": "integer",
+      "title": "Merge Id"
+     },
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "keep_id",
+     "merge_id",
+     "reason"
+    ],
+    "title": "PersonMergeIn"
+   },
+   "PersonOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "first_names": {
+      "type": "string",
+      "title": "First Names"
+     },
+     "last_names": {
+      "type": "string",
+      "title": "Last Names"
+     },
+     "birth_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Birth Date"
+     },
+     "sex": {
+      "type": "string",
+      "title": "Sex"
+     },
+     "identity_incomplete": {
+      "type": "boolean",
+      "title": "Identity Incomplete"
+     },
+     "merged_into_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Merged Into Id"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "documents": {
+      "items": {
+       "$ref": "#/components/schemas/DocumentOut"
+      },
+      "type": "array",
+      "title": "Documents",
+      "default": []
+     },
+     "current_dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Dojo Id"
+     },
+     "current_grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Grade"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "first_names",
+     "last_names",
+     "birth_date",
+     "sex",
+     "identity_incomplete",
+     "merged_into_id",
+     "version"
+    ],
+    "title": "PersonOut"
+   },
+   "PersonUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "first_names": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Names"
+     },
+     "last_names": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Names"
+     },
+     "birth_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Birth Date"
+     },
+     "sex": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "M",
+         "F"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sex"
+     },
+     "document": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DocumentIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "PersonUpdate"
+   },
+   "RegistrationCreate": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "branch_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch Id"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id",
+     "category_id"
+    ],
+    "title": "RegistrationCreate"
+   },
+   "RegistrationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "original_category_id": {
+      "type": "integer",
+      "title": "Original Category Id"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "branch_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch Id"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "age_at_reference": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age At Reference"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "withdrawn_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Withdrawn Reason"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "person_name": {
+      "type": "string",
+      "title": "Person Name",
+      "default": ""
+     },
+     "dojo_name": {
+      "type": "string",
+      "title": "Dojo Name",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "tournament_id",
+     "category_id",
+     "original_category_id",
+     "person_id",
+     "dojo_id",
+     "branch_id",
+     "grade",
+     "weight_class",
+     "age_at_reference",
+     "status",
+     "withdrawn_reason",
+     "seed",
+     "version"
+    ],
+    "title": "RegistrationOut"
+   },
+   "RegistrationUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "category_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category Id"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "RegistrationUpdate"
+   },
+   "ScoreboardOut": {
+    "properties": {
+     "match": {
+      "$ref": "#/components/schemas/MatchOut"
+     },
+     "score": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Score"
+     },
+     "sanction": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Sanction"
+     },
+     "sanction_labels": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Sanction Labels"
+     },
+     "senshu": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Senshu"
+     },
+     "elapsed_seconds": {
+      "type": "number",
+      "title": "Elapsed Seconds"
+     },
+     "duration_seconds": {
+      "type": "integer",
+      "title": "Duration Seconds"
+     },
+     "running": {
+      "type": "boolean",
+      "title": "Running"
+     },
+     "started": {
+      "type": "boolean",
+      "title": "Started"
+     },
+     "winner": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Winner"
+     },
+     "method": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Method"
+     },
+     "suggestion": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Suggestion"
+     },
+     "events": {
+      "items": {
+       "$ref": "#/components/schemas/EventOut"
+      },
+      "type": "array",
+      "title": "Events"
+     },
+     "annulled_event_ids": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Annulled Event Ids"
+     },
+     "aka": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ParticipantOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "ao": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ParticipantOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "match",
+     "score",
+     "sanction",
+     "sanction_labels",
+     "senshu",
+     "elapsed_seconds",
+     "duration_seconds",
+     "running",
+     "started",
+     "winner",
+     "method",
+     "suggestion",
+     "events",
+     "annulled_event_ids",
+     "aka",
+     "ao"
+    ],
+    "title": "ScoreboardOut"
+   },
+   "SlotSwapIn": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "a": {
+      "type": "integer",
+      "title": "A"
+     },
+     "b": {
+      "type": "integer",
+      "title": "B"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "version",
+     "a",
+     "b"
+    ],
+    "title": "SlotSwapIn"
+   },
+   "StatusChange": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "draft",
+       "registration_open",
+       "registration_closed",
+       "in_progress",
+       "finished",
+       "cancelled"
+      ],
+      "title": "Status"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "version"
+    ],
+    "title": "StatusChange"
+   },
+   "SuggestionOut": {
+    "properties": {
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "modality": {
+      "type": "string",
+      "title": "Modality"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_id",
+     "name",
+     "modality"
+    ],
+    "title": "SuggestionOut"
+   },
+   "TatamiIn": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "TatamiIn"
+   },
+   "TatamiOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "number": {
+      "type": "integer",
+      "title": "Number"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "number",
+     "name"
+    ],
+    "title": "TatamiOut"
+   },
+   "TemplateCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description",
+      "default": ""
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/CategoryFields"
+      },
+      "type": "array",
+      "title": "Items",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "TemplateCreate"
+   },
+   "TemplateItemOut": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "modality": {
+      "type": "string",
+      "enum": [
+       "kumite",
+       "kata"
+      ],
+      "title": "Modality"
+     },
+     "is_team": {
+      "type": "boolean",
+      "title": "Is Team",
+      "default": false
+     },
+     "sex": {
+      "type": "string",
+      "enum": [
+       "M",
+       "F",
+       "X"
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "kata_rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Format"
+     },
+     "third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Third Place Rule"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_method": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "flags",
+         "scores"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Method"
+     },
+     "kata_structure": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "bracket",
+         "rounds"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Structure"
+     },
+     "kata_judges": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Judges"
+     },
+     "sort_order": {
+      "type": "integer",
+      "title": "Sort Order",
+      "default": 0
+     },
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "modality",
+     "sex",
+     "id"
+    ],
+    "title": "TemplateItemOut"
+   },
+   "TemplateOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/TemplateItemOut"
+      },
+      "type": "array",
+      "title": "Items",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "description",
+     "version"
+    ],
+    "title": "TemplateOut"
+   },
+   "TieBreakIn": {
+    "properties": {
+     "registration_ids_in_order": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Registration Ids In Order"
+     },
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_ids_in_order",
+     "reason"
+    ],
+    "title": "TieBreakIn"
+   },
+   "TokenOut": {
+    "properties": {
+     "access_token": {
+      "type": "string",
+      "title": "Access Token"
+     },
+     "token_type": {
+      "type": "string",
+      "title": "Token Type",
+      "default": "bearer"
+     },
+     "user": {
+      "$ref": "#/components/schemas/UserOut"
+     }
+    },
+    "type": "object",
+    "required": [
+     "access_token",
+     "user"
+    ],
+    "title": "TokenOut"
+   },
+   "TournamentCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 3,
+      "title": "Name"
+     },
+     "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+     },
+     "end_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Date"
+     },
+     "venue": {
+      "type": "string",
+      "title": "Venue",
+      "default": ""
+     },
+     "city": {
+      "type": "string",
+      "title": "City",
+      "default": ""
+     },
+     "is_test": {
+      "type": "boolean",
+      "title": "Is Test",
+      "default": false
+     },
+     "age_reference_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Reference Date"
+     },
+     "default_format": {
+      "type": "string",
+      "enum": [
+       "single_elimination",
+       "round_robin"
+      ],
+      "title": "Default Format",
+      "default": "single_elimination"
+     },
+     "default_third_place_rule": {
+      "type": "string",
+      "enum": [
+       "two_bronzes",
+       "third_place_match",
+       "repechage"
+      ],
+      "title": "Default Third Place Rule",
+      "default": "two_bronzes"
+     },
+     "kumite_rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Kumite Rules",
+      "default": {}
+     },
+     "kata_defaults": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Kata Defaults",
+      "default": {}
+     },
+     "template_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Template Id"
+     },
+     "tatami_count": {
+      "type": "integer",
+      "maximum": 12.0,
+      "minimum": 1.0,
+      "title": "Tatami Count",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "name",
+     "start_date"
+    ],
+    "title": "TournamentCreate"
+   },
+   "TournamentOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+     },
+     "end_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Date"
+     },
+     "venue": {
+      "type": "string",
+      "title": "Venue"
+     },
+     "city": {
+      "type": "string",
+      "title": "City"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "is_test": {
+      "type": "boolean",
+      "title": "Is Test"
+     },
+     "age_reference_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Age Reference Date"
+     },
+     "default_format": {
+      "type": "string",
+      "title": "Default Format"
+     },
+     "default_third_place_rule": {
+      "type": "string",
+      "title": "Default Third Place Rule"
+     },
+     "kumite_rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Kumite Rules"
+     },
+     "kata_defaults": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Kata Defaults"
+     },
+     "template_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Template Id"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "tatamis": {
+      "items": {
+       "$ref": "#/components/schemas/TatamiOut"
+      },
+      "type": "array",
+      "title": "Tatamis",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "start_date",
+     "end_date",
+     "venue",
+     "city",
+     "status",
+     "is_test",
+     "age_reference_date",
+     "default_format",
+     "default_third_place_rule",
+     "kumite_rules",
+     "kata_defaults",
+     "template_id",
+     "version"
+    ],
+    "title": "TournamentOut"
+   },
+   "TournamentUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "start_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start Date"
+     },
+     "end_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Date"
+     },
+     "venue": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Venue"
+     },
+     "city": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "City"
+     },
+     "is_test": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Test"
+     },
+     "age_reference_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Reference Date"
+     },
+     "default_third_place_rule": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "two_bronzes",
+         "third_place_match",
+         "repechage"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Default Third Place Rule"
+     },
+     "kumite_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kumite Rules"
+     },
+     "kata_defaults": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Defaults"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "TournamentUpdate"
+   },
+   "UserCreate": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "maxLength": 80,
+      "minLength": 3,
+      "title": "Username"
+     },
+     "password": {
+      "type": "string",
+      "minLength": 8,
+      "title": "Password"
+     },
+     "display_name": {
+      "type": "string",
+      "title": "Display Name",
+      "default": ""
+     },
+     "is_admin": {
+      "type": "boolean",
+      "title": "Is Admin",
+      "default": false
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "UserCreate"
+   },
+   "UserOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "username": {
+      "type": "string",
+      "title": "Username"
+     },
+     "display_name": {
+      "type": "string",
+      "title": "Display Name"
+     },
+     "is_admin": {
+      "type": "boolean",
+      "title": "Is Admin"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "username",
+     "display_name",
+     "is_admin",
+     "person_id"
+    ],
+    "title": "UserOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WithdrawIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "WithdrawIn"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}
