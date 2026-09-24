@@ -138,7 +138,71 @@ video durante el mock.
    cerrar con el ganador correcto.
 6. **Nombre del proyecto.** Usé "Hajime" (nombre del repositorio).
 
-## 5. Lo que queda para ti (no lo puedo hacer yo)
+## 5. Revisión de código y lógica (24/09/2026, segunda pasada)
+
+Revisión independiente del dominio, los servicios, la seguridad y el
+frontend, hecha después de la primera construcción. Todo lo listado está
+corregido y cubierto por tests, salvo lo marcado como pendiente.
+
+### 5.1 Lógica deportiva (dominio)
+
+| Hallazgo | Efecto que tenía | Corrección |
+| --- | --- | --- |
+| Anular un punto "des-pausaba" el cronómetro | Al deshacer un punto mal marcado, el tiempo que la mesa estuvo detenida se sumaba al combate (2 s de más por cada error) | La pausa automática se conserva aunque el punto se anule. El test anterior había sido ajustado al comportamiento erróneo; ahora exige el correcto |
+| Banderas: mayoría de los votos emitidos, no del panel | Con 5 jueces, 2-1 y dos jueces sin votar decidía el kata | Se exige más de la mitad del panel (3 de 5, 2 de 3); si no, decide el juez principal |
+| Empate 3.º/4.º en kata por rondas con dos bronces bloqueaba todas las medallas | El podio no se cerraba aunque ambos recibieran bronce | Un empate solo bloquea cuando los empatados recibirían medallas distintas |
+| Dos reintentos simultáneos del mismo evento | El segundo respondía 500 en vez de 200 | Idempotente también bajo concurrencia |
+
+### 5.2 Servicios y API
+
+| Hallazgo | Corrección |
+| --- | --- |
+| Fusionar hacia una categoría que ya tenía llave dejaba a los nuevos inscritos fuera de la llave, sin aviso | Se descarta la llave del destino (advertencia `TARGET_BRACKET_DISCARDED`) y hay que regenerarla |
+| Un punto registrado en un combate cerrado reescribía el marcador sin motivo ni auditoría | Exige override con motivo, se audita como `correct_score` y recalcula la clasificación |
+| Fusionar dos personas inscritas en la misma categoría dejaba a la misma persona dos veces en la llave | Queda una sola inscripción activa; la otra se retira y la reversión la restaura |
+| Mover una inscripción a una categoría donde la persona ya estaba | Se rechaza (`ALREADY_REGISTERED`) |
+| No existía la reapertura de categoría (sección 12) | `POST /categories/{id}/reopen` con motivo; la categoría no se vuelve a cerrar sola hasta que el operador corrige algo |
+| Banderas no se podían corregir en una categoría finalizada | `override` en `/flags` |
+| Cancelar una categoría fusionada la dejaba en un estado incoherente | Se rechaza hasta deshacer la fusión |
+| La lectura de la llave escribía en la base en cada consulta | Solo escribe si el podio o el estado cambian |
+| Consultas N+1 en categorías y personas; carga de Excel en un endpoint asíncrono que bloqueaba a las mesas | Consultas agrupadas; endpoint síncrono (sección 22) |
+
+**Pendiente (bajo):** el cambio de `age_reference_date` con inscripciones
+hechas no recalcula las edades guardadas; la cola de tatami sigue haciendo
+varias consultas por categoría (aceptable a la escala del MVP).
+
+### 5.3 Seguridad y protección de datos
+
+Antes de esta pasada, cualquier usuario con cuenta podía ver documentos y
+fechas de nacimiento de menores, operar cualquier mesa y editar personas.
+No existía forma de asignar roles.
+
+| Requisito (sección 11) | Estado |
+| --- | --- |
+| Solo Admin y organizadores ven documentos y fecha de nacimiento | ✅ Los demás reciben esos campos vacíos y no pueden buscar por documento |
+| Operadores de mesa solo operan su torneo | ✅ Rol `table_operator` por torneo; `organizer` por torneo o global |
+| Derecho de cancelación (ARCO) | ✅ Anonimización que conserva combates y redacta auditoría e importaciones |
+| Consentimiento registrable después del alta | ✅ `POST /persons/{id}/consents` |
+| Datos de prueba nunca en PROD | ✅ El demo se niega a correr fuera de DEV/TEST; personas de demo marcadas |
+| Marca `es_prueba` | ✅ Solo el Admin la cambia después de crear el torneo |
+| Inyección de fórmulas en el Excel exportado; archivos comprimidos maliciosos | ✅ Celdas escapadas; tope de filas y de tamaño descomprimido |
+| Registro del banco de datos, edades de consentimiento, nombres abreviados de menores en público (Fase 5) | ⏳ Requiere asesoría legal; el portal público no existe todavía |
+
+**Pendiente (bajo):** los tokens duran 12 h sin revocación ni cambio de
+contraseña por API; no hay límite de intentos de login. Conviene resolverlo
+antes de la Fase 3 (uso oficial), junto con la decisión de autenticación.
+
+### 5.4 Frontend (mesa de kumite)
+
+Hallazgos confirmados y corregidos en la mesa: una respuesta lenta del
+servidor podía "borrar" en pantalla un punto recién marcado; la cola de
+eventos pendientes se perdía al salir de la página o al vencer la sesión; un
+error 500 bloqueaba todos los eventos siguientes; el reloj local no pausaba
+al marcar punto cuando no había conexión; el botón de banderas admitía doble
+toque; el diálogo de cierre preseleccionaba un ganador sin sugerencia del
+servidor. Ver el detalle en el commit del frontend.
+
+## 6. Lo que queda para ti (no lo puedo hacer yo)
 
 1. **Validar la plantilla de categorías** con los torneos objetivo: edades,
    pesos, bandas de grado y duración de combates.
