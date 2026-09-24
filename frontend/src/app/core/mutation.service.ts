@@ -56,6 +56,7 @@ export class MutationService {
         return undefined;
       }
     }
+    this.toast.error('Se agotaron los intentos de confirmación: el servidor sigue devolviendo advertencias. Vuelve a intentar.');
     return undefined;
   }
 

@@ -36,23 +36,44 @@ import { DatePipe } from '../../shared/pipes';
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Apellidos y nombres</th><th>Nac.</th><th>Sexo</th><th>Documento</th><th>Dojo</th><th>Grado</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th>Apellidos y nombres</th>
+              @if (auth.canViewDocuments()) {
+                <th>Nac.</th>
+              }
+              <th>Sexo</th>
+              @if (auth.canViewDocuments()) {
+                <th>Documento</th>
+              }
+              <th>Dojo</th>
+              <th>Grado</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody>
             @for (p of persons(); track p.id) {
               <tr>
                 <td><a [routerLink]="['/personas', p.id]"><strong>{{ p.last_names }}</strong>, {{ p.first_names }}</a></td>
-                <td class="nowrap">{{ p.birth_date | fdate }}</td>
+                @if (auth.canViewDocuments()) {
+                  <td class="nowrap">{{ p.birth_date | fdate }}</td>
+                }
                 <td>{{ p.sex }}</td>
-                <td class="small mono">
-                  @for (d of p.documents; track d.id) {
-                    {{ d.doc_type }} {{ d.number }}
-                  }
-                </td>
+                @if (auth.canViewDocuments()) {
+                  <td class="small mono">
+                    @for (d of p.documents; track d.id) {
+                      {{ d.doc_type }} {{ d.number }}
+                    }
+                  </td>
+                }
                 <td>{{ dojoName(p.current_dojo_id) }}</td>
                 <td>{{ p.current_grade }}</td>
                 <td>
                   @if (p.identity_incomplete) {
                     <span class="badge warn" title="Faltan datos de identidad">Identidad incompleta</span>
+                  }
+                  @if (p.anonymized_at) {
+                    <span class="badge" title="Datos personales anonimizados">Anonimizada</span>
                   }
                 </td>
               </tr>

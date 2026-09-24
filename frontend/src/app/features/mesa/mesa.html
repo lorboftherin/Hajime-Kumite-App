@@ -9,7 +9,15 @@
       }
     </div>
     <div class="conn">
-      @if (offline()) {
+      @if (stuck()) {
+        <span class="badge danger" [title]="stuckText()">Evento bloqueado · {{ pending().length }} pendiente(s)</span>
+        <button class="btn sm" (click)="retryNow()" title="Reintentar el evento bloqueado">Reintentar</button>
+        <button class="btn sm danger" (click)="discardStuck()">Descartar este evento</button>
+      } @else if (authBlocked()) {
+        <button class="badge danger pulse" (click)="retryNow()" title="Reintentar ahora">
+          Sesión vencida · {{ pending().length }} pendiente(s)
+        </button>
+      } @else if (offline()) {
         <button class="badge danger pulse" (click)="retryNow()" title="Reintentar ahora">
           Sin conexión · {{ pending().length }} pendiente(s)
         </button>
@@ -157,7 +165,12 @@
             </div>
           </div>
         }
-        <button class="btn lg light" [disabled]="!playable()" (click)="submitFlags()">Registrar decisión</button>
+        <button class="btn lg light" [disabled]="!playable() || flagsBusy()" (click)="submitFlags()">
+          @if (flagsBusy()) {
+            <span class="spinner"></span>
+          }
+          Registrar decisión
+        </button>
       </main>
     }
 
@@ -197,6 +210,9 @@
           <br /><span class="muted">{{ suggestionText() }}</span>
         }
       </p>
+      @if (!finishForm.winner) {
+        <div class="alert warn small">Sin sugerencia del servidor: elige el ganador.</div>
+      }
       <div class="winner-pick">
         @for (c of colors; track c) {
           <label class="wp {{ c }}" [class.on]="finishForm.winner === c">
@@ -226,8 +242,12 @@
       }
       <div class="form-actions">
         <button class="btn" (click)="finishOpen.set(false)">Volver</button>
-        <button class="btn lg" [class.aka]="finishForm.winner === 'aka'" [class.ao]="finishForm.winner === 'ao'" [disabled]="finishing()" (click)="confirmFinish()">
-          Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}
+        <button class="btn lg" [class.aka]="finishForm.winner === 'aka'" [class.ao]="finishForm.winner === 'ao'" [disabled]="finishing() || !finishForm.winner" (click)="confirmFinish()">
+          @if (finishForm.winner) {
+            Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}
+          } @else {
+            Elige un ganador
+          }
         </button>
       </div>
     }

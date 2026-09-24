@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subject, debounceTime, switchMap, of, catchError } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
+import { AuthService } from '../../../core/auth.service';
 import { DialogService } from '../../../core/dialog.service';
 import { GRADES, fmtDate } from '../../../core/format';
 import { Person, Registration, Suggestion, WithdrawResult } from '../../../core/models';
@@ -101,8 +102,10 @@ import { TournamentContext } from '../tournament-context';
                   <button class="linklike" (click)="selectPerson(p)">
                     <strong>{{ p.last_names }}, {{ p.first_names }}</strong>
                     <span class="muted small">
-                      {{ p.sex }} · {{ fdate(p.birth_date) || 'sin fecha de nac.' }} · {{ p.current_grade || 'sin grado' }}
-                      @if (p.documents.length) { · {{ p.documents[0].doc_type }} {{ p.documents[0].number }} }
+                      {{ p.sex }}
+                      @if (auth.canViewDocuments()) { · {{ fdate(p.birth_date) || 'sin fecha de nac.' }} }
+                      · {{ p.current_grade || 'sin grado' }}
+                      @if (auth.canViewDocuments() && p.documents.length) { · {{ p.documents[0].doc_type }} {{ p.documents[0].number }} }
                     </span>
                   </button>
                 </li>
@@ -123,7 +126,7 @@ import { TournamentContext } from '../tournament-context';
           <div class="alert info row">
             <div class="grow">
               <strong>{{ p.first_names }} {{ p.last_names }}</strong>
-              <span class="small"> · {{ p.sex }} · {{ fdate(p.birth_date) }} · {{ p.current_grade || 'sin grado' }}</span>
+              <span class="small"> · {{ p.sex }}@if (auth.canViewDocuments()) { · {{ fdate(p.birth_date) }} } · {{ p.current_grade || 'sin grado' }}</span>
             </div>
             <button class="btn sm" (click)="person.set(null)">Cambiar</button>
           </div>
@@ -201,6 +204,7 @@ import { TournamentContext } from '../tournament-context';
 })
 export class RegistrationsTab {
   readonly ctx = inject(TournamentContext);
+  readonly auth = inject(AuthService);
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);

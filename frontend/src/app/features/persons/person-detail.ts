@@ -7,7 +7,7 @@ import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { GRADES, fmtDate, todayLima } from '../../core/format';
-import { Dojo, Duplicate, Person } from '../../core/models';
+import { ConsentIn, Dojo, Duplicate, Person, RoleIn, RoleOut, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { Modal } from '../../shared/modal';
 import { DatePipe } from '../../shared/pipes';
@@ -38,13 +38,20 @@ interface MergeResult {
               @if (p.merged_into_id) {
                 <span class="badge danger">Fusionada en <a [routerLink]="['/personas', p.merged_into_id]">#{{ p.merged_into_id }}</a></span>
               }
+              @if (p.anonymized_at) {
+                <span class="badge" title="Datos personales anonimizados">Anonimizada</span>
+              }
             </div>
           </div>
           <div class="row">
             <button class="btn" (click)="gradeOpen.set(true)">+ Grado</button>
             <button class="btn" (click)="openDojo()">Cambiar dojo</button>
+            <button class="btn" (click)="openConsent()">Agregar consentimiento</button>
             @if (auth.isAdmin()) {
               <button class="btn" (click)="openMerge()">Fusionar duplicado…</button>
+              @if (!p.anonymized_at) {
+                <button class="btn danger" (click)="anonymize()">Anonimizar</button>
+              }
             }
           </div>
         </div>
@@ -63,7 +70,9 @@ interface MergeResult {
               <div class="grid-2">
                 <label class="field"><span>Nombres</span><input name="fn" [(ngModel)]="edit.first_names" /></label>
                 <label class="field"><span>Apellidos</span><input name="ln" [(ngModel)]="edit.last_names" /></label>
-                <label class="field"><span>Nacimiento</span><input type="date" name="bd" [(ngModel)]="edit.birth_date" /></label>
+                @if (canViewDocs()) {
+                  <label class="field"><span>Nacimiento</span><input type="date" name="bd" [(ngModel)]="edit.birth_date" /></label>
+                }
                 <label class="field">
                   <span>Sexo</span>
                   <select name="sx" [(ngModel)]="edit.sex">
@@ -71,17 +80,22 @@ interface MergeResult {
                     <option value="F">Femenino</option>
                   </select>
                 </label>
-                <label class="field">
-                  <span>Tipo de documento</span>
-                  <select name="dt" [(ngModel)]="edit.doc_type">
-                    <option value="DNI">DNI</option>
-                    <option value="CE">CE</option>
-                    <option value="PASSPORT">Pasaporte</option>
-                    <option value="OTHER">Otro</option>
-                  </select>
-                </label>
-                <label class="field"><span>Número</span><input name="dn" [(ngModel)]="edit.doc_number" /></label>
+                @if (canViewDocs()) {
+                  <label class="field">
+                    <span>Tipo de documento</span>
+                    <select name="dt" [(ngModel)]="edit.doc_type">
+                      <option value="DNI">DNI</option>
+                      <option value="CE">CE</option>
+                      <option value="PASSPORT">Pasaporte</option>
+                      <option value="OTHER">Otro</option>
+                    </select>
+                  </label>
+                  <label class="field"><span>Número</span><input name="dn" [(ngModel)]="edit.doc_number" /></label>
+                }
               </div>
+              @if (!canViewDocs()) {
+                <p class="hint">Fecha de nacimiento y documentos solo visibles para Admin y organizadores.</p>
+              }
               <div class="form-actions"><button class="btn primary">Guardar cambios</button></div>
             </form>
           </div>
@@ -92,18 +106,87 @@ interface MergeResult {
               <dd>{{ dojoName(p.current_dojo_id) || '—' }}</dd>
               <dt>Grado vigente</dt>
               <dd>{{ p.current_grade || '—' }}</dd>
-              <dt>Documentos</dt>
-              <dd>
-                @for (d of p.documents; track d.id) {
-                  <div class="mono">{{ d.doc_type }} {{ d.number }}</div>
-                } @empty {
-                  —
-                }
-              </dd>
-              <dt>Nacimiento</dt>
-              <dd>{{ p.birth_date | fdate }}</dd>
+              @if (canViewDocs()) {
+                <dt>Documentos</dt>
+                <dd>
+                  @for (d of p.documents; track d.id) {
+                    <div class="mono">{{ d.doc_type }} {{ d.number }}</div>
+                  } @empty {
+                    —
+                  }
+                </dd>
+                <dt>Nacimiento</dt>
+                <dd>{{ p.birth_date | fdate }}</dd>
+              }
             </dl>
           </div>
+          <div class="card">
+            <h3>Consentimientos de datos</h3>
+            <table class="table small">
+              <thead><tr><th>Fecha</th><th>Otorgado por</th><th>Relación</th><th>Medio</th><th>Alcance</th></tr></thead>
+              <tbody>
+                @for (c of p.consents ?? []; track c.id) {
+                  <tr>
+                    <td class="nowrap">{{ fdate(c.given_on) }}</td>
+                    <td>{{ c.given_by }}</td>
+                    <td>{{ c.relationship_to_person }}</td>
+                    <td>{{ c.medium }}</td>
+                    <td>{{ c.scope }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="muted">Sin consentimiento registrado.</td></tr>
+                }
+              </tbody>
+            </table>
+            <div class="form-actions"><button class="btn sm" (click)="openConsent()">Agregar consentimiento</button></div>
+          </div>
+          @if (auth.isAdmin()) {
+            <div class="card">
+              <h3>Roles (permisos)</h3>
+              <table class="table small">
+                <thead><tr><th>Rol</th><th>Ámbito</th><th></th></tr></thead>
+                <tbody>
+                  @for (r of roles(); track r.id) {
+                    <tr>
+                      <td>{{ roleLabel[r.role] || r.role }}</td>
+                      <td>{{ scopeText(r) }}</td>
+                      <td class="right"><button class="btn sm ghost" (click)="removeRole(r)">Quitar</button></td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="3" class="muted">Sin roles: solo puede ver.</td></tr>
+                  }
+                </tbody>
+              </table>
+              <form class="row mt" (ngSubmit)="addRole()">
+                <select name="role" [(ngModel)]="newRole.role">
+                  @for (r of roleKeys; track r) {
+                    <option [value]="r">{{ roleLabel[r] }}</option>
+                  }
+                </select>
+                <select name="scope" [(ngModel)]="newRole.scope_type" (ngModelChange)="newRole.scope_id = null; onScopeType($event)">
+                  <option value="global">Global</option>
+                  <option value="tournament">Por torneo</option>
+                  <option value="dojo">Por dojo</option>
+                </select>
+                @if (newRole.scope_type === 'tournament') {
+                  <select name="sid" [(ngModel)]="newRole.scope_id">
+                    <option [ngValue]="null">— Torneo —</option>
+                    @for (t of tournaments(); track t.id) {
+                      <option [ngValue]="t.id">{{ t.name }}</option>
+                    }
+                  </select>
+                } @else if (newRole.scope_type === 'dojo') {
+                  <select name="sid" [(ngModel)]="newRole.scope_id">
+                    <option [ngValue]="null">— Dojo —</option>
+                    @for (d of dojos(); track d.id) {
+                      <option [ngValue]="d.id">{{ d.name }}</option>
+                    }
+                  </select>
+                }
+                <button class="btn sm primary" [disabled]="newRole.scope_type !== 'global' && !newRole.scope_id">Agregar rol</button>
+              </form>
+            </div>
+          }
         </div>
       } @else if (error()) {
         <div class="alert danger">{{ error() }}</div>
@@ -128,6 +211,29 @@ interface MergeResult {
         <div class="form-actions">
           <button class="btn" (click)="gradeOpen.set(false)">Cancelar</button>
           <button class="btn primary" (click)="addGrade()">Registrar</button>
+        </div>
+      </app-modal>
+    }
+
+    @if (consentOpen()) {
+      <app-modal title="Agregar consentimiento de datos" (closed)="consentOpen.set(false)">
+        <div class="grid-2">
+          <label class="field"><span>Otorgado por</span><input [(ngModel)]="consent.given_by" placeholder="Nombre del padre/madre o titular" /></label>
+          <label class="field">
+            <span>Relación</span>
+            <select [(ngModel)]="consent.relationship_to_person">
+              <option value="titular">Titular</option>
+              <option value="padre/madre">Padre / madre</option>
+              <option value="tutor">Tutor</option>
+            </select>
+          </label>
+          <label class="field"><span>Fecha</span><input type="date" [(ngModel)]="consent.given_on" /></label>
+          <label class="field"><span>Medio</span><input [(ngModel)]="consent.medium" placeholder="declaración del dojo, formulario firmado…" /></label>
+          <label class="field"><span>Alcance</span><input [(ngModel)]="consent.scope" placeholder="competencia" /></label>
+        </div>
+        <div class="form-actions">
+          <button class="btn" (click)="consentOpen.set(false)">Cancelar</button>
+          <button class="btn primary" [disabled]="!consent.given_by.trim() || !consent.given_on" (click)="addConsent()">Registrar</button>
         </div>
       </app-modal>
     }
@@ -229,8 +335,21 @@ export class PersonDetailPage {
   readonly dupSuggestions = signal<Duplicate[]>([]);
   readonly mergeId = signal<number | null>(null);
   readonly mergeResult = signal<MergeResult | null>(null);
+  readonly consentOpen = signal(false);
+  readonly roles = signal<RoleOut[]>([]);
+  readonly tournaments = signal<Tournament[]>([]);
+  readonly canViewDocs = computed(() => this.auth.canViewDocuments());
+  readonly roleLabel: Record<string, string> = {
+    organizer: 'Organizador',
+    table_operator: 'Operador de mesa',
+    dojo_admin: 'Administrador de dojo',
+    referee: 'Árbitro',
+  };
+  readonly roleKeys = Object.keys(this.roleLabel);
   mergeQ = '';
   mergeReason = '';
+  consent: ConsentIn = this.blankConsent();
+  newRole: RoleIn = { role: 'table_operator', scope_type: 'global', scope_id: null };
 
   edit = { first_names: '', last_names: '', birth_date: '', sex: 'M', doc_type: 'DNI', doc_number: '' };
   grade = { grade: '8 kyu', awarded_on: todayLima() };
@@ -259,9 +378,98 @@ export class PersonDetailPage {
       };
       this.person.set(p);
       this.error.set('');
+      if (this.auth.isAdmin()) this.loadRoles(id);
     } catch (e) {
       this.error.set(ApiError.from(e).fullMessage);
     }
+  }
+
+  // --- Consentimientos ---
+  private blankConsent(): ConsentIn {
+    return { given_by: '', relationship_to_person: 'titular', given_on: todayLima(), medium: 'declaración del dojo', scope: 'competencia' };
+  }
+
+  openConsent(): void {
+    this.consent = this.blankConsent();
+    this.consentOpen.set(true);
+  }
+
+  async addConsent(): Promise<void> {
+    const body = { ...this.consent, given_by: this.consent.given_by.trim() };
+    const res = await this.mut.post(`/persons/${this.person()!.id}/consents`, body as unknown as Record<string, unknown>, {
+      success: 'Consentimiento registrado',
+    });
+    if (res) {
+      this.consentOpen.set(false);
+      this.load();
+    }
+  }
+
+  // --- Anonimización (solo Admin) ---
+  async anonymize(): Promise<void> {
+    const p = this.person()!;
+    const reason = await this.dialog.prompt({
+      title: 'Anonimizar persona',
+      message: `Se borrarán de forma IRREVERSIBLE los datos personales de ${p.first_names} ${p.last_names} (#${p.id}): nombres, documentos, fecha de nacimiento y consentimientos. Los resultados deportivos se conservan sin identificar.`,
+      label: 'Motivo (obligatorio)',
+      minLength: 3,
+      confirmText: 'Continuar',
+    });
+    if (!reason) return;
+    const ok = await this.dialog.confirm({
+      title: 'Confirmar anonimización',
+      message: `Esta acción no se puede deshacer. ¿Anonimizar a #${p.id} ${p.first_names} ${p.last_names}?`,
+      danger: true,
+      confirmText: 'Anonimizar definitivamente',
+    });
+    if (!ok) return;
+    const res = await this.mut.post<Person>(`/persons/${p.id}/anonymize`, { reason }, { success: 'Persona anonimizada' });
+    if (res) this.load();
+  }
+
+  // --- Roles (solo Admin) ---
+  private async loadRoles(id: number): Promise<void> {
+    try {
+      this.roles.set(await firstValueFrom(this.api.get<RoleOut[]>(`/persons/${id}/roles`)));
+    } catch {
+      this.roles.set([]);
+    }
+  }
+
+  onScopeType(t: string): void {
+    if (t === 'tournament' && !this.tournaments().length) {
+      this.api.get<Tournament[]>('/tournaments').subscribe({ next: (l) => this.tournaments.set(l), error: () => {} });
+    }
+  }
+
+  scopeText(r: RoleOut): string {
+    if (r.scope_type === 'global') return 'Global';
+    if (r.scope_type === 'tournament') return 'Torneo: ' + (this.tournaments().find((t) => t.id === r.scope_id)?.name ?? `#${r.scope_id}`);
+    if (r.scope_type === 'dojo') return 'Dojo: ' + (this.dojoName(r.scope_id) || `#${r.scope_id}`);
+    return `${r.scope_type} #${r.scope_id ?? ''}`;
+  }
+
+  async addRole(): Promise<void> {
+    const body: RoleIn = { ...this.newRole, scope_id: this.newRole.scope_type === 'global' ? null : this.newRole.scope_id };
+    const res = await this.mut.post<RoleOut>(`/persons/${this.person()!.id}/roles`, body as unknown as Record<string, unknown>, {
+      success: 'Rol agregado',
+    });
+    if (res) {
+      this.newRole = { role: this.newRole.role, scope_type: 'global', scope_id: null };
+      this.loadRoles(this.person()!.id);
+    }
+  }
+
+  async removeRole(r: RoleOut): Promise<void> {
+    const ok = await this.dialog.confirm({
+      title: 'Quitar rol',
+      message: `Se quitará el rol "${this.roleLabel[r.role] ?? r.role}" (${this.scopeText(r)}).`,
+      danger: true,
+      confirmText: 'Quitar',
+    });
+    if (!ok) return;
+    const res = await this.mut.run(() => this.api.delete<void>(`/roles/${r.id}`), { success: 'Rol quitado' });
+    if (res !== undefined) this.loadRoles(this.person()!.id);
   }
 
   dojoName(id: number | null): string {
@@ -279,10 +487,12 @@ export class PersonDetailPage {
       version: p.version,
       first_names: e.first_names.trim(),
       last_names: e.last_names.trim(),
-      birth_date: e.birth_date || null,
       sex: e.sex,
     };
-    if (e.doc_number.trim()) body['document'] = { doc_type: e.doc_type, number: e.doc_number.trim() };
+    if (this.canViewDocs()) {
+      body['birth_date'] = e.birth_date || null;
+      if (e.doc_number.trim()) body['document'] = { doc_type: e.doc_type, number: e.doc_number.trim() };
+    }
     const res = await this.mut.patch<Person>(`/persons/${p.id}`, body, { success: 'Datos guardados', onConflict: () => this.load() });
     if (res) this.person.set(res);
   }

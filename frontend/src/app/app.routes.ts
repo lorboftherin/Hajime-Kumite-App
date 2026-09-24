@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminGuard, authGuard } from './core/auth.guard';
+import { mesaPendingGuard } from './features/mesa/mesa-pending.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
@@ -8,6 +9,7 @@ export const routes: Routes = [
     // Mesa de kumite: pantalla completa, sin navegación.
     path: 'mesa/:matchId',
     canActivate: [authGuard],
+    canDeactivate: [mesaPendingGuard],
     loadComponent: () => import('./features/mesa/mesa').then((m) => m.MesaPage),
     title: 'Mesa · Hajime',
   },

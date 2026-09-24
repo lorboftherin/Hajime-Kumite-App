@@ -7,12 +7,28 @@ export interface Override {
   reason: string;
 }
 
+export interface RoleOut {
+  id: number;
+  role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee' | string;
+  scope_type: 'global' | 'tournament' | 'dojo' | string;
+  scope_id: number | null;
+}
+
+export interface RoleIn {
+  role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee';
+  scope_type: 'global' | 'tournament' | 'dojo';
+  scope_id: number | null;
+}
+
 export interface User {
   id: number;
   username: string;
   display_name: string;
   is_admin: boolean;
   person_id: number | null;
+  roles?: RoleOut[];
+  /** Solo Admin y organizadores ven documentos y fecha de nacimiento. */
+  can_view_documents?: boolean;
 }
 
 export interface TokenOut {
@@ -28,16 +44,37 @@ export interface DocumentOut {
   number: string;
 }
 
+export interface ConsentOut {
+  id: number;
+  given_by: string;
+  relationship_to_person: string;
+  given_on: string;
+  medium: string;
+  scope: string;
+}
+
+export interface ConsentIn {
+  given_by: string;
+  relationship_to_person: string;
+  given_on: string;
+  medium: string;
+  scope: string;
+}
+
 export interface Person {
   id: number;
   first_names: string;
   last_names: string;
+  /** null si el usuario no puede ver documentos (can_view_documents=false). */
   birth_date: string | null;
   sex: string;
   identity_incomplete: boolean;
   merged_into_id: number | null;
+  anonymized_at?: string | null;
   version: number;
+  /** Vacío si el usuario no puede ver documentos. */
   documents: DocumentOut[];
+  consents?: ConsentOut[];
   current_dojo_id: number | null;
   current_grade: string | null;
 }
@@ -269,10 +306,22 @@ export interface EventIn {
   value?: number | null;
   target_id?: string | null;
   reason?: string | null;
+  /** Requerido (motivo) para tocar un combate ya cerrado: 409 WARNINGS MATCH_FINISHED. */
+  override?: Override | null;
+}
+
+export interface ScoreboardRules {
+  time_mode?: 'effective' | 'running' | string;
+  auto_pause_on_point?: boolean;
+  tie_rule?: string;
+  lead_victory?: number | null;
+  point_values?: number[];
 }
 
 export interface Scoreboard {
   match: Match;
+  /** Reglas efectivas del combate (tiempo efectivo/corrido, pausa automática por punto…). */
+  rules?: ScoreboardRules;
   score: Record<Color, number>;
   sanction: Record<Color, number>;
   sanction_labels: string[];

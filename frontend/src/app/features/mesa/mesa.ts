@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -12,12 +12,7 @@ import { ToastService } from '../../core/toast.service';
 import { StatusBadge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
 import { LabelPipe } from '../../shared/pipes';
-
-interface Pending {
-  matchId: number;
-  body: EventIn;
-  attempts: number;
-}
+import { Pending, SeqGuard, foldClock, loadPending, retryDecision, retryDelay, savePending } from './mesa-logic';
 
 interface LogRow {
   id: string;
@@ -35,6 +30,7 @@ const UNDO_SKIP = new Set(['annul', 'finish']);
 /**
  * Mesa de kumite. Cada acción es un evento inmutable con UUID del cliente y hora del dispositivo.
  * El POST es idempotente: ante un error de red se reintenta con el MISMO id (cola con backoff).
+ * La cola se guarda en localStorage por combate (hajime.mesa.pending.<id>) y se restaura al volver.
  */
 @Component({
   selector: 'app-mesa',
@@ -66,15 +62,24 @@ export class MesaPage {
   private readonly anchor = signal({ elapsed: 0, running: false, at: Date.now() });
   readonly now = signal(Date.now());
 
-  // Cola de eventos pendientes (en memoria).
+  /** Secuencia de peticiones: una respuesta vieja nunca pisa una más nueva ya aplicada. */
+  private readonly seq = new SeqGuard();
+
+  // Cola de eventos pendientes (en memoria + localStorage).
   readonly pending = signal<Pending[]>([]);
   readonly offline = signal(false);
-  private sending = false;
+  /** Evento que agotó sus reintentos (5xx): bloquea la cola hasta que el operador decida. */
+  readonly stuck = signal<Pending | null>(null);
+  /** 401: la cola se conserva y se reanuda tras volver a iniciar sesión. */
+  readonly authBlocked = signal(false);
+  readonly sending = signal(false);
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private destroyed = false;
+  private readonly savedKeys = new Set<number>();
 
   readonly unlocked = signal(false);
   readonly finishOpen = signal(false);
-  finishForm = { winner: 'aka' as Color, method: 'points', reason: '', time_over: true };
+  finishForm = { winner: null as Color | null, method: 'points', reason: '', time_over: true };
   private finishId = '';
   readonly finishing = signal(false);
 
@@ -82,6 +87,9 @@ export class MesaPage {
   readonly votes = signal<Array<Color | null>>([]);
   readonly headVote = signal<Color | null>(null);
   readonly needsHead = signal(false);
+  readonly flagsBusy = signal(false);
+  /** id del evento de banderas: uno por apertura del panel (idempotente ante reintentos). */
+  private flagsId = newId();
 
   readonly isKata = computed(() => this.category()?.modality === 'kata');
   readonly judges = computed(() => {
@@ -98,43 +106,22 @@ export class MesaPage {
   });
   readonly locked = computed(() => !this.playable() || (this.finished() && !this.unlocked()));
 
-  /** Cronómetro: estado del servidor + eventos de tiempo aún pendientes, calculado en el cliente. */
-  readonly clock = computed(() => {
-    const a = this.anchor();
-    const now = this.now();
-    let elapsed = a.elapsed;
-    let runSince: number | null = a.running ? a.at : null;
-    for (const p of this.pending()) {
-      if (p.matchId !== this.id()) continue;
-      const t = Date.parse(p.body.at);
-      switch (p.body.type) {
-        case 'start':
-        case 'resume':
-          if (runSince === null) runSince = t;
-          break;
-        case 'pause':
-          if (runSince !== null) {
-            elapsed += (t - runSince) / 1000;
-            runSince = null;
-          }
-          break;
-        case 'time_adjust':
-          elapsed += Number(p.body.value ?? 0);
-          break;
-      }
-    }
-    if (runSince !== null) elapsed += Math.max(0, now - runSince) / 1000;
-    return { elapsed: Math.max(0, elapsed), running: runSince !== null };
-  });
+  readonly pendingHere = computed(() => this.pending().filter((p) => p.matchId === this.id()));
+
+  /** Cronómetro: estado del servidor + eventos aún pendientes, con las mismas reglas que el servidor. */
+  readonly clock = computed(() =>
+    foldClock(
+      this.anchor(),
+      this.pendingHere().map((p) => p.body),
+      this.now(),
+      this.sb()?.rules ?? null,
+    ),
+  );
   readonly duration = computed(() => this.sb()?.duration_seconds ?? 0);
   readonly remaining = computed(() => Math.max(0, this.duration() - this.clock().elapsed));
   readonly timeOver = computed(() => this.duration() > 0 && this.clock().elapsed >= this.duration());
   readonly timerText = computed(() => mmss(Math.ceil(this.remaining())));
-  readonly started = computed(
-    () => !!this.sb()?.started || this.pending().some((p) => p.matchId === this.id() && p.body.type === 'start'),
-  );
-
-  readonly pendingHere = computed(() => this.pending().filter((p) => p.matchId === this.id()));
+  readonly started = computed(() => !!this.sb()?.started || this.pendingHere().some((p) => p.body.type === 'start'));
 
   readonly suggestionText = computed(() => {
     const s = this.sb()?.suggestion;
@@ -194,33 +181,61 @@ export class MesaPage {
     return null;
   });
 
+  /** Texto del evento bloqueado para el aviso. */
+  readonly stuckText = computed(() => {
+    const p = this.stuck();
+    const sb = this.sb();
+    if (!p) return '';
+    return sb ? this.describe(p.body, sb) : (EVENT_LABEL[p.body.type] ?? p.body.type);
+  });
+
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 200);
     const refresh = setInterval(() => {
-      if (!this.pending().length && !this.finishOpen()) this.reload(true);
+      // No se refresca mientras hay envíos en curso o pendientes: un GET lento no debe pisar un POST.
+      if (!this.pending().length && !this.sending() && !this.finishOpen()) this.reload(true);
     }, 15000);
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       clearInterval(tick);
       clearInterval(refresh);
       if (this.retryTimer) clearTimeout(this.retryTimer);
+      this.retryTimer = null;
     });
+    // Persistencia de la cola por combate.
+    effect(() => savePending(this.pending(), this.savedKeys));
     effect(() => {
       const id = this.id();
       untracked(() => {
         this.unlocked.set(false);
         this.needsHead.set(false);
         this.headVote.set(null);
+        this.flagsId = newId();
+        this.restorePending(id);
         this.load(id);
       });
     });
   }
 
+  /** Aviso del navegador al cerrar/recargar con eventos sin enviar (la cola igual queda guardada). */
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(ev: BeforeUnloadEvent): string | undefined {
+    const n = this.pending().length;
+    if (!n) return undefined;
+    ev.preventDefault();
+    const msg = `Hay ${n} evento(s) sin enviar`;
+    ev.returnValue = msg;
+    return msg;
+  }
+
   // --- Carga ---
   async load(id: number): Promise<void> {
     this.loadError.set('');
+    const seq = this.seq.next();
     try {
       const sb = await firstValueFrom(this.api.get<Scoreboard>(`/matches/${id}`));
-      this.setScoreboard(sb);
+      if (this.destroyed) return;
+      this.setScoreboard(sb, seq);
       if (this.category()?.id !== sb.match.category_id) {
         const c = await firstValueFrom(this.api.get<Category>(`/categories/${sb.match.category_id}`));
         this.category.set(c);
@@ -235,21 +250,37 @@ export class MesaPage {
   }
 
   async reload(silent = false): Promise<void> {
+    const seq = this.seq.next();
     try {
-      this.setScoreboard(await firstValueFrom(this.api.get<Scoreboard>(`/matches/${this.id()}`)));
+      const sb = await firstValueFrom(this.api.get<Scoreboard>(`/matches/${this.id()}`));
+      if (this.destroyed) return;
+      this.setScoreboard(sb, seq);
       this.offline.set(false);
     } catch (e) {
       if (!silent) this.toast.error(ApiError.from(e).fullMessage);
     }
   }
 
-  private setScoreboard(sb: Scoreboard): void {
+  /** Aplica un marcador solo si es del combate actual y más fresco que el último aplicado. */
+  private setScoreboard(sb: Scoreboard, seq: number): void {
     if (sb.match.id !== this.id()) return;
+    if (!this.seq.accept(seq)) return;
     this.sb.set(sb);
     this.anchor.set({ elapsed: sb.elapsed_seconds, running: sb.running, at: Date.now() });
   }
 
-  // --- Envío de eventos con reintentos ---
+  // --- Cola de eventos con reintentos ---
+  private restorePending(id: number): void {
+    const saved = loadPending(id);
+    if (!saved.length) return;
+    this.pending.update((q) => {
+      const have = new Set(q.map((p) => p.body.id));
+      return [...q, ...saved.filter((p) => !have.has(p.body.id))];
+    });
+    this.toast.show(`Se recuperaron ${saved.length} evento(s) sin enviar`);
+    this.flush();
+  }
+
   send(type: string, extra: Partial<EventIn> = {}): void {
     if (!this.sb()) return;
     const body: EventIn = { id: newId(), type, at: new Date().toISOString(), ...extra };
@@ -258,27 +289,62 @@ export class MesaPage {
   }
 
   private async flush(): Promise<void> {
-    if (this.sending) return;
-    this.sending = true;
+    if (this.sending() || this.destroyed || this.stuck() || this.authBlocked()) return;
+    this.sending.set(true);
     try {
-      while (this.pending().length) {
+      while (this.pending().length && !this.destroyed) {
         const p = this.pending()[0];
+        const seq = this.seq.next();
         try {
           const sb = await firstValueFrom(this.api.post<Scoreboard>(`/matches/${p.matchId}/events`, p.body));
+          if (this.destroyed) return;
           this.pending.update((q) => q.filter((x) => x !== p));
           this.offline.set(false);
-          if (p.matchId === this.id()) this.setScoreboard(sb);
+          if (p.matchId === this.id()) {
+            this.setScoreboard(sb, seq);
+            if (p.body.type === 'annul') {
+              const t = sb.events.find((x) => x.id === p.body.target_id);
+              this.toast.show(`Deshecho: ${t ? this.describe(t, sb) : 'evento'}`);
+            }
+            // Si la pantalla se abrió sin conexión, completa la carga (categoría, torneo).
+            if (this.loadError() || !this.category()) this.load(this.id());
+          }
         } catch (e) {
+          if (this.destroyed) return;
           const err = ApiError.from(e);
-          if (err.isNetwork || err.status >= 500) {
-            // Sin conexión: se reintenta el MISMO evento (mismo id) con backoff.
+          if (err.status === 409 && err.code === 'WARNINGS') {
+            // Combate cerrado (MATCH_FINISHED) u otra advertencia: se pide motivo y se reenvía el MISMO evento.
+            const reason = await this.dialog.warnings(err.warnings, err.message);
+            if (this.destroyed) return;
+            if (reason === null) {
+              this.pending.update((q) => q.filter((x) => x !== p));
+              this.toast.show(`${EVENT_LABEL[p.body.type] ?? p.body.type}: cancelado`);
+              continue;
+            }
+            p.body.override = { reason };
+            this.pending.update((q) => [...q]); // persiste el motivo
+            continue;
+          }
+          p.attempts++;
+          const decision = retryDecision(err, p.attempts);
+          if (decision === 'retry') {
+            // Se reintenta el MISMO evento (mismo id) con backoff.
             this.offline.set(true);
-            p.attempts++;
-            const delay = Math.min(15000, 1000 * 2 ** Math.min(p.attempts - 1, 4));
             this.retryTimer = setTimeout(() => {
               this.retryTimer = null;
               this.flush();
-            }, delay);
+            }, retryDelay(p.attempts));
+            return;
+          }
+          if (decision === 'stuck') {
+            this.offline.set(true);
+            this.stuck.set(p);
+            this.toast.error(`${EVENT_LABEL[p.body.type] ?? p.body.type}: el servidor falla (${err.fullMessage}). La cola queda detenida.`);
+            return;
+          }
+          if (decision === 'auth') {
+            // Sesión vencida: la cola queda guardada y se reanuda tras volver a ingresar.
+            this.authBlocked.set(true);
             return;
           }
           // Rechazo de negocio: se descarta ese evento y se informa.
@@ -288,7 +354,7 @@ export class MesaPage {
         }
       }
     } finally {
-      this.sending = false;
+      this.sending.set(false);
     }
   }
 
@@ -297,6 +363,28 @@ export class MesaPage {
       clearTimeout(this.retryTimer);
       this.retryTimer = null;
     }
+    const s = this.stuck();
+    if (s) {
+      s.attempts = 0;
+      this.stuck.set(null);
+    }
+    this.authBlocked.set(false);
+    this.flush();
+  }
+
+  /** Descarta el evento bloqueado (con confirmación) y sigue con el resto de la cola. */
+  async discardStuck(): Promise<void> {
+    const p = this.stuck();
+    if (!p) return;
+    const ok = await this.dialog.confirm({
+      title: 'Descartar este evento',
+      message: `Se descartará "${this.stuckText()}" y no quedará registrado en el combate. Los demás eventos pendientes se seguirán enviando.`,
+      danger: true,
+      confirmText: 'Descartar',
+    });
+    if (!ok) return;
+    this.pending.update((q) => q.filter((x) => x !== p));
+    this.stuck.set(null);
     this.flush();
   }
 
@@ -341,8 +429,8 @@ export class MesaPage {
       this.toast.show('No hay eventos para deshacer');
       return;
     }
+    // El aviso "Deshecho" se muestra cuando el servidor confirma la anulación (ver flush).
     this.send('annul', { target_id: t.id });
-    this.toast.show(`Deshecho: ${this.describe(t, this.sb()!)}`);
   }
 
   // --- Cierre ---
@@ -350,8 +438,9 @@ export class MesaPage {
     const s = this.sb();
     if (!s) return;
     const sug = s.suggestion;
+    // Sin sugerencia del servidor no se preselecciona ganador: el operador debe elegir.
     this.finishForm = {
-      winner: (this.finished() ? s.winner : sug.winner) ?? (s.score.aka >= s.score.ao ? 'aka' : 'ao'),
+      winner: (this.finished() ? s.winner : sug.winner) ?? null,
       method: (this.finished() ? s.method : sug.method) ?? (sug.needs === 'hantei' ? 'hantei' : 'points'),
       reason: '',
       time_over: this.timeOver(),
@@ -366,6 +455,10 @@ export class MesaPage {
       return;
     }
     const f = this.finishForm;
+    if (!f.winner) {
+      this.toast.warn('Elige el ganador antes de confirmar.');
+      return;
+    }
     const body = {
       id: this.finishId,
       at: new Date().toISOString(),
@@ -375,6 +468,7 @@ export class MesaPage {
       time_over: f.time_over,
     };
     this.finishing.set(true);
+    const seq = this.seq.next();
     const res = await this.mut.run<FinishOut>(
       (override) => this.api.post<FinishOut>(`/matches/${this.id()}/finish`, override ? { ...body, override } : body),
       { success: 'Combate cerrado', onConflict: () => this.reload() },
@@ -383,7 +477,7 @@ export class MesaPage {
     if (!res) return;
     this.finishOpen.set(false);
     this.unlocked.set(false);
-    this.setScoreboard(res.scoreboard);
+    this.setScoreboard(res.scoreboard, seq);
     if (res.affected_matches.length) {
       await this.dialog.alert(
         'Combates siguientes afectados',
@@ -404,16 +498,20 @@ export class MesaPage {
   });
 
   async submitFlags(): Promise<void> {
+    if (this.flagsBusy()) return;
     const body = {
       votes: this.votes(),
       head_judge_vote: this.headVote(),
-      event_id: newId(),
+      event_id: this.flagsId,
       at: new Date().toISOString(),
     };
+    this.flagsBusy.set(true);
+    // mut.post reenvía el MISMO cuerpo con override={reason} si el servidor responde 409 WARNINGS.
     const res = await this.mut.post<{ winner: Color | null; needs_head_judge: boolean; affected?: string[] }>(
       `/matches/${this.id()}/flags`,
       body,
     );
+    this.flagsBusy.set(false);
     if (!res) return;
     if (res.needs_head_judge) {
       this.needsHead.set(true);
@@ -421,6 +519,7 @@ export class MesaPage {
       return;
     }
     this.needsHead.set(false);
+    this.flagsId = newId(); // decisión registrada: la próxima es otro evento
     this.toast.ok(`Gana ${res.winner === 'aka' ? 'AKA' : 'AO'} por banderas`);
     await this.reload();
     if (res.affected?.length) {

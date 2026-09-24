@@ -91,6 +91,9 @@ import { TournamentContext } from '../tournament-context';
                 @if (mergeTargets().has(c.id)) {
                   <button class="btn sm" (click)="unmerge(c)" title="Deshacer fusiones hacia esta categoría">Separar</button>
                 }
+                @if (c.status === 'finished') {
+                  <button class="btn sm" (click)="reopen(c)" title="Reabrir una categoría finalizada (con motivo)">Reabrir categoría</button>
+                }
                 @if (c.status !== 'cancelled' && c.status !== 'merged') {
                   <button class="btn sm ghost" (click)="cancel(c)">Cancelar</button>
                 }
@@ -366,6 +369,19 @@ export class CategoriesTab {
     });
     if (!reason) return;
     const res = await this.mut.post<Category>(`/categories/${c.id}/cancel`, { reason }, { success: 'Categoría cancelada' });
+    if (res) this.reload();
+  }
+
+  async reopen(c: Category): Promise<void> {
+    const reason = await this.dialog.prompt({
+      title: 'Reabrir categoría',
+      message: `${c.name}: la categoría vuelve a "En curso" para corregir resultados. El torneo no se reabre.`,
+      label: 'Motivo (obligatorio)',
+      minLength: 3,
+      confirmText: 'Reabrir',
+    });
+    if (!reason) return;
+    const res = await this.mut.post(`/categories/${c.id}/reopen`, { reason }, { success: 'Categoría reabierta' });
     if (res) this.reload();
   }
 

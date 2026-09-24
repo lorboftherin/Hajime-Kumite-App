@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import { DialogService } from '../core/dialog.service';
 import { GRADES, todayLima } from '../core/format';
 import { Dojo, Duplicate, Person } from '../core/models';
@@ -19,7 +20,9 @@ import { MutationService } from '../core/mutation.service';
       <div class="grid-2">
         <label class="field"><span>Nombres *</span><input name="fn" [(ngModel)]="f.first_names" required /></label>
         <label class="field"><span>Apellidos *</span><input name="ln" [(ngModel)]="f.last_names" required /></label>
-        <label class="field"><span>Fecha de nacimiento</span><input type="date" name="bd" [(ngModel)]="f.birth_date" /></label>
+        @if (auth.canViewDocuments()) {
+          <label class="field"><span>Fecha de nacimiento</span><input type="date" name="bd" [(ngModel)]="f.birth_date" /></label>
+        }
         <label class="field">
           <span>Sexo *</span>
           <select name="sex" [(ngModel)]="f.sex">
@@ -27,6 +30,7 @@ import { MutationService } from '../core/mutation.service';
             <option value="F">Femenino</option>
           </select>
         </label>
+        @if (auth.canViewDocuments()) {
         <label class="field">
           <span>Documento</span>
           <div class="row nowrap">
@@ -39,6 +43,7 @@ import { MutationService } from '../core/mutation.service';
             <input class="grow" name="dn" [(ngModel)]="f.doc_number" placeholder="Número (opcional)" />
           </div>
         </label>
+        }
         <label class="field">
           <span>Dojo</span>
           <select name="dojo" [(ngModel)]="f.dojo_id" (ngModelChange)="f.branch_id = null; dojoSel.set($event)">
@@ -118,6 +123,7 @@ import { MutationService } from '../core/mutation.service';
 })
 export class PersonForm implements OnInit {
   private api = inject(ApiService);
+  readonly auth = inject(AuthService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
 
