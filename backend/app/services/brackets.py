@@ -712,6 +712,14 @@ def scoreboard(db: Session, m: Match) -> s.ScoreboardOut:
         winner=sb.winner,
         method=sb.method,
         suggestion={"winner": d.winner, "method": d.method, "needs": d.needs, "reason": d.reason},
+        # Qué sugeriría el marcador si el tiempo terminara ahora (la mesa puede
+        # marcar «Tiempo cumplido» antes de que el reloj de la app llegue a cero).
+        suggestion_at_time_end={
+            "winner": (e := suggest_decision(sb, rules, True)).winner,
+            "method": e.method,
+            "needs": e.needs,
+            "reason": e.reason,
+        },
         events=[s.EventOut.model_validate(e) for e in rows],
         annulled_event_ids=sb.annulled_event_ids,
         aka=parts.get(m.aka_registration_id) if m.aka_registration_id else None,

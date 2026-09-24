@@ -179,3 +179,15 @@ def test_tatami_numbering_and_scoresheet(client):
     # La numeración es estable: el siguiente combate conserva su número
     assert q2["queue"][0]["number"] != "T1-001" and q2["queue"][0]["number"].startswith("T1-")
     assert api.raw("GET", f"/categories/{c['id']}/bracket.pdf").content.startswith(b"%PDF")
+
+
+def test_scoreboard_suggests_winner_if_time_ended_now(client):
+    api = client
+    dojos = [api.dojo("Uno"), api.dojo("Dos")]
+    t = setup_tournament(api)
+    c, _ = cat_with(api, t["id"], dojos, 2)
+    m = api.post(f"/categories/{c['id']}/bracket", {"seed": 1})["matches"][0]
+    api.event(m["id"], "point", "aka", 2)
+    sb = api.event(m["id"], "point", "ao", 1)
+    assert sb["suggestion"]["winner"] is None  # el reloj no terminó
+    assert sb["suggestion_at_time_end"] == {"winner": "aka", "method": "points", "needs": None, "reason": None}

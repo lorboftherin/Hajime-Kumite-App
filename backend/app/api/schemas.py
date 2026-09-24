@@ -581,6 +581,7 @@ class ScoreboardOut(BaseModel):
     winner: str | None
     method: str | None
     suggestion: dict[str, Any]
+    suggestion_at_time_end: dict[str, Any] = {}
     events: list[EventOut]
     annulled_event_ids: list[str]
     aka: ParticipantOut | None

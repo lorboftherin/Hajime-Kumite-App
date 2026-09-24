@@ -7212,6 +7212,12 @@
       "type": "object",
       "title": "Suggestion"
      },
+     "suggestion_at_time_end": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Suggestion At Time End",
+      "default": {}
+     },
      "events": {
       "items": {
        "$ref": "#/components/schemas/EventOut"
