@@ -1,0 +1,54 @@
+{
+  "laptop": {
+    "file": "03-mesa-kumite.png",
+    "alt": "Mesa de kumite en laptop, a mitad de combate",
+    "pins": [
+      {"x": 25, "y": 3.2, "t": "Qué combate es", "d": "Categoría, código del combate (R2‑3) y estado. Coincide con la llave y la planilla en papel."},
+      {"x": 92.6, "y": 3.2, "t": "Conexión", "d": "«En línea» cuando todo llega al servidor. Sin Wi‑Fi muestra cuántos toques esperan y los envía solos al volver."},
+      {"x": 4.5, "y": 18.5, "t": "AKA a la izquierda", "d": "Nombre y dojo del competidor rojo. AO siempre a la derecha: nada cambia de lugar durante el combate."},
+      {"x": 11.5, "y": 48, "t": "Marcador", "d": "Cifras enormes, legibles a varios metros. Se calcula a partir de los eventos registrados."},
+      {"x": 29.5, "y": 31, "t": "Senshu 先", "d": "Disco dorado junto al marcador de quien anotó primero sin respuesta. Se retira desde «Más»."},
+      {"x": 64.3, "y": 70, "t": "Sanciones", "d": "Escalera Chui 1 → Hansoku. Toca la marca del nivel que indica el árbitro; se llena en tinta."},
+      {"x": 3.2, "y": 77, "t": "Puntos", "d": "+1 Yuko, +2 Waza‑ari, +3 Ippon. Botones grandes y separados para no tocar el equivocado."},
+      {"x": 29, "y": 12.4, "t": "Más", "d": "Acciones poco frecuentes: hantei, kiken, shikkaku, walkover y cancelar senshu. Todas piden confirmación."},
+      {"x": 39.5, "y": 12, "t": "Reloj", "d": "Tiempo restante de un total de 1:30. YAME en pausa; en juego se ve en verde. En tiempo efectivo se detiene solo al marcar un punto."},
+      {"x": 39.5, "y": 37.4, "t": "HAJIME / YAME", "d": "El botón más visible del centro: inicia y detiene el reloj."},
+      {"x": 38.8, "y": 46.3, "t": "Ajuste de tiempo", "d": "Corrige el reloj de a 1 o 10 segundos si la mesa oficial difiere."},
+      {"x": 39.5, "y": 76.5, "t": "Deshacer último", "d": "Siempre visible y dice qué va a deshacer. No borra: agrega una anulación que queda en el historial."},
+      {"x": 39.5, "y": 85.8, "t": "Finalizar combate", "d": "Abre la confirmación del ganador con la sugerencia del marcador."},
+      {"x": 5, "y": 94.5, "t": "Historial de eventos", "d": "Cada toque con su hora. Los anulados aparecen tachados; los que esperan conexión, como «pendiente»."}
+    ]
+  },
+  "tablet": {
+    "file": "03b-mesa-tablet.png",
+    "alt": "Mesa de kumite en una tablet horizontal de 1024 × 768",
+    "pins": [
+      {"x": 30, "y": 3.4, "t": "Misma mesa en tablet", "d": "La disposición se mantiene en una tablet horizontal; es el dispositivo pensado para la mesa."},
+      {"x": 12, "y": 48, "t": "Marcador proporcional", "d": "Las cifras se ajustan al espacio disponible del panel."},
+      {"x": 3.2, "y": 77, "t": "Botones al alcance", "d": "Los puntos quedan abajo, cerca del pulgar, con al menos 64 px de alto."},
+      {"x": 65.5, "y": 68.5, "t": "Sanciones tocables", "d": "Cada marca es un blanco amplio; el nivel alcanzado se destaca con un halo."},
+      {"x": 39, "y": 73.5, "t": "Deshacer a mano", "d": "Queda en el centro, entre ambos lados, para corregir de inmediato."}
+    ]
+  },
+  "cierre": {
+    "file": "03c-mesa-cierre.png",
+    "alt": "Diálogo de confirmación del ganador",
+    "pins": [
+      {"x": 28.6, "y": 19.5, "t": "Confirmar ganador", "d": "Se abre al pulsar «Finalizar combate», con el marcador final arriba."},
+      {"x": 29.5, "y": 34.5, "t": "Sugerencia", "d": "El marcador sugiere el ganador y el método. Si el ganador elegido no coincide, la app pide un motivo."},
+      {"x": 29.5, "y": 42.5, "t": "Elegir lado", "d": "Tarjetas grandes de AKA y AO. El elegido recibe el sello 勝 (victoria)."},
+      {"x": 62, "y": 63, "t": "Tiempo cumplido", "d": "Indica si el combate terminó por tiempo; cambia la sugerencia cuando hay empate o diferencia."},
+      {"x": 47, "y": 82, "t": "Confirmar", "d": "Toma el color del ganador. Tras cerrar, la llave avanza sola y la mesa ofrece el siguiente combate."}
+    ]
+  },
+  "kata": {
+    "file": "03d-kata-banderas.png",
+    "alt": "Mesa de kata por banderas con tres jueces",
+    "pins": [
+      {"x": 2.4, "y": 76.5, "t": "Voto de cada juez", "d": "Una tarjeta por juez: AKA, AO o sin voto. Con 3 o 5 jueces según la categoría."},
+      {"x": 11.5, "y": 48, "t": "Conteo de banderas", "d": "Cuántos jueces votaron por cada lado, en grande."},
+      {"x": 41.5, "y": 12, "t": "Vista previa", "d": "Muestra quién gana y por cuánto antes de registrar. Gana quien reúne la mayoría del panel."},
+      {"x": 39.5, "y": 66, "t": "Registrar decisión", "d": "Cierra el combate. Si no hay mayoría, pide el voto del juez principal."}
+    ]
+  }
+}

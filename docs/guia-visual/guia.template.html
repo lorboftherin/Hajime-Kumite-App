@@ -1,0 +1,541 @@
+<title>Hajime, guía de uso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+  :root {
+    --washi: #F5F0E6;
+    --kinu: #FBF8F2;
+    --sumi: #1E1C1A;
+    --sumi-2: #4A463F;
+    --nezumi-ink: #6E6860;
+    --kasumi: #E3DBCB;
+    --shu: #B8322A;
+    --shu-soft: #F4DED8;
+    --ai: #24477A;
+    --ai-soft: #DCE4EF;
+    --matcha: #5E7A3A;
+    --matcha-soft: #E3EAD6;
+    --yamabuki: #8A6414;
+    --yamabuki-soft: #F3E6C8;
+    --code-bg: #1E1C1A;
+    --code-fg: #EDE7DA;
+    --frame: #E9E2D4;
+    --shadow: 0 1px 0 rgba(30, 28, 26, .04), 0 12px 32px -18px rgba(30, 28, 26, .35);
+    --font-display: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif;
+    --font-ui: 'Zen Kaku Gothic New', 'Hiragino Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --washi: #141311; --kinu: #1D1B19; --sumi: #EDE7DA; --sumi-2: #C9C1B3; --nezumi-ink: #A39B8E;
+      --kasumi: #34302B; --shu: #E0655B; --shu-soft: #3A201D; --ai: #7FA3D6; --ai-soft: #1C2636;
+      --matcha: #9DB86F; --matcha-soft: #232A1A; --yamabuki: #D9AE55; --yamabuki-soft: #2E2616;
+      --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724;
+      --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 16px 36px -20px rgba(0, 0, 0, .8);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --washi: #141311; --kinu: #1D1B19; --sumi: #EDE7DA; --sumi-2: #C9C1B3; --nezumi-ink: #A39B8E;
+    --kasumi: #34302B; --shu: #E0655B; --shu-soft: #3A201D; --ai: #7FA3D6; --ai-soft: #1C2636;
+    --matcha: #9DB86F; --matcha-soft: #232A1A; --yamabuki: #D9AE55; --yamabuki-soft: #2E2616;
+    --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 16px 36px -20px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--washi);
+    color: var(--sumi);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 1.7;
+    padding-inline: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.25; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  a { color: var(--ai); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--ai); outline-offset: 3px; border-radius: 4px; }
+  code, kbd { font-family: var(--mono); font-size: .86em; }
+  .wrap { max-width: 1140px; margin: 0 auto; }
+
+  /* ---------- Cabecera ---------- */
+  .top {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding-block: 22px; border-bottom: 1px solid var(--kasumi);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+  .brand svg { width: 34px; height: 34px; color: var(--sumi); }
+  .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; }
+  .top nav a { color: var(--sumi-2); text-decoration: none; display: inline-flex; gap: 6px; align-items: baseline; }
+  .top nav a span { font-family: var(--font-display); color: var(--nezumi-ink); font-size: 13px; }
+  .top nav a:hover { color: var(--sumi); }
+
+  /* ---------- Portada ---------- */
+  .hero {
+    position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 48px; align-items: center; padding-block: 64px 56px;
+  }
+  .hero .enso-bg {
+    position: absolute; left: -60px; top: 10px; width: 420px; height: 420px;
+    color: var(--sumi); opacity: .045; pointer-events: none;
+  }
+  .eyebrow { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--nezumi-ink); font-weight: 500; }
+  .hero h1 { font-size: clamp(34px, 5vw, 54px); margin-top: 14px; }
+  .hero h1 em { font-style: normal; color: var(--shu); }
+  .hero .lead { margin-top: 18px; font-size: 18px; color: var(--sumi-2); max-width: 34em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500;
+    padding: 5px 12px; border-radius: 999px; border: 1px solid var(--kasumi); background: var(--kinu); color: var(--sumi-2);
+  }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--matcha); }
+  .chip.pending i { background: transparent; border: 1.5px solid var(--nezumi-ink); }
+  .hero-shot { position: relative; }
+
+  /* ---------- Marco de captura ---------- */
+  .frame {
+    border-radius: 12px; overflow: hidden; background: var(--frame); border: 1px solid var(--kasumi);
+    box-shadow: var(--shadow); cursor: zoom-in; display: block; padding: 0; width: 100%; text-align: left;
+    transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  }
+  .frame:hover { transform: translateY(-2px); }
+  .frame .bar { display: flex; gap: 6px; padding: 9px 12px; background: var(--frame); }
+  .frame .bar b { width: 9px; height: 9px; border-radius: 50%; background: var(--kasumi); }
+  .frame img { display: block; width: 100%; height: auto; }
+  /* Las capturas de página completa se muestran en formato pantalla; al ampliar se ve entera. */
+  .step .frame img, .gallery .frame img { aspect-ratio: 1366 / 820; object-fit: cover; object-position: top; }
+  .frame .more { display: block; padding: 7px 12px; font-size: 12px; color: var(--nezumi-ink); background: var(--frame); text-align: center; }
+  .caption { margin-top: 10px; font-size: 13px; color: var(--nezumi-ink); }
+
+  /* ---------- Secciones ---------- */
+  section { padding-block: 72px; border-top: 1px solid var(--kasumi); }
+  .sec-head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 20px; margin-bottom: 36px; }
+  .kanji { font-family: var(--font-display); font-size: 40px; line-height: 1; color: var(--shu); writing-mode: vertical-rl; letter-spacing: .08em; }
+  .sec-head h2 { font-size: clamp(26px, 3.4vw, 36px); }
+  .sec-head p { margin-top: 10px; color: var(--sumi-2); max-width: 44em; }
+
+  /* ---------- Instalación ---------- */
+  .install { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .card { background: var(--kinu); border: 1px solid var(--kasumi); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .card h3 { font-size: 20px; }
+  .card .tag { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--matcha); }
+  .card p, .card li { color: var(--sumi-2); font-size: 15px; }
+  .card ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  .cmd { position: relative; background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 14px 14px 14px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+  .copy {
+    position: absolute; top: 8px; right: 8px; font: 500 12px var(--font-ui); color: var(--code-fg);
+    background: rgba(237, 231, 218, .1); border: 1px solid rgba(237, 231, 218, .2); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  }
+  .copy:hover { background: rgba(237, 231, 218, .2); }
+  .login-note { margin-top: 20px; display: flex; gap: 14px; align-items: center; padding: 14px 18px; border-radius: 10px; background: var(--ai-soft); color: var(--sumi); font-size: 15px; }
+
+  /* ---------- Recorrido ---------- */
+  .steps { display: grid; gap: 64px; }
+  .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; align-items: start; }
+  .step:nth-child(even) .step-text { order: 2; }
+  .step-num { display: flex; align-items: center; gap: 12px; }
+  .step-num b {
+    width: 34px; height: 34px; display: grid; place-items: center; border-radius: 4px;
+    background: var(--shu); color: #FFF; font-family: var(--font-display); font-size: 17px; transform: rotate(-3deg);
+  }
+  .step-num span { font-size: 13px; font-weight: 500; color: var(--nezumi-ink); letter-spacing: .06em; text-transform: uppercase; }
+  .step h3 { font-size: 26px; margin-top: 14px; }
+  .step .desc { margin-top: 12px; color: var(--sumi-2); }
+  .how { margin-top: 18px; display: grid; gap: 10px; padding: 0; list-style: none; }
+  .how li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; font-size: 15px; color: var(--sumi-2); }
+  .how li::before { content: ''; width: 7px; height: 7px; margin-top: 10px; border-radius: 50%; background: var(--sumi); opacity: .55; }
+  .who { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .role { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .role.admin { background: var(--shu-soft); color: var(--shu); }
+  .role.org { background: var(--ai-soft); color: var(--ai); }
+  .role.op { background: var(--matcha-soft); color: var(--matcha); }
+  .tip { margin-top: 18px; padding: 12px 16px; border-left: 3px solid var(--yamabuki); background: var(--yamabuki-soft); border-radius: 0 8px 8px 0; font-size: 14px; color: var(--sumi); }
+  .tip b { color: var(--yamabuki); }
+
+  /* ---------- Mesa ---------- */
+  .mesa-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--kasumi); margin-bottom: 22px; }
+  .mesa-tabs button {
+    font: 500 15px var(--font-ui); color: var(--nezumi-ink); background: none; border: 0; padding: 10px 14px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .mesa-tabs button[aria-selected="true"] { color: var(--sumi); border-bottom-color: var(--sumi); }
+  .mesa-grid { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 32px; align-items: start; }
+  .annot { position: relative; }
+  .pin {
+    position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%;
+    display: grid; place-items: center; font: 700 13px var(--font-ui); color: #1E1C1A; background: #F5F0E6;
+    border: 2px solid #1E1C1A; box-shadow: 0 0 0 4px rgba(245, 240, 230, .35); cursor: pointer; z-index: 2;
+    transition: transform .2s var(--ease);
+  }
+  .pin:hover, .pin.on { transform: scale(1.15); background: #C9A24B; }
+  .legend { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; counter-reset: n; }
+  .legend li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: default; transition: background .2s var(--ease); }
+  .legend li.on { background: var(--kinu); box-shadow: inset 0 0 0 1px var(--kasumi); }
+  .legend li b { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--sumi); font-size: 12px; }
+  .legend li strong { display: block; font-size: 15px; }
+  .legend li span { font-size: 14px; color: var(--sumi-2); }
+
+  /* ---------- Roles / estado ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--kasumi); border-radius: 12px; background: var(--kinu); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 640px; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--kasumi); vertical-align: top; }
+  th { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nezumi-ink); }
+  tr:last-child td { border-bottom: 0; }
+  td .yes { color: var(--matcha); font-weight: 700; }
+  td .no { color: var(--nezumi-ink); }
+  .status { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .status i { width: 8px; height: 8px; border-radius: 50%; }
+  .status.done i { background: var(--matcha); }
+  .status.done { color: var(--matcha); }
+  .status.todo i { border: 1.5px solid var(--nezumi-ink); }
+  .status.todo { color: var(--nezumi-ink); }
+
+  /* ---------- Guion ---------- */
+  .checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .check { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 16px; background: var(--kinu); border: 1px solid var(--kasumi); border-radius: 10px; cursor: pointer; }
+  .check input { width: 20px; height: 20px; margin: 3px 0 0; accent-color: var(--matcha); }
+  .check strong { display: block; font-size: 15px; }
+  .check span { font-size: 14px; color: var(--sumi-2); }
+  .check:has(input:checked) { background: var(--matcha-soft); border-color: transparent; }
+  .progress { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; font-size: 14px; color: var(--sumi-2); }
+  .progress .track { flex: 1; max-width: 320px; height: 6px; border-radius: 3px; background: var(--kasumi); overflow: hidden; }
+  .progress .fill { height: 100%; width: 0; background: var(--matcha); transition: width .4s var(--ease); }
+
+  /* ---------- Galería ---------- */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 22px; }
+  .gallery figure { margin: 0; }
+  .gallery .frame .bar { display: none; }
+  .gallery figcaption { margin-top: 8px; font-size: 13px; color: var(--sumi-2); }
+  .gallery figcaption b { display: block; color: var(--sumi); font-size: 14px; }
+
+  footer { padding-block: 40px 56px; border-top: 1px solid var(--kasumi); display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; color: var(--nezumi-ink); font-size: 14px; }
+  footer .brand { font-size: 16px; color: var(--sumi); }
+  footer .brand svg { width: 22px; height: 22px; }
+
+  /* ---------- Lightbox ---------- */
+  dialog.lb { border: 0; padding: 0; background: transparent; max-width: min(96vw, 1500px); max-height: 94vh; }
+  dialog.lb::backdrop { background: rgba(14, 13, 12, .82); }
+  dialog.lb img { display: block; max-width: min(96vw, 1500px); max-height: 86vh; width: auto; height: auto; border-radius: 10px; }
+  dialog.lb p { color: #EDE7DA; font-size: 14px; margin-top: 10px; text-align: center; }
+  dialog.lb button { position: absolute; top: 10px; right: 10px; font: 700 14px var(--font-ui); background: #F5F0E6; color: #1E1C1A; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: minmax(0, 1fr); padding-block: 40px; gap: 32px; }
+    .install { grid-template-columns: minmax(0, 1fr); }
+    .step { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .step:nth-child(even) .step-text { order: 0; }
+    .mesa-grid { grid-template-columns: minmax(0, 1fr); }
+    .checklist { grid-template-columns: minmax(0, 1fr); }
+    .top nav { display: none; }
+    section { padding-block: 52px; }
+  }
+  @media (max-width: 520px) {
+    .sec-head { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .kanji { writing-mode: horizontal-tb; font-size: 30px; }
+    .pin { width: 22px; height: 22px; margin: -11px 0 0 -11px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">{{ENSO}}<span>Hajime</span></div>
+    <nav aria-label="Secciones">
+      <a href="#empezar"><span>始</span>Empezar</a>
+      <a href="#recorrido"><span>道</span>Recorrido</a>
+      <a href="#mesa"><span>組手</span>Mesa</a>
+      <a href="#roles"><span>役</span>Roles</a>
+      <a href="#estado"><span>状</span>Estado</a>
+      <a href="#guion"><span>試</span>Guion mock</a>
+      <a href="#galeria"><span>絵</span>Pantallas</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="enso-bg" aria-hidden="true">{{ENSO}}</div>
+    <div>
+      <div class="eyebrow">Plataforma de torneos de karate · Perú</div>
+      <h1>Organiza el torneo con calma. Registra cada combate con <em>respeto</em>.</h1>
+      <p class="lead">Hajime reemplaza las hojas sueltas del torneo: inscripciones, llaves, mesa de kumite y kata, resultados y medallero. Nace para probarse en <strong>Shadow Mode</strong>: el torneo sigue en papel y la app registra lo mismo en paralelo, para comparar al final.</p>
+      <div class="chips">
+        <span class="chip"><i></i>MVP‑1 listo</span>
+        <span class="chip"><i></i>MVP‑2 listo</span>
+        <span class="chip pending"><i></i>MVP‑3 en parte</span>
+        <span class="chip"><i></i>318+ pruebas automáticas</span>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <button class="frame" type="button" data-full="{{IMG:03-mesa-kumite.png}}" data-cap="Mesa de kumite durante un combate">
+        <div class="bar"><b></b><b></b><b></b></div>
+        <img src="{{IMG:03-mesa-kumite.png}}" alt="Mesa de kumite: AKA a la izquierda, reloj al centro, AO a la derecha" loading="eager">
+      </button>
+      <p class="caption">La mesa de kumite, la pantalla que se usa junto al tatami.</p>
+    </div>
+  </div>
+
+  <!-- ================= Empezar ================= -->
+  <section id="empezar">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">始</div>
+      <div>
+        <h2>Empezar en 5 minutos</h2>
+        <p>La app se instala como un solo contenedor: la interfaz y los datos en el mismo lugar. Elige cómo quieres abrirla.</p>
+      </div>
+    </div>
+    <div class="install">
+      <div class="card">
+        <span class="tag">Recomendado para el mock</span>
+        <h3>En tu laptop</h3>
+        <p>Con Docker Desktop instalado. Las tablets se conectan por Wi‑Fi a la laptop.</p>
+        <div class="cmd"><button class="copy" type="button">Copiar</button>git clone https://github.com/lorboftherin/Hajime-Kumite-App.git
+cd Hajime-Kumite-App
+git checkout claude/gracious-feynman-qtapgx
+HAJIME_ADMIN_PASSWORD='tu-clave' \
+  docker compose up -d --build</div>
+        <p>Abre <code>http://localhost:8000</code>. Desde una tablet: <code>http://&lt;IP-de-la-laptop&gt;:8000</code>.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Sin instalar nada</span>
+        <h3>En GitHub Codespaces</h3>
+        <ol>
+          <li>En el repositorio, cambia a la rama <code>claude/gracious-feynman-qtapgx</code>.</li>
+          <li><strong>Code → Codespaces → Create codespace</strong>.</li>
+          <li>En la terminal, ejecuta el mismo <code>docker compose</code> de la izquierda.</li>
+          <li>Pestaña <strong>Ports</strong>: abre el enlace del puerto 8000.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <span class="tag">Imagen lista</span>
+        <h3>Sin compilar</h3>
+        <p>El CI publica la imagen en cada cambio. Si el repositorio es privado, primero <code>docker login ghcr.io</code>.</p>
+        <div class="cmd"><button class="copy" type="button">Copiar</button>docker run -d -p 8000:8000 \
+  -e HAJIME_ADMIN_PASSWORD='tu-clave' \
+  -v hajime-data:/data \
+  ghcr.io/lorboftherin/hajime-kumite-app:claude-gracious-feynman-qtapgx</div>
+      </div>
+    </div>
+    <div class="login-note">
+      <strong>Primer ingreso:</strong> usuario <code>admin</code> con la clave que pusiste. La plantilla de categorías se carga sola y los datos se conservan al actualizar la app.
+    </div>
+  </section>
+
+  <!-- ================= Recorrido ================= -->
+  <section id="recorrido">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">道</div>
+      <div>
+        <h2>El recorrido de un torneo</h2>
+        <p>Así se usa de principio a fin, en el orden en que ocurre un torneo real. Cada paso muestra la pantalla tal como se ve hoy; toca una imagen para ampliarla.</p>
+      </div>
+    </div>
+    <div class="steps">
+      {{STEPS}}
+    </div>
+  </section>
+
+  <!-- ================= Mesa ================= -->
+  <section id="mesa">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">組手</div>
+      <div>
+        <h2>La mesa de kumite, pieza por pieza</h2>
+        <p>Cada dato está siempre en el mismo lugar para leerlo de un vistazo, aun con el ruido del coliseo. Pasa el cursor o toca los números.</p>
+      </div>
+    </div>
+    <div class="mesa-tabs" role="tablist" aria-label="Vistas de la mesa">
+      <button role="tab" type="button" aria-selected="true" data-view="laptop">Laptop</button>
+      <button role="tab" type="button" aria-selected="false" data-view="tablet">Tablet</button>
+      <button role="tab" type="button" aria-selected="false" data-view="cierre">Cierre del combate</button>
+      <button role="tab" type="button" aria-selected="false" data-view="kata">Kata por banderas</button>
+    </div>
+    <div class="mesa-grid">
+      <div class="annot" id="annot">
+        <button class="frame" type="button" id="mesa-frame" data-full="{{IMG:03-mesa-kumite.png}}" data-cap="Mesa de kumite">
+          <img id="mesa-img" src="{{IMG:03-mesa-kumite.png}}" alt="Mesa de kumite con anotaciones">
+        </button>
+      </div>
+      <ol class="legend" id="legend"></ol>
+    </div>
+  </section>
+
+  <!-- ================= Roles ================= -->
+  <section id="roles">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">役</div>
+      <div>
+        <h2>Quién puede hacer qué</h2>
+        <p>Cada persona del equipo entra con su propia cuenta. El Admin crea las cuentas (<em>Usuarios</em>) y asigna el rol en la ficha de la persona (<em>Personas → Roles</em>). Al primer ingreso cada uno cambia su contraseña.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Acción</th><th><span class="role admin">Admin</span></th><th><span class="role org">Organizador</span></th><th><span class="role op">Operador de mesa</span></th></tr></thead>
+        <tbody>
+          <tr><td>Crear torneos, reabrir un torneo cerrado</td><td class="yes">Sí</td><td>Solo con rol global</td><td class="no">No</td></tr>
+          <tr><td>Inscribir, importar Excel, fusionar categorías, generar llaves</td><td class="yes">Sí</td><td class="yes">Sí, en su torneo</td><td class="no">No</td></tr>
+          <tr><td>Operar la mesa (puntos, sanciones, cierre, banderas, notas)</td><td class="yes">Sí</td><td class="yes">Sí</td><td class="yes">Sí, en su torneo</td></tr>
+          <tr><td>Ver DNI y fecha de nacimiento</td><td class="yes">Sí</td><td class="yes">Sí</td><td class="no">No (Ley 29733)</td></tr>
+          <tr><td>Fusionar personas duplicadas, anonimizar, gestionar usuarios</td><td class="yes">Sí</td><td class="no">No</td><td class="no">No</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= Estado ================= -->
+  <section id="estado">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">状</div>
+      <div>
+        <h2>Qué está construido</h2>
+        <p>Según los incrementos del documento maestro (sección 5).</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Incremento</th><th>Contenido</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td><strong>MVP‑1</strong></td><td>Torneos, dojos, personas con detección y fusión de duplicados, plantilla de categorías, inscripciones e importación Excel, fusión de categorías, llaves con separación por dojo (editables, versionadas, imprimibles), mesa de kumite, resultados.</td><td><span class="status done"><i></i>Listo</span></td></tr>
+          <tr><td><strong>MVP‑2</strong></td><td>Kata por banderas y por puntuación, final directa, round robin, terceros lugares configurables (dos bronces, combate por el 3.º, repechaje), medallero por dojo, cierre y reapertura auditados, reporte de Shadow Mode.</td><td><span class="status done"><i></i>Listo</span></td></tr>
+          <tr><td><strong>MVP‑3</strong></td><td>Historial deportivo de competidor y dojo.</td><td><span class="status done"><i></i>Listo</span></td></tr>
+          <tr><td><strong>MVP‑3</strong></td><td>Equipos de kata y kumite, registro de árbitros.</td><td><span class="status todo"><i></i>Pendiente</span></td></tr>
+          <tr><td><strong>Extras</strong></td><td>Planilla de mesa imprimible con numeración T1‑001, roles y protección de datos de menores, anonimización, cambio de contraseña, tema claro y oscuro, funciona sin internet en el coliseo.</td><td><span class="status done"><i></i>Listo</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= Guion ================= -->
+  <section id="guion">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">試</div>
+      <div>
+        <h2>Guion del torneo mock</h2>
+        <p>Los casos difíciles de la sección 27, para provocar a propósito durante el entrenamiento. Marca cada uno al comprobarlo; las marcas quedan guardadas en este navegador.</p>
+      </div>
+    </div>
+    <div class="progress"><div class="track"><div class="fill" id="fill"></div></div><span id="count">0 de 11</span></div>
+    <div class="checklist" id="checklist"></div>
+  </section>
+
+  <!-- ================= Galería ================= -->
+  <section id="galeria">
+    <div class="sec-head">
+      <div class="kanji" aria-hidden="true">絵</div>
+      <div>
+        <h2>Todas las pantallas</h2>
+        <p>Capturas tomadas de la app funcionando, con datos ficticios.</p>
+      </div>
+    </div>
+    <div class="gallery">
+      {{GALLERY}}
+    </div>
+  </section>
+
+  <footer>
+    <div class="brand">{{ENSO}}<span>Hajime</span></div>
+    <span>Código: github.com/lorboftherin/Hajime-Kumite-App · rama claude/gracious-feynman-qtapgx</span>
+  </footer>
+</div>
+
+<dialog class="lb" id="lb" aria-label="Captura ampliada">
+  <button type="button" id="lb-close">Cerrar</button>
+  <img id="lb-img" alt="">
+  <p id="lb-cap"></p>
+</dialog>
+
+<script>
+(() => {
+  // --- Lightbox ---
+  const lb = document.getElementById('lb');
+  const lbImg = document.getElementById('lb-img');
+  const lbCap = document.getElementById('lb-cap');
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('.frame');
+    if (!f || e.target.closest('.pin')) return;
+    lbImg.src = f.dataset.full; lbImg.alt = f.dataset.cap || ''; lbCap.textContent = f.dataset.cap || '';
+    lb.showModal();
+  });
+  document.getElementById('lb-close').addEventListener('click', () => lb.close());
+  lb.addEventListener('click', (e) => { if (e.target === lb) lb.close(); });
+
+  // --- Copiar comandos ---
+  document.querySelectorAll('.copy').forEach((b) => b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const text = b.parentElement.textContent.replace(b.textContent, '').trim();
+    try { await navigator.clipboard.writeText(text); b.textContent = 'Copiado'; }
+    catch { const r = document.createRange(); r.selectNodeContents(b.parentElement); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selecciona y copia'; }
+    setTimeout(() => (b.textContent = 'Copiar'), 1800);
+  }));
+
+  // --- Mesa anotada ---
+  const VIEWS = {{MESA_VIEWS}};
+  const annot = document.getElementById('annot');
+  const img = document.getElementById('mesa-img');
+  const frame = document.getElementById('mesa-frame');
+  const legend = document.getElementById('legend');
+  function render(key) {
+    const v = VIEWS[key];
+    img.src = v.src; img.alt = v.alt; frame.dataset.full = v.src; frame.dataset.cap = v.alt;
+    annot.querySelectorAll('.pin').forEach((p) => p.remove());
+    legend.innerHTML = '';
+    v.pins.forEach((p, i) => {
+      const pin = document.createElement('button');
+      pin.type = 'button'; pin.className = 'pin'; pin.textContent = i + 1;
+      pin.style.left = p.x + '%'; pin.style.top = p.y + '%';
+      pin.setAttribute('aria-label', p.t);
+      const li = document.createElement('li');
+      li.innerHTML = '<b>' + (i + 1) + '</b><div><strong></strong><span></span></div>';
+      li.querySelector('strong').textContent = p.t; li.querySelector('span').textContent = p.d;
+      const on = (v) => { pin.classList.toggle('on', v); li.classList.toggle('on', v); };
+      [pin, li].forEach((el) => { el.addEventListener('mouseenter', () => on(true)); el.addEventListener('mouseleave', () => on(false)); });
+      pin.addEventListener('click', (e) => { e.stopPropagation(); legend.querySelectorAll('li').forEach((x) => x.classList.remove('on')); annot.querySelectorAll('.pin').forEach((x) => x.classList.remove('on')); on(true); li.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+      annot.appendChild(pin); legend.appendChild(li);
+    });
+  }
+  document.querySelectorAll('.mesa-tabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.mesa-tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    render(b.dataset.view);
+  }));
+  render('laptop');
+
+  // --- Guion del mock ---
+  const CASES = [
+    ['Duplicado', 'Importar dos veces al mismo alumno con el nombre escrito distinto. La vista previa lo marca como posible duplicado.'],
+    ['Override', 'Inscribir a un alumno de grado alto en una categoría de principiantes. Aparece la advertencia; se acepta con motivo.'],
+    ['Fusión', 'Juntar dos categorías de 2 inscritos. La nueva tiene 4 y las de origen quedan «Fusionada».'],
+    ['Mismo dojo', 'Categoría con 4 de 8 del mismo dojo. La llave indica «Mismo dojo en 1.ª ronda: 0».'],
+    ['Retiro', 'Retirar a un competidor con la llave publicada. La app ofrece walkover o regenerar.'],
+    ['Empate', 'Terminar un combate empatado. Sugiere hantei o punto de oro según la regla.'],
+    ['Error de mesa', 'Marcar un punto al color equivocado y pulsar «Deshacer último». El evento queda tachado.'],
+    ['Corrección tardía', 'Cambiar el ganador de un combate ya avanzado. La app lista los combates afectados.'],
+    ['Reapertura', 'Cerrar el torneo, reabrirlo como Admin y corregir. Queda en Auditoría con motivo.'],
+    ['Kata', 'Ronda de kata por puntuación con 5 jueces y un empate. Se desempata por la nota descartada.'],
+    ['Sin conexión', 'Apagar el Wi‑Fi de la tablet, marcar 2 puntos y volver a encenderlo. Se envían solos, sin duplicarse.'],
+  ];
+  const KEY = 'hajime-guia-guion';
+  let done = [];
+  try { done = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { done = []; }
+  const list = document.getElementById('checklist');
+  CASES.forEach(([t, d], i) => {
+    const l = document.createElement('label'); l.className = 'check';
+    l.innerHTML = '<input type="checkbox" id="caso-' + i + '"><div><strong></strong><span></span></div>';
+    l.querySelector('strong').textContent = t; l.querySelector('span').textContent = d;
+    const cb = l.querySelector('input'); cb.checked = done.includes(i);
+    cb.addEventListener('change', () => { done = cb.checked ? [...new Set([...done, i])] : done.filter((x) => x !== i); try { localStorage.setItem(KEY, JSON.stringify(done)); } catch {} update(); });
+    list.appendChild(l);
+  });
+  function update() {
+    document.getElementById('count').textContent = done.length + ' de ' + CASES.length + ' comprobados';
+    document.getElementById('fill').style.width = (100 * done.length / CASES.length) + '%';
+  }
+  update();
+})();
+</script>
