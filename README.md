@@ -17,15 +17,31 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 | Dominio | Python puro, sin BD (llaves, marcador, kata, reglas) | [`backend/app/domain/`](backend/app/domain/) |
 | Persistencia | SQL Server / Azure SQL (SQLite en desarrollo) | [`sql/`](sql/) |
 
-## Inicio rápido
+## Probar la app (un solo comando)
+
+Con [Docker](https://www.docker.com/products/docker-desktop/) instalado:
+
+```bash
+HAJIME_ADMIN_PASSWORD='una-clave-segura' docker compose up -d --build
+```
+
+Abrir <http://localhost:8000> y entrar con `admin` y esa clave. La plantilla
+base de categorías se carga sola. Para el primer torneo mock seguir
+[`docs/guia-prueba.md`](docs/guia-prueba.md) (instalación, roles del equipo,
+guion de casos difíciles y comparación con el papel).
+
+La imagen ya compilada se publica en cada cambio en
+`ghcr.io/lorboftherin/hajime-kumite-app` (ver la guía).
+
+## Desarrollo
 
 ```bash
 # API
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-python -m app.seed admin --password admin12345
-python -m app.seed demo            # plantilla borrador + torneo mock con datos ficticios
+HAJIME_ADMIN_PASSWORD=admin12345 python -m app.seed admin
+python -m app.seed demo            # torneo mock con datos ficticios (solo DEV/TEST)
 uvicorn app.main:app --reload --port 8000
 
 # Frontend (en otra terminal)
@@ -33,8 +49,6 @@ cd frontend
 npm install
 npm start                          # http://localhost:4200 (proxy de /api hacia :8000)
 ```
-
-Usuario: `admin` / `admin12345` (solo para desarrollo).
 
 Capturas: [`docs/screenshots/`](docs/screenshots/).
 
