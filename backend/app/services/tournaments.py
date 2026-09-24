@@ -282,7 +282,10 @@ def merge_categories(db: Session, user: User, tid: int, data: s.CategoryMergeIn)
         target = Category(tournament_id=tid, status="open", is_manual=True, **fields)
         db.add(target)
         db.flush()
+    from app.services.brackets import discard_bracket  # evitar ciclo
+
     for c in sources:
+        discard_bracket(db, c)  # una llave generada (sin combates) deja de valer
         regs = db.scalars(
             select(Registration).where(Registration.category_id == c.id, Registration.status == "active")
         ).all()

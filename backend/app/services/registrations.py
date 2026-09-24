@@ -448,17 +448,17 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                 skipped += 1
                 continue
             if d is None and row.status == "duplicate":
-                # Sin decisión explícita, un posible duplicado de BD se omite
-                # para no crear personas repetidas en silencio.
-                person_dups = [x for x in row.duplicates if "person_id" in x]
-                if person_dups:
-                    row_warnings.append(
-                        {
-                            "code": "UNRESOLVED_DUPLICATE",
-                            "message": f"Fila {row.row_number}: posible duplicado sin decisión",
-                        }
-                    )
-                    continue
+                # Sin decisión explícita, un posible duplicado se omite para no
+                # crear personas repetidas en silencio.
+                row_warnings.append(
+                    {
+                        "code": "UNRESOLVED_DUPLICATE",
+                        "message": f"Fila {row.row_number}: posible duplicado sin decisión; se omitirá",
+                    }
+                )
+                row.resolution = {"action": "skip", "reason": "unresolved_duplicate"}
+                skipped += 1
+                continue
             rd = row.data
             bd = date.fromisoformat(rd["fecha_nacimiento"]) if rd["fecha_nacimiento"] else None
             dojo_id = rd.get("dojo_id")
@@ -525,7 +525,7 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                     if e.code != "ALREADY_REGISTERED":
                         raise
             row.resolution = {"action": d.action if d else "create", "person_id": person.id, "category_ids": cat_ids}
-        if row_warnings:
+        if row_warnings and not override:
             raise WarningsRequireOverride(row_warnings, "La importación tiene advertencias")
         batch.status = "confirmed"
         audit(

@@ -409,3 +409,38 @@ def test_history_uses_snapshot_and_excludes_test_tournaments(client):
     c2 = api.post(f"/tournaments/{t2['id']}/categories", KUMITE, expect=201)
     register(api, t2["id"], winner_person, c2["id"], weight_class="-45")
     assert len(api.get(f"/persons/{winner_person}/history")["tournaments"]) == 1
+
+
+def test_merge_discards_generated_bracket_of_source(client):
+    api = client
+    d1, d2 = api.dojo("Uno"), api.dojo("Dos")
+    t = setup_tournament(api)
+    tid = t["id"]
+    c1 = api.post(f"/tournaments/{tid}/categories", {**KUMITE, "code": "C1"}, expect=201)
+    c2 = api.post(f"/tournaments/{tid}/categories", {**KUMITE, "code": "C2"}, expect=201)
+    for i, cat in enumerate([c1, c1, c2, c2]):
+        p = api.person(f"M{i}", f"M{i}", (d1 if i % 2 else d2)["id"])
+        register(api, tid, p["id"], cat["id"], weight_class="-45")
+    api.post(f"/categories/{c1['id']}/bracket", {"seed": 1})
+    target = api.post(f"/tournaments/{tid}/categories/merge", {"source_ids": [c1["id"], c2["id"]]})
+    assert api.raw("GET", f"/categories/{c1['id']}/bracket").status_code == 404
+    assert api.post(f"/categories/{target['id']}/bracket", {"seed": 1})["size"] == 4
+
+
+def test_import_same_file_duplicate_is_skipped_with_override(client):
+    api = client
+    api.dojo("Sur")
+    t = setup_tournament(api)
+    tid = t["id"]
+    api.post(f"/tournaments/{tid}/categories", {**KUMITE, "sex": "F", "code": "F"}, expect=201)
+    row = ["Dojo Sur", "", "", "", "Rosa", "Vega", "10/10/2013", "F", "9 kyu", "-45", "kumite"]
+    batch = api.post(
+        f"/tournaments/{tid}/imports",
+        files={"file": ("l.xlsx", _xlsx([row, row]), "application/octet-stream")},
+        expect=201,
+    )
+    assert [r["status"] for r in batch["rows"]] == ["new", "duplicate"]
+    r = api.raw("POST", f"/imports/{batch['id']}/confirm", json={})
+    assert r.status_code == 409 and r.json()["error"]["details"]["warnings"][0]["code"] == "UNRESOLVED_DUPLICATE"
+    res = api.post(f"/imports/{batch['id']}/confirm", {"override": {"reason": "Fila repetida"}})
+    assert res == {"created_people": 1, "registrations": 1, "skipped": 1}
