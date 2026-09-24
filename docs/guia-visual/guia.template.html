@@ -33,7 +33,7 @@
       --washi: #141311; --kinu: #1D1B19; --sumi: #EDE7DA; --sumi-2: #C9C1B3; --nezumi-ink: #A39B8E;
       --kasumi: #34302B; --shu: #E0655B; --shu-soft: #3A201D; --ai: #7FA3D6; --ai-soft: #1C2636;
       --matcha: #9DB86F; --matcha-soft: #232A1A; --yamabuki: #D9AE55; --yamabuki-soft: #2E2616;
-      --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724;
+      --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724; --logo-ao: #4A77B8;
       --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 16px 36px -20px rgba(0, 0, 0, .8);
       color-scheme: dark;
     }
@@ -42,7 +42,7 @@
     --washi: #141311; --kinu: #1D1B19; --sumi: #EDE7DA; --sumi-2: #C9C1B3; --nezumi-ink: #A39B8E;
     --kasumi: #34302B; --shu: #E0655B; --shu-soft: #3A201D; --ai: #7FA3D6; --ai-soft: #1C2636;
     --matcha: #9DB86F; --matcha-soft: #232A1A; --yamabuki: #D9AE55; --yamabuki-soft: #2E2616;
-    --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724;
+    --code-bg: #0E0D0C; --code-fg: #EDE7DA; --frame: #2A2724; --logo-ao: #4A77B8;
     --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 16px 36px -20px rgba(0, 0, 0, .8);
     color-scheme: dark;
   }
@@ -71,6 +71,7 @@
   }
   .brand { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-size: 22px; font-weight: 700; }
   .brand svg { width: 34px; height: 34px; color: var(--sumi); }
+  .brand svg.word { width: auto; height: 26px; margin-top: 6px; }
   .top nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; }
   .top nav a { color: var(--sumi-2); text-decoration: none; display: inline-flex; gap: 6px; align-items: baseline; }
   .top nav a span { font-family: var(--font-display); color: var(--nezumi-ink); font-size: 13px; }
@@ -217,6 +218,7 @@
   footer { padding-block: 40px 56px; border-top: 1px solid var(--kasumi); display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; color: var(--nezumi-ink); font-size: 14px; }
   footer .brand { font-size: 16px; color: var(--sumi); }
   footer .brand svg { width: 22px; height: 22px; }
+  footer .brand svg.word { width: auto; height: 17px; margin-top: 4px; }
 
   /* ---------- Lightbox ---------- */
   dialog.lb { border: 0; padding: 0; background: transparent; max-width: min(96vw, 1500px); max-height: 94vh; }
@@ -247,7 +249,7 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="brand">{{ENSO}}<span>Hajime</span></div>
+    <div class="brand">{{ENSO}}{{WORD}}</div>
     <nav aria-label="Secciones">
       <a href="#empezar"><span>始</span>Empezar</a>
       <a href="#recorrido"><span>道</span>Recorrido</a>
@@ -260,7 +262,7 @@
   </header>
 
   <div class="hero">
-    <div class="enso-bg" aria-hidden="true">{{ENSO}}</div>
+    <div class="enso-bg" aria-hidden="true">{{ENSO_MONO}}</div>
     <div>
       <div class="eyebrow">Plataforma de torneos de karate · Perú</div>
       <h1>Organiza el torneo con calma. Registra cada combate con <em>respeto</em>.</h1>
@@ -440,7 +442,7 @@ HAJIME_ADMIN_PASSWORD='tu-clave' \
   </section>
 
   <footer>
-    <div class="brand">{{ENSO}}<span>Hajime</span></div>
+    <div class="brand">{{ENSO}}{{WORD}}</div>
     <span>Código: github.com/lorboftherin/Hajime-Kumite-App · rama claude/gracious-feynman-qtapgx</span>
   </footer>
 </div>

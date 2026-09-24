@@ -10,8 +10,25 @@ import pymupdf
 HERE = Path(__file__).parent
 SHOTS = Path("/home/user/Hajime-Kumite-App/docs/screenshots")
 ENSO_SRC = Path("/home/user/Hajime-Kumite-App/frontend/src/app/shared/enso.ts").read_text()
-ENSO_PATH = re.search(r"ENSO_PATH =\s*'([^']+)'", ENSO_SRC).group(1)
-ENSO = f'<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><path d="{ENSO_PATH}" fill="currentColor"/></svg>'
+def _const(name: str) -> str:
+    return re.search(rf"{name} =\s*'([^']+)'", ENSO_SRC).group(1)
+
+
+ENSO_AKA, ENSO_AO = _const("ENSO_AKA"), _const("ENSO_AO")
+HAJIME_WORD, HAJIME_WORD_VIEWBOX = _const("HAJIME_WORD"), _const("HAJIME_WORD_VIEWBOX")
+# Logotipo en color (aka en shu, ao en ai) y versión en tinta para fondos decorativos.
+ENSO = (
+    '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">'
+    f'<path d="{ENSO_AKA}" fill="#BE3B2C"/><path d="{ENSO_AO}" fill="var(--logo-ao, #24477A)"/></svg>'
+)
+ENSO_MONO = (
+    '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">'
+    f'<path d="{ENSO_AKA}" fill="currentColor"/><path d="{ENSO_AO}" fill="currentColor"/></svg>'
+)
+WORD = (
+    f'<svg class="word" viewBox="{HAJIME_WORD_VIEWBOX}" role="img" aria-label="Hajime">'
+    f'<path d="{HAJIME_WORD}" fill="currentColor"/></svg>'
+)
 
 _cache: dict[str, str] = {}
 
@@ -217,7 +234,7 @@ def mesa_views() -> str:
 
 def main() -> None:
     t = (HERE / "guia.template.html").read_text()
-    t = t.replace("{{ENSO}}", ENSO).replace("{{STEPS}}", steps_html()).replace("{{GALLERY}}", gallery_html())
+    t = t.replace("{{ENSO_MONO}}", ENSO_MONO).replace("{{ENSO}}", ENSO).replace("{{WORD}}", WORD).replace("{{STEPS}}", steps_html()).replace("{{GALLERY}}", gallery_html())
     t = t.replace("{{MESA_VIEWS}}", mesa_views())
     t = re.sub(r"\{\{IMG:([^}]+)\}\}", lambda m: img(m.group(1)), t)
     missing = [f for f, *_ in GALLERY if not (SHOTS / f).exists()]
