@@ -25,7 +25,7 @@ import { PersonHistory } from '../../core/models';
               @for (g of h.grades; track $index; let last = $last) {
                 <li [class.current]="last">
                   <strong>{{ g.grade }}</strong>
-                  <span class="small muted">{{ fdate(g.awarded_on) }}</span>
+                  <span class="small muted">{{ g.awarded_on ? fdate(g.awarded_on) : 'fecha no registrada' }}</span>
                 </li>
               }
             </ol>

@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
+import { FilesService } from '../../../core/files.service';
 import { QueueItem, Tatami, TatamiQueue } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
@@ -26,7 +27,10 @@ interface TatamiView {
     <div class="tatamis">
       @for (v of views(); track v.tatami.id) {
         <section class="card tatami">
-          <h3>{{ v.tatami.name || 'Tatami ' + v.tatami.number }}</h3>
+          <div class="row tatami-head">
+            <h3 class="grow">{{ v.tatami.name || 'Tatami ' + v.tatami.number }}</h3>
+            <button class="btn sm" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode">🖨 Planilla PDF</button>
+          </div>
           @if (v.data; as q) {
             @if (q.conflicts.length) {
               <div class="alert warn small">
@@ -42,7 +46,7 @@ interface TatamiView {
             @if (q.current; as cur) {
               <div class="match current">
                 <div class="grow">
-                  <div class="small muted">{{ cur.category_name }} · {{ cur.match.code }}</div>
+                  <div class="small muted"><strong class="num">{{ cur.number }}</strong> {{ cur.category_name }} · {{ cur.match.code }}</div>
                   <div><span class="dot aka"></span> {{ pname(q, cur.match.aka_registration_id) }} <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small></div>
                   <div><span class="dot ao"></span> {{ pname(q, cur.match.ao_registration_id) }} <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small></div>
                 </div>
@@ -59,7 +63,7 @@ interface TatamiView {
                     @if (i === 0) {
                       <span class="badge info">Siguiente</span>
                     }
-                    {{ it.category_name }} · {{ it.match.code }} <app-status [status]="it.match.status" type="match" />
+                    <strong class="num">{{ it.number }}</strong> {{ it.category_name }} · {{ it.match.code }} <app-status [status]="it.match.status" type="match" />
                   </div>
                   <div><span class="dot aka"></span> {{ pname(q, it.match.aka_registration_id) }} <small class="muted">{{ pdojo(q, it.match.aka_registration_id) }}</small></div>
                   <div><span class="dot ao"></span> {{ pname(q, it.match.ao_registration_id) }} <small class="muted">{{ pdojo(q, it.match.ao_registration_id) }}</small></div>
@@ -81,6 +85,9 @@ interface TatamiView {
     </div>
   `,
   styles: `
+    .tatami-head { align-items: center; gap: 8px; }
+    .tatami-head h3 { margin: 0; }
+    .num { font-variant-numeric: tabular-nums; color: var(--text, inherit); margin-right: 4px; }
     .tatamis {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -115,6 +122,7 @@ interface TatamiView {
 export class TatamisTab {
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
+  private files = inject(FilesService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
   readonly views = signal<TatamiView[]>([]);
@@ -142,6 +150,10 @@ export class TatamisTab {
 
   waiting(q: TatamiQueue): QueueItem[] {
     return q.queue.filter((it) => it.match.id !== q.current?.match.id);
+  }
+
+  scoresheet(tatamiId: number): void {
+    this.files.open(`/tatamis/${tatamiId}/scoresheet.pdf`);
   }
 
   pname(q: TatamiQueue, rid: number | null): string {

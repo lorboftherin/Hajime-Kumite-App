@@ -85,7 +85,10 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
     return {
         "person_id": p.id,
         "name": f"{p.first_names} {p.last_names}",
-        "grades": [{"grade": g.grade, "awarded_on": g.awarded_on} for g in grades],
+        # 01/01/1900 = grado registrado sin fecha (alta o importación): se informa como desconocida.
+        "grades": [
+            {"grade": g.grade, "awarded_on": g.awarded_on if g.awarded_on.year > 1900 else None} for g in grades
+        ],
         "tournaments": entries,
         "medals": {
             "gold": sum(1 for e in entries if e["place"] == 1),

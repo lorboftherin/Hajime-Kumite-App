@@ -349,6 +349,7 @@ export interface FinishOut {
 }
 
 export interface QueueItem {
+  number: string; // T1-001: el mismo número que la planilla de mesa en papel
   category_id: number;
   category_name: string;
   match: Match;
@@ -455,7 +456,7 @@ export interface HistoryTournament {
 export interface PersonHistory {
   person_id: number;
   name: string;
-  grades: Array<{ grade: string; awarded_on: string }>;
+  grades: Array<{ grade: string; awarded_on: string | null }>;
   tournaments: HistoryTournament[];
   medals: { gold: number; silver: number; bronze: number };
 }
