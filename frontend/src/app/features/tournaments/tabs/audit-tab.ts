@@ -3,17 +3,21 @@ import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../core/api.service';
 import { AuditEntry } from '../../../core/models';
+import { Icon } from '../../../shared/icon';
 import { LimaPipe } from '../../../shared/pipes';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-audit-tab',
-  imports: [FormsModule, JsonPipe, LimaPipe],
+  imports: [FormsModule, JsonPipe, LimaPipe, Icon],
   template: `
-    <div class="card row">
-      <input class="grow" placeholder="Filtrar por entidad, acción, usuario o motivo…" [ngModel]="q()" (ngModelChange)="q.set($event)" />
-      <button class="btn sm" (click)="load()">↻ Actualizar</button>
-      <span class="muted small">Horas en America/Lima</span>
+    <div class="toolbar">
+      <div class="search">
+        <app-icon name="search" />
+        <input placeholder="Filtrar por entidad, acción, usuario o motivo…" aria-label="Filtrar auditoría" [ngModel]="q()" (ngModelChange)="q.set($event)" />
+      </div>
+      <span class="count">{{ shown().length }} registros · horas de Lima</span>
+      <button class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
     </div>
     <div class="table-wrap">
       <table class="table">
@@ -23,10 +27,10 @@ import { TournamentContext } from '../tournament-context';
         <tbody>
           @for (a of shown(); track a.id) {
             <tr>
-              <td class="nowrap small">{{ a.at | lima }}</td>
+              <td class="nowrap small num">{{ a.at | lima }}</td>
               <td>{{ a.user }}</td>
-              <td class="mono small">{{ a.entity }} #{{ a.entity_id }}</td>
-              <td><span class="badge">{{ a.action }}</span></td>
+              <td class="small"><span class="code">{{ a.entity }}</span> <span class="muted num">#{{ a.entity_id }}</span></td>
+              <td><span class="badge plain">{{ a.action }}</span></td>
               <td class="small">{{ a.reason }}</td>
               <td>
                 @if (a.before || a.after) {
@@ -45,7 +49,7 @@ import { TournamentContext } from '../tournament-context';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="empty">Sin registros.</td></tr>
+            <tr><td colspan="6" class="empty"><p><strong>Sin registros.</strong></p>Cada cambio importante quedará anotado aquí.</td></tr>
           }
         </tbody>
       </table>

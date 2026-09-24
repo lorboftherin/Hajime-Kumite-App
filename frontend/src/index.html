@@ -2,11 +2,22 @@
 <html lang="es-PE">
 <head>
   <meta charset="utf-8">
-  <title>Hajime</title>
+  <title>Hajime · Torneos de karate</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#B91C1C">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Hajime: gestión de torneos de karate. Organiza con calma, registra cada combate con respeto.">
+  <meta name="theme-color" content="#F5F0E6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Aplica el tema guardado antes de pintar (evita un destello claro en modo oscuro).
+    try {
+      var t = localStorage.getItem('hajime.theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <app-root></app-root>

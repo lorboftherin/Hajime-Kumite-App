@@ -2,69 +2,77 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
-import { MEDAL_ICON, fmtDate } from '../../core/format';
+import { fmtDate } from '../../core/format';
 import { Dojo, DojoHistory } from '../../core/models';
+import { Hanko } from '../../shared/hanko';
+import { Icon } from '../../shared/icon';
+import { PageHead } from '../../shared/page-head';
 
 /** Ficha del dojo con su historial de medallas (GET /dojos/{id}/history). */
 @Component({
   selector: 'app-dojo-detail',
-  imports: [RouterLink],
+  imports: [RouterLink, PageHead, Icon, Hanko],
   template: `
     <div class="container">
-      <div class="small"><a routerLink="/dojos">← Dojos</a></div>
       @if (dojo(); as d) {
-        <div class="page-header">
-          <div>
-            <h1>{{ d.name }}</h1>
-            <div class="row small muted">
-              @if (d.short_name) {
-                <span class="mono">{{ d.short_name }}</span>
-              }
-              @if (d.city) {
-                <span>{{ d.city }}</span>
-              }
-              @if (d.is_independent) {
-                <span class="badge">Independiente</span>
-              }
-              @if (d.is_claimed) {
-                <span class="badge ok">Registrado</span>
-              }
-            </div>
+        <app-page-head kanji="道場" [title]="d.name">
+          <a back class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
+          <div meta class="meta-line">
+            @if (d.short_name) {
+              <span class="code">{{ d.short_name }}</span>
+            }
+            @if (d.city) {
+              <span>{{ d.city }}</span>
+            }
+            @if (d.is_independent) {
+              <span class="badge plain">Independiente</span>
+            }
+            @if (d.is_claimed) {
+              <span class="badge matcha">Registrado</span>
+            }
             @if (d.branches.length) {
-              <div class="small">Sedes: {{ branchNames() }}</div>
+              <span>Sedes: {{ branchNames() }}</span>
             }
           </div>
           <a class="btn" [routerLink]="['/personas']" [queryParams]="{ dojo: d.id }">Ver competidores</a>
-        </div>
+        </app-page-head>
+      } @else if (!error()) {
+        <a class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
       }
 
       @if (history(); as h) {
-        <div class="card totals" aria-label="Medallero histórico">
-          <div class="medal"><span class="icon">🥇</span><strong>{{ totals().gold }}</strong><span class="small muted">Oro</span></div>
-          <div class="medal"><span class="icon">🥈</span><strong>{{ totals().silver }}</strong><span class="small muted">Plata</span></div>
-          <div class="medal"><span class="icon">🥉</span><strong>{{ totals().bronze }}</strong><span class="small muted">Bronce</span></div>
-          <div class="medal"><span class="icon">🏆</span><strong>{{ h.tournaments.length }}</strong><span class="small muted">Torneos con medalla</span></div>
-        </div>
+        @if (h.tournaments.length) {
+        <section class="card totals" aria-label="Medallero histórico">
+          <div class="medal"><app-hanko [place]="1" size="lg" /><div><span class="figure">{{ totals().gold }}</span><span class="small muted">Oro</span></div></div>
+          <div class="medal"><app-hanko [place]="2" size="lg" /><div><span class="figure">{{ totals().silver }}</span><span class="small muted">Plata</span></div></div>
+          <div class="medal"><app-hanko [place]="3" size="lg" /><div><span class="figure">{{ totals().bronze }}</span><span class="small muted">Bronce</span></div></div>
+          <div class="medal total"><div><span class="figure">{{ h.tournaments.length }}</span><span class="small muted">Torneos con medalla</span></div></div>
+        </section>
+        }
 
         @for (t of h.tournaments; track t.tournament_id) {
-          <div class="card tour">
+          <article class="card tour">
             <div class="tour-head">
               <div class="grow">
-                <div class="small muted">{{ fdate(t.date) }}</div>
+                <div class="eyebrow num">{{ fdate(t.date) }}</div>
                 <h3><a [routerLink]="['/torneos', t.tournament_id, 'resultados']">{{ t.tournament_name }}</a></h3>
               </div>
-              <div class="row nowrap"><span>🥇 {{ t.gold }}</span><span>🥈 {{ t.silver }}</span><span>🥉 {{ t.bronze }}</span></div>
+              <div class="tally num" aria-label="Medallas del torneo">
+                <span><span class="ring kin"></span>{{ t.gold }}<span class="sr-only"> oro</span></span>
+                <span><span class="ring gin"></span>{{ t.silver }}<span class="sr-only"> plata</span></span>
+                <span><span class="ring dou"></span>{{ t.bronze }}<span class="sr-only"> bronce</span></span>
+              </div>
             </div>
-            <table class="table small mt">
+            <table class="table small flush mt">
               <tbody>
                 @for (r of t.results; track $index) {
                   <tr>
-                    <td class="nowrap place">{{ medal[r.place] || r.place + '.º' }}</td>
+                    <td class="place"><app-hanko [place]="r.place" /></td>
                     <td>
                       @if (r.person_id) {
-                        <a [routerLink]="['/personas', r.person_id]" [queryParams]="{ tab: 'historial' }">{{ r.name }}</a>
+                        <a class="pname" [routerLink]="['/personas', r.person_id]" [queryParams]="{ tab: 'historial' }">{{ r.name }}</a>
                       } @else {
-                        {{ r.name }}
+                        <span class="pname">{{ r.name }}</span>
                       }
                     </td>
                     <td class="muted">{{ r.category_name }}</td>
@@ -72,10 +80,9 @@ import { Dojo, DojoHistory } from '../../core/models';
                 }
               </tbody>
             </table>
-          </div>
+          </article>
         } @empty {
           <div class="card empty">
-            <div class="big">🏆</div>
             <p><strong>Este dojo aún no tiene medallas en su historial.</strong></p>
             <p class="small">Los torneos de prueba no aparecen en el historial. Solo cuentan las categorías finalizadas de torneos oficiales.</p>
           </div>
@@ -90,41 +97,87 @@ import { Dojo, DojoHistory } from '../../core/models';
   styles: `
     .totals {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      max-width: 640px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      max-width: 820px;
+    }
+    @media (max-width: 640px) {
+      .totals {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
     .medal {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 0.1rem;
-      text-align: center;
-      strong {
-        font-size: 1.6rem;
-        line-height: 1;
+      gap: 0.85rem;
+      > div {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.15;
+      }
+      .figure {
+        font-size: var(--fs-28);
+      }
+      &.total {
+        padding-left: 1rem;
+        border-left: 1px solid var(--kasumi);
       }
     }
-    .icon {
-      font-size: 1.5rem;
-    }
     .tour {
-      margin-bottom: 0.75rem;
+      margin-bottom: 1rem;
     }
     .tour-head {
       display: flex;
       gap: 1rem;
       align-items: flex-start;
       h3 {
-        margin: 0.1rem 0 0;
+        margin: 0.15rem 0 0;
+        font-family: var(--font-display);
+        font-size: var(--fs-20);
+        a {
+          color: var(--sumi);
+        }
+        a:hover {
+          color: var(--ai-ink);
+        }
+      }
+    }
+    .tally {
+      display: flex;
+      gap: 1rem;
+      font-weight: 700;
+      padding-top: 0.4rem;
+      > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+    }
+    .ring {
+      display: inline-block;
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      border: 2.5px solid;
+      &.kin {
+        border-color: var(--kin);
+      }
+      &.gin {
+        border-color: var(--gin);
+      }
+      &.dou {
+        border-color: var(--dou);
       }
     }
     .place {
       width: 3rem;
     }
-    .big {
-      font-size: 2rem;
+    .pname {
+      font-weight: 500;
+      color: var(--sumi);
+    }
+    a.pname:hover {
+      color: var(--ai-ink);
     }
   `,
 })
@@ -136,7 +189,6 @@ export class DojoDetailPage {
   readonly history = signal<DojoHistory | null>(null);
   readonly error = signal('');
   readonly fdate = fmtDate;
-  readonly medal = MEDAL_ICON;
   readonly branchNames = computed(() => (this.dojo()?.branches ?? []).map((b) => b.name).join(', '));
   readonly totals = computed(() =>
     (this.history()?.tournaments ?? []).reduce(

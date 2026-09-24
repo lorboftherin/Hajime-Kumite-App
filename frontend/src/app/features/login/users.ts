@@ -7,41 +7,45 @@ import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { Person, User } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
+import { MoreMenu } from '../../shared/more-menu';
+import { PageHead } from '../../shared/page-head';
 import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
 
 @Component({
   selector: 'app-users',
-  imports: [FormsModule, Modal, RouterLink],
+  imports: [FormsModule, Modal, RouterLink, PageHead, Icon, MoreMenu],
   template: `
     <div class="container">
-      <div class="page-header">
-        <h1>Usuarios</h1>
-        <button class="btn primary" (click)="openNew()">Nuevo usuario</button>
-      </div>
-      <p class="hint">
-        Las cuentas nuevas y las contraseñas reseteadas obligan a elegir una contraseña propia al ingresar.
-        Desactivar una cuenta cierra sus sesiones abiertas.
-      </p>
+      <app-page-head kanji="管理" title="Usuarios">
+        <div meta class="meta-line">
+          <span>Cuentas con acceso a Hajime. Las contraseñas nuevas o reseteadas obligan a elegir una propia al ingresar.</span>
+        </div>
+        <button class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo usuario</button>
+      </app-page-head>
       @if (problem()) {
         <div class="alert danger row" role="alert">
           <span class="grow">{{ problem() }}</span>
-          <button class="btn sm ghost" (click)="problem.set('')" aria-label="Cerrar">✕</button>
+          <button class="btn sm ghost icon-only" (click)="problem.set('')" aria-label="Cerrar"><app-icon name="close" /></button>
         </div>
       }
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr><th>Usuario</th><th>Nombre</th><th>Persona</th><th>Rol</th><th>Estado</th><th class="right">Acciones</th></tr>
+            <tr><th>Usuario</th><th>Nombre</th><th>Persona</th><th>Rol</th><th>Estado</th><th class="right"><span class="sr-only">Acciones</span></th></tr>
           </thead>
           <tbody>
             @for (u of users(); track u.id) {
               <tr [class.inactive]="u.is_active === false">
-                <td class="mono">
-                  {{ u.username }}
-                  @if (u.id === me()?.id) {
-                    <span class="badge info">Tú</span>
-                  }
+                <td>
+                  <div class="uname">
+                    <span class="avatar" aria-hidden="true">{{ (u.display_name || u.username).charAt(0).toUpperCase() }}</span>
+                    <span class="mono">{{ u.username }}</span>
+                    @if (u.id === me()?.id) {
+                      <span class="badge ai">Tú</span>
+                    }
+                  </div>
                 </td>
                 <td>{{ u.display_name }}</td>
                 <td class="small">
@@ -53,34 +57,39 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                 </td>
                 <td>
                   @if (u.is_admin) {
-                    <span class="badge dark">Admin</span>
+                    <span class="badge sumi">Administrador</span>
                   } @else {
-                    <span class="badge">Operador</span>
+                    <span class="badge plain">Operador</span>
                   }
                 </td>
                 <td>
-                  @if (u.is_active === false) {
-                    <span class="badge danger">Inactivo</span>
-                  } @else {
-                    <span class="badge ok">Activo</span>
-                  }
-                  @if (u.must_change_password) {
-                    <span class="badge warn" title="Debe elegir una contraseña nueva al ingresar">Clave temporal</span>
-                  }
+                  <div class="row states">
+                    @if (u.is_active === false) {
+                      <span class="badge nezumi">Inactivo</span>
+                    } @else {
+                      <span class="badge matcha">Activo</span>
+                    }
+                    @if (u.must_change_password) {
+                      <span class="badge yamabuki" title="Debe elegir una contraseña nueva al ingresar">Clave temporal</span>
+                    }
+                  </div>
                 </td>
                 <td class="right actions">
-                  @if (u.is_active === false) {
-                    <button class="btn sm" (click)="setActive(u, true)">Activar</button>
-                  } @else {
-                    <button class="btn sm danger" (click)="setActive(u, false)">Desactivar</button>
-                  }
-                  <button class="btn sm" (click)="openReset(u)">Resetear contraseña</button>
-                  <button class="btn sm" (click)="toggleAdmin(u)">{{ u.is_admin ? 'Quitar admin' : 'Hacer admin' }}</button>
-                  <button class="btn sm" (click)="openLink(u)">{{ u.person_id ? 'Cambiar persona' : 'Vincular persona' }}</button>
+                  <button class="btn sm" (click)="openReset(u)"><app-icon name="key" /> Resetear contraseña</button>
+                  <app-more [label]="'Más acciones · ' + u.username">
+                    <button class="menu-item" (click)="openLink(u)">{{ u.person_id ? 'Cambiar persona vinculada' : 'Vincular persona' }}</button>
+                    <button class="menu-item" (click)="toggleAdmin(u)">{{ u.is_admin ? 'Quitar rol de administrador' : 'Hacer administrador' }}</button>
+                    <hr />
+                    @if (u.is_active === false) {
+                      <button class="menu-item" (click)="setActive(u, true)">Activar cuenta</button>
+                    } @else {
+                      <button class="menu-item danger" (click)="setActive(u, false)">Desactivar cuenta…</button>
+                    }
+                  </app-more>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="empty">No hay usuarios.</td></tr>
+              <tr><td colspan="6" class="empty"><p><strong>No hay usuarios.</strong></p></td></tr>
             }
           </tbody>
         </table>
@@ -158,7 +167,7 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                 <span class="grow">
                   {{ p.first_names }} {{ p.last_names }} <span class="muted small">#{{ p.id }}</span>
                   @if (p.id === u.person_id) {
-                    <span class="badge ok">Vinculada</span>
+                    <span class="badge matcha">Vinculada</span>
                   }
                 </span>
                 <button class="btn sm primary" [disabled]="p.id === u.person_id" (click)="link(u, p.id)">Vincular</button>
@@ -182,20 +191,47 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
   styles: `
     .actions {
       white-space: nowrap;
-      .btn + .btn {
+      > * {
+        vertical-align: middle;
+      }
+      app-more {
         margin-left: 0.25rem;
       }
     }
+    .uname {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .avatar {
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      width: 1.9rem;
+      height: 1.9rem;
+      border-radius: 50%;
+      border: 1px solid var(--kasumi-2);
+      background: var(--washi);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--fs-14);
+    }
+    .states {
+      gap: 0.35rem;
+    }
     tr.inactive td {
-      color: var(--muted);
+      color: var(--nezumi-ink);
+    }
+    tr.inactive .avatar {
+      opacity: 0.5;
     }
     .secret {
       font-size: 1.5rem;
-      padding: 0.75rem 1rem;
+      padding: 1rem;
       text-align: center;
-      letter-spacing: 0.08em;
-      background: var(--gray-100);
-      border: 1px dashed var(--gray-400);
+      letter-spacing: 0.1em;
+      background: var(--washi);
+      border: 1px dashed var(--kasumi-2);
       border-radius: var(--radius);
       user-select: all;
     }

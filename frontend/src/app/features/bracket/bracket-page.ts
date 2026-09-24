@@ -11,7 +11,11 @@ import { FORMAT_LABEL, METHOD_LABEL, THIRD_PLACE_LABEL } from '../../core/format
 import { Bracket, BracketVersion, Category, Match, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { StatusBadge } from '../../shared/badge';
+import { Hanko } from '../../shared/hanko';
+import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
+import { MoreMenu } from '../../shared/more-menu';
+import { PageHead } from '../../shared/page-head';
 import { LabelPipe, LimaPipe } from '../../shared/pipes';
 
 const PLACE: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -22,7 +26,7 @@ const KIND_LABEL: Record<string, string> = {
 
 @Component({
   selector: 'app-bracket-page',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, StatusBadge, Modal, LabelPipe, LimaPipe],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, StatusBadge, Modal, LabelPipe, LimaPipe, PageHead, Icon, MoreMenu, Hanko],
   templateUrl: './bracket-page.html',
   styleUrl: './bracket-page.scss',
 })

@@ -2,6 +2,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiError } from '../core/api-error';
 import { AuthService } from '../core/auth.service';
+import { Icon } from './icon';
 import { Modal } from './modal';
 
 /**
@@ -10,13 +11,13 @@ import { Modal } from './modal';
  */
 @Component({
   selector: 'app-session-guard',
-  imports: [FormsModule, Modal],
+  imports: [FormsModule, Modal, Icon],
   template: `
     @if (auth.isLoggedIn() && auth.expiringSoon() && !auth.reloginOpen() && !dismissed()) {
       <div class="session-warn alert warn" role="status">
         <span>Tu sesión vence en {{ auth.minutesLeft() }} min.</span>
         <button type="button" class="btn sm primary" (click)="auth.requestRelogin()">Volver a iniciar sesión</button>
-        <button type="button" class="btn sm ghost" (click)="dismissed.set(true)" aria-label="Ocultar">✕</button>
+        <button type="button" class="btn sm ghost icon-only" (click)="dismissed.set(true)" aria-label="Ocultar"><app-icon name="close" /></button>
       </div>
     }
     @if (auth.reloginOpen()) {
@@ -51,15 +52,16 @@ import { Modal } from './modal';
     .session-warn {
       position: fixed;
       left: 50%;
-      bottom: 1rem;
+      bottom: calc(1.25rem + var(--bottom-bar-h));
       transform: translateX(-50%);
       z-index: 1900;
       display: flex;
       align-items: center;
       gap: 0.75rem;
       margin: 0;
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-float);
       max-width: calc(100vw - 2rem);
+      flex-wrap: wrap;
     }
   `,
 })

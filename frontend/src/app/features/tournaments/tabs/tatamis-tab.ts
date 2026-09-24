@@ -7,6 +7,7 @@ import { FilesService } from '../../../core/files.service';
 import { QueueItem, Tatami, TatamiQueue } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
+import { Icon } from '../../../shared/icon';
 import { TournamentContext } from '../tournament-context';
 
 interface TatamiView {
@@ -17,19 +18,19 @@ interface TatamiView {
 
 @Component({
   selector: 'app-tatamis-tab',
-  imports: [RouterLink, StatusBadge],
+  imports: [RouterLink, StatusBadge, Icon],
   template: `
-    <div class="row mb">
-      <button class="btn sm" (click)="load()">↻ Actualizar</button>
-      <button class="btn sm" (click)="addTatami()">+ Agregar tatami</button>
-      <span class="muted small">Se actualiza cada 15 s. Asigna categorías a un tatami desde la pestaña Categorías.</span>
+    <div class="toolbar">
+      <span class="muted small grow">Se actualiza cada 15 s. Asigna categorías a un tatami desde la pestaña Categorías.</span>
+      <button class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
+      <button class="btn" (click)="addTatami()"><app-icon name="plus" /> Agregar tatami</button>
     </div>
     <div class="tatamis">
       @for (v of views(); track v.tatami.id) {
         <section class="card tatami">
-          <div class="row tatami-head">
-            <h3 class="grow">{{ v.tatami.name || 'Tatami ' + v.tatami.number }}</h3>
-            <button class="btn sm" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode">🖨 Planilla PDF</button>
+          <div class="tatami-head">
+            <h2>{{ v.tatami.name || 'Tatami ' + v.tatami.number }}</h2>
+            <button class="btn sm ghost" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode"><app-icon name="print" /> Planilla PDF</button>
           </div>
           @if (v.data; as q) {
             @if (q.conflicts.length) {
@@ -46,32 +47,35 @@ interface TatamiView {
             @if (q.current; as cur) {
               <div class="match current">
                 <div class="grow">
-                  <div class="small muted"><strong class="num">{{ cur.number }}</strong> {{ cur.category_name }} · {{ cur.match.code }}</div>
-                  <div><span class="dot aka"></span> {{ pname(q, cur.match.aka_registration_id) }} <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small></div>
-                  <div><span class="dot ao"></span> {{ pname(q, cur.match.ao_registration_id) }} <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small></div>
+                  <div class="m-meta"><span class="badge matcha live">En curso</span> <span class="num n">{{ cur.number }}</span> {{ cur.category_name }} <span class="code">{{ cur.match.code }}</span></div>
+                  <div class="fighter aka"><span class="pname">{{ pname(q, cur.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small></div>
+                  <div class="fighter ao"><span class="pname">{{ pname(q, cur.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small></div>
                 </div>
-                <a class="btn primary" [routerLink]="['/mesa', cur.match.id]" [queryParams]="{ tatami: v.tatami.id }">Abrir mesa</a>
+                <a class="btn primary" [routerLink]="['/mesa', cur.match.id]" [queryParams]="{ tatami: v.tatami.id }"><app-icon name="open" /> Abrir mesa</a>
               </div>
             } @else {
-              <div class="muted small">Ninguno en curso.</div>
+              <div class="muted small quiet">Ninguno en curso.</div>
             }
             <div class="label">Siguiente y en espera</div>
             @for (it of waiting(q); track it.match.id; let i = $index) {
               <div class="match" [class.next]="i === 0">
                 <div class="grow">
-                  <div class="small muted">
+                  <div class="m-meta">
                     @if (i === 0) {
-                      <span class="badge info">Siguiente</span>
+                      <span class="badge ai">Siguiente</span>
                     }
-                    <strong class="num">{{ it.number }}</strong> {{ it.category_name }} · {{ it.match.code }} <app-status [status]="it.match.status" type="match" />
+                    <span class="num n">{{ it.number }}</span> {{ it.category_name }} <span class="code">{{ it.match.code }}</span>
+                    @if (it.match.status !== 'ready') {
+                      <app-status [status]="it.match.status" type="match" />
+                    }
                   </div>
-                  <div><span class="dot aka"></span> {{ pname(q, it.match.aka_registration_id) }} <small class="muted">{{ pdojo(q, it.match.aka_registration_id) }}</small></div>
-                  <div><span class="dot ao"></span> {{ pname(q, it.match.ao_registration_id) }} <small class="muted">{{ pdojo(q, it.match.ao_registration_id) }}</small></div>
+                  <div class="fighter aka"><span class="pname">{{ pname(q, it.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, it.match.aka_registration_id) }}</small></div>
+                  <div class="fighter ao"><span class="pname">{{ pname(q, it.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, it.match.ao_registration_id) }}</small></div>
                 </div>
                 <a class="btn sm" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: v.tatami.id }">Mesa</a>
               </div>
             } @empty {
-              <div class="muted small">Cola vacía.</div>
+              <div class="muted small quiet">Cola vacía.</div>
             }
           } @else if (v.error) {
             <div class="alert danger small">{{ v.error }}</div>
@@ -80,42 +84,92 @@ interface TatamiView {
           }
         </section>
       } @empty {
-        <div class="card empty">El torneo no tiene tatamis.</div>
+        <div class="card empty"><p><strong>El torneo no tiene tatamis.</strong></p>Agrega uno para empezar a programar combates.</div>
       }
     </div>
   `,
   styles: `
-    .tatami-head { align-items: center; gap: 8px; }
-    .tatami-head h3 { margin: 0; }
-    .num { font-variant-numeric: tabular-nums; color: var(--text, inherit); margin-right: 4px; }
     .tatamis {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 767px) {
+      .tatamis {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tatami {
+      margin: 0;
+    }
+    .tatami-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+      h2 {
+        margin: 0;
+      }
     }
     .label {
-      font-size: 0.75rem;
+      font-size: var(--fs-12);
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-      margin: 0.75rem 0 0.35rem;
-      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--nezumi-ink);
+      margin: 1.25rem 0 0.5rem;
+    }
+    .quiet {
+      padding: 0.25rem 0;
     }
     .match {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      border: 1px solid var(--border);
+      gap: 0.75rem;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid var(--kasumi);
       border-radius: var(--radius-sm);
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.5rem;
+      background: var(--kinu);
+      font-size: var(--fs-14);
     }
     .match.current {
-      border: 2px solid var(--ok);
-      background: var(--ok-soft);
+      border-color: color-mix(in srgb, var(--matcha) 45%, var(--kasumi));
+      background: color-mix(in srgb, var(--matcha-soft) 55%, var(--kinu));
     }
     .match.next {
-      border-color: var(--ao);
+      border-color: color-mix(in srgb, var(--ai) 35%, var(--kasumi));
+    }
+    .m-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+      color: var(--sumi-2);
+      .n {
+        font-weight: 700;
+        color: var(--sumi);
+      }
+    }
+    .fighter {
+      padding: 0.1rem 0 0.1rem 0.65rem;
+      border-left: 3px solid transparent;
+      line-height: 1.5;
+      &.aka {
+        border-left-color: var(--shu);
+      }
+      &.ao {
+        border-left-color: var(--ai);
+      }
+      .pname {
+        font-weight: 500;
+      }
+      small {
+        margin-left: 0.4rem;
+      }
     }
   `,
 })

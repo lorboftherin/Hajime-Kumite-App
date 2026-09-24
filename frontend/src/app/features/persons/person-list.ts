@@ -7,32 +7,39 @@ import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { Dojo, Person } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
+import { MoreMenu } from '../../shared/more-menu';
+import { PageHead } from '../../shared/page-head';
 import { PersonForm } from '../../shared/person-form';
 import { DatePipe } from '../../shared/pipes';
 
 @Component({
   selector: 'app-person-list',
-  imports: [FormsModule, RouterLink, Modal, PersonForm, DatePipe],
+  imports: [FormsModule, RouterLink, Modal, PersonForm, DatePipe, PageHead, Icon, MoreMenu],
   template: `
     <div class="container">
-      <div class="page-header">
-        <h1>Personas</h1>
-        <div class="row">
-          @if (auth.isAdmin()) {
-            <button class="btn" (click)="revert()">Revertir fusión…</button>
-          }
-          <button class="btn primary" (click)="showNew.set(true)">+ Nueva persona</button>
+      <app-page-head kanji="人" title="Personas">
+        <div meta class="meta-line"><span>Competidores, entrenadores y oficiales</span></div>
+        @if (auth.isAdmin()) {
+          <app-more label="Más acciones de personas" [small]="false">
+            <button class="menu-item" (click)="revert()"><app-icon name="history" /> Revertir fusión…</button>
+          </app-more>
+        }
+        <button class="btn primary" (click)="showNew.set(true)"><app-icon name="plus" /> Nueva persona</button>
+      </app-page-head>
+      <div class="toolbar">
+        <div class="search">
+          <app-icon name="search" />
+          <input placeholder="Buscar por nombre o número de documento…" aria-label="Buscar persona" [ngModel]="q()" (ngModelChange)="onQ($event)" />
         </div>
-      </div>
-      <div class="card row">
-        <input class="grow" placeholder="Buscar por nombre o número de documento…" [ngModel]="q()" (ngModelChange)="onQ($event)" />
-        <select [ngModel]="dojo()" (ngModelChange)="dojo.set($event); load()">
+        <select aria-label="Dojo" [ngModel]="dojo()" (ngModelChange)="dojo.set($event); load()">
           <option [ngValue]="null">Todos los dojos</option>
           @for (d of dojos(); track d.id) {
             <option [ngValue]="d.id">{{ d.name }}</option>
           }
         </select>
+        <span class="count">{{ persons().length }}{{ persons().length >= 100 ? '+' : '' }} resultados</span>
       </div>
       <div class="table-wrap">
         <table class="table">
@@ -54,36 +61,36 @@ import { DatePipe } from '../../shared/pipes';
           <tbody>
             @for (p of persons(); track p.id) {
               <tr>
-                <td><a [routerLink]="['/personas', p.id]"><strong>{{ p.last_names }}</strong>, {{ p.first_names }}</a></td>
+                <td class="who"><a [routerLink]="['/personas', p.id]"><strong>{{ p.last_names }}</strong>, {{ p.first_names }}</a></td>
                 @if (auth.canViewDocuments()) {
                   <td class="nowrap">{{ p.birth_date | fdate }}</td>
                 }
                 <td>{{ p.sex }}</td>
                 @if (auth.canViewDocuments()) {
-                  <td class="small mono">
+                  <td class="small num">
                     @for (d of p.documents; track d.id) {
                       {{ d.doc_type }} {{ d.number }}
                     }
                   </td>
                 }
                 <td>{{ dojoName(p.current_dojo_id) }}</td>
-                <td>{{ p.current_grade }}</td>
+                <td class="nowrap">{{ p.current_grade }}</td>
                 <td>
                   @if (p.identity_incomplete) {
-                    <span class="badge warn" title="Faltan datos de identidad">Identidad incompleta</span>
+                    <span class="badge yamabuki" title="Faltan datos de identidad">Identidad incompleta</span>
                   }
                   @if (p.anonymized_at) {
-                    <span class="badge" title="Datos personales anonimizados">Anonimizada</span>
+                    <span class="badge nezumi" title="Datos personales anonimizados">Anonimizada</span>
                   }
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="empty">Sin resultados.</td></tr>
+              <tr><td colspan="7" class="empty"><p><strong>Sin resultados.</strong></p>Prueba con otro nombre o crea una persona nueva.</td></tr>
             }
           </tbody>
         </table>
       </div>
-      <p class="muted small">Se muestran hasta 100 resultados.</p>
+      <p class="hint">Se muestran hasta 100 resultados.</p>
     </div>
 
     @if (showNew()) {
@@ -92,6 +99,14 @@ import { DatePipe } from '../../shared/pipes';
           <button type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
         </app-person-form>
       </app-modal>
+    }
+  `,
+  styles: `
+    .who a {
+      color: var(--sumi);
+    }
+    .who a:hover {
+      color: var(--ai-ink);
     }
   `,
 })

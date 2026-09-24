@@ -9,6 +9,7 @@ import { ImportBatch, ImportRow } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
+import { Icon } from '../../../shared/icon';
 import { TournamentContext } from '../tournament-context';
 
 interface Decision {
@@ -19,19 +20,19 @@ interface Decision {
 
 @Component({
   selector: 'app-import-tab',
-  imports: [FormsModule, StatusBadge],
+  imports: [FormsModule, StatusBadge, Icon],
   template: `
-    <div class="card">
-      <h3>Importar inscripciones desde Excel</h3>
-      <ol class="small steps">
+    <div class="card intro">
+      <h2>Importar inscripciones desde Excel</h2>
+      <ol class="steps">
         <li>Descarga la plantilla con columnas fijas y compártela con los dojos.</li>
         <li>Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con error).</li>
         <li>Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li>
       </ol>
       <div class="row">
-        <button class="btn" (click)="downloadTemplate()">⬇ Descargar plantilla .xlsx</button>
+        <button class="btn" (click)="downloadTemplate()"><app-icon name="download" /> Descargar plantilla .xlsx</button>
         <label class="btn primary">
-          ⬆ Subir archivo
+          <app-icon name="upload" /> Subir archivo
           <input type="file" accept=".xlsx" hidden (change)="upload($event)" />
         </label>
         @if (uploading()) {
@@ -43,10 +44,10 @@ interface Decision {
     @if (batch(); as b) {
       <div class="card">
         <div class="row">
-          <h3 class="grow">Vista previa: {{ b.filename }} <span class="badge">{{ b.status }}</span></h3>
-          <span class="badge ok">{{ counts().new }} nuevas</span>
-          <span class="badge warn">{{ counts().duplicate }} posibles duplicados</span>
-          <span class="badge danger">{{ counts().error }} con error</span>
+          <h2 class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ b.status }}</span></h2>
+          <span class="badge matcha">{{ counts().new }} nuevas</span>
+          <span class="badge yamabuki">{{ counts().duplicate }} posibles duplicados</span>
+          <span class="badge shu">{{ counts().error }} con error</span>
         </div>
         <div class="table-wrap mt">
           <table class="table">
@@ -149,10 +150,18 @@ interface Decision {
     }
   `,
   styles: `
-    .steps {
-      margin: 0 0 1rem;
-      padding-left: 1.2rem;
-      color: var(--gray-600);
+    .intro h2 {
+      margin-bottom: 0.25rem;
+    }
+    .preview-title {
+      margin: 0;
+      font-size: var(--fs-20);
+      .file {
+        font-family: var(--font-ui);
+        font-size: var(--fs-14);
+        font-weight: 400;
+        margin: 0 0.35rem;
+      }
     }
     .mt-xs {
       margin-top: 0.3rem;

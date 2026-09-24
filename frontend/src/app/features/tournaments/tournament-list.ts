@@ -2,60 +2,76 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { todayLima } from '../../core/format';
+import { fmtDate, todayLima } from '../../core/format';
 import { Template, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { StatusBadge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
-import { DatePipe } from '../../shared/pipes';
+import { Enso } from '../../shared/enso';
+import { Icon } from '../../shared/icon';
+import { PageHead } from '../../shared/page-head';
+
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 @Component({
   selector: 'app-tournament-list',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, PageHead, Icon, Enso],
   template: `
     <div class="container">
-      <div class="page-header">
-        <h1>Torneos</h1>
-        <div class="row">
-          <label class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="load()" /> Incluir torneos de prueba</label>
-          <button class="btn primary" (click)="openNew()">+ Nuevo torneo</button>
+      <app-page-head kanji="大会" title="Torneos">
+        <div meta class="meta-line">
+          @if (!loading()) {
+            <span>{{ tournaments().length }} {{ tournaments().length === 1 ? 'torneo' : 'torneos' }}</span>
+          }
         </div>
-      </div>
+        <label class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="load()" /> Incluir torneos de prueba</label>
+        <button class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo torneo</button>
+      </app-page-head>
       @if (loading()) {
         <div class="empty"><span class="spinner"></span></div>
       } @else if (!tournaments().length) {
         <div class="card start" data-testid="getting-started">
-          <h2>Primeros pasos</h2>
-          <p class="muted small">
-            Aún no hay torneos@if (!includeTest) { (los de prueba están ocultos)}. Para probar Hajime de punta a punta:
-          </p>
-          <ol class="steps">
-            <li>
-              <strong>Crear torneo</strong>: elige la plantilla <em>"Plantilla base (borrador)"</em> y marca
-              <em>"Torneo de prueba"</em> para que no cuente en historial ni medallero.
-            </li>
-            <li><strong>Importar Excel o inscribir</strong> competidores (pestañas <em>Importar Excel</em> o <em>Inscripciones</em>).</li>
-            <li><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li>
-            <li><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el combate.</li>
-          </ol>
-          <div><button class="btn primary" (click)="openNew(true)">+ Crear torneo de prueba</button></div>
+          <app-enso class="start-enso" />
+          <div class="start-body">
+            <h2>Primeros pasos</h2>
+            <p class="muted">
+              Aún no hay torneos@if (!includeTest) { (los de prueba están ocultos)}. Para probar Hajime de punta a punta:
+            </p>
+            <ol class="steps">
+              <li>
+                <strong>Crear torneo</strong>: elige la plantilla <em>"Plantilla base (borrador)"</em> y marca
+                <em>"Torneo de prueba"</em> para que no cuente en historial ni medallero.
+              </li>
+              <li><strong>Importar Excel o inscribir</strong> competidores (pestañas <em>Importar Excel</em> o <em>Inscripciones</em>).</li>
+              <li><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li>
+              <li><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el combate.</li>
+            </ol>
+            <div><button class="btn primary" (click)="openNew(true)"><app-icon name="plus" /> Crear torneo de prueba</button></div>
+          </div>
         </div>
       } @else {
         <div class="cards">
           @for (t of tournaments(); track t.id) {
             <a class="card tcard" [routerLink]="['/torneos', t.id]">
-              <div class="row">
-                <app-status [status]="t.status" type="tournament" />
-                @if (t.is_test) {
-                  <span class="badge warn">Prueba</span>
+              <div class="date" aria-hidden="true">
+                <span class="day">{{ day(t.start_date) }}</span>
+                <span class="mon">{{ month(t.start_date) }}</span>
+                <span class="yr">{{ year(t.start_date) }}</span>
+              </div>
+              <div class="body">
+                <h3>{{ t.name }}</h3>
+                @if (t.end_date && t.end_date !== t.start_date) {
+                  <div class="when small">{{ dateRange(t.start_date, t.end_date) }}</div>
                 }
+                <div class="where small">{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</div>
+                <div class="foot">
+                  <app-status [status]="t.status" type="tournament" />
+                  @if (t.is_test) {
+                    <span class="badge yamabuki hollow">Prueba</span>
+                  }
+                  <span class="tatamis small">{{ t.tatamis.length }} {{ t.tatamis.length === 1 ? 'tatami' : 'tatamis' }}</span>
+                </div>
               </div>
-              <h3>{{ t.name }}</h3>
-              <div class="muted small">
-                {{ t.start_date | fdate }}@if (t.end_date && t.end_date !== t.start_date) { – {{ t.end_date | fdate }} }
-              </div>
-              <div class="small">{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</div>
-              <div class="muted small">{{ t.tatamis.length }} tatami(s)</div>
             </a>
           }
         </div>
@@ -108,42 +124,115 @@ import { DatePipe } from '../../shared/pipes';
   `,
   styles: `
     .start {
-      max-width: 640px;
-      border-top: 4px solid var(--aka);
+      display: grid;
+      grid-template-columns: 9rem minmax(0, 1fr);
+      gap: 2.5rem;
+      align-items: center;
+      max-width: 760px;
+      padding: 2.5rem;
       h2 {
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.35rem;
       }
     }
-    .steps {
-      margin: 0.5rem 0 1rem;
-      padding-left: 1.3rem;
-      li {
-        margin: 0.35rem 0;
+    .start-enso {
+      width: 9rem;
+      height: 9rem;
+      color: var(--kasumi-2);
+    }
+    @media (max-width: 767px) {
+      .start {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1.5rem;
+      }
+      .start-enso {
+        width: 4rem;
+        height: 4rem;
       }
     }
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 1.25rem;
     }
     .tcard {
-      color: inherit;
+      display: grid !important;
+      grid-template-columns: 4.25rem minmax(0, 1fr);
+      gap: 1.25rem;
+      margin: 0;
+      padding: 1.5rem 1.5rem 1.25rem;
+    }
+    .date {
       display: flex;
       flex-direction: column;
-      gap: 0.3rem;
-      text-decoration: none !important;
-      transition: box-shadow 0.15s, transform 0.15s;
-      border-top: 4px solid var(--aka);
-      h3 {
-        margin: 0.25rem 0 0;
+      align-items: center;
+      padding: 0.35rem 0 0.5rem;
+      border-right: 1px solid var(--kasumi);
+      padding-right: 1.1rem;
+      line-height: 1.1;
+      .day {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: var(--fs-28);
+        font-variant-numeric: tabular-nums;
+        color: var(--sumi);
+      }
+      .mon {
+        margin-top: 0.3rem;
+        font-size: var(--fs-12);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--sumi-2);
+      }
+      .yr {
+        font-size: var(--fs-12);
+        color: var(--nezumi-ink);
+        font-variant-numeric: tabular-nums;
       }
     }
-    .tcard:nth-child(even) {
-      border-top-color: var(--ao);
+    .body {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      h3 {
+        margin: 0.1rem 0 0.35rem;
+        font-family: var(--font-display);
+        font-size: var(--fs-20);
+        line-height: 1.35;
+      }
     }
-    .tcard:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-2px);
+    .when {
+      color: var(--sumi-2);
+    }
+    .where {
+      color: var(--nezumi-ink);
+    }
+    .foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--kasumi);
+    }
+    .tatamis {
+      margin-left: auto;
+      color: var(--nezumi-ink);
+    }
+    @media (max-width: 767px) {
+      .cards {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      .tcard {
+        grid-template-columns: 3rem minmax(0, 1fr);
+        gap: 1rem;
+        padding: 1.1rem 1.1rem 1rem;
+      }
+      .date {
+        padding-right: 0.9rem;
+      }
     }
   `,
 })
@@ -162,6 +251,19 @@ export class TournamentListPage {
 
   constructor() {
     this.load();
+  }
+
+  day(d: string): string {
+    return d ? String(Number(d.slice(8, 10))) : '';
+  }
+  month(d: string): string {
+    return d ? MONTHS[Number(d.slice(5, 7)) - 1] ?? '' : '';
+  }
+  year(d: string): string {
+    return d ? d.slice(0, 4) : '';
+  }
+  dateRange(a: string, b: string | null): string {
+    return b && b !== a ? `${fmtDate(a)} – ${fmtDate(b)}` : fmtDate(a);
   }
 
   blank() {

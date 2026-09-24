@@ -5,28 +5,35 @@ import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { Dojo } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
+import { MoreMenu } from '../../shared/more-menu';
+import { PageHead } from '../../shared/page-head';
 
 @Component({
   selector: 'app-dojo-list',
-  imports: [FormsModule, Modal, RouterLink],
+  imports: [FormsModule, Modal, RouterLink, PageHead, Icon, MoreMenu],
   template: `
     <div class="container">
-      <div class="page-header">
-        <h1>Dojos</h1>
-        <div class="row">
-          <input placeholder="Buscar dojo…" [ngModel]="q()" (ngModelChange)="q.set($event)" />
-          <button class="btn primary" (click)="openNew()">+ Nuevo dojo</button>
+      <app-page-head kanji="道場" title="Dojos">
+        <div meta class="meta-line"><span>{{ dojos().length }} dojos y clubes</span></div>
+        <button class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo dojo</button>
+      </app-page-head>
+      <div class="toolbar">
+        <div class="search">
+          <app-icon name="search" />
+          <input placeholder="Buscar por nombre, abreviatura o ciudad…" aria-label="Buscar dojo" [ngModel]="q()" (ngModelChange)="q.set($event)" />
         </div>
+        <span class="count">{{ filtered().length }} de {{ dojos().length }}</span>
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Nombre</th><th>Abrev.</th><th>Ciudad</th><th>Sedes</th><th>Tipo</th><th></th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Abrev.</th><th>Ciudad</th><th>Sedes</th><th>Tipo</th><th><span class="sr-only">Acciones</span></th></tr></thead>
           <tbody>
             @for (d of filtered(); track d.id) {
               <tr>
-                <td><a [routerLink]="['/dojos', d.id]"><strong>{{ d.name }}</strong></a></td>
-                <td class="mono">{{ d.short_name }}</td>
+                <td class="who"><a [routerLink]="['/dojos', d.id]"><strong>{{ d.name }}</strong></a></td>
+                <td><span class="code">{{ d.short_name }}</span></td>
                 <td>{{ d.city }}</td>
                 <td class="small">
                   @for (b of d.branches; track b.id; let l = $last) {
@@ -36,23 +43,27 @@ import { Modal } from '../../shared/modal';
                   }
                 </td>
                 <td>
-                  @if (d.is_independent) {
-                    <span class="badge">Independiente</span>
-                  }
-                  @if (d.is_claimed) {
-                    <span class="badge ok">Registrado</span>
-                  } @else {
-                    <span class="badge">Manual</span>
-                  }
+                  <div class="row types">
+                    @if (d.is_independent) {
+                      <span class="badge plain">Independiente</span>
+                    }
+                    @if (d.is_claimed) {
+                      <span class="badge matcha">Registrado</span>
+                    } @else {
+                      <span class="badge nezumi hollow">Manual</span>
+                    }
+                  </div>
                 </td>
                 <td class="right nowrap">
-                  <a class="btn sm" [routerLink]="['/dojos', d.id]">Historial</a>
-                  <button class="btn sm" (click)="openEdit(d)">Editar</button>
-                  <button class="btn sm" (click)="addBranch(d)">+ Sede</button>
+                  <app-more [label]="'Más acciones · ' + d.name">
+                    <a class="menu-item" [routerLink]="['/dojos', d.id]"><app-icon name="history" /> Ver historial</a>
+                    <button class="menu-item" (click)="openEdit(d)">Editar datos</button>
+                    <button class="menu-item" (click)="addBranch(d)"><app-icon name="plus" /> Agregar sede</button>
+                  </app-more>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="empty">No hay dojos.</td></tr>
+              <tr><td colspan="6" class="empty"><p><strong>No hay dojos.</strong></p>Crea el primero para asociar a sus competidores.</td></tr>
             }
           </tbody>
         </table>
@@ -80,6 +91,18 @@ import { Modal } from '../../shared/modal';
           </div>
         </form>
       </app-modal>
+    }
+  `,
+  styles: `
+    .who a {
+      color: var(--sumi);
+    }
+    .who a:hover {
+      color: var(--ai-ink);
+    }
+    .types {
+      gap: 0.35rem;
+      flex-wrap: nowrap;
     }
   `,
 })

@@ -1,192 +1,496 @@
-import { Component, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ThemeMode, ThemeService } from '../core/theme.service';
+import { Enso } from '../shared/enso';
+import { Icon, IconName } from '../shared/icon';
 
+interface NavItem {
+  path: string;
+  kanji: string;
+  label: string;
+}
+
+const NAV: NavItem[] = [
+  { path: '/torneos', kanji: '大会', label: 'Torneos' },
+  { path: '/personas', kanji: '人', label: 'Personas' },
+  { path: '/dojos', kanji: '道場', label: 'Dojos' },
+  { path: '/plantillas', kanji: '型', label: 'Plantillas' },
+];
+const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
+
+const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
+  { mode: 'light', label: 'Claro', icon: 'sun' },
+  { mode: 'dark', label: 'Oscuro', icon: 'moon' },
+  { mode: 'system', label: 'Sistema', icon: 'system' },
+];
+
+/**
+ * Marco de la aplicación: barra lateral con kanji + etiqueta (≥1200 px), plegada a kanji con
+ * etiqueta mínima (768–1199 px) y barra inferior en celular (<768 px). El menú de usuario vive
+ * al pie de la barra lateral (en celular, arriba a la derecha).
+ */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, Enso, Icon],
+  host: {
+    class: 'app-shell',
+    '(document:click)': 'onDocClick($event)',
+    '(document:keydown.escape)': 'menuOpen.set(null)',
+  },
   template: `
+    <aside class="sidebar no-print" aria-label="Navegación principal">
+      <div class="sidebar-inner">
+      <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
+        <app-enso class="mark" />
+        <span class="word">Hajime</span>
+      </a>
+      <nav class="nav">
+        @for (it of items(); track it.path) {
+          <a [routerLink]="it.path" routerLinkActive="" #rla="routerLinkActive" [class.active]="rla.isActive || inBracket(it)" [attr.aria-current]="rla.isActive ? 'page' : null" [attr.title]="it.label">
+            <span class="kanji" aria-hidden="true">{{ it.kanji }}</span>
+            <span class="label">{{ it.label }}</span>
+          </a>
+        }
+      </nav>
+      <div class="user-slot" data-slot="side">
+        <ng-container [ngTemplateOutlet]="userBtn" [ngTemplateOutletContext]="{ slot: 'side' }" />
+      </div>
+      </div>
+    </aside>
+
     <header class="topbar no-print">
       <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
-        <span class="logo" aria-hidden="true"><span class="half aka"></span><span class="half ao"></span></span>
-        Hajime
+        <app-enso class="mark" />
+        <span class="word">Hajime</span>
       </a>
-      <button class="menu-toggle btn ghost sm" (click)="navOpen.set(!navOpen())" aria-label="Menú">☰</button>
-      <nav [class.open]="navOpen()" (click)="navOpen.set(false)">
-        <a routerLink="/torneos" routerLinkActive="active">Torneos</a>
-        <a routerLink="/personas" routerLinkActive="active">Personas</a>
-        <a routerLink="/dojos" routerLinkActive="active">Dojos</a>
-        <a routerLink="/plantillas" routerLinkActive="active">Plantillas</a>
-      </nav>
-      <div class="user">
-        <button class="btn ghost sm user-btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()">
-          <span class="avatar">{{ initial() }}</span>
-          <span class="uname">{{ auth.user()?.display_name || auth.user()?.username }}</span>
-          @if (auth.isAdmin()) {
-            <span class="badge dark">Admin</span>
-          }
-        </button>
-        @if (menuOpen()) {
-          <div class="menu" (click)="menuOpen.set(false)">
-            <div class="menu-head small muted">Sesión: {{ auth.user()?.username }}</div>
-            @if (auth.isAdmin()) {
-              <a routerLink="/usuarios">Usuarios</a>
-            }
-            <a routerLink="/cambiar-clave">Cambiar contraseña</a>
-            <button (click)="auth.logout()">Cerrar sesión</button>
-          </div>
-        }
+      <div class="user-slot" data-slot="top">
+        <ng-container [ngTemplateOutlet]="userBtn" [ngTemplateOutletContext]="{ slot: 'top' }" />
       </div>
     </header>
-    <main>
+
+    <main class="main">
       <router-outlet />
     </main>
+
+    <nav class="bottom-bar no-print" aria-label="Navegación principal">
+      @for (it of items(); track it.path) {
+        <a [routerLink]="it.path" routerLinkActive="" #rlb="routerLinkActive" [class.active]="rlb.isActive || inBracket(it)" [attr.aria-current]="rlb.isActive ? 'page' : null">
+          <span class="kanji" aria-hidden="true">{{ it.kanji }}</span>
+          <span class="label">{{ it.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <ng-template #userBtn let-slot="slot">
+      <button type="button" class="user-btn" (click)="toggleMenu(slot)" [attr.aria-expanded]="menuOpen() === slot" aria-haspopup="menu" [attr.aria-label]="'Menú de ' + name()">
+        <span class="avatar" aria-hidden="true">{{ initial() }}</span>
+        <span class="who">
+          <span class="uname">{{ name() }}</span>
+          <span class="role">{{ auth.isAdmin() ? 'Administrador' : 'Operador' }}</span>
+        </span>
+      </button>
+      @if (menuOpen() === slot) {
+        <div class="menu-panel user-menu" [class.up]="slot === 'side'" role="menu" aria-label="Menú de usuario">
+          <div class="menu-label">Sesión: {{ auth.user()?.username }}</div>
+          <div class="theme" role="group" aria-label="Tema">
+            @for (t of themes; track t.mode) {
+              <button type="button" [class.on]="theme.mode() === t.mode" [attr.aria-pressed]="theme.mode() === t.mode" (click)="theme.set(t.mode)">
+                <app-icon [name]="t.icon" />
+                <span>{{ t.label }}</span>
+              </button>
+            }
+          </div>
+          <hr />
+          <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
+          <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
+        </div>
+      }
+    </ng-template>
   `,
   styles: `
-    .topbar {
+    :host {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    /* ---- Barra lateral (columna completa; el contenido queda fijo al desplazar) ---- */
+    .sidebar {
+      z-index: 100;
+      border-right: 1px solid var(--kasumi);
+      background: color-mix(in srgb, var(--washi) 92%, var(--kasumi));
+    }
+    .sidebar-inner {
       position: sticky;
       top: 0;
-      z-index: 100;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
-      align-items: center;
-      gap: 1.25rem;
-      padding: 0 1rem;
-      height: 56px;
-      background: var(--gray-900);
-      color: #fff;
+      flex-direction: column;
+      padding: 1.75rem 0.9rem 1rem;
     }
     .brand {
-      color: #fff;
-      font-weight: 800;
-      font-size: 1.2rem;
-      letter-spacing: 0.02em;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      text-decoration: none;
+      gap: 0.65rem;
+      padding: 0 0.7rem;
+      margin-bottom: 2.5rem;
+      color: var(--sumi);
+      text-decoration: none !important;
+      .mark {
+        width: 2rem;
+        height: 2rem;
+        transition: transform var(--dur-3) var(--ease);
+      }
+      .word {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.4rem;
+        letter-spacing: 0.03em;
+      }
+      &:hover .mark {
+        transform: rotate(-8deg);
+      }
     }
-    .logo {
-      display: inline-flex;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid #fff;
-    }
-    .half {
-      flex: 1;
-    }
-    .half.aka {
-      background: var(--aka);
-    }
-    .half.ao {
-      background: var(--ao);
-    }
-    nav {
+    .nav {
       display: flex;
-      gap: 0.25rem;
-      flex: 1;
+      flex-direction: column;
+      gap: 0.2rem;
     }
-    nav a {
-      color: var(--gray-300);
-      padding: 0.4rem 0.75rem;
+    .nav a {
+      position: relative;
+      display: grid;
+      grid-template-columns: 2.6rem 1fr;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.6rem 0.7rem;
       border-radius: var(--radius-sm);
+      color: var(--sumi-2);
+      font-size: var(--fs-16);
       font-weight: 500;
       text-decoration: none;
+      border: 1px solid transparent;
+      transition:
+        background-color var(--dur-1) var(--ease),
+        color var(--dur-1) var(--ease);
+      &:hover {
+        background: var(--hover);
+        color: var(--sumi);
+      }
+      &.active {
+        background: var(--kinu);
+        border-color: var(--kasumi);
+        color: var(--sumi);
+        font-weight: 700;
+        .kanji {
+          color: var(--shu-ink);
+        }
+      }
     }
-    nav a:hover {
-      color: #fff;
-      background: var(--gray-800);
+    .kanji {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 1.15rem;
+      line-height: 1;
+      color: var(--nezumi);
+      text-align: center;
+      letter-spacing: 0.02em;
+      transition: color var(--dur-1) var(--ease);
     }
-    nav a.active {
-      color: #fff;
-      background: var(--gray-700);
-    }
-    .user {
+
+    /* ---- Usuario ---- */
+    .user-slot {
       position: relative;
     }
-    .user-btn {
-      color: #fff;
+    .sidebar .user-slot {
+      margin-top: auto;
+      padding-top: 1rem;
+      border-top: 1px solid var(--kasumi);
     }
-    .user-btn:hover {
-      background: var(--gray-800) !important;
+    .user-btn {
+      all: unset;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      &:hover {
+        background: var(--hover);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--ai);
+        outline-offset: 2px;
+      }
     }
     .avatar {
       display: inline-grid;
       place-items: center;
-      width: 26px;
-      height: 26px;
+      flex: none;
+      width: 2.1rem;
+      height: 2.1rem;
       border-radius: 50%;
-      background: var(--aka);
+      border: 1px solid var(--kasumi-2);
+      background: var(--kinu);
+      font-family: var(--font-display);
       font-weight: 700;
+      color: var(--sumi);
     }
-    .menu {
-      position: absolute;
-      right: 0;
-      top: 110%;
-      background: #fff;
-      color: var(--text);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      min-width: 200px;
-      padding: 0.35rem;
+    .who {
       display: flex;
       flex-direction: column;
+      min-width: 0;
+      line-height: 1.3;
     }
-    .menu a,
-    .menu button {
-      text-align: left;
-      padding: 0.5rem 0.75rem;
-      border: 0;
-      background: none;
-      font: inherit;
-      color: var(--gray-800);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
+    .uname {
+      font-size: var(--fs-14);
+      font-weight: 700;
+      color: var(--sumi);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .menu a:hover,
-    .menu button:hover {
-      background: var(--gray-100);
-      text-decoration: none;
+    .role {
+      font-size: var(--fs-12);
+      color: var(--nezumi-ink);
     }
-    .menu-head {
-      padding: 0.35rem 0.75rem;
-    }
-    .menu-toggle {
-      display: none;
-      color: #fff;
-      font-size: 1.2rem;
-    }
-    @media (max-width: 720px) {
-      .menu-toggle {
-        display: inline-flex;
-        margin-left: auto;
-      }
-      .uname {
-        display: none;
-      }
-      nav {
-        display: none;
-        position: absolute;
-        top: 56px;
+    .user-menu {
+      position: absolute;
+      z-index: 200;
+      right: 0;
+      top: calc(100% + 6px);
+      min-width: 15rem;
+      &.up {
+        top: auto;
+        bottom: calc(100% + 6px);
         left: 0;
-        right: 0;
-        background: var(--gray-900);
-        flex-direction: column;
-        padding: 0.5rem;
+        right: auto;
       }
-      nav.open {
+    }
+    .theme {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      margin: 0.35rem 0.4rem 0.4rem;
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      background: var(--washi);
+      border: 1px solid var(--kasumi);
+      button {
+        all: unset;
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        padding: 0.4rem 0.2rem;
+        border-radius: 6px;
+        font-size: var(--fs-12);
+        color: var(--nezumi-ink);
+        cursor: pointer;
+        transition:
+          background-color var(--dur-1) var(--ease),
+          color var(--dur-1) var(--ease);
+        &:hover {
+          color: var(--sumi);
+        }
+        &.on {
+          background: var(--kinu-2);
+          color: var(--sumi);
+          box-shadow: 0 0 0 1px var(--kasumi);
+        }
+        &:focus-visible {
+          outline: 2px solid var(--ai);
+        }
+      }
+    }
+
+    /* ---- Contenido ---- */
+    .main {
+      min-width: 0;
+      min-height: 100vh;
+    }
+    .topbar,
+    .bottom-bar {
+      display: none;
+    }
+
+    /* ---- Pantallas medianas: solo kanji (con etiqueta mínima) ---- */
+    @media (max-width: 1199px) {
+      :host {
+        --sidebar-w: 92px;
+      }
+      .sidebar-inner {
+        padding: 1.4rem 0.6rem 0.9rem;
+      }
+      .brand {
+        justify-content: center;
+        padding: 0;
+        margin-bottom: 2rem;
+        .word {
+          display: none;
+        }
+      }
+      .nav a {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        gap: 0.3rem;
+        padding: 0.7rem 0.2rem 0.55rem;
+        .kanji {
+          font-size: 1.3rem;
+        }
+        .label {
+          font-size: 0.6875rem;
+          font-weight: 500;
+          letter-spacing: 0.02em;
+        }
+      }
+      .sidebar .who {
+        display: none;
+      }
+      .sidebar .user-btn {
+        justify-content: center;
+        padding: 0.5rem 0;
+      }
+      .user-menu.up {
+        left: calc(100% + 0.9rem);
+        bottom: 0;
+      }
+    }
+
+    /* ---- Celular: barra superior mínima + barra inferior ---- */
+    @media (max-width: 767px) {
+      :host {
+        display: block;
+      }
+      .sidebar {
+        display: none;
+      }
+      .main {
+        padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom));
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 3.5rem;
+        padding: 0 0.75rem 0 1rem;
+        background: color-mix(in srgb, var(--washi) 88%, transparent);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--kasumi);
+        .brand {
+          margin: 0;
+          padding: 0;
+          .mark {
+            width: 1.6rem;
+            height: 1.6rem;
+          }
+          .word {
+            display: inline;
+            font-size: 1.2rem;
+          }
+        }
+        .who {
+          display: none;
+        }
+        .user-btn {
+          padding: 0.3rem;
+        }
+      }
+      .bottom-bar {
+        position: fixed;
+        inset: auto 0 0 0;
+        z-index: 100;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        height: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        background: color-mix(in srgb, var(--kinu) 94%, transparent);
+        backdrop-filter: blur(8px);
+        border-top: 1px solid var(--kasumi);
+        a {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.2rem;
+          color: var(--nezumi-ink);
+          text-decoration: none;
+          font-size: 0.6875rem;
+          font-weight: 500;
+          .kanji {
+            font-size: 1.15rem;
+          }
+          &.active {
+            color: var(--sumi);
+            font-weight: 700;
+            .kanji {
+              color: var(--shu-ink);
+            }
+            &::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 30%;
+              right: 30%;
+              height: 2px;
+              border-radius: 0 0 2px 2px;
+              background: var(--sumi);
+            }
+          }
+        }
       }
     }
   `,
 })
 export class Shell {
   readonly auth = inject(AuthService);
-  readonly menuOpen = signal(false);
-  readonly navOpen = signal(false);
-  initial(): string {
+  readonly theme = inject(ThemeService);
+  private host = inject(ElementRef<HTMLElement>);
+  readonly themes = THEMES;
+  /** Dónde está abierto el menú de usuario: barra lateral, barra superior (celular) o cerrado. */
+  readonly menuOpen = signal<'side' | 'top' | null>(null);
+  readonly items = computed(() => (this.auth.isAdmin() ? [...NAV, ADMIN] : NAV));
+  readonly name = computed(() => {
     const u = this.auth.user();
-    return (u?.display_name || u?.username || '?').charAt(0).toUpperCase();
+    return u?.display_name || u?.username || '';
+  });
+  readonly initial = computed(() => (this.name() || '?').charAt(0).toUpperCase());
+
+  /** Las llaves (/categorias/…) pertenecen a un torneo: se marca «Torneos» como sección activa. */
+  private readonly url = toSignal(
+    inject(Router).events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      map((e) => (e as NavigationEnd).urlAfterRedirects),
+    ),
+    { initialValue: inject(Router).url },
+  );
+  inBracket(it: NavItem): boolean {
+    return it.path === '/torneos' && this.url().startsWith('/categorias/');
+  }
+
+  toggleMenu(slot: 'side' | 'top'): void {
+    this.menuOpen.set(this.menuOpen() === slot ? null : slot);
+  }
+
+  onDocClick(ev: MouseEvent): void {
+    if (!this.menuOpen()) return;
+    const slot = (this.host.nativeElement as HTMLElement).querySelector(`[data-slot="${this.menuOpen()}"]`);
+    if (slot && !slot.contains(ev.target as Node)) this.menuOpen.set(null);
+  }
+
+  logout(): void {
+    this.menuOpen.set(null);
+    this.auth.logout();
   }
 }

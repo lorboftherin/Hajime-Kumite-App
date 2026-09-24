@@ -18,21 +18,19 @@ interface Draft {
   selector: 'app-shadow-tab',
   imports: [FormsModule],
   template: `
-    <div class="card">
-      <div class="row">
-        <div class="grow">
-          <h3>Shadow Mode: comparación con el resultado oficial</h3>
-          <p class="small muted">Registra lo que dice la mesa oficial (papel) para cada combate. Las diferencias se marcan y alimentan los criterios de éxito.</p>
-        </div>
-        @if (report(); as r) {
-          <div class="kpi">
-            <div class="big">{{ r.winner_agreement_pct === null ? '—' : r.winner_agreement_pct + '%' }}</div>
-            <div class="small muted">coincidencia de ganador</div>
-            <div class="small">{{ r.compared }} comparados de {{ r.matches }} · {{ r.differences.length }} diferencias</div>
-          </div>
-        }
+    <div class="card intro">
+      <div class="grow">
+        <h2>Shadow Mode</h2>
+        <p class="muted">Comparación con el resultado oficial. Registra lo que dice la mesa oficial (papel) para cada combate; las diferencias se marcan y alimentan los criterios de éxito.</p>
+        <label class="field inline small"><input type="checkbox" [checked]="onlyDiffs()" (change)="onlyDiffs.set(!onlyDiffs())" /> Mostrar solo diferencias</label>
       </div>
-      <label class="field inline small"><input type="checkbox" [checked]="onlyDiffs()" (change)="onlyDiffs.set(!onlyDiffs())" /> Mostrar solo diferencias</label>
+      @if (report(); as r) {
+        <div class="kpi">
+          <div class="figure">{{ r.winner_agreement_pct === null ? '—' : r.winner_agreement_pct + '%' }}</div>
+          <div class="small muted">coincidencia de ganador</div>
+          <div class="small num">{{ r.compared }} comparados de {{ r.matches }} · {{ r.differences.length }} diferencias</div>
+        </div>
+      }
     </div>
 
     <div class="table-wrap">
@@ -54,7 +52,7 @@ interface Draft {
             @let m = matchInfo()[it.match_id];
             <tr [class.diff]="it.winner_matches === false || it.score_matches === false">
               <td>
-                <strong>{{ it.code }}</strong>
+                <span class="code">{{ it.code }}</span>
                 <div class="small muted">{{ it.category_name }}</div>
               </td>
               <td class="small">
@@ -97,7 +95,7 @@ interface Draft {
                   </select>
                 }
               </td>
-              <td><button class="btn sm primary" (click)="save(it)">Guardar</button></td>
+              <td><button class="btn sm" (click)="save(it)">Guardar</button></td>
             </tr>
           } @empty {
             <tr><td colspan="7" class="empty">No hay combates finalizados para comparar.</td></tr>
@@ -107,21 +105,40 @@ interface Draft {
     </div>
   `,
   styles: `
+    .intro {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      h2 {
+        margin-bottom: 0.35rem;
+      }
+      p {
+        max-width: 60ch;
+      }
+    }
     .kpi {
       text-align: right;
-      .big {
-        font-size: 2rem;
-        font-weight: 800;
+      padding-left: 2rem;
+      border-left: 1px solid var(--kasumi);
+      .figure {
+        margin-bottom: 0.35rem;
       }
     }
     .score {
       width: 4rem;
     }
+    td:first-child {
+      min-width: 11rem;
+    }
+    td:nth-child(2) {
+      min-width: 9rem;
+    }
     .aka-b {
-      border-left: 4px solid var(--aka) !important;
+      box-shadow: inset 3px 0 0 var(--shu);
     }
     .ao-b {
-      border-left: 4px solid var(--ao) !important;
+      box-shadow: inset 3px 0 0 var(--ai);
     }
   `,
 })

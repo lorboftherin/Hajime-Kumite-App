@@ -6,101 +6,108 @@ import { ADVICE_LABEL, CATEGORY_STATUS, FORMAT_LABEL, GRADES, MODALITY_LABEL, SE
 import { Bracket, Category } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
+import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
+import { MoreMenu } from '../../../shared/more-menu';
 import { LabelPipe } from '../../../shared/pipes';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-categories-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu],
   template: `
-    <div class="card filters">
-      <div class="row">
-        <input class="grow" placeholder="Buscar por nombre o código…" [ngModel]="q()" (ngModelChange)="q.set($event)" />
-        <select [ngModel]="status()" (ngModelChange)="status.set($event)">
-          <option value="">Todos los estados</option>
-          @for (s of statusKeys; track s) {
-            <option [value]="s">{{ statusLabel[s] }}</option>
-          }
-        </select>
-        <select [ngModel]="modality()" (ngModelChange)="modality.set($event)">
-          <option value="">Kumite y kata</option>
-          <option value="kumite">Kumite</option>
-          <option value="kata">Kata</option>
-        </select>
-        <label class="field inline small"><input type="checkbox" [ngModel]="hideEmpty()" (ngModelChange)="hideEmpty.set($event)" /> Ocultar vacías</label>
+    <div class="toolbar">
+      <div class="search">
+        <app-icon name="search" />
+        <input placeholder="Buscar por nombre o código…" aria-label="Buscar categoría" [ngModel]="q()" (ngModelChange)="q.set($event)" />
       </div>
-      <div class="row mt">
-        <button class="btn primary sm" (click)="openCreate()">+ Categoría manual</button>
-        <button class="btn sm" [disabled]="selected().size < 2" (click)="openMerge()">Fusionar seleccionadas ({{ selected().size }})</button>
-        <button class="btn sm" (click)="reload()">↻ Recargar</button>
-        <span class="muted small grow right">{{ filtered().length }} de {{ ctx.categories().length }} categorías</span>
-      </div>
+      <select aria-label="Estado" [ngModel]="status()" (ngModelChange)="status.set($event)">
+        <option value="">Todos los estados</option>
+        @for (s of statusKeys; track s) {
+          <option [value]="s">{{ statusLabel[s] }}</option>
+        }
+      </select>
+      <select aria-label="Modalidad" [ngModel]="modality()" (ngModelChange)="modality.set($event)">
+        <option value="">Kumite y kata</option>
+        <option value="kumite">Kumite</option>
+        <option value="kata">Kata</option>
+      </select>
+      <label class="field inline small"><input type="checkbox" [ngModel]="hideEmpty()" (ngModelChange)="hideEmpty.set($event)" /> Ocultar vacías</label>
+      <span class="count">{{ filtered().length }} de {{ ctx.categories().length }}</span>
+      <button class="btn icon-only ghost" (click)="reload()" title="Recargar" aria-label="Recargar"><app-icon name="refresh" /></button>
+      <button class="btn primary" (click)="openCreate()"><app-icon name="plus" /> Categoría manual</button>
     </div>
+    @if (selected().size) {
+      <div class="selection-bar" role="status">
+        <span><strong class="num">{{ selected().size }}</strong> seleccionada(s)</span>
+        <button class="btn sm" [disabled]="selected().size < 2" (click)="openMerge()">Fusionar seleccionadas</button>
+        <button class="btn sm ghost" (click)="clearSelection()">Quitar selección</button>
+      </div>
+    }
 
     <div class="table-wrap">
       <table class="table">
         <thead>
           <tr>
-            <th></th>
+            <th class="check"><span class="sr-only">Seleccionar</span></th>
             <th>Categoría</th>
             <th>Modalidad</th>
             <th class="center">Inscritos</th>
             <th>Estado</th>
-            <th>Tatami / cola</th>
-            <th>Sugerencias</th>
-            <th class="right">Acciones</th>
+            <th>Tatami · cola</th>
+            <th class="right"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           @for (c of filtered(); track c.id) {
             <tr [class.selected]="selected().has(c.id)">
-              <td><input type="checkbox" [checked]="selected().has(c.id)" (change)="toggle(c.id)" [attr.aria-label]="'Seleccionar ' + c.name" /></td>
-              <td>
-                <div><strong>{{ c.name }}</strong> @if (c.is_manual) {<span class="badge info">manual</span>}</div>
-                <div class="muted small mono">{{ c.code }}</div>
+              <td class="check"><input type="checkbox" [checked]="selected().has(c.id)" (change)="toggle(c.id)" [attr.aria-label]="'Seleccionar ' + c.name" /></td>
+              <td class="cat">
+                <div class="cat-name">{{ c.name }} @if (c.is_manual) {<span class="badge plain">manual</span>}</div>
+                <div class="code">{{ c.code }}</div>
                 @if (c.merged_into_id) {
-                  <div class="small">→ fusionada en {{ catName(c.merged_into_id) }}</div>
+                  <div class="small muted">→ fusionada en {{ catName(c.merged_into_id) }}</div>
                 }
                 @if (c.cancel_reason) {
-                  <div class="small error-text">Cancelada: {{ c.cancel_reason }}</div>
+                  <div class="small muted">Cancelada: {{ c.cancel_reason }}</div>
+                }
+                @if (c.advice.length && c.status !== 'empty') {
+                  <div class="small advice">Sugerencia: {{ adviceText(c.advice) }}</div>
                 }
               </td>
-              <td>{{ c.modality | label: modalityLabel }} · {{ c.sex | label: sexLabel }}</td>
-              <td class="center"><strong>{{ c.entrant_count }}</strong></td>
+              <td class="nowrap">{{ c.modality | label: modalityLabel }} <span class="muted">· {{ c.sex | label: sexLabel }}</span></td>
+              <td class="center"><span class="count-cell" [class.zero]="!c.entrant_count">{{ c.entrant_count }}</span></td>
               <td><app-status [status]="c.status" /></td>
               <td class="nowrap">
                 @if (c.tatami_id) {
-                  {{ tatamiName(c.tatami_id) }} · #{{ c.queue_position ?? '—' }}
+                  {{ tatamiName(c.tatami_id) }} <span class="muted">· {{ c.queue_position ?? '—' }}</span>
                 } @else {
                   <span class="muted">—</span>
                 }
               </td>
-              <td class="small">
-                @if (c.advice.length && c.status !== 'empty') {
-                  <span class="advice">Opciones: {{ adviceText(c.advice) }}</span>
-                }
-              </td>
-              <td class="right actions">
+              <td class="right"><div class="actions">
                 @if (hasBracket(c)) {
                   <a class="btn sm" [routerLink]="['/categorias', c.id, 'llave']">Llave</a>
                 } @else if (c.status === 'open' && c.entrant_count > 0) {
                   <button class="btn sm primary" (click)="generate(c)">Generar llave</button>
                 }
-                <button class="btn sm" (click)="openTatami(c)">Tatami</button>
-                @if (mergeTargets().has(c.id)) {
-                  <button class="btn sm" (click)="unmerge(c)" title="Deshacer fusiones hacia esta categoría">Separar</button>
-                }
-                @if (c.status === 'finished') {
-                  <button class="btn sm" (click)="reopen(c)" title="Reabrir una categoría finalizada (con motivo)">Reabrir categoría</button>
-                }
-                @if (c.status !== 'cancelled' && c.status !== 'merged') {
-                  <button class="btn sm ghost" (click)="cancel(c)">Cancelar</button>
-                }
-              </td>
+                <app-more [label]="'Más acciones · ' + c.name">
+                  <button class="menu-item" (click)="openTatami(c)">Asignar tatami</button>
+                  @if (mergeTargets().has(c.id)) {
+                    <button class="menu-item" (click)="unmerge(c)">Separar (deshacer fusión)</button>
+                  }
+                  @if (c.status === 'finished') {
+                    <button class="menu-item" (click)="reopen(c)">Reabrir categoría</button>
+                  }
+                  @if (c.status !== 'cancelled' && c.status !== 'merged') {
+                    <hr />
+                    <button class="menu-item danger" (click)="cancel(c)">Cancelar categoría</button>
+                  }
+                </app-more>
+              </div></td>
             </tr>
           } @empty {
-            <tr><td colspan="8" class="empty">No hay categorías con esos filtros.</td></tr>
+            <tr><td colspan="7" class="empty"><p><strong>Nada por aquí.</strong></p>No hay categorías con esos filtros.</td></tr>
           }
         </tbody>
       </table>
@@ -239,17 +246,46 @@ import { TournamentContext } from '../tournament-context';
     }
   `,
   styles: `
-    .filters {
-      padding: 0.75rem;
+    .selection-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.9rem;
+      margin-bottom: 0.9rem;
+      border-radius: var(--radius-sm);
+      background: var(--ai-soft);
+      font-size: var(--fs-14);
+      animation: rise-in var(--dur-2) var(--ease);
+    }
+    .check {
+      width: 2.5rem;
+      padding-right: 0 !important;
+    }
+    .cat {
+      min-width: 15rem;
+    }
+    .cat-name {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .count-cell {
+      font-weight: 700;
+      &.zero {
+        color: var(--nezumi-ink);
+        font-weight: 400;
+      }
     }
     .actions {
       white-space: nowrap;
-      .btn {
-        margin-left: 0.25rem;
-      }
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.25rem;
     }
     .advice {
-      color: var(--warn);
+      color: var(--yamabuki-ink);
     }
   `,
 })
@@ -316,6 +352,10 @@ export class CategoriesTab {
   tatamiName(id: number): string {
     const t = this.ctx.tournament()?.tatamis.find((x) => x.id === id);
     return t ? t.name || `Tatami ${t.number}` : '#' + id;
+  }
+
+  clearSelection(): void {
+    this.selected.set(new Set());
   }
 
   toggle(id: number): void {

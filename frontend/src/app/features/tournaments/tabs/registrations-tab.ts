@@ -10,28 +10,31 @@ import { Person, Registration, Suggestion, WithdrawResult } from '../../../core/
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
+import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { PersonForm } from '../../../shared/person-form';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-registrations-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, PersonForm],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, PersonForm, Icon],
   template: `
-    <div class="card">
-      <div class="row">
-        <input class="grow" placeholder="Filtrar por nombre, dojo o categoría…" [ngModel]="filter()" (ngModelChange)="filter.set($event)" />
-        <select [ngModel]="catFilter()" (ngModelChange)="catFilter.set($event)">
-          <option [ngValue]="0">Todas las categorías</option>
-          @for (c of ctx.categories(); track c.id) {
-            @if (c.entrant_count > 0) {
-              <option [ngValue]="c.id">{{ c.name }} ({{ c.entrant_count }})</option>
-            }
-          }
-        </select>
-        <label class="field inline small"><input type="checkbox" [ngModel]="showWithdrawn()" (ngModelChange)="showWithdrawn.set($event)" /> Mostrar retiradas</label>
-        <button class="btn primary" (click)="openRegister()">+ Inscribir</button>
+    <div class="toolbar">
+      <div class="search">
+        <app-icon name="search" />
+        <input placeholder="Filtrar por nombre, dojo o categoría…" aria-label="Filtrar inscripciones" [ngModel]="filter()" (ngModelChange)="filter.set($event)" />
       </div>
+      <select aria-label="Categoría" [ngModel]="catFilter()" (ngModelChange)="catFilter.set($event)">
+        <option [ngValue]="0">Todas las categorías</option>
+        @for (c of ctx.categories(); track c.id) {
+          @if (c.entrant_count > 0) {
+            <option [ngValue]="c.id">{{ c.name }} ({{ c.entrant_count }})</option>
+          }
+        }
+      </select>
+      <label class="field inline small"><input type="checkbox" [ngModel]="showWithdrawn()" (ngModelChange)="showWithdrawn.set($event)" /> Mostrar retiradas</label>
+      <span class="count">{{ filtered().length }} {{ filtered().length === 1 ? 'inscripción' : 'inscripciones' }}</span>
+      <button class="btn primary" (click)="openRegister()"><app-icon name="plus" /> Inscribir</button>
     </div>
 
     <div class="table-wrap">
@@ -45,13 +48,13 @@ import { TournamentContext } from '../tournament-context';
             <th class="center">Edad</th>
             <th>Peso</th>
             <th>Estado</th>
-            <th></th>
+            <th><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           @for (r of filtered(); track r.id) {
             <tr [class.struck]="r.status === 'withdrawn'">
-              <td>
+              <td class="who">
                 @if (r.person_id) {
                   <a [routerLink]="['/personas', r.person_id]">{{ r.person_name }}</a>
                 } @else {
@@ -65,7 +68,7 @@ import { TournamentContext } from '../tournament-context';
                   <div class="muted small">orig.: {{ catName(r.original_category_id) }}</div>
                 }
               </td>
-              <td>{{ r.grade }}</td>
+              <td class="nowrap">{{ r.grade }}</td>
               <td class="center">{{ r.age_at_reference }}</td>
               <td>{{ r.weight_class }}</td>
               <td>
@@ -81,12 +84,11 @@ import { TournamentContext } from '../tournament-context';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="8" class="empty">Sin inscripciones.</td></tr>
+            <tr><td colspan="8" class="empty"><p><strong>Sin inscripciones.</strong></p>Inscribe competidores o impórtalos desde Excel.</td></tr>
           }
         </tbody>
       </table>
     </div>
-    <p class="muted small">{{ filtered().length }} inscripciones mostradas.</p>
 
     @if (regOpen()) {
       <app-modal title="Inscribir competidor" [wide]="true" (closed)="regOpen.set(false)">
@@ -94,7 +96,7 @@ import { TournamentContext } from '../tournament-context';
           @if (!newPerson()) {
             <div class="row">
               <input class="grow" placeholder="Buscar persona por nombre o documento…" [ngModel]="search()" (ngModelChange)="onSearch($event)" autofocus />
-              <button class="btn" (click)="newPerson.set(true)">+ Nueva persona</button>
+              <button class="btn" (click)="newPerson.set(true)"><app-icon name="plus" /> Nueva persona</button>
             </div>
             <ul class="list-plain results">
               @for (p of results(); track p.id) {
@@ -123,7 +125,7 @@ import { TournamentContext } from '../tournament-context';
           }
         } @else {
           @let p = person()!;
-          <div class="alert info row">
+          <div class="alert info row chosen-person">
             <div class="grow">
               <strong>{{ p.first_names }} {{ p.last_names }}</strong>
               <span class="small"> · {{ p.sex }}@if (auth.canViewDocuments()) { · {{ fdate(p.birth_date) }} } · {{ p.current_grade || 'sin grado' }}</span>
@@ -134,7 +136,7 @@ import { TournamentContext } from '../tournament-context';
           @if (suggestions().length) {
             <div class="stack">
               @for (s of suggestions(); track s.category_id) {
-                <label class="field inline"><input type="checkbox" [checked]="chosen().has(s.category_id)" (change)="toggleCat(s.category_id)" /> {{ s.name }} <span class="badge">{{ s.modality }}</span></label>
+                <label class="field inline"><input type="checkbox" [checked]="chosen().has(s.category_id)" (change)="toggleCat(s.category_id)" /> {{ s.name }} <span class="badge plain">{{ s.modality }}</span></label>
               }
             </div>
           } @else {
@@ -165,7 +167,7 @@ import { TournamentContext } from '../tournament-context';
             <div class="small mt">
               Manuales:
               @for (c of extraChosen(); track c) {
-                <span class="badge info">{{ catName(c) }} <button class="x" (click)="toggleCat(c)">✕</button></span>
+                <span class="badge ai">{{ catName(c) }} <button class="x" (click)="toggleCat(c)" [attr.aria-label]="'Quitar ' + catName(c)"><app-icon name="close" /></button></span>
               }
             </div>
           }
@@ -185,20 +187,41 @@ import { TournamentContext } from '../tournament-context';
     }
     .linklike {
       all: unset;
+      box-sizing: border-box;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       width: 100%;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      &:hover {
+        background: var(--hover);
+      }
       &:hover strong {
-        color: var(--ao);
+        color: var(--ai-ink);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--ai);
       }
     }
+    .who a {
+      color: var(--sumi);
+      font-weight: 700;
+    }
+    .who a:hover {
+      color: var(--ai-ink);
+    }
+    .chosen-person {
+      margin-bottom: 1.25rem;
+    }
     .x {
+      display: inline-flex;
       border: 0;
       background: none;
       cursor: pointer;
-      color: inherit;
+      color: var(--nezumi-ink);
       padding: 0 0 0 0.2rem;
+      font-size: 0.9rem;
     }
   `,
 })

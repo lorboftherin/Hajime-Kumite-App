@@ -9,7 +9,11 @@ import { DialogService } from '../../core/dialog.service';
 import { GRADES, fmtDate, todayLima } from '../../core/format';
 import { ConsentIn, Dojo, Duplicate, Person, RoleIn, RoleOut, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { Icon } from '../../shared/icon';
+import { InkTabs } from '../../shared/ink-tabs';
 import { Modal } from '../../shared/modal';
+import { MoreMenu } from '../../shared/more-menu';
+import { PageHead } from '../../shared/page-head';
 import { DatePipe } from '../../shared/pipes';
 import { PersonHistoryView } from './person-history';
 
@@ -22,40 +26,43 @@ interface MergeResult {
 
 @Component({
   selector: 'app-person-detail',
-  imports: [FormsModule, RouterLink, Modal, DatePipe, PersonHistoryView],
+  imports: [FormsModule, RouterLink, Modal, DatePipe, PersonHistoryView, PageHead, Icon, MoreMenu, InkTabs],
   template: `
     <div class="container">
-      <div class="small"><a routerLink="/personas">← Personas</a></div>
       @if (person(); as p) {
-        <div class="page-header">
-          <div>
-            <h1>{{ p.first_names }} {{ p.last_names }}</h1>
-            <div class="row small muted">
-              <span>#{{ p.id }}</span>
-              <span>v{{ p.version }}</span>
-              @if (p.identity_incomplete) {
-                <span class="badge warn">Identidad incompleta</span>
-              }
-              @if (p.merged_into_id) {
-                <span class="badge danger">Fusionada en <a [routerLink]="['/personas', p.merged_into_id]">#{{ p.merged_into_id }}</a></span>
-              }
-              @if (p.anonymized_at) {
-                <span class="badge" title="Datos personales anonimizados">Anonimizada</span>
-              }
-            </div>
-          </div>
-          <div class="row">
-            <button class="btn" (click)="gradeOpen.set(true)">+ Grado</button>
-            <button class="btn" (click)="openDojo()">Cambiar dojo</button>
-            <button class="btn" (click)="openConsent()">Agregar consentimiento</button>
-            @if (auth.isAdmin()) {
-              <button class="btn" (click)="openMerge()">Fusionar duplicado…</button>
-              @if (!p.anonymized_at) {
-                <button class="btn danger" (click)="anonymize()">Anonimizar</button>
-              }
+        <app-page-head kanji="人" [title]="p.first_names + ' ' + p.last_names">
+          <a back class="back-link" routerLink="/personas"><app-icon name="back" /> Personas</a>
+          <div meta class="meta-line">
+            <span class="num">#{{ p.id }}</span>
+            @if (p.current_grade) {
+              <span>{{ p.current_grade }}</span>
+            }
+            @if (p.current_dojo_id) {
+              <span>{{ dojoName(p.current_dojo_id) }}</span>
+            }
+            @if (p.identity_incomplete) {
+              <span class="badge yamabuki">Identidad incompleta</span>
+            }
+            @if (p.merged_into_id) {
+              <span class="badge nezumi">Fusionada en <a [routerLink]="['/personas', p.merged_into_id]">#{{ p.merged_into_id }}</a></span>
+            }
+            @if (p.anonymized_at) {
+              <span class="badge nezumi" title="Datos personales anonimizados">Anonimizada</span>
             }
           </div>
-        </div>
+          <button class="btn" (click)="gradeOpen.set(true)"><app-icon name="plus" /> Registrar grado</button>
+          <app-more text="Más" label="Más acciones de la persona" [small]="false">
+            <button class="menu-item" (click)="openDojo()">Cambiar dojo</button>
+            <button class="menu-item" (click)="openConsent()">Agregar consentimiento</button>
+            @if (auth.isAdmin()) {
+              <hr />
+              <button class="menu-item" (click)="openMerge()">Fusionar duplicado…</button>
+              @if (!p.anonymized_at) {
+                <button class="menu-item danger" (click)="anonymize()">Anonimizar datos…</button>
+              }
+            }
+          </app-more>
+        </app-page-head>
 
         @if (mergeResult(); as mr) {
           <div class="alert ok row">
@@ -64,7 +71,7 @@ interface MergeResult {
           </div>
         }
 
-        <nav class="tabs">
+        <nav class="tabs" inkTabs aria-label="Secciones de la persona">
           <a [routerLink]="[]" [queryParams]="{ tab: null }" [class.active]="tab() !== 'historial'">Ficha</a>
           <a [routerLink]="[]" [queryParams]="{ tab: 'historial' }" [class.active]="tab() === 'historial'">Historial deportivo</a>
         </nav>
@@ -72,7 +79,7 @@ interface MergeResult {
         @if (tab() === 'historial') {
           <app-person-history [personId]="p.id" />
         } @else {
-        <div class="grid-2">
+        <div class="ficha">
           <div class="card">
             <h3>Datos personales</h3>
             <form (ngSubmit)="save()" class="stack">
@@ -137,7 +144,8 @@ interface MergeResult {
           </div>
           <div class="card">
             <h3>Consentimientos de datos</h3>
-            <table class="table small">
+            <div class="scroll-x">
+            <table class="table small flush">
               <thead><tr><th>Fecha</th><th>Otorgado por</th><th>Relación</th><th>Medio</th><th>Alcance</th></tr></thead>
               <tbody>
                 @for (c of p.consents ?? []; track c.id) {
@@ -153,12 +161,13 @@ interface MergeResult {
                 }
               </tbody>
             </table>
-            <div class="form-actions"><button class="btn sm" (click)="openConsent()">Agregar consentimiento</button></div>
+            </div>
+            <div class="form-actions"><button class="btn sm" (click)="openConsent()"><app-icon name="plus" /> Agregar consentimiento</button></div>
           </div>
           @if (auth.isAdmin()) {
             <div class="card">
               <h3>Roles (permisos)</h3>
-              <table class="table small">
+              <table class="table small flush">
                 <thead><tr><th>Rol</th><th>Ámbito</th><th></th></tr></thead>
                 <tbody>
                   @for (r of roles(); track r.id) {
@@ -317,13 +326,27 @@ interface MergeResult {
     }
   `,
   styles: `
+    .ficha {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 0 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 767px) {
+      .ficha {
+        grid-template-columns: 1fr;
+      }
+    }
+    .scroll-x {
+      overflow-x: auto;
+    }
     .dl {
       display: grid;
       grid-template-columns: max-content 1fr;
       gap: 0.4rem 1rem;
       margin: 0;
       dt {
-        color: var(--muted);
+        color: var(--nezumi-ink);
         font-size: 0.85rem;
       }
       dd {

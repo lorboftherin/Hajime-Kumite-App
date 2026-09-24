@@ -112,7 +112,7 @@ import { MutationService } from '../core/mutation.service';
   `,
   styles: `
     .consent {
-      border: 1px solid var(--border);
+      border: 1px solid var(--kasumi);
       border-radius: var(--radius-sm);
       padding: 0.5rem 0.75rem;
       legend {

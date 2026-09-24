@@ -2,55 +2,60 @@ import { Component, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { FORMAT_LABEL, GRADES, MODALITY_LABEL, SEX_LABEL } from '../../core/format';
 import { Template } from '../../core/models';
+import { PageHead } from '../../shared/page-head';
 import { LabelPipe } from '../../shared/pipes';
 
 @Component({
   selector: 'app-template-list',
-  imports: [LabelPipe],
+  imports: [LabelPipe, PageHead],
   template: `
     <div class="container">
-      <div class="page-header"><h1>Plantillas de categorías</h1></div>
+      <app-page-head kanji="型" title="Plantillas de categorías">
+        <div meta class="meta-line"><span>Conjuntos de categorías listos para copiar a un torneo</span></div>
+      </app-page-head>
       <div class="layout">
-        <aside class="card list">
+        <nav class="list" aria-label="Plantillas">
           @for (t of templates(); track t.id) {
-            <button class="item" [class.on]="selected()?.id === t.id" (click)="selected.set(t)">
-              <strong>{{ t.name }}</strong>
-              <span class="muted small">{{ t.items.length }} categorías · v{{ t.version }}</span>
+            <button class="item" [class.on]="selected()?.id === t.id" [attr.aria-current]="selected()?.id === t.id ? 'true' : null" (click)="selected.set(t)">
+              <span class="name">{{ t.name }}</span>
+              <span class="muted small num">{{ t.items.length }} categorías · v{{ t.version }}</span>
             </button>
           } @empty {
             <div class="empty">No hay plantillas.</div>
           }
-        </aside>
+        </nav>
         <section>
           @if (selected(); as t) {
-            <div class="card">
+            <div class="detail-head">
               <h2>{{ t.name }}</h2>
-              <p class="muted">{{ t.description }}</p>
+              @if (t.description) {
+                <p class="muted">{{ t.description }}</p>
+              }
             </div>
             <div class="table-wrap">
               <table class="table">
                 <thead>
-                  <tr><th>Código</th><th>Nombre</th><th>Modalidad</th><th>Sexo</th><th>Edad</th><th>Grado</th><th>Peso</th><th>Formato</th><th>Duración</th></tr>
+                  <tr><th>Código</th><th>Nombre</th><th>Modalidad</th><th>Sexo</th><th>Edad</th><th>Grado</th><th>Peso</th><th>Formato</th><th class="right">Duración</th></tr>
                 </thead>
                 <tbody>
                   @for (i of t.items; track i.id) {
                     <tr>
-                      <td class="mono small">{{ i.code }}</td>
-                      <td>{{ i.name }}</td>
+                      <td><span class="code">{{ i.code }}</span></td>
+                      <td class="iname">{{ i.name }}</td>
                       <td>{{ i.modality | label: modality }}</td>
                       <td>{{ i.sex | label: sex }}</td>
                       <td class="nowrap">{{ range(i.age_min, i.age_max) }}</td>
                       <td class="nowrap small">{{ gradeRange(i.grade_min, i.grade_max) }}</td>
                       <td>{{ i.weight_class }}</td>
                       <td class="small">{{ i.format | label: format }}</td>
-                      <td>{{ i.duration_seconds ? i.duration_seconds + ' s' : '' }}</td>
+                      <td class="right nowrap">{{ i.duration_seconds ? i.duration_seconds + ' s' : '' }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
           } @else {
-            <div class="card empty">Selecciona una plantilla.</div>
+            <div class="card empty"><p><strong>Selecciona una plantilla.</strong></p></div>
           }
         </section>
       </div>
@@ -59,33 +64,67 @@ import { LabelPipe } from '../../shared/pipes';
   styles: `
     .layout {
       display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
-      gap: 1rem;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 2rem;
       align-items: start;
     }
-    @media (max-width: 800px) {
+    @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
       }
     }
     .list {
-      padding: 0.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      position: sticky;
+      top: 1.5rem;
     }
     .item {
       all: unset;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      padding: 0.6rem 0.75rem;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
+      gap: 0.1rem;
       width: 100%;
-      box-sizing: border-box;
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color var(--dur-1) var(--ease);
+      .name {
+        font-weight: 500;
+        color: var(--sumi-2);
+      }
       &:hover {
-        background: var(--gray-100);
+        background: var(--hover);
       }
       &.on {
-        background: var(--info-soft);
+        background: var(--kinu);
+        border-color: var(--kasumi);
+        box-shadow: inset 3px 0 0 var(--sumi);
+        .name {
+          font-weight: 700;
+          color: var(--sumi);
+        }
       }
+      &:focus-visible {
+        outline: 2px solid var(--ai);
+      }
+    }
+    .detail-head {
+      margin-bottom: 1.25rem;
+      h2 {
+        margin: 0 0 0.25rem;
+      }
+      p {
+        margin: 0;
+        max-width: 70ch;
+      }
+    }
+    .iname {
+      font-weight: 500;
+      min-width: 13rem;
     }
   `,
 })

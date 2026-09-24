@@ -8,7 +8,9 @@ import { CATEGORY_STATUS, FORMAT_LABEL, THIRD_PLACE_LABEL, TOURNAMENT_STATUS } f
 import { Registration, Template, Tournament } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
+import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
+import { MoreMenu } from '../../../shared/more-menu';
 import { DatePipe, LabelPipe } from '../../../shared/pipes';
 import { TournamentContext } from '../tournament-context';
 
@@ -38,66 +40,91 @@ const NEXT: Record<string, Transition[]> = {
   cancelled: [],
 };
 
+/** Qué sigue en cada estado (Zanshin: el paso siguiente siempre a la vista). */
+const HINT: Record<string, string> = {
+  draft: 'Prepara categorías y datos; luego abre las inscripciones.',
+  registration_open: 'Los dojos pueden inscribir. Cierra las inscripciones para generar las llaves.',
+  registration_closed: 'Genera las llaves y asigna tatamis; después inicia el torneo.',
+  in_progress: 'Los combates se registran desde la pestaña Tatamis.',
+  finished: 'Resultados y medallero publicados.',
+  cancelled: 'El torneo fue cancelado.',
+};
+
 @Component({
   selector: 'app-summary-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe, LabelPipe],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe, LabelPipe, MoreMenu, Icon],
   template: `
     @if (ctx.tournament(); as t) {
-      <div class="grid-2">
-        <div class="card">
+      <div class="overview">
+        <section class="card state">
           <h3>Estado</h3>
-          <div class="row mb">
+          <div class="state-line">
             <app-status [status]="t.status" type="tournament" />
-            <span class="muted small">versión {{ t.version }}</span>
+            <span class="muted tiny">versión {{ t.version }}</span>
           </div>
-          <div class="row">
-            @for (tr of transitions(); track tr.to) {
-              <button class="btn" [class.danger]="tr.danger" [class.primary]="!tr.danger" (click)="changeStatus(tr)">{{ tr.label }}</button>
+          <p class="next small">{{ nextHint(t.status) }}</p>
+          <div class="row actions">
+            @for (tr of mainTransitions(); track tr.to; let first = $first) {
+              <button class="btn" [class.primary]="first" (click)="changeStatus(tr)">{{ tr.label }}</button>
             } @empty {
-              <span class="muted">Sin acciones disponibles.</span>
+              @if (!dangerTransitions().length) {
+                <span class="muted small">Sin acciones disponibles.</span>
+              }
+            }
+            @if (dangerTransitions().length) {
+              <app-more label="Más acciones del torneo">
+                @for (tr of dangerTransitions(); track tr.to) {
+                  <button class="menu-item danger" (click)="changeStatus(tr)">{{ tr.label }}</button>
+                }
+              </app-more>
             }
           </div>
           @if (t.status === 'finished' && !auth.isAdmin()) {
             <p class="hint">Solo el Admin Global puede reabrir un torneo finalizado.</p>
           }
-        </div>
-        <div class="card">
-          <h3>Datos generales</h3>
-          <dl class="dl">
-            <dt>Fechas</dt><dd>{{ t.start_date | fdate }}@if (t.end_date) { – {{ t.end_date | fdate }} }</dd>
-            <dt>Sede</dt><dd>{{ t.venue || '—' }}, {{ t.city || '—' }}</dd>
-            <dt>Fecha de referencia de edad</dt><dd>{{ t.age_reference_date | fdate }}</dd>
-            <dt>Formato por defecto</dt><dd>{{ t.default_format | label: formatLabel }}</dd>
-            <dt>Terceros lugares</dt><dd>{{ t.default_third_place_rule | label: thirdLabel }}</dd>
-            <dt>Tatamis</dt><dd>{{ t.tatamis.length }}</dd>
-          </dl>
-          <button class="btn sm" (click)="openEdit(t)">Editar datos</button>
-        </div>
+        </section>
+
+        <section class="card kpi">
+          <h3>Inscripciones</h3>
+          <div class="figure">{{ activeRegs() }}</div>
+          <div class="muted small">activas · {{ withdrawnRegs() }} retiradas</div>
+          <div class="row actions">
+            <a class="btn sm" routerLink="../inscripciones">Inscribir</a>
+            <a class="btn sm ghost" routerLink="../importar"><app-icon name="upload" /> Importar Excel</a>
+          </div>
+        </section>
+
+        <section class="card kpi">
+          <h3>Categorías</h3>
+          <div class="figure">{{ ctx.categories().length }}</div>
+          <ul class="stats">
+            @for (s of catStats(); track s.status) {
+              <li><app-status [status]="s.status" /><span class="num">{{ s.count }}</span></li>
+            }
+          </ul>
+          <div class="row actions">
+            <a class="btn sm" routerLink="../categorias">Ver categorías</a>
+            <app-more label="Más acciones de categorías">
+              <button class="menu-item" (click)="openGenerate()"><app-icon name="plus" /> Generar desde plantilla</button>
+            </app-more>
+          </div>
+        </section>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <h3>Categorías ({{ ctx.categories().length }})</h3>
-          <div class="row">
-            @for (s of catStats(); track s.status) {
-              <span class="stat"><app-status [status]="s.status" /> {{ s.count }}</span>
-            }
-          </div>
-          <div class="row mt">
-            <a class="btn sm" routerLink="../categorias">Ver categorías</a>
-            <button class="btn sm" (click)="openGenerate()">Generar categorías desde plantilla</button>
-          </div>
+      <section class="card general">
+        <div class="general-head">
+          <h3>Datos generales</h3>
+          <button class="btn sm" (click)="openEdit(t)">Editar datos</button>
         </div>
-        <div class="card">
-          <h3>Inscripciones</h3>
-          <div class="big">{{ activeRegs() }}</div>
-          <div class="muted small">activas · {{ withdrawnRegs() }} retiradas</div>
-          <div class="row mt">
-            <a class="btn sm" routerLink="../inscripciones">Inscribir</a>
-            <a class="btn sm" routerLink="../importar">Importar Excel</a>
-          </div>
-        </div>
-      </div>
+        <dl class="dl cols">
+          <div><dt>Fechas</dt><dd class="num">{{ t.start_date | fdate }}@if (t.end_date) { – {{ t.end_date | fdate }} }</dd></div>
+          <div><dt>Sede</dt><dd>{{ t.venue || '—' }}, {{ t.city || '—' }}</dd></div>
+          <div><dt>Referencia de edad</dt><dd class="num">{{ t.age_reference_date | fdate }}</dd></div>
+          <div><dt>Formato por defecto</dt><dd>{{ t.default_format | label: formatLabel }}</dd></div>
+          <div><dt>Terceros lugares</dt><dd>{{ t.default_third_place_rule | label: thirdLabel }}</dd></div>
+          <div><dt>Tatamis</dt><dd class="num">{{ t.tatamis.length }}</dd></div>
+        </dl>
+      </section>
     }
 
     @if (edit(); as f) {
@@ -147,29 +174,88 @@ const NEXT: Record<string, Transition[]> = {
     }
   `,
   styles: `
-    .dl {
+    .overview {
       display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 0.3rem 1rem;
-      margin: 0 0 0.75rem;
-      dt {
-        color: var(--muted);
-        font-size: 0.85rem;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+      .card {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    @media (max-width: 1100px) {
+      .overview {
+        grid-template-columns: 1fr 1fr;
+      }
+      .state {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 640px) {
+      .overview {
+        grid-template-columns: 1fr;
+      }
+    }
+    .state-line {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .next {
+      color: var(--sumi-2);
+      margin: 0.9rem 0 0;
+    }
+    .actions {
+      margin-top: auto;
+      padding-top: 1.25rem;
+    }
+    .kpi .figure {
+      margin: 0.1rem 0 0.4rem;
+    }
+    .stats {
+      list-style: none;
+      margin: 0.35rem 0 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.9rem;
+      li {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: var(--fs-14);
+        font-weight: 700;
+      }
+    }
+    .general-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      h3 {
+        margin: 0 0 1.25rem;
+        font-size: var(--fs-14);
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--nezumi-ink);
+      }
+    }
+    .dl.cols {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem 2rem;
+      margin: 0;
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
       }
       dd {
-        margin: 0;
+        font-size: var(--fs-16);
       }
-    }
-    .stat {
-      display: inline-flex;
-      gap: 0.3rem;
-      align-items: center;
-      font-weight: 600;
-      margin-right: 0.5rem;
-    }
-    .big {
-      font-size: 2rem;
-      font-weight: 800;
     }
   `,
 })
@@ -189,6 +275,13 @@ export class SummaryTab {
   genTemplate: number | null = null;
 
   readonly transitions = computed(() => NEXT[this.ctx.tournament()?.status ?? ''] ?? []);
+  /** Acciones habituales a la vista; las destructivas (cancelar) quedan en «Más». */
+  readonly mainTransitions = computed(() => this.transitions().filter((t) => !t.danger));
+  readonly dangerTransitions = computed(() => this.transitions().filter((t) => t.danger));
+
+  nextHint(status: string): string {
+    return HINT[status] ?? '';
+  }
   readonly catStats = computed(() => {
     const m = new Map<string, number>();
     for (const c of this.ctx.categories()) m.set(c.status, (m.get(c.status) ?? 0) + 1);

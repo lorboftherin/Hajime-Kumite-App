@@ -3,83 +3,111 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { AuthService } from '../../core/auth.service';
+import { AuthFrame } from '../../shared/auth-frame';
+import { Wordmark } from '../../shared/enso';
+import { Icon } from '../../shared/icon';
 import { MIN_PASSWORD, passwordFormError } from '../../core/passwords';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-change-password',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, AuthFrame, Wordmark, Icon],
   template: `
-    <div class="wrap">
-      <form class="card box" (ngSubmit)="submit()">
-        <div>
-          <h1>Cambiar contraseña</h1>
-          <div class="muted small">Sesión: {{ auth.user()?.username }}</div>
-        </div>
-        @if (forced()) {
-          <div class="alert info">
-            <strong>Tu contraseña fue asignada por el administrador; elige una nueva.</strong>
-            <div class="small">Así solo tú la conocerás. Usa la contraseña que te entregaron como "contraseña actual".</div>
+    <app-auth-frame>
+      <div class="wrap">
+        <app-wordmark class="brand" />
+        <form class="card box" (ngSubmit)="submit()" aria-labelledby="cp-title">
+          <div>
+            <h1 id="cp-title">Cambiar contraseña</h1>
+            <p class="muted small lead">Sesión: {{ auth.user()?.username }}</p>
           </div>
-        }
-        <label class="field">
-          <span>Contraseña actual</span>
-          <input name="current" type="password" [(ngModel)]="current" autocomplete="current-password" required autofocus />
-        </label>
-        <label class="field">
-          <span>Nueva contraseña (mín. {{ min }} caracteres)</span>
-          <input name="next" type="password" [(ngModel)]="next" autocomplete="new-password" required [minlength]="min" />
-        </label>
-        <label class="field">
-          <span>Repite la nueva contraseña</span>
-          <input name="confirm" type="password" [(ngModel)]="confirm" autocomplete="new-password" required />
-        </label>
-        @if (touched() && problem()) {
-          <div class="error-text small">{{ problem() }}</div>
-        }
-        @if (error()) {
-          <div class="alert danger">{{ error() }}</div>
-        }
-        <button class="btn primary lg" type="submit" [disabled]="busy()">
-          @if (busy()) {
-            <span class="spinner"></span>
+          @if (forced()) {
+            <div class="alert info">
+              <strong>Tu contraseña fue asignada por el administrador; elige una nueva.</strong>
+              <div class="small">Así solo tú la conocerás. Usa la contraseña que te entregaron como "contraseña actual".</div>
+            </div>
           }
-          Guardar nueva contraseña
-        </button>
-        <div class="row small">
-          @if (!forced()) {
-            <a routerLink="/torneos">← Volver</a>
+          <label class="field">
+            <span>Contraseña actual</span>
+            <input name="current" type="password" [(ngModel)]="current" autocomplete="current-password" required autofocus />
+          </label>
+          <label class="field">
+            <span>Nueva contraseña (mín. {{ min }} caracteres)</span>
+            <input name="next" type="password" [(ngModel)]="next" autocomplete="new-password" required [minlength]="min" />
+          </label>
+          <label class="field">
+            <span>Repite la nueva contraseña</span>
+            <input name="confirm" type="password" [(ngModel)]="confirm" autocomplete="new-password" required />
+          </label>
+          @if (touched() && problem()) {
+            <div class="error-text small">{{ problem() }}</div>
           }
-          <span class="grow"></span>
-          <button type="button" class="btn ghost sm" (click)="auth.logout(false); router.navigate(['/login'])">Cerrar sesión</button>
-        </div>
-        <p class="hint">Al cambiarla se cierran tus sesiones abiertas en otros equipos.</p>
-      </form>
-    </div>
+          @if (error()) {
+            <div class="alert danger">{{ error() }}</div>
+          }
+          <button class="btn primary lg block" type="submit" [disabled]="busy()">
+            @if (busy()) {
+              <span class="spinner"></span>
+            }
+            Guardar nueva contraseña
+          </button>
+          <p class="hint">Al cambiarla se cierran tus sesiones abiertas en otros equipos.</p>
+          <div class="foot">
+            @if (!forced()) {
+              <a class="back-link" routerLink="/torneos"><app-icon name="back" /> Volver</a>
+            }
+            <span class="grow"></span>
+            <button type="button" class="btn ghost sm" (click)="auth.logout(false); router.navigate(['/login'])"><app-icon name="logout" /> Salir</button>
+          </div>
+        </form>
+      </div>
+    </app-auth-frame>
   `,
   styles: `
     .wrap {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 1rem;
-      background: var(--bg);
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    .brand {
+      font-size: 1.6rem;
     }
     .box {
       width: 100%;
-      max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      padding: 2rem;
-      box-shadow: var(--shadow-lg);
-      border-top: 4px solid var(--aka);
+      gap: 1.1rem;
+      padding: 2.25rem 2rem 1.5rem;
+      margin: 0;
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--kinu) 92%, transparent);
+      backdrop-filter: blur(3px);
       h1 {
+        font-size: var(--fs-28);
+        margin: 0 0 0.25rem;
+      }
+      .lead,
+      .hint,
+      .alert {
         margin: 0;
       }
     }
-    .alert {
-      margin: 0;
+    .foot {
+      display: flex;
+      align-items: center;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--kasumi);
+      .back-link {
+        margin: 0;
+      }
+    }
+    @media (max-width: 767px) {
+      .box {
+        padding: 1.75rem 1.25rem 1.25rem;
+      }
     }
   `,
 })

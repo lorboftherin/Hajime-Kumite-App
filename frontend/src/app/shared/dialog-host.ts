@@ -94,8 +94,8 @@ import { ToastService } from '../core/toast.service';
   styles: `
     .toasts {
       position: fixed;
-      right: 1rem;
-      bottom: 1rem;
+      right: 1.25rem;
+      bottom: calc(1.25rem + var(--bottom-bar-h));
       z-index: 2000;
       display: flex;
       flex-direction: column;
@@ -103,9 +103,19 @@ import { ToastService } from '../core/toast.service';
       max-width: min(420px, calc(100vw - 2rem));
     }
     .toast {
-      box-shadow: var(--shadow-lg);
       cursor: pointer;
       margin: 0;
+      padding-right: 1.25rem;
+    }
+    .modal > p {
+      color: var(--sumi-2);
+    }
+    @media (max-width: 767px) {
+      .toasts {
+        left: 0.75rem;
+        right: 0.75rem;
+        max-width: none;
+      }
     }
   `,
 })
