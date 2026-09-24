@@ -379,3 +379,33 @@ def test_excel_import_preview_and_confirm(client):
     regs = api.get(f"/tournaments/{tid}/registrations")
     assert {r["person_id"] for r in regs} >= {existing["id"]}
     assert any(dj["name"] == "Dojo Nuevo" for dj in api.get("/dojos"))
+
+
+def test_history_uses_snapshot_and_excludes_test_tournaments(client):
+    api = client
+    d1, d2 = api.dojo("Historia"), api.dojo("Nuevo")
+    t = setup_tournament(api, is_test=False)
+    tid = t["id"]
+    c = api.post(f"/tournaments/{tid}/categories", KUMITE, expect=201)
+    ps = [api.person(f"H{i}", f"H{i}", d1["id"]) for i in range(2)]
+    for p in ps:
+        register(api, tid, p["id"], c["id"], weight_class="-45")
+    b = api.post(f"/categories/{c['id']}/bracket", {"seed": 1})
+    m = b["matches"][0]
+    api.finish(m["id"], "aka", override="papel")
+    winner = m["aka_registration_id"]
+    winner_person = next(r["person_id"] for r in api.get(f"/tournaments/{tid}/registrations") if r["id"] == winner)
+    # Cambio de dojo posterior: el historial conserva el dojo del torneo
+    api.post(f"/persons/{winner_person}/memberships", {"dojo_id": d2["id"], "start_date": "2027-01-01"}, expect=201)
+    h = api.get(f"/persons/{winner_person}/history")
+    assert h["medals"]["gold"] == 1
+    assert h["tournaments"][0]["dojo_name"] == d1["name"]
+    assert h["tournaments"][0]["matches"][0]["won"] is True
+    dh = api.get(f"/dojos/{d1['id']}/history")
+    assert dh["tournaments"][0]["gold"] == 1 and dh["tournaments"][0]["silver"] == 1
+    assert api.get(f"/dojos/{d2['id']}/history")["tournaments"] == []
+    # Torneo de prueba: no aparece en el historial
+    t2 = setup_tournament(api, is_test=True)
+    c2 = api.post(f"/tournaments/{t2['id']}/categories", KUMITE, expect=201)
+    register(api, t2["id"], winner_person, c2["id"], weight_class="-45")
+    assert len(api.get(f"/persons/{winner_person}/history")["tournaments"]) == 1

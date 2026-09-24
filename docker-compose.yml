@@ -1,0 +1,40 @@
+# Entorno local con SQL Server 2022 (el mismo motor que Azure SQL).
+#   docker compose up -d db
+#   docker compose run --rm init-db      # crea la base y aplica sql/001_schema.sql
+#   docker compose up -d api
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Hajime_Dev_2026!"
+      MSSQL_PID: Developer
+    ports: ["1433:1433"]
+    volumes: [mssql-data:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      retries: 10
+
+  init-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      db: { condition: service_healthy }
+    volumes: [./sql:/sql:ro]
+    entrypoint: >
+      bash -c "/opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P 'Hajime_Dev_2026!' -Q \"IF DB_ID('hajime') IS NULL CREATE DATABASE hajime\"
+      && /opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P 'Hajime_Dev_2026!' -d hajime -i /sql/001_schema.sql"
+    profiles: [tools]
+
+  api:
+    build: ./backend
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      HAJIME_ENVIRONMENT: dev
+      HAJIME_DATABASE_URL: "mssql+pyodbc://sa:Hajime_Dev_2026!@db:1433/hajime?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+      HAJIME_JWT_SECRET: "solo-para-desarrollo-local-0123456789abcdef"
+    ports: ["8000:8000"]
+
+volumes:
+  mssql-data:
