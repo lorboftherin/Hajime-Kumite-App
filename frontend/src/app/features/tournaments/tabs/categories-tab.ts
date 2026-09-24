@@ -75,7 +75,13 @@ import { TournamentContext } from '../tournament-context';
                   <div class="small advice">Sugerencia: {{ adviceText(c.advice) }}</div>
                 }
               </td>
-              <td class="nowrap">{{ c.modality | label: modalityLabel }} <span class="muted">· {{ c.sex | label: sexLabel }}</span></td>
+              <td class="nowrap">
+                {{ c.modality | label: modalityLabel }}
+                @if (c.is_team) {
+                  <span class="badge plain">equipos</span>
+                }
+                <span class="muted">· {{ c.sex | label: sexLabel }}</span>
+              </td>
               <td class="center"><span class="count-cell" [class.zero]="!c.entrant_count">{{ c.entrant_count }}</span></td>
               <td><app-status [status]="c.status" /></td>
               <td class="nowrap">
@@ -215,8 +221,25 @@ import { TournamentContext } from '../tournament-context';
                 <option value="kata_rounds">Rondas de kata</option>
               </select>
             </label>
+            <label class="field inline" style="align-self: end; min-height: 2.5rem"><input type="checkbox" name="team" [(ngModel)]="nc.is_team" /> Por equipos</label>
             @if (nc.modality === 'kumite') {
               <label class="field"><span>Duración (seg)</span><input type="number" name="dur" [(ngModel)]="nc.duration_seconds" /></label>
+              @if (nc.is_team) {
+                <label class="field">
+                  <span>Combates por enfrentamiento</span>
+                  <select name="tb" [(ngModel)]="nc.team_bouts">
+                    <option [ngValue]="3">3</option>
+                    <option [ngValue]="5">5</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Empate en victorias</span>
+                  <select name="ttr" [(ngModel)]="nc.team_tie_rule">
+                    <option value="points">Gana quien suma más puntos; si empatan, combate extra</option>
+                    <option value="extra_bout">Combate extra</option>
+                  </select>
+                </label>
+              }
             } @else {
               <label class="field">
                 <span>Método kata</span>
@@ -465,6 +488,9 @@ export class CategoriesTab {
       duration_seconds: null as number | null,
       kata_method: null as string | null,
       kata_judges: null as number | null,
+      is_team: false,
+      team_bouts: 3,
+      team_tie_rule: 'points' as 'points' | 'extra_bout',
     };
   }
 
@@ -474,7 +500,12 @@ export class CategoriesTab {
   }
 
   async create(): Promise<void> {
-    const body = { ...this.nc, weight_class: this.nc.weight_class || null, is_team: false };
+    const { team_bouts, team_tie_rule, ...fields } = this.nc;
+    const body = {
+      ...fields,
+      weight_class: fields.weight_class || null,
+      kumite_rules: fields.is_team && fields.modality === 'kumite' ? { team_bouts, team_tie_rule } : null,
+    };
     const res = await this.mut.post<Category>(`/tournaments/${this.ctx.id()}/categories`, body, {
       success: 'Categoría creada',
     });

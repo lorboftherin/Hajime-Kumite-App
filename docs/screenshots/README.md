@@ -23,5 +23,10 @@ Capturas de la interfaz actual (rediseño visual «Dō»). Todos los datos son f
 | `16-dojo.png` | Ficha de un dojo con sus medallas y resultados por torneo. |
 | `06-usuarios.png` | Página de usuarios: el administrador y dos cuentas vinculadas a personas, con su rol y alcance (Organizador, Operador de mesa) y clave temporal. |
 | `17-auditoria.png` | Pestaña Auditoría: registro de acciones en español (p. ej. «Resultado oficial» sobre «Combate #23») con fecha y hora de Lima, usuario y cambios. |
+| `18-equipos-inscripciones.png` | Inscripciones de un torneo por equipos: cada equipo con su dojo, titulares y suplentes (sup.), y los botones «Editar» y «Retirar». Torneo ficticio «Copa Dojo por Equipos 2026». |
+| `18b-equipos-formulario.png` | Formulario «Inscribir equipo»: categoría por equipos, dojo, nombre sugerido («Mizu A») y las personas del dojo para marcar como integrantes. |
+| `19-equipos-enfrentamiento.png` | Mesa de un enfrentamiento de kumite por equipos ya decidido: 1–1 en victorias, 4–4 en puntos y un hikiwake; lo gana AO en el combate extra. |
+| `19b-equipos-combate.png` | Un combate individual del enfrentamiento en la mesa: los integrantes con su equipo como subtítulo y, arriba, el enlace «Combate 3 · Shizen A 1–1 Tsuchi A» para volver. |
+| `19c-equipos-hikiwake.png` | Hoja de cierre de un combate por equipos con la opción «Hikiwake · empate» elegida. |
 | `08-tema-oscuro.png` | Resumen del torneo en tema oscuro «Yoru». |
 | `09-celular.png` | Lista de torneos en un celular (390×844) con la barra de navegación inferior. |

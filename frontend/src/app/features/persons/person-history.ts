@@ -59,7 +59,11 @@ import { Hanko } from '../../shared/hanko';
                 }
               </div>
               <div class="small muted">
-                {{ t.dojo_name || 'Sin dojo' }} · {{ t.grade || 'grado s/d' }}@if (t.weight_class) { · {{ t.weight_class }}}
+                @if (t.team_name) {
+                  Equipo <strong>{{ t.team_name }}</strong> · {{ t.dojo_name || 'Sin dojo' }}
+                } @else {
+                  {{ t.dojo_name || 'Sin dojo' }} · {{ t.grade || 'grado s/d' }}@if (t.weight_class) { · {{ t.weight_class }}}
+                }
               </div>
             </div>
             <div class="place">
@@ -79,7 +83,9 @@ import { Hanko } from '../../shared/hanko';
                     <td class="color"><span class="strip" [class.aka]="m.color === 'aka'" [class.ao]="m.color === 'ao'" [title]="m.color === 'aka' ? 'Aka' : 'Ao'"></span><span class="sr-only">{{ m.color === 'aka' ? 'Aka' : 'Ao' }}</span></td>
                     <td><span class="code">{{ m.code }}</span></td>
                     <td>
-                      @if (m.won) {
+                      @if (m.method === 'draw') {
+                        <span class="badge plain">Empate</span>
+                      } @else if (m.won) {
                         <span class="badge matcha">Ganó</span>
                       } @else {
                         <span class="badge nezumi">Perdió</span>

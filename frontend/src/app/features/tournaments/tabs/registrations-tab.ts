@@ -6,7 +6,7 @@ import { ApiService } from '../../../core/api.service';
 import { AuthService } from '../../../core/auth.service';
 import { DialogService } from '../../../core/dialog.service';
 import { GRADES, fmtDate } from '../../../core/format';
-import { Person, Registration, Suggestion, WithdrawResult } from '../../../core/models';
+import { Dojo, Person, Registration, Suggestion, TeamMember, WithdrawResult } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
@@ -34,6 +34,9 @@ import { TournamentContext } from '../tournament-context';
       </select>
       <label class="field inline small"><input type="checkbox" [ngModel]="showWithdrawn()" (ngModelChange)="showWithdrawn.set($event)" /> Mostrar retiradas</label>
       <span class="count">{{ filtered().length }} {{ filtered().length === 1 ? 'inscripción' : 'inscripciones' }}</span>
+      @if (teamCategories().length) {
+        <button class="btn" (click)="openTeam()" title="Inscribir un equipo en una categoría por equipos"><app-icon name="plus" /> Equipo</button>
+      }
       <button class="btn primary" (click)="openRegister()"><app-icon name="plus" /> Inscribir</button>
     </div>
 
@@ -58,7 +61,14 @@ import { TournamentContext } from '../tournament-context';
                 @if (r.person_id) {
                   <a [routerLink]="['/personas', r.person_id]">{{ r.person_name }}</a>
                 } @else {
-                  {{ r.person_name }}
+                  <span class="team-name">{{ r.person_name }}</span> <span class="badge plain">equipo</span>
+                  @if (r.team_members?.length) {
+                    <div class="members small">
+                      @for (m of r.team_members; track m.person_id; let last = $last) {
+                        <a [routerLink]="['/personas', m.person_id]" [class.sub]="m.role === 'substitute'">{{ m.name }}</a>@if (m.role === 'substitute') {<span class="muted"> (sup.)</span>}@if (!last) {<span class="muted">, </span>}
+                      }
+                    </div>
+                  }
                 }
               </td>
               <td>{{ r.dojo_name }}</td>
@@ -79,6 +89,9 @@ import { TournamentContext } from '../tournament-context';
               </td>
               <td class="right">
                 @if (r.status === 'active') {
+                  @if (r.team_id) {
+                    <button class="btn sm ghost" (click)="openTeam(r)">Editar</button>
+                  }
                   <button class="btn sm ghost" (click)="withdraw(r)">Retirar</button>
                 }
               </td>
@@ -178,6 +191,96 @@ import { TournamentContext } from '../tournament-context';
         }
       </app-modal>
     }
+
+    @if (teamOpen()) {
+      <app-modal [title]="editingTeam() ? 'Editar equipo' : 'Inscribir equipo'" [wide]="true" (closed)="teamOpen.set(false)">
+        <p class="hint">
+          El equipo existe solo en este torneo. Titulares y suplentes pueden cambiar; la alineación de cada
+          enfrentamiento se elige en la mesa.
+        </p>
+        <div class="grid-3">
+          <label class="field">
+            <span>Categoría por equipos *</span>
+            <select [ngModel]="teamCat()" (ngModelChange)="teamCat.set($event)" [disabled]="!!editingTeam()">
+              <option [ngValue]="0">— Elegir —</option>
+              @for (c of teamCategories(); track c.id) {
+                <option [ngValue]="c.id">{{ c.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span>Dojo *</span>
+            <select [ngModel]="teamDojo()" (ngModelChange)="onTeamDojo($event)">
+              <option [ngValue]="0">— Elegir —</option>
+              @for (d of dojos(); track d.id) {
+                <option [ngValue]="d.id">{{ d.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="field"><span>Nombre del equipo *</span><input [(ngModel)]="teamName" placeholder="Ej.: Kaze A" /></label>
+        </div>
+
+        <div class="team-cols mt">
+          <div>
+            <h3>Personas del dojo</h3>
+            @if (!teamDojo()) {
+              <p class="muted small">Elige el dojo para ver a sus competidores.</p>
+            }
+            <ul class="list-plain pick">
+              @for (p of dojoPeople(); track p.id) {
+                <li>
+                  <label class="field inline">
+                    <input type="checkbox" [checked]="isMember(p.id)" (change)="toggleMember(p)" />
+                    {{ p.last_names }}, {{ p.first_names }}
+                    <span class="muted small">{{ p.sex }} · {{ p.current_grade || 'sin grado' }}</span>
+                  </label>
+                </li>
+              } @empty {
+                @if (teamDojo()) {
+                  <li class="muted small">El dojo no tiene personas registradas.</li>
+                }
+              }
+            </ul>
+            <input class="mt team-search" placeholder="Agregar a alguien de otro dojo…" [ngModel]="search()" (ngModelChange)="onSearch($event)" />
+            <ul class="list-plain pick">
+              @for (p of results(); track p.id) {
+                @if (!isMember(p.id)) {
+                  <li>
+                    <button class="linklike" (click)="toggleMember(p)">
+                      <strong>{{ p.last_names }}, {{ p.first_names }}</strong>
+                      <span class="muted small">{{ p.sex }} · {{ p.current_grade || 'sin grado' }}</span>
+                    </button>
+                  </li>
+                }
+              }
+            </ul>
+          </div>
+          <div>
+            <h3>Integrantes ({{ members().length }})</h3>
+            <ol class="list-plain members-edit">
+              @for (m of members(); track m.person_id; let i = $index) {
+                <li>
+                  <span class="grow">{{ m.name }}</span>
+                  <select [ngModel]="m.role" (ngModelChange)="setRole(i, $event)" [attr.aria-label]="'Rol de ' + m.name">
+                    <option value="starter">Titular</option>
+                    <option value="substitute">Suplente</option>
+                  </select>
+                  <button class="btn sm ghost" (click)="removeMember(i)" [attr.aria-label]="'Quitar a ' + m.name"><app-icon name="close" /></button>
+                </li>
+              } @empty {
+                <li class="muted small">Marca a los integrantes en la lista de la izquierda.</li>
+              }
+            </ol>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" (click)="teamOpen.set(false)">Cancelar</button>
+          <button class="btn primary" [disabled]="!teamCat() || !teamDojo() || !teamName.trim() || !members().length || busy()" (click)="saveTeam()">
+            {{ editingTeam() ? 'Guardar cambios' : 'Inscribir equipo' }}
+          </button>
+        </div>
+      </app-modal>
+    }
   `,
   styles: `
     .results {
@@ -213,6 +316,45 @@ import { TournamentContext } from '../tournament-context';
     }
     .chosen-person {
       margin-bottom: 1.25rem;
+    }
+    .team-name {
+      font-weight: 700;
+    }
+    .members {
+      margin-top: 0.15rem;
+      a {
+        color: var(--sumi-2);
+      }
+      a:hover {
+        color: var(--ai-ink);
+      }
+    }
+    .team-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      h3 {
+        margin: 0 0 0.5rem;
+      }
+      .team-search {
+        width: 100%;
+      }
+    }
+    .pick {
+      max-height: 32vh;
+      overflow-y: auto;
+    }
+    .members-edit li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--kasumi);
+    }
+    @media (max-width: 720px) {
+      .team-cols {
+        grid-template-columns: 1fr;
+      }
     }
     .x {
       display: inline-flex;
@@ -269,8 +411,21 @@ export class RegistrationsTab {
     );
   });
   readonly openCategories = computed(() =>
-    this.ctx.categories().filter((c) => !['merged', 'cancelled', 'finished'].includes(c.status)),
+    this.ctx.categories().filter((c) => !c.is_team && !['merged', 'cancelled', 'finished'].includes(c.status)),
   );
+  readonly teamCategories = computed(() =>
+    this.ctx.categories().filter((c) => c.is_team && !['merged', 'cancelled', 'finished'].includes(c.status)),
+  );
+
+  // Equipos
+  readonly teamOpen = signal(false);
+  readonly editingTeam = signal<Registration | null>(null);
+  readonly teamCat = signal(0);
+  readonly teamDojo = signal(0);
+  readonly dojos = signal<Dojo[]>([]);
+  readonly dojoPeople = signal<Person[]>([]);
+  readonly members = signal<TeamMember[]>([]);
+  teamName = '';
   readonly extraChosen = computed(() => {
     const sug = new Set(this.suggestions().map((s) => s.category_id));
     return [...this.chosen()].filter((c) => !sug.has(c));
@@ -371,6 +526,78 @@ export class RegistrationsTab {
       this.search.set('');
       this.results.set([]);
     }
+  }
+
+  openTeam(r?: Registration): void {
+    if (!this.dojos().length) {
+      this.api.get<Dojo[]>('/dojos').subscribe({ next: (d) => this.dojos.set(d), error: () => {} });
+    }
+    this.editingTeam.set(r ?? null);
+    this.teamCat.set(r?.category_id ?? (this.teamCategories().length === 1 ? this.teamCategories()[0].id : 0));
+    this.teamName = r?.person_name ?? '';
+    this.members.set(r?.team_members ? [...r.team_members] : []);
+    this.search.set('');
+    this.results.set([]);
+    this.dojoPeople.set([]);
+    this.teamDojo.set(0);
+    if (r) this.onTeamDojo(r.dojo_id, false);
+    this.teamOpen.set(true);
+  }
+
+  onTeamDojo(id: number, suggestName = true): void {
+    this.teamDojo.set(id);
+    this.dojoPeople.set([]);
+    if (!id) return;
+    if (suggestName && !this.teamName.trim()) {
+      const d = this.dojos().find((x) => x.id === id);
+      if (d) this.teamName = `${d.short_name || d.name} A`;
+    }
+    this.api.get<Person[]>('/persons', { dojo_id: id, limit: 100 }).subscribe({
+      next: (p) => this.dojoPeople.set(p),
+      error: () => {},
+    });
+  }
+
+  isMember(pid: number): boolean {
+    return this.members().some((m) => m.person_id === pid);
+  }
+
+  toggleMember(p: Person): void {
+    if (this.isMember(p.id)) {
+      this.members.update((ms) => ms.filter((m) => m.person_id !== p.id));
+    } else {
+      this.members.update((ms) => [...ms, { person_id: p.id, name: `${p.first_names} ${p.last_names}`, role: 'starter' }]);
+    }
+  }
+
+  setRole(i: number, role: 'starter' | 'substitute'): void {
+    this.members.update((ms) => ms.map((m, j) => (j === i ? { ...m, role } : m)));
+  }
+
+  removeMember(i: number): void {
+    this.members.update((ms) => ms.filter((_, j) => j !== i));
+  }
+
+  async saveTeam(): Promise<void> {
+    const members = this.members().map((m) => ({ person_id: m.person_id, role: m.role }));
+    const editing = this.editingTeam();
+    this.busy.set(true);
+    const res = editing
+      ? await this.mut.patch<Registration>(
+          `/teams/${editing.team_id}`,
+          { version: editing.team_version, name: this.teamName.trim(), dojo_id: this.teamDojo(), members },
+          { success: 'Equipo actualizado', onConflict: () => this.load() },
+        )
+      : await this.mut.post<Registration>(
+          `/tournaments/${this.ctx.id()}/teams`,
+          { category_id: this.teamCat(), dojo_id: this.teamDojo(), name: this.teamName.trim(), members },
+          { success: 'Equipo inscrito' },
+        );
+    this.busy.set(false);
+    if (!res) return;
+    this.teamOpen.set(false);
+    this.load();
+    this.ctx.loadCategories();
   }
 
   async withdraw(r: Registration): Promise<void> {

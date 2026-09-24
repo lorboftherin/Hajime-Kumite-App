@@ -204,8 +204,70 @@ export interface Registration {
   withdrawn_reason: string | null;
   seed: number | null;
   version: number;
+  /** Nombre de la persona o, en categorías por equipos, del equipo. */
   person_name: string;
   dojo_name: string;
+  team_id?: number | null;
+  team_version?: number | null;
+  team_members?: TeamMember[];
+}
+
+export interface TeamMember {
+  person_id: number;
+  name: string;
+  role: 'starter' | 'substitute';
+}
+
+/** Enfrentamiento de kumite por equipos (GET /matches/{id}/team). */
+export interface TeamSide {
+  registration_id: number;
+  team_id: number | null;
+  name: string;
+  dojo_name: string;
+  members: TeamMember[];
+}
+
+export interface TeamBout {
+  match: Match;
+  is_extra: boolean;
+  aka_person_id: number | null;
+  aka_name: string | null;
+  ao_person_id: number | null;
+  ao_name: string | null;
+}
+
+export interface TeamDecision {
+  winner: Color | null;
+  method: string | null;
+  wins: Record<Color, number>;
+  points: Record<Color, number>;
+  draws: number;
+  needs_extra_bout: boolean;
+  pending_bouts: number;
+  reason: string | null;
+}
+
+export interface TeamMatch {
+  match: Match;
+  category_id: number;
+  category_name: string;
+  settings: { bouts: number; tie_rule: 'points' | 'extra_bout' };
+  aka: TeamSide | null;
+  ao: TeamSide | null;
+  bouts: TeamBout[];
+  decision: TeamDecision;
+}
+
+/** Combate individual dentro de un enfrentamiento por equipos. */
+export interface BoutInfo {
+  parent_match_id: number;
+  parent_code: string;
+  bout_number: number;
+  is_extra: boolean;
+  aka_team: string | null;
+  ao_team: string | null;
+  wins: Record<Color, number>;
+  team_winner: Color | null;
 }
 
 export interface Suggestion {
@@ -267,6 +329,10 @@ export interface Match {
   started_at: string | null;
   finished_at: string | null;
   version: number;
+  parent_match_id?: number | null;
+  bout_number?: number | null;
+  aka_person_id?: number | null;
+  ao_person_id?: number | null;
 }
 
 export interface Bracket {
@@ -350,6 +416,9 @@ export interface Scoreboard {
   annulled_event_ids: string[];
   aka: Participant | null;
   ao: Participant | null;
+  /** Enfrentamiento entre equipos: se opera combate por combate (panel de equipos). */
+  is_team_match?: boolean;
+  bout?: BoutInfo | null;
 }
 
 export interface FinishOut {
@@ -455,6 +524,8 @@ export interface HistoryTournament {
   original_category_id?: number;
   merged: boolean;
   dojo_name: string | null;
+  /** Participó como integrante de este equipo (resultado del equipo). */
+  team_name?: string | null;
   grade: string | null;
   weight_class: string | null;
   status: string;

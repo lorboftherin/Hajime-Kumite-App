@@ -58,8 +58,10 @@ Capturas: [`docs/screenshots/`](docs/screenshots/).
 | --- | --- | --- |
 | MVP-1 | Torneo, dojos, personas (duplicados y fusión), plantilla y categorías, inscripciones e importación Excel, fusión de categorías, llaves con separación por dojo, edición e impresión de llaves, mesa de kumite, resultados | ✅ API + UI |
 | MVP-2 | Kata (banderas y puntuación en ronda única), final directa, round robin, terceros lugares configurables, medallero, reapertura auditada, reporte Shadow Mode | ✅ API + UI |
-| MVP-3 | Historial de competidor y dojo | ✅ API (UI pendiente) |
-| MVP-3 | Equipos temporales, registro de árbitros, operadores concurrentes por tatami (rol Operador de Mesa) | ⏳ Pendiente |
+| MVP-3 | Historial de competidor y dojo en pantalla | ✅ API + UI |
+| MVP-3 | Equipos temporales (kata y kumite): inscripción con titulares y suplentes, enfrentamientos por equipos con alineación, hikiwake, desempate por puntos o combate extra, historial de cada integrante | ✅ API + UI |
+| MVP-3 | Rol Operador de Mesa por torneo; control de versiones y eventos idempotentes para varias mesas a la vez | ✅ API + UI |
+| MVP-3 | Operador limitado a un tatami, vista de todos los tatamis para el organizador, registro y asignación opcional de árbitros | ⏳ Pendiente |
 
 ## Principios que guían el código
 

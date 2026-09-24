@@ -68,4 +68,8 @@ export class MutationService {
   patch<T>(path: string, body: Record<string, unknown> = {}, opts?: MutationOptions): Promise<T | undefined> {
     return this.run((override) => this.api.patch<T>(path, override ? { ...body, override } : body), opts);
   }
+
+  put<T>(path: string, body: Record<string, unknown> = {}, opts?: MutationOptions): Promise<T | undefined> {
+    return this.run((override) => this.api.put<T>(path, override ? { ...body, override } : body), opts);
+  }
 }

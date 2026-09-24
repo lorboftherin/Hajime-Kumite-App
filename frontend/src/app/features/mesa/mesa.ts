@@ -11,6 +11,7 @@ import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
 import { LabelPipe } from '../../shared/pipes';
 import { Pending, SeqGuard, foldClock, loadPending, retryDecision, retryDelay, savePending } from './mesa-logic';
+import { TeamMatchPanel } from './team-match';
 
 interface LogRow {
   id: string;
@@ -32,7 +33,7 @@ const UNDO_SKIP = new Set(['annul', 'finish']);
  */
 @Component({
   selector: 'app-mesa',
-  imports: [FormsModule, RouterLink, LabelPipe],
+  imports: [FormsModule, RouterLink, LabelPipe, TeamMatchPanel],
   templateUrl: './mesa.html',
   styleUrls: ['./mesa.scss', './mesa-stage.scss', './mesa-center.scss', './mesa-kata.scss', './mesa-sheet.scss'],
 })
@@ -78,7 +79,7 @@ export class MesaPage {
 
   readonly unlocked = signal(false);
   readonly finishOpen = signal(false);
-  finishForm = { winner: null as Color | null, method: 'points', reason: '', time_over: true };
+  finishForm = { winner: null as Color | 'draw' | null, method: 'points', reason: '', time_over: true };
   private finishId = '';
   readonly finishing = signal(false);
 
@@ -557,7 +558,7 @@ export class MesaPage {
     const sug = s.suggestion;
     // Sin sugerencia del servidor no se preselecciona ganador: el operador debe elegir.
     this.finishForm = {
-      winner: (this.finished() ? s.winner : sug.winner) ?? null,
+      winner: (this.finished() ? (s.winner ?? (s.method === 'draw' ? 'draw' : null)) : sug.winner) ?? null,
       method: (this.finished() ? s.method : sug.method) ?? (sug.needs === 'hantei' ? 'hantei' : 'points'),
       reason: '',
       time_over: this.timeOver(),
@@ -705,7 +706,14 @@ export class MesaPage {
     }
   }
 
+  tatamiParams(): Record<string, string> {
+    const t = this.tatami();
+    return t ? { tatami: t } : {};
+  }
+
   backLink(): unknown[] {
+    const bout = this.sb()?.bout;
+    if (bout) return ['/mesa', bout.parent_match_id];
     const c = this.category();
     if (this.tatami() && c) return ['/torneos', c.tournament_id, 'tatamis'];
     if (c) return ['/categorias', c.id, 'llave'];

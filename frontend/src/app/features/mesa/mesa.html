@@ -1,7 +1,7 @@
 <div class="mesa" [class.kata-mode]="isKata()">
   <!-- ============ Encabezado: identidad del combate y conexión ============ -->
   <header class="hdr">
-    <a class="hbtn back" [routerLink]="backLink()" aria-label="Salir de la mesa">←<span class="hide-xs">Salir</span></a>
+    <a class="hbtn back" [routerLink]="backLink()" [queryParams]="sb()?.bout ? tatamiParams() : {}" aria-label="Salir de la mesa">←<span class="hide-xs">Salir</span></a>
     <div class="ident">
       <span class="kj" aria-hidden="true">{{ isKata() ? '型' : '組手' }}</span>
       <strong class="cat" [title]="category()?.name ?? ''">{{ category()?.name ?? 'Combate' }}</strong>
@@ -13,6 +13,11 @@
           <span class="tat hide-sm">Tatami {{ t.number }}</span>
         }
         <span class="mstatus st-{{ m.status }}">{{ m.status | label: matchStatus }}</span>
+      }
+      @if (sb()?.bout; as b) {
+        <a class="bout-link" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()" title="Volver al enfrentamiento por equipos">
+          {{ b.is_extra ? 'Combate extra' : 'Combate ' + b.bout_number }} · {{ b.aka_team }} {{ b.wins.aka }}–{{ b.wins.ao }} {{ b.ao_team }}
+        </a>
       }
     </div>
     <div class="conn" role="status" aria-live="polite">
@@ -47,43 +52,58 @@
     }
 
     <!-- ============ Combate cerrado: banda serena con sello ============ -->
-    @if (finished()) {
+    @if (finished() && !s.is_team_match) {
       @if (!unlocked()) {
-        <div class="result-band {{ s.winner }}" role="status">
-          <div class="hanko" aria-hidden="true"><span>勝</span></div>
+        <div class="result-band {{ s.winner ?? 'draw' }}" role="status">
+          <div class="hanko" aria-hidden="true"><span>{{ s.winner ? '勝' : '分' }}</span></div>
           <div class="rb-text">
             <div class="rb-kicker">Combate cerrado</div>
             <div class="rb-win">
-              <span class="rb-color">{{ s.winner === 'aka' ? 'AKA' : 'AO' }}</span>
-              <span class="rb-name">{{ name(s.winner!) }}</span>
+              @if (s.winner) {
+                <span class="rb-color">{{ s.winner === 'aka' ? 'AKA' : 'AO' }}</span>
+                <span class="rb-name">{{ name(s.winner) }}</span>
+              } @else {
+                <span class="rb-name">Hikiwake · empate</span>
+              }
             </div>
             <div class="rb-method">
-              por {{ s.method | label: methodLabel }}
-              @if (!isKata()) {
-                · {{ s.score.aka }}–{{ s.score.ao }}
+              @if (s.method === 'draw') {
+                Marcador {{ s.score.aka }}–{{ s.score.ao }}
+              } @else {
+                por {{ s.method | label: methodLabel }}
+                @if (!isKata()) {
+                  · {{ s.score.aka }}–{{ s.score.ao }}
+                }
               }
             </div>
           </div>
           <div class="rb-actions">
             <button class="qbtn" (click)="unlocked.set(true)">Desbloquear para corregir</button>
             <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
-            @if (tatami()) {
+            @if (s.bout; as b) {
+              <a class="qbtn primary" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()">Volver al enfrentamiento →</a>
+            } @else if (tatami()) {
               <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
         </div>
       } @else {
-        <div class="result-band compact {{ s.winner }}" role="status">
+        <div class="result-band compact {{ s.winner ?? 'draw' }}" role="status">
           <div class="rb-text">
             <div class="rb-kicker">Modo corrección</div>
             <div class="rb-method">
-              Cerrado: gana {{ s.winner === 'aka' ? 'AKA' : 'AO' }} por {{ s.method | label: methodLabel }}. Los cambios quedan auditados.
+              @if (s.winner) {
+                Cerrado: gana {{ s.winner === 'aka' ? 'AKA' : 'AO' }} por {{ s.method | label: methodLabel }}.
+              } @else {
+                Cerrado en empate (hikiwake).
+              }
+              Los cambios quedan auditados.
             </div>
           </div>
           <div class="rb-actions">
             <button class="qbtn" (click)="unlocked.set(false)">Volver a bloquear</button>
             <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
-            @if (tatami()) {
+            @if (!s.bout && tatami()) {
               <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
@@ -91,7 +111,10 @@
       }
     }
 
-    @if (!isKata()) {
+    @if (s.is_team_match) {
+      <!-- ============ KUMITE POR EQUIPOS: victorias, alineación y combates ============ -->
+      <app-team-match [matchId]="id()" [tatami]="tatami()" (changed)="reload(true)" />
+    } @else if (!isKata()) {
       <!-- ============ KUMITE: [AKA | reloj | AO] ============ -->
       <main class="stage" [class.locked]="locked()">
         @for (c of colors; track c) {
@@ -297,6 +320,7 @@
     }
 
     <!-- ============ Historial ============ -->
+    @if (!s.is_team_match) {
     <section class="log" aria-label="Eventos">
       <div class="log-head">
         <span class="log-title">Eventos</span>
@@ -320,6 +344,7 @@
         }
       </ol>
     </section>
+    }
   } @else if (!loadError()) {
     <div class="loading"><span class="spin" aria-hidden="true"></span><span>Preparando la mesa…</span></div>
   }
@@ -363,17 +388,28 @@
               <span class="wc-seal" aria-hidden="true">勝</span>
             </label>
           }
+          @if (s.bout) {
+            <label class="wdraw" [class.on]="finishForm.winner === 'draw'" [class.dim]="!!finishForm.winner && finishForm.winner !== 'draw'">
+              <input type="radio" name="winner" value="draw" [(ngModel)]="finishForm.winner" />
+              <span class="wc-name">Hikiwake · empate</span>
+              <span class="wc-dojo">Por equipos, un combate puede terminar empatado</span>
+            </label>
+          }
         </div>
 
         <div class="sheet-grid">
-          <label class="sfield">
-            <span>Método</span>
-            <select [(ngModel)]="finishForm.method">
-              @for (m of methods; track m) {
-                <option [value]="m">{{ methodLabel[m] }}</option>
-              }
-            </select>
-          </label>
+          @if (finishForm.winner !== 'draw') {
+            <label class="sfield">
+              <span>Método</span>
+              <select [(ngModel)]="finishForm.method">
+                @for (m of methods; track m) {
+                  <option [value]="m">{{ methodLabel[m] }}</option>
+                }
+              </select>
+            </label>
+          } @else {
+            <span></span>
+          }
           <label class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
         </div>
         <label class="sfield">
@@ -389,13 +425,16 @@
             class="confirm"
             [class.aka]="finishForm.winner === 'aka'"
             [class.ao]="finishForm.winner === 'ao'"
+            [class.draw]="finishForm.winner === 'draw'"
             [disabled]="finishing() || !finishForm.winner"
             (click)="confirmFinish()"
           >
             @if (finishing()) {
               <span class="spin" aria-hidden="true"></span>
             }
-            @if (finishForm.winner) {
+            @if (finishForm.winner === 'draw') {
+              Confirmar: hikiwake (empate)
+            } @else if (finishForm.winner) {
               Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}
             } @else {
               Elige un ganador

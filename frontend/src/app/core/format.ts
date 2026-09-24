@@ -142,6 +142,9 @@ export const METHOD_LABEL: Record<string, string> = {
   decision: 'Decisión',
   flags: 'Banderas',
   bye: 'Bye',
+  draw: 'Hikiwake (empate)',
+  victories: 'Victorias',
+  extra_bout: 'Combate extra',
 };
 
 export const ROLE_LABEL: Record<string, string> = {
@@ -287,6 +290,9 @@ export const AUDIT_ACTION: Record<string, string> = {
   add_consent: 'Consentimiento registrado',
   add_branch: 'Sede agregada',
   create_despite_duplicates: 'Creación pese a posibles duplicados',
+  lineup: 'Alineación del enfrentamiento',
+  lineup_extra: 'Combate extra agregado',
+  undecide: 'Enfrentamiento sin decidir (corrección)',
 };
 
 export const AUDIT_ENTITY: Record<string, string> = {
@@ -301,4 +307,5 @@ export const AUDIT_ENTITY: Record<string, string> = {
   user: 'Usuario',
   kata_performance: 'Ejecución de kata',
   template: 'Plantilla',
+  team: 'Equipo',
 };

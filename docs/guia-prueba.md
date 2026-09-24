@@ -85,6 +85,9 @@ Provocar cada caso a propósito y marcar el resultado.
 | ☐ | Reapertura | Cerrar el torneo, reabrirlo (Admin) y corregir un resultado | Auditoría con motivo; medallero actualizado |
 | ☐ | Kata | Ronda de kata por puntuación con 5 jueces y un empate | Se desempata por la nota mínima descartada |
 | ☐ | Sin conexión | Apagar el Wi‑Fi de la tablet, marcar 2 puntos, volver a encenderlo | Indicador "Sin conexión · 2 pendientes"; al volver se envían solos, sin duplicarse |
+| ☐ | Equipo con suplente | *Inscripciones* → *Equipo*: tres titulares y un suplente de un dojo, más una persona de otro dojo | Advierte "pertenece a otro dojo"; la tabla muestra el equipo con sus integrantes |
+| ☐ | Enfrentamiento por equipos | Abrir la mesa de un enfrentamiento de kumite por equipos, confirmar la alineación y operar los 3 combates | Cada combate se opera en la mesa normal; al cerrar el 2.º ganado por el mismo equipo, el enfrentamiento se decide y la llave avanza |
+| ☐ | Hikiwake y combate extra | Empatar en victorias y en puntos (un combate en hikiwake) | La mesa pide un combate extra; al cerrarlo gana ese equipo por "Combate extra" |
 
 ## 4. Después del mock: comparación y hallazgos
 
