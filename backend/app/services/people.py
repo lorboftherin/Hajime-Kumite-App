@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
 from app.api.errors import InvalidState, NotFound, WarningsRequireOverride
 from app.db.base import utcnow
 from app.db.models import (
+    AuditEntry,
     Branch,
     DataConsent,
     Dojo,
     DojoMembership,
     GradeRecord,
     IdentityDocument,
+    ImportRow,
     JudgeVote,
     Person,
     PersonMerge,
@@ -116,13 +118,96 @@ def current_grade(db: Session, person_id: int, at: date | None = None) -> GradeR
     )
 
 
-def person_out(db: Session, p: Person) -> s.PersonOut:
+def persons_out(db: Session, persons: list[Person], privileged: bool = False) -> list[s.PersonOut]:
+    """Versión por lotes de :func:`person_out` (evita 2 consultas por persona)."""
+    if not persons:
+        return []
+    ids = [p.id for p in persons]
+    today = date.today()
+    memberships: dict[int, DojoMembership] = {}
+    for m in db.scalars(
+        select(DojoMembership)
+        .where(DojoMembership.person_id.in_(ids), DojoMembership.start_date <= today)
+        .order_by(DojoMembership.start_date, DojoMembership.id)
+    ).all():
+        if m.end_date is None or m.end_date >= today:
+            memberships[m.person_id] = m  # el último por fecha gana
+    grades: dict[int, GradeRecord] = {}
+    for g in db.scalars(
+        select(GradeRecord)
+        .where(GradeRecord.person_id.in_(ids), GradeRecord.awarded_on <= today)
+        .order_by(GradeRecord.awarded_on, GradeRecord.id)
+    ).all():
+        grades[g.person_id] = g
+    out = []
+    for p in persons:
+        o = s.PersonOut.model_validate(p)
+        if not privileged:
+            o.birth_date = None
+            o.documents = []
+        m, g = memberships.get(p.id), grades.get(p.id)
+        o.current_dojo_id = m.dojo_id if m else None
+        o.current_grade = g.grade if g else None
+        out.append(o)
+    return out
+
+
+def person_out(db: Session, p: Person, privileged: bool = False) -> s.PersonOut:
+    """``privileged``: Admin u organizador; el resto no ve documento ni fecha de nacimiento."""
     out = s.PersonOut.model_validate(p)
+    if privileged:
+        out.consents = [
+            s.ConsentOut.model_validate(c)
+            for c in db.scalars(
+                select(DataConsent).where(DataConsent.person_id == p.id).order_by(DataConsent.given_on)
+            ).all()
+        ]
+    else:
+        out.birth_date = None
+        out.documents = []
     m = current_membership(db, p.id)
     g = current_grade(db, p.id)
     out.current_dojo_id = m.dojo_id if m else None
     out.current_grade = g.grade if g else None
     return out
+
+
+def add_consent(db: Session, user: User, person_id: int, data: s.ConsentIn) -> DataConsent:
+    get_person(db, person_id)
+    c = DataConsent(person_id=person_id, **data.model_dump())
+    db.add(c)
+    audit(db, user, "person", person_id, "add_consent", after=data.model_dump(mode="json"))
+    db.commit()
+    return c
+
+
+def anonymize_person(db: Session, user: User, person_id: int, reason: str) -> Person:
+    """Derecho de cancelación (sección 11): borra los datos identificativos y
+    conserva inscripciones y combates para no romper el historial de los rivales.
+    """
+    p = get_person(db, person_id)
+    if p.anonymized_at:
+        raise InvalidState("La persona ya fue anonimizada")
+    p.first_names = "Competidor"
+    p.last_names = f"anonimizado #{p.id}"
+    p.normalized_name = ""
+    p.birth_date = None
+    p.identity_incomplete = True
+    p.anonymized_at = utcnow()
+    db.execute(delete(IdentityDocument).where(IdentityDocument.person_id == p.id))
+    db.execute(delete(DataConsent).where(DataConsent.person_id == p.id))
+    # La auditoría y las filas de importación conservan la acción, no los datos.
+    for a in db.scalars(select(AuditEntry).where(AuditEntry.entity == "person", AuditEntry.entity_id == str(p.id))):
+        a.before, a.after = ({"redacted": True} if a.before else None), ({"redacted": True} if a.after else None)
+    for row in db.scalars(select(ImportRow)):
+        if (row.resolution or {}).get("person_id") == p.id:
+            row.data = {"redacted": True}
+            row.duplicates = []
+    bump(p, user)
+    audit(db, user, "person", p.id, "anonymize", reason=reason)
+    db.commit()
+    db.refresh(p)
+    return p
 
 
 def _key(p: Person) -> PersonKey:
@@ -342,6 +427,22 @@ def merge_persons(db: Session, user: User, data: s.PersonMergeIn) -> PersonMerge
         if ids:
             db.execute(update(model).where(model.id.in_(ids)).values({col.key: keep.id}))
             moved[model.__tablename__] = ids
+    # Si ambas personas estaban inscritas en la misma categoría, queda una sola
+    # inscripción activa; la otra se retira (reversible junto con la fusión).
+    withdrawn: list[int] = []
+    seen: set[int] = set()
+    for r in db.scalars(
+        select(Registration)
+        .where(Registration.person_id == keep.id, Registration.status == "active")
+        .order_by(Registration.id)
+    ).all():
+        if r.category_id in seen:
+            r.status, r.withdrawn_reason = "withdrawn", f"Duplicada por fusión con persona {gone.id}"
+            bump(r, user)
+            withdrawn.append(r.id)
+        seen.add(r.category_id)
+    if withdrawn:
+        moved["_withdrawn_registrations"] = withdrawn
     gone.merged_into_id = keep.id
     bump(gone, user)
     if keep.identity_incomplete and moved.get("identity_documents"):
@@ -363,6 +464,11 @@ def revert_merge(db: Session, user: User, merge_id: int) -> PersonMerge:
         raise InvalidState("La fusión ya fue revertida")
     tables = {model.__tablename__: (model, col) for model, col in _MOVABLE}
     for tname, ids in pm.moved.items():
+        if tname == "_withdrawn_registrations":
+            for r in db.scalars(select(Registration).where(Registration.id.in_(ids))).all():
+                r.status, r.withdrawn_reason = "active", None
+                bump(r, user)
+            continue
         model, col = tables[tname]
         db.execute(update(model).where(model.id.in_(ids)).values({col.key: pm.merged_person_id}))
     gone = get_person(db, pm.merged_person_id)

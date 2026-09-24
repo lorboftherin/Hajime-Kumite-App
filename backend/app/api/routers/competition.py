@@ -6,7 +6,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import JSONResponse
 
 from app.api import schemas as s
-from app.api.deps import DB, CurrentUser, ensure_organizer
+from app.api.deps import DB, CurrentUser, ensure_operator, ensure_organizer
 from app.api.errors import NotFound
 from app.db.models import Bracket
 from app.services import brackets as svc
@@ -14,6 +14,11 @@ from app.services import reports
 from app.services.tournaments import get_category
 
 router = APIRouter()
+
+
+def _tid_of_match(db, mid: int) -> int:
+    return get_category(db, svc.get_match(db, mid).category_id).tournament_id
+
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -56,6 +61,14 @@ def bracket_pdf(cid: int, db: DB, _: CurrentUser, blank: bool = False):
     )
 
 
+@router.post("/categories/{cid}/reopen", tags=["brackets"])
+def reopen_category(cid: int, data: s.CategoryCancelIn, db: DB, user: CurrentUser):
+    """Reabre una categoría finalizada con motivo (sección 12), sin reabrir el torneo."""
+    ensure_organizer(db, user, get_category(db, cid).tournament_id)
+    c = svc.reopen_category(db, user, cid, data.reason)
+    return {"id": c.id, "status": c.status, "version": c.version}
+
+
 # --- Mesa de kumite ---------------------------------------------------------------
 
 
@@ -67,18 +80,21 @@ def get_match(mid: int, db: DB, _: CurrentUser):
 @router.post("/matches/{mid}/events", response_model=s.ScoreboardOut, tags=["matches"])
 def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser):
     """Idempotente: reenviar el mismo ``id`` devuelve 200 sin duplicar."""
+    ensure_operator(db, user, _tid_of_match(db, mid))
     sb, created = svc.add_event(db, user, mid, data)
     return JSONResponse(sb.model_dump(mode="json"), status_code=201 if created else 200)
 
 
 @router.post("/matches/{mid}/finish", tags=["matches"])
 def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser):
+    ensure_operator(db, user, _tid_of_match(db, mid))
     sb, affected = svc.finish(db, user, mid, data)
     return {"scoreboard": sb.model_dump(mode="json"), "affected_matches": affected}
 
 
 @router.post("/matches/{mid}/official-result", tags=["shadow"])
 def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUser):
+    ensure_operator(db, user, _tid_of_match(db, mid))
     sc = reports.set_official_result(db, user, mid, data)
     return {"match_id": sc.match_id, "official_winner_registration_id": sc.official_winner_registration_id}
 
@@ -88,11 +104,13 @@ def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUse
 
 @router.post("/matches/{mid}/flags", tags=["kata"])
 def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser):
+    ensure_operator(db, user, _tid_of_match(db, mid))
     return svc.record_flags(db, user, mid, data)
 
 
 @router.post("/categories/{cid}/kata-scores", response_model=s.BracketOut, tags=["kata"])
 def kata_score(cid: int, data: s.KataScoreIn, db: DB, user: CurrentUser):
+    ensure_operator(db, user, get_category(db, cid).tournament_id)
     return svc.record_kata_score(db, user, cid, data)
 
 

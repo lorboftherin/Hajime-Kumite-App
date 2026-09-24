@@ -152,6 +152,15 @@ def update_registration(db: Session, user: User, rid: int, data: s.RegistrationU
             raise InvalidState("Categoría destino inválida")
         if old_cat.status in ("ready", "in_progress", "finished"):
             raise InvalidState("La categoría actual ya tiene llave; retira la inscripción o regenera la llave")
+        if r.person_id and db.scalar(
+            select(Registration.id).where(
+                Registration.category_id == new_cat.id,
+                Registration.person_id == r.person_id,
+                Registration.status == "active",
+                Registration.id != r.id,
+            )
+        ):
+            raise InvalidState("La persona ya está inscrita en esa categoría", code="ALREADY_REGISTERED")
         r.category_id = new_cat.id
     if r.person:
         ws = [
@@ -176,11 +185,12 @@ def get_registration(db: Session, rid: int) -> Registration:
     return r
 
 
-def withdraw(db: Session, user: User, rid: int, reason: str) -> dict[str, Any]:
+def withdraw(db: Session, user: User, rid: int, reason: str, version: int | None = None) -> dict[str, Any]:
     """Marca retirada. Si ya tiene llave, informa las opciones: regenerar (si
     no empezó) o walkover en su combate pendiente.
     """
     r = get_registration(db, rid)
+    check_version(r, version, "La inscripción")
     if r.status == "withdrawn":
         raise InvalidState("La inscripción ya está retirada")
     r.status, r.withdrawn_reason = "withdrawn", reason
@@ -509,7 +519,17 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                     grade=rd["grado"] or None,
                     override=s.Override(reason=f"Importación {batch.filename}, fila {row.row_number}"),
                 )
-                person = people.create_person(db, user, pc, commit=False)
+                try:
+                    person = people.create_person(db, user, pc, commit=False)
+                except InvalidState as e:
+                    if e.code != "DUPLICATE_DOCUMENT":
+                        raise
+                    raise InvalidState(
+                        f"Fila {row.row_number}: el documento ya pertenece a otra persona; "
+                        "elija 'usar existente' u 'omitir'",
+                        code="DUPLICATE_DOCUMENT",
+                        details={**e.details, "row_id": row.id, "row_number": row.row_number},
+                    ) from e
                 created_people += 1
             db.flush()
             cat_ids = d.category_ids if d and d.category_ids else row.suggested_category_ids

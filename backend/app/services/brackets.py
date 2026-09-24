@@ -18,6 +18,7 @@ from app.api import schemas as s
 from app.api.errors import InvalidState, NotFound
 from app.db.base import utcnow
 from app.db.models import (
+    AuditEntry,
     Bracket,
     BracketVersion,
     Category,
@@ -415,17 +416,63 @@ def _update_status(db: Session, m: Match, ready: bool, is_bye: bool, winner: str
 
 
 def _store_results(db: Session, c: Category, places: list[tuple[int, str]], complete: bool) -> None:
-    db.execute(delete(CategoryResult).where(CategoryResult.category_id == c.id))
-    for place, rid in places:
-        db.add(CategoryResult(category_id=c.id, registration_id=int(rid), place=place))
+    """Guarda el podio solo si cambió: una lectura no debe generar escrituras."""
+    current = {
+        (r.place, r.registration_id)
+        for r in db.scalars(select(CategoryResult).where(CategoryResult.category_id == c.id)).all()
+    }
+    wanted = {(place, int(rid)) for place, rid in places}
+    if current != wanted:
+        db.execute(delete(CategoryResult).where(CategoryResult.category_id == c.id))
+        for place, rid in places:
+            db.add(CategoryResult(category_id=c.id, registration_id=int(rid), place=place))
     if c.status in ("merged", "cancelled"):
         return
-    if complete:
-        c.status = "finished"
+    if complete and not _reopened_pending(db, c):
+        new_status = "finished"
     elif _started(db, c.id):
-        c.status = "in_progress"
+        new_status = "in_progress"
     else:
-        c.status = "ready"
+        new_status = "ready"
+    if c.status != new_status:
+        c.status = new_status
+
+
+def _reopened_pending(db: Session, c: Category) -> bool:
+    """Tras reabrir, la categoría no vuelve a finalizar sola: espera una
+    corrección (nuevo ``finish`` o nota de kata) del operador."""
+    last = db.scalar(
+        select(AuditEntry)
+        .where(
+            AuditEntry.entity == "category",
+            AuditEntry.entity_id == str(c.id),
+            AuditEntry.action.in_(("reopen", "refinish")),
+        )
+        .order_by(AuditEntry.id.desc())
+    )
+    return last is not None and last.action == "reopen"
+
+
+def _close_reopen(db: Session, user: User, c: Category) -> None:
+    if _reopened_pending(db, c):
+        audit(db, user, "category", c.id, "refinish", tournament_id=c.tournament_id)
+        db.flush()
+
+
+def reopen_category(db: Session, user: User, cid: int, reason: str) -> Category:
+    """Sección 12: una categoría finalizada se reabre con auditoría, sin reabrir el torneo."""
+    c = get_category(db, cid)
+    if c.status != "finished":
+        raise InvalidState("Solo se reabre una categoría finalizada")
+    c.status = "in_progress"
+    db.execute(delete(CategoryResult).where(CategoryResult.category_id == c.id))
+    bump(c, user)
+    audit(
+        db, user, "category", c.id, "reopen", {"status": "finished"}, {"status": "in_progress"}, reason, c.tournament_id
+    )
+    db.commit()
+    db.refresh(c)
+    return c
 
 
 def _sync_round_robin(db: Session, c: Category, v: BracketVersion, rows: list[Match]) -> dict[str, Any]:
@@ -510,7 +557,8 @@ def bracket_out(db: Session, cid: int) -> s.BracketOut:
     assert v is not None
     c = get_category(db, cid)
     info = sync(db, c)
-    db.commit()
+    if db.dirty or db.new or db.deleted:
+        db.commit()
     rows = current_matches(db, cid)
     ids = {x for x in v.slots if x} | {x for m in rows for x in (m.aka_registration_id, m.ao_registration_id) if x}
     podium: dict[str, Any] = {}
@@ -646,6 +694,13 @@ def scoreboard(db: Session, m: Match) -> s.ScoreboardOut:
     parts = participants(db, {x for x in (m.aka_registration_id, m.ao_registration_id) if x})
     return s.ScoreboardOut(
         match=s.MatchOut.model_validate(m),
+        rules={
+            "time_mode": rules.time_mode.value,
+            "auto_pause_on_point": rules.auto_pause_on_point,
+            "tie_rule": rules.tie_rule.value,
+            "lead_victory": rules.lead_victory,
+            "point_values": list(rules.point_values),
+        },
         score=sb.score,
         sanction=sb.sanction,
         sanction_labels=list(rules.sanction_levels),
@@ -678,6 +733,17 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
             raise InvalidState("Ese id de evento pertenece a otro combate", code="EVENT_ID_CONFLICT")
         return scoreboard(db, m), False
     _require_two(m)
+    finished_before = m.status in ("finished", "needs_review")
+    if finished_before:
+        # Tocar un combate cerrado es una corrección: requiere motivo y queda auditada.
+        apply_warnings(
+            db,
+            user,
+            [{"code": "MATCH_FINISHED", "message": "El combate ya está cerrado; el evento corrige su marcador"}],
+            data.override.reason if data.override else None,
+            "match",
+            lambda: m.id,
+        )
     if data.type == "annul":
         target = db.get(MatchEventRow, data.target_id) if data.target_id else None
         if target is None or target.match_id != mid:
@@ -725,7 +791,22 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
         m = get_match(db, mid)
         return scoreboard(db, m), False
     sb = scoreboard(db, m)
+    before = {"aka_score": m.aka_score, "ao_score": m.ao_score}
     m.aka_score, m.ao_score = sb.score["aka"], sb.score["ao"]
+    if finished_before:
+        c = get_category(db, m.category_id)
+        sync(db, c)  # round robin usa los marcadores para la clasificación
+        audit(
+            db,
+            user,
+            "match",
+            m.id,
+            "correct_score",
+            before,
+            {"aka_score": m.aka_score, "ao_score": m.ao_score, "event": data.type},
+            reason=data.override.reason if data.override else data.reason,
+            tournament_id=c.tournament_id,
+        )
     db.commit()
     return sb, True
 
@@ -738,6 +819,8 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
     m = get_match(db, mid)
     existing = db.get(MatchEventRow, data.id)
     if existing is not None:
+        if existing.match_id != mid:
+            raise InvalidState("Ese id de evento pertenece a otro combate", code="EVENT_ID_CONFLICT")
         return scoreboard(db, m), []
     _require_two(m)
     c, t = _ctx(db, m)
@@ -788,6 +871,7 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
     m.status = "finished"
     bump(m, user)
     db.flush()
+    _close_reopen(db, user, c)
     sync(db, c)
     audit(
         db,
@@ -829,7 +913,9 @@ def record_flags(db: Session, user: User, mid: int, data: s.FlagsIn) -> dict[str
         db,
         user,
         mid,
-        s.FinishIn(id=data.event_id, at=data.at, winner=result.winner, method="flags", time_over=True),
+        s.FinishIn(
+            id=data.event_id, at=data.at, winner=result.winner, method="flags", time_over=True, override=data.override
+        ),
     )
     return {
         "winner": result.winner,
@@ -863,6 +949,7 @@ def record_kata_score(db: Session, user: User, cid: int, data: s.KataScoreIn) ->
     if c.status == "ready":
         c.status = "in_progress"
     db.flush()
+    _close_reopen(db, user, c)
     sync(db, c)
     audit(
         db,
@@ -889,6 +976,7 @@ def resolve_kata_tie(db: Session, user: User, cid: int, data: s.TieBreakIn) -> s
             raise InvalidState(f"Inscripción {rid} no está en la ronda")
         perfs[rid].tie_break_place = i + 1
     db.flush()
+    _close_reopen(db, user, c)
     sync(db, c)
     audit(
         db,

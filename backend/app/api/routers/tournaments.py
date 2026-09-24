@@ -87,7 +87,8 @@ def list_categories(
     if modality:
         stmt = stmt.where(Category.modality == modality)
     rows = db.scalars(stmt.order_by(Category.sort_order, Category.id)).all()
-    out = [svc.category_out(db, c) for c in rows]
+    counts = svc.entrant_counts(db, tid)
+    out = [svc.category_out(db, c, counts.get(c.id, 0)) for c in rows]
     if hide_empty:
         out = [c for c in out if c.status != "empty"]
     return out
@@ -115,7 +116,7 @@ def update_category(cid: int, data: s.CategoryUpdate, db: DB, user: CurrentUser)
 def cancel_category(cid: int, data: s.CategoryCancelIn, db: DB, user: CurrentUser):
     c = svc.get_category(db, cid)
     ensure_organizer(db, user, c.tournament_id)
-    return svc.category_out(db, svc.cancel_category(db, user, cid, data.reason))
+    return svc.category_out(db, svc.cancel_category(db, user, cid, data.reason, data.version))
 
 
 @router.post("/tournaments/{tid}/categories/merge", response_model=s.CategoryOut, tags=["categories"])
@@ -172,7 +173,7 @@ def update_registration(rid: int, data: s.RegistrationUpdate, db: DB, user: Curr
 def withdraw(rid: int, data: s.WithdrawIn, db: DB, user: CurrentUser):
     r = regs.get_registration(db, rid)
     ensure_organizer(db, user, r.tournament_id)
-    return regs.withdraw(db, user, rid, data.reason)
+    return regs.withdraw(db, user, rid, data.reason, data.version)
 
 
 @router.get("/tournaments/{tid}/suggestions", response_model=list[s.SuggestionOut], tags=["registrations"])
@@ -196,17 +197,21 @@ def import_template(_: CurrentUser):
 
 
 @router.post("/tournaments/{tid}/imports", response_model=s.ImportBatchOut, status_code=201, tags=["imports"])
-async def upload_import(tid: int, db: DB, user: CurrentUser, file: UploadFile = File(...)):
+def upload_import(tid: int, db: DB, user: CurrentUser, file: UploadFile = File(...)):
+    # Endpoint síncrono a propósito (sección 22): corre en el pool de hilos y
+    # no bloquea a las mesas mientras se procesa el Excel.
     ensure_organizer(db, user, tid)
-    content = await file.read()
+    content = file.file.read()
     if len(content) > 5 * 1024 * 1024:
         raise AppError("El archivo supera 5 MB", code="FILE_TOO_LARGE")
     return regs.create_import_preview(db, user, tid, file.filename or "import.xlsx", content)
 
 
 @router.get("/imports/{bid}", response_model=s.ImportBatchOut, tags=["imports"])
-def get_import(bid: int, db: DB, _: CurrentUser):
-    return regs.get_batch(db, bid)
+def get_import(bid: int, db: DB, user: CurrentUser):
+    b = regs.get_batch(db, bid)
+    ensure_organizer(db, user, b.tournament_id)
+    return b
 
 
 @router.post("/imports/{bid}/confirm", tags=["imports"])

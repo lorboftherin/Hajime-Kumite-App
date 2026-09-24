@@ -28,12 +28,27 @@ class LoginIn(BaseModel):
     password: str
 
 
+class RoleOut(ORM):
+    id: int
+    role: str
+    scope_type: str
+    scope_id: int | None
+
+
+class RoleIn(BaseModel):
+    role: Literal["organizer", "table_operator", "dojo_admin", "referee"]
+    scope_type: Literal["global", "tournament", "dojo"] = "global"
+    scope_id: int | None = None
+
+
 class UserOut(ORM):
     id: int
     username: str
     display_name: str
     is_admin: bool
     person_id: int | None
+    roles: list[RoleOut] = []
+    can_view_documents: bool = False
 
 
 class TokenOut(BaseModel):
@@ -102,7 +117,18 @@ class DuplicateOut(BaseModel):
     birth_date: date | None
 
 
+class ConsentOut(ORM):
+    id: int
+    given_by: str
+    relationship_to_person: str
+    given_on: date
+    medium: str
+    scope: str
+
+
 class PersonOut(ORM):
+    """Documentos y fecha de nacimiento solo se devuelven a Admin y organizadores."""
+
     id: int
     first_names: str
     last_names: str
@@ -110,10 +136,16 @@ class PersonOut(ORM):
     sex: str
     identity_incomplete: bool
     merged_into_id: int | None
+    anonymized_at: datetime | None = None
     version: int
     documents: list[DocumentOut] = []
+    consents: list[ConsentOut] = []
     current_dojo_id: int | None = None
     current_grade: str | None = None
+
+
+class AnonymizeIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class PersonMergeIn(BaseModel):
@@ -250,10 +282,12 @@ class CategoryMergeIn(BaseModel):
     target_id: int | None = None  # None = crear nueva a partir de la primera
     new_name: str | None = None
     reason: str = ""
+    override: Override | None = None
 
 
 class CategoryCancelIn(BaseModel):
     reason: str = Field(min_length=3)
+    version: int | None = None
 
 
 # --- Torneos ------------------------------------------------------------
@@ -354,6 +388,7 @@ class RegistrationUpdate(BaseModel):
 
 class WithdrawIn(BaseModel):
     reason: str = Field(min_length=3)
+    version: int | None = None  # control optimista si el cliente la conoce
 
 
 class RegistrationOut(ORM):
@@ -500,6 +535,7 @@ class EventIn(BaseModel):
     value: float | None = None
     target_id: str | None = None
     reason: str | None = None
+    override: Override | None = None  # requerido para tocar un combate ya cerrado
 
 
 class EventOut(ORM):
@@ -516,6 +552,7 @@ class EventOut(ORM):
 
 class ScoreboardOut(BaseModel):
     match: MatchOut
+    rules: dict[str, Any] = {}  # reglas efectivas: time_mode, auto_pause_on_point, tie_rule, lead_victory…
     score: dict[str, int]
     sanction: dict[str, int]
     sanction_labels: list[str]
@@ -549,6 +586,7 @@ class FlagsIn(BaseModel):
     head_judge_vote: Color | None = None
     event_id: str = Field(min_length=8, max_length=36)
     at: datetime
+    override: Override | None = None  # corregir una decisión ya tomada
 
 
 class KataScoreIn(BaseModel):

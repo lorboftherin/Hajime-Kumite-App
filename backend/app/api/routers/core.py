@@ -8,9 +8,18 @@ from fastapi import APIRouter, Query
 from sqlalchemy import or_, select
 
 from app.api import schemas as s
-from app.api.deps import DB, AdminUser, CurrentUser, ensure_organizer
+from app.api.deps import (
+    DB,
+    ROLES,
+    AdminUser,
+    CurrentUser,
+    can_view_documents,
+    ensure_organizer,
+    ensure_staff,
+    roles_of,
+)
 from app.api.errors import Conflict, NotFound, Unauthorized
-from app.db.models import AuditEntry, CategoryTemplate, Dojo, IdentityDocument, Person, RuleOverride, User
+from app.db.models import AuditEntry, CategoryTemplate, Dojo, IdentityDocument, Person, PersonRole, RuleOverride, User
 from app.domain.identity import normalize_document, normalize_name
 from app.security import create_token, hash_password, verify_password
 from app.services import people
@@ -28,17 +37,55 @@ def login(data: s.LoginIn, db: DB):
     u = db.scalar(select(User).where(User.username == data.username.strip().lower()))
     if u is None or not u.is_active or not verify_password(data.password, u.password_hash):
         raise Unauthorized("Usuario o contraseña incorrectos")
-    return s.TokenOut(access_token=create_token(u.id), user=s.UserOut.model_validate(u))
+    return s.TokenOut(access_token=create_token(u.id), user=user_out(db, u))
+
+
+def user_out(db, u: User) -> s.UserOut:
+    out = s.UserOut.model_validate(u)
+    out.roles = [s.RoleOut.model_validate(r) for r in roles_of(db, u)]
+    out.can_view_documents = can_view_documents(db, u)
+    return out
 
 
 @router.get("/auth/me", response_model=s.UserOut, tags=["auth"])
-def me(user: CurrentUser):
-    return user
+def me(user: CurrentUser, db: DB):
+    return user_out(db, user)
+
+
+@router.get("/persons/{person_id}/roles", response_model=list[s.RoleOut], tags=["auth"])
+def list_roles(person_id: int, db: DB, _: AdminUser):
+    people.get_person(db, person_id)
+    return db.scalars(select(PersonRole).where(PersonRole.person_id == person_id)).all()
+
+
+@router.post("/persons/{person_id}/roles", response_model=s.RoleOut, status_code=201, tags=["auth"])
+def add_role(person_id: int, data: s.RoleIn, db: DB, admin: AdminUser):
+    people.get_person(db, person_id)
+    if data.scope_type != "global" and data.scope_id is None:
+        raise Conflict("Un rol por torneo o por dojo necesita scope_id")
+    if data.role not in ROLES:
+        raise Conflict("Rol desconocido")
+    r = PersonRole(person_id=person_id, role=data.role, scope_type=data.scope_type, scope_id=data.scope_id)
+    db.add(r)
+    db.flush()
+    audit(db, admin, "person", person_id, "add_role", after=data.model_dump())
+    db.commit()
+    return r
+
+
+@router.delete("/roles/{role_id}", status_code=204, tags=["auth"])
+def remove_role(role_id: int, db: DB, admin: AdminUser):
+    r = db.get(PersonRole, role_id)
+    if r is None:
+        raise NotFound("Rol no encontrado")
+    audit(db, admin, "person", r.person_id, "remove_role", before={"role": r.role, "scope": r.scope_type})
+    db.delete(r)
+    db.commit()
 
 
 @router.get("/users", response_model=list[s.UserOut], tags=["auth"])
 def list_users(db: DB, _: AdminUser):
-    return db.scalars(select(User).order_by(User.username)).all()
+    return [user_out(db, u) for u in db.scalars(select(User).order_by(User.username)).all()]
 
 
 @router.post("/users", response_model=s.UserOut, status_code=201, tags=["auth"])
@@ -57,7 +104,7 @@ def create_user(data: s.UserCreate, db: DB, admin: AdminUser):
     db.flush()
     audit(db, admin, "user", u.id, "create", after={"username": username, "is_admin": data.is_admin})
     db.commit()
-    return u
+    return user_out(db, u)
 
 
 # --- Dojos --------------------------------------------------------------------
@@ -74,6 +121,7 @@ def list_dojos(db: DB, _: CurrentUser, q: str | None = None):
 
 @router.post("/dojos", response_model=s.DojoOut, status_code=201, tags=["dojos"])
 def create_dojo(data: s.DojoCreate, db: DB, user: CurrentUser):
+    ensure_staff(db, user)
     return people.create_dojo(db, user, data)
 
 
@@ -84,6 +132,7 @@ def get_dojo(dojo_id: int, db: DB, _: CurrentUser):
 
 @router.patch("/dojos/{dojo_id}", response_model=s.DojoOut, tags=["dojos"])
 def update_dojo(dojo_id: int, data: s.DojoUpdate, db: DB, user: CurrentUser):
+    ensure_staff(db, user)
     d = people.get_dojo(db, dojo_id)
     check_version(d, data.version, "El dojo")
     before = snapshot(d)
@@ -100,6 +149,7 @@ def update_dojo(dojo_id: int, data: s.DojoUpdate, db: DB, user: CurrentUser):
 def add_branch(dojo_id: int, data: s.BranchIn, db: DB, user: CurrentUser):
     from app.db.models import Branch
 
+    ensure_staff(db, user)
     d = people.get_dojo(db, dojo_id)
     db.add(Branch(dojo_id=d.id, name=data.name.strip()))
     audit(db, user, "dojo", d.id, "add_branch", after={"name": data.name})
@@ -114,20 +164,25 @@ def add_branch(dojo_id: int, data: s.BranchIn, db: DB, user: CurrentUser):
 @router.get("/persons", response_model=list[s.PersonOut], tags=["persons"])
 def list_persons(
     db: DB,
-    _: CurrentUser,
+    user: CurrentUser,
     q: str | None = None,
     dojo_id: int | None = None,
     limit: int = Query(50, le=500),
 ):
+    privileged = can_view_documents(db, user)
     stmt = select(Person).where(Person.merged_into_id.is_(None))
     if q:
         nq = normalize_name(q)
-        doc = normalize_document(q)
-        stmt = stmt.outerjoin(IdentityDocument).where(
-            or_(Person.normalized_name.contains(nq), IdentityDocument.normalized_number == doc)
-        )
+        if privileged:
+            # Solo quien puede ver documentos puede buscar por documento.
+            doc = normalize_document(q)
+            stmt = stmt.outerjoin(IdentityDocument).where(
+                or_(Person.normalized_name.contains(nq), IdentityDocument.normalized_number == doc)
+            )
+        else:
+            stmt = stmt.where(Person.normalized_name.contains(nq))
     rows = list(db.scalars(stmt.order_by(Person.last_names, Person.first_names).limit(limit * 3)).unique().all())
-    out = [people.person_out(db, p) for p in rows]
+    out = people.persons_out(db, rows, privileged)
     if dojo_id:
         out = [p for p in out if p.current_dojo_id == dojo_id]
     return out[:limit]
@@ -136,41 +191,58 @@ def list_persons(
 @router.get("/persons/duplicates", response_model=list[s.DuplicateOut], tags=["persons"])
 def check_duplicates(
     db: DB,
-    _: CurrentUser,
+    user: CurrentUser,
     first_names: str,
     last_names: str,
     birth_date: date | None = None,
     doc_type: str | None = None,
     doc_number: str | None = None,
 ):
+    ensure_staff(db, user)
     return people.detect_duplicates(db, first_names, last_names, birth_date, doc_type, doc_number)
 
 
 @router.post("/persons", response_model=s.PersonOut, status_code=201, tags=["persons"])
 def create_person(data: s.PersonCreate, db: DB, user: CurrentUser):
-    return people.person_out(db, people.create_person(db, user, data))
+    ensure_staff(db, user)
+    return people.person_out(db, people.create_person(db, user, data), True)
 
 
 @router.get("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
-def get_person(person_id: int, db: DB, _: CurrentUser):
-    return people.person_out(db, people.get_person(db, person_id))
+def get_person(person_id: int, db: DB, user: CurrentUser):
+    return people.person_out(db, people.get_person(db, person_id), can_view_documents(db, user))
 
 
 @router.patch("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
 def update_person(person_id: int, data: s.PersonUpdate, db: DB, user: CurrentUser):
-    return people.person_out(db, people.update_person(db, user, person_id, data))
+    ensure_staff(db, user)
+    return people.person_out(db, people.update_person(db, user, person_id, data), True)
 
 
 @router.post("/persons/{person_id}/grades", status_code=201, tags=["persons"])
 def add_grade(person_id: int, data: s.GradeIn, db: DB, user: CurrentUser):
+    ensure_staff(db, user)
     g = people.add_grade(db, user, person_id, data)
     return {"id": g.id, "grade": g.grade, "awarded_on": g.awarded_on}
 
 
 @router.post("/persons/{person_id}/memberships", status_code=201, tags=["persons"])
 def change_dojo(person_id: int, data: s.MembershipIn, db: DB, user: CurrentUser):
+    ensure_staff(db, user)
     m = people.change_dojo(db, user, person_id, data)
     return {"id": m.id, "dojo_id": m.dojo_id, "start_date": m.start_date}
+
+
+@router.post("/persons/{person_id}/consents", response_model=s.ConsentOut, status_code=201, tags=["persons"])
+def add_consent(person_id: int, data: s.ConsentIn, db: DB, user: CurrentUser):
+    ensure_staff(db, user)
+    return people.add_consent(db, user, person_id, data)
+
+
+@router.post("/persons/{person_id}/anonymize", response_model=s.PersonOut, tags=["persons"])
+def anonymize(person_id: int, data: s.AnonymizeIn, db: DB, admin: AdminUser):
+    """Derecho de cancelación (ARCO): anonimiza sin borrar combates."""
+    return people.person_out(db, people.anonymize_person(db, admin, person_id, data.reason), True)
 
 
 @router.post("/persons/merge", tags=["persons"])
@@ -225,9 +297,12 @@ def audit_log(
 ):
     if tournament_id is not None:
         ensure_organizer(db, user, tournament_id)
-    elif not user.is_admin:
-        ensure_organizer(db, user, -1)
+    else:
+        ensure_staff(db, user)
     stmt = select(AuditEntry).order_by(AuditEntry.id.desc()).limit(limit)
+    if not user.is_admin:
+        # Las fotos antes/después de personas contienen datos personales.
+        stmt = stmt.where(AuditEntry.entity != "person")
     if tournament_id is not None:
         stmt = stmt.where(AuditEntry.tournament_id == tournament_id)
     if entity:
@@ -252,7 +327,8 @@ def audit_log(
 
 
 @router.get("/overrides", tags=["audit"])
-def overrides(db: DB, _: CurrentUser, entity: str, entity_id: int):
+def overrides(db: DB, user: CurrentUser, entity: str, entity_id: int):
+    ensure_staff(db, user)
     rows = db.scalars(
         select(RuleOverride).where(RuleOverride.entity == entity, RuleOverride.entity_id == entity_id)
     ).all()

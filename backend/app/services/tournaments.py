@@ -20,7 +20,7 @@ from app.db.models import (
 from app.domain.brackets import ThirdPlaceRule
 from app.domain.categories import can_transition, few_entrants_advice, is_reopen
 from app.domain.kumite import KumiteRules, TieRule, TimeMode
-from app.services.audit import audit, bump, check_version, snapshot
+from app.services.audit import apply_warnings, audit, bump, check_version, snapshot
 
 CATEGORY_FIELDS = list(s.CategoryFields.model_fields)
 
@@ -83,7 +83,11 @@ def update_tournament(db: Session, user: User, tid: int, data: s.TournamentUpdat
     t = get_tournament(db, tid)
     check_version(t, data.version, "El torneo")
     before = snapshot(t)
-    for k, v in data.model_dump(exclude_unset=True, exclude={"version"}).items():
+    changes = data.model_dump(exclude_unset=True, exclude={"version"})
+    if "is_test" in changes and changes["is_test"] != t.is_test and not user.is_admin:
+        # Cambiar la marca altera el historial y las estadísticas (sección 12).
+        raise Forbidden("Solo el Admin Global puede cambiar la marca de torneo de prueba")
+    for k, v in changes.items():
         setattr(t, k, v)
     bump(t, user)
     audit(db, user, "tournament", t.id, "update", before, snapshot(t), tournament_id=t.id)
@@ -175,6 +179,16 @@ def generate_categories(db: Session, user: User, tid: int, template_id: int | No
     return n
 
 
+def entrant_counts(db: Session, tid: int) -> dict[int, int]:
+    """Inscritos activos por categoría en una sola consulta."""
+    rows = db.execute(
+        select(Registration.category_id, func.count())
+        .where(Registration.tournament_id == tid, Registration.status == "active")
+        .group_by(Registration.category_id)
+    ).all()
+    return {cid: n for cid, n in rows}
+
+
 def entrant_count(db: Session, cid: int) -> int:
     return (
         db.scalar(
@@ -192,9 +206,9 @@ def refresh_category_status(db: Session, c: Category) -> None:
         c.status = "open" if entrant_count(db, c.id) else "empty"
 
 
-def category_out(db: Session, c: Category) -> s.CategoryOut:
+def category_out(db: Session, c: Category, count: int | None = None) -> s.CategoryOut:
     out = s.CategoryOut.model_validate(c)
-    out.entrant_count = entrant_count(db, c.id)
+    out.entrant_count = entrant_count(db, c.id) if count is None else count
     out.advice = few_entrants_advice(out.entrant_count) if c.status in ("open", "empty") else []
     return out
 
@@ -231,10 +245,13 @@ def update_category(db: Session, user: User, cid: int, data: s.CategoryUpdate) -
     return c
 
 
-def cancel_category(db: Session, user: User, cid: int, reason: str) -> Category:
+def cancel_category(db: Session, user: User, cid: int, reason: str, version: int | None = None) -> Category:
     c = get_category(db, cid)
+    check_version(c, version, "La categoría")
     if c.status in ("in_progress", "finished"):
         raise InvalidState("La categoría ya tiene combates")
+    if c.status == "merged":
+        raise InvalidState("La categoría está fusionada; deshaz la fusión primero")
     before = c.status
     c.status, c.cancel_reason = "cancelled", reason
     bump(c, user)
@@ -266,6 +283,20 @@ def merge_categories(db: Session, user: User, tid: int, data: s.CategoryMergeIn)
             raise InvalidState("El destino no puede estar entre los orígenes")
         if target.status in ("merged", "cancelled", "in_progress", "finished"):
             raise InvalidState("La categoría destino no admite fusiones")
+        if target.status == "ready":
+            apply_warnings(
+                db,
+                user,
+                [
+                    {
+                        "code": "TARGET_BRACKET_DISCARDED",
+                        "message": "La llave del destino se descartará; hay que regenerarla",
+                    }
+                ],
+                data.override.reason if data.override else None,
+                "category",
+                lambda: target.id,
+            )
     else:
         base = sources[0]
         fields = {f: getattr(base, f) for f in CATEGORY_FIELDS}
@@ -284,6 +315,8 @@ def merge_categories(db: Session, user: User, tid: int, data: s.CategoryMergeIn)
         db.flush()
     from app.services.brackets import discard_bracket  # evitar ciclo
 
+    if data.target_id:
+        discard_bracket(db, target)  # los nuevos inscritos no están en la llave vieja
     for c in sources:
         discard_bracket(db, c)  # una llave generada (sin combates) deja de valer
         regs = db.scalars(

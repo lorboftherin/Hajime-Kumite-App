@@ -73,6 +73,152 @@
     ]
    }
   },
+  "/api/v1/persons/{person_id}/roles": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "List Roles",
+    "operationId": "list_roles_api_v1_persons__person_id__roles_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RoleOut"
+         },
+         "title": "Response List Roles Api V1 Persons  Person Id  Roles Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Add Role",
+    "operationId": "add_role_api_v1_persons__person_id__roles_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RoleIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RoleOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/roles/{role_id}": {
+   "delete": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Remove Role",
+    "operationId": "remove_role_api_v1_roles__role_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "role_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Role Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/users": {
    "get": {
     "tags": [
@@ -842,6 +988,121 @@
       "content": {
        "application/json": {
         "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}/consents": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Add Consent",
+    "operationId": "add_consent_api_v1_persons__person_id__consents_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConsentIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConsentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}/anonymize": {
+   "post": {
+    "tags": [
+     "persons"
+    ],
+    "summary": "Anonymize",
+    "description": "Derecho de cancelación (ARCO): anonimiza sin borrar combates.",
+    "operationId": "anonymize_api_v1_persons__person_id__anonymize_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnonymizeIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
        }
       }
      },
@@ -2858,6 +3119,62 @@
     }
    }
   },
+  "/api/v1/categories/{cid}/reopen": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Reopen Category",
+    "description": "Reabre una categoría finalizada con motivo (sección 12), sin reabrir el torneo.",
+    "operationId": "reopen_category_api_v1_categories__cid__reopen_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryCancelIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/matches/{mid}": {
    "get": {
     "tags": [
@@ -3579,6 +3896,21 @@
  },
  "components": {
   "schemas": {
+   "AnonymizeIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "AnonymizeIn"
+   },
    "Body_upload_import_api_v1_tournaments__tid__imports_post": {
     "properties": {
      "file": {
@@ -3798,6 +4130,17 @@
       "type": "string",
       "minLength": 3,
       "title": "Reason"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
      }
     },
     "type": "object",
@@ -4240,6 +4583,16 @@
       "type": "string",
       "title": "Reason",
       "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -4709,6 +5062,45 @@
     ],
     "title": "ConsentIn"
    },
+   "ConsentOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "given_by": {
+      "type": "string",
+      "title": "Given By"
+     },
+     "relationship_to_person": {
+      "type": "string",
+      "title": "Relationship To Person"
+     },
+     "given_on": {
+      "type": "string",
+      "format": "date",
+      "title": "Given On"
+     },
+     "medium": {
+      "type": "string",
+      "title": "Medium"
+     },
+     "scope": {
+      "type": "string",
+      "title": "Scope"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "given_by",
+     "relationship_to_person",
+     "given_on",
+     "medium",
+     "scope"
+    ],
+    "title": "ConsentOut"
+   },
    "DocumentIn": {
     "properties": {
      "doc_type": {
@@ -5012,6 +5404,16 @@
        }
       ],
       "title": "Reason"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -5239,6 +5641,16 @@
       "type": "string",
       "format": "date-time",
       "title": "At"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -6020,6 +6432,18 @@
       ],
       "title": "Merged Into Id"
      },
+     "anonymized_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Anonymized At"
+     },
      "version": {
       "type": "integer",
       "title": "Version"
@@ -6030,6 +6454,14 @@
       },
       "type": "array",
       "title": "Documents",
+      "default": []
+     },
+     "consents": {
+      "items": {
+       "$ref": "#/components/schemas/ConsentOut"
+      },
+      "type": "array",
+      "title": "Consents",
       "default": []
      },
      "current_dojo_id": {
@@ -6066,7 +6498,8 @@
      "merged_into_id",
      "version"
     ],
-    "title": "PersonOut"
+    "title": "PersonOut",
+    "description": "Documentos y fecha de nacimiento solo se devuelven a Admin y organizadores."
    },
    "PersonUpdate": {
     "properties": {
@@ -6438,10 +6871,91 @@
     ],
     "title": "RegistrationUpdate"
    },
+   "RoleIn": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "organizer",
+       "table_operator",
+       "dojo_admin",
+       "referee"
+      ],
+      "title": "Role"
+     },
+     "scope_type": {
+      "type": "string",
+      "enum": [
+       "global",
+       "tournament",
+       "dojo"
+      ],
+      "title": "Scope Type",
+      "default": "global"
+     },
+     "scope_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scope Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role"
+    ],
+    "title": "RoleIn"
+   },
+   "RoleOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     },
+     "scope_type": {
+      "type": "string",
+      "title": "Scope Type"
+     },
+     "scope_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scope Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "role",
+     "scope_type",
+     "scope_id"
+    ],
+    "title": "RoleOut"
+   },
    "ScoreboardOut": {
     "properties": {
      "match": {
       "$ref": "#/components/schemas/MatchOut"
+     },
+     "rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Rules",
+      "default": {}
      },
      "score": {
       "additionalProperties": {
@@ -7440,6 +7954,19 @@
        }
       ],
       "title": "Person Id"
+     },
+     "roles": {
+      "items": {
+       "$ref": "#/components/schemas/RoleOut"
+      },
+      "type": "array",
+      "title": "Roles",
+      "default": []
+     },
+     "can_view_documents": {
+      "type": "boolean",
+      "title": "Can View Documents",
+      "default": false
      }
     },
     "type": "object",
@@ -7498,6 +8025,17 @@
       "type": "string",
       "minLength": 3,
       "title": "Reason"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
      }
     },
     "type": "object",
