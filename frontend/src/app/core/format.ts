@@ -152,9 +152,10 @@ export const ROLE_LABEL: Record<string, string> = {
   table_operator: 'Operador de mesa',
   dojo_admin: 'Admin de dojo',
   referee: 'Árbitro',
+  sensei: 'Sensei',
 };
 
-export const SCOPE_LABEL: Record<string, string> = { tournament: 'torneo', dojo: 'dojo' };
+export const SCOPE_LABEL: Record<string, string> = { tournament: 'torneo', dojo: 'dojo', tatami: 'tatami' };
 
 export const EVENT_LABEL: Record<string, string> = {
   point: 'Punto',
@@ -308,4 +309,5 @@ export const AUDIT_ENTITY: Record<string, string> = {
   kata_performance: 'Ejecución de kata',
   template: 'Plantilla',
   team: 'Equipo',
+  referee_assignment: 'Asignación de árbitro',
 };

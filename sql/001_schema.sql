@@ -279,6 +279,23 @@ CREATE TABLE import_batches (
 );
 
 CREATE INDEX ix_import_batches_tournament_id ON import_batches (tournament_id);
+CREATE TABLE referee_assignments (
+	id INTEGER NOT NULL IDENTITY, 
+	tournament_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	target_type VARCHAR(20) NOT NULL, 
+	target_id INTEGER NOT NULL, 
+	position NVARCHAR(40) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	created_by_id INTEGER NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(created_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_referee_assignments_person_id ON referee_assignments (person_id);
+CREATE INDEX ix_referee_assignments_target ON referee_assignments (tournament_id, target_type, target_id);
 CREATE TABLE tatamis (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -571,6 +588,21 @@ CREATE TABLE match_events (
 );
 
 CREATE INDEX ix_match_events_match ON match_events (match_id, device_at);
+CREATE TABLE match_presence (
+	id INTEGER NOT NULL IDENTITY, 
+	match_id INTEGER NOT NULL, 
+	device_id VARCHAR(40) NOT NULL, 
+	user_id INTEGER NULL, 
+	first_seen DATETIME2 NOT NULL, 
+	last_seen DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	UNIQUE (match_id, device_id), 
+	FOREIGN KEY(match_id) REFERENCES matches (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_match_presence_last_seen ON match_presence (last_seen);
+CREATE INDEX ix_match_presence_match_id ON match_presence (match_id);
 CREATE TABLE shadow_comparisons (
 	id INTEGER NOT NULL IDENTITY, 
 	match_id INTEGER NOT NULL, 

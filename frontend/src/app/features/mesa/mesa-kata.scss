@@ -103,6 +103,20 @@
   font-weight: 800;
   font-size: 0.9375rem;
 }
+.jsel {
+  min-width: 0;
+  max-width: 70%;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--y-line);
+  background: var(--y-bg);
+  color: var(--y-text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color-scheme: dark;
+}
 .jstate {
   font-size: 0.75rem;
   font-weight: 800;

@@ -523,6 +523,39 @@ class CategoryResult(Base):
     computed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
+class MatchPresence(Base):
+    """Tablet con la mesa de un combate abierta (latido cada pocos segundos).
+
+    Sirve para avisar cuando dos dispositivos operan el mismo combate; no
+    bloquea nada (los eventos ya son idempotentes y versionados).
+    """
+
+    __tablename__ = "match_presence"
+    __table_args__ = (UniqueConstraint("match_id", "device_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    device_id: Mapped[str] = mapped_column(String(40))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    first_seen: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_seen: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, index=True)
+
+
+class RefereeAssignment(Base):
+    """AsignacionArbitro (sección 20): opcional, a un tatami, categoría o combate."""
+
+    __tablename__ = "referee_assignments"
+    __table_args__ = (Index("ix_referee_assignments_target", "tournament_id", "target_type", "target_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(20))  # tatami | category | match
+    target_id: Mapped[int] = mapped_column(Integer)
+    position: Mapped[str] = mapped_column(Unicode(40), default="")  # «Árbitro central», «Juez 1»…
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    person: Mapped[Person] = relationship(lazy="joined")
+
+
 class ShadowComparison(Base, Timestamped):
     """Resultado oficial (papel) de un combate para el reporte de Shadow Mode."""
 

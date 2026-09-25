@@ -12,7 +12,7 @@ from sqlalchemy.engine import Engine
 BASELINE = "0001"
 # Base creada con create_all (sin Alembic): la revisión que corresponde según
 # qué tablas ya existen. La última que coincide manda.
-LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"))
+LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"), ("match_presence", "0004"))
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)
 
@@ -57,5 +57,5 @@ def _stamp_legacy(cfg: Config, conn) -> None:
         rev = [r for table, r in LEGACY_MARKERS if table in tables][-1]
         for table, column, r in LEGACY_COLUMNS:
             if table in tables and column in {c["name"] for c in inspect(conn).get_columns(table)}:
-                rev = r
+                rev = max(rev, r)
         command.stamp(cfg, rev)

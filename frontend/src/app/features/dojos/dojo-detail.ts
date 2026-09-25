@@ -33,6 +33,14 @@ import { PageHead } from '../../shared/page-head';
             @if (d.branches.length) {
               <span>Sedes: {{ branchNames() }}</span>
             }
+            @if (history()?.senseis?.length) {
+              <span>
+                Sensei:
+                @for (s of history()!.senseis!; track s.person_id; let last = $last) {
+                  <a [routerLink]="['/personas', s.person_id]">{{ s.name }}</a>@if (!last) {, }
+                }
+              </span>
+            }
           </div>
           <a class="btn" [routerLink]="['/personas']" [queryParams]="{ dojo: d.id }">Ver competidores</a>
         </app-page-head>

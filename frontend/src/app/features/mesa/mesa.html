@@ -45,6 +45,9 @@
   @if (loadError()) {
     <div class="notice shu">{{ loadError() }}</div>
   }
+  @if (othersText()) {
+    <div class="notice yamabuki" role="status">{{ othersText() }}</div>
+  }
 
   @if (sb(); as s) {
     @if (!playable()) {
@@ -302,7 +305,23 @@
           @for (v of votes(); track $index; let i = $index) {
             <div class="judge" [class.voted]="!!v">
               <div class="jhead">
-                <span class="jname">Juez {{ i + 1 }}</span>
+                @if (judgeOptions(); as jo) {
+                  @if (jo.assigned.length || jo.others.length) {
+                    <select class="jsel" [ngModel]="judgeIds()[i]" (ngModelChange)="setJudge(i, $event)" [attr.aria-label]="'Quién es el juez ' + (i + 1)">
+                      <option [ngValue]="null">Juez {{ i + 1 }}</option>
+                      @for (r of jo.assigned; track r.person_id) {
+                        <option [ngValue]="r.person_id">{{ r.name }}{{ r.position ? ' · ' + r.position : '' }}</option>
+                      }
+                      @for (r of jo.others; track r.person_id) {
+                        <option [ngValue]="r.person_id">{{ r.name }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <span class="jname">Juez {{ i + 1 }}</span>
+                  }
+                } @else {
+                  <span class="jname">Juez {{ i + 1 }}</span>
+                }
                 <span class="jstate {{ v ?? 'none' }}">{{ v === 'aka' ? 'AKA' : v === 'ao' ? 'AO' : 'Sin voto' }}</span>
               </div>
               <div class="jflags">

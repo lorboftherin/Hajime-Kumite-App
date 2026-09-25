@@ -36,8 +36,8 @@ class RoleOut(ORM):
 
 
 class RoleIn(BaseModel):
-    role: Literal["organizer", "table_operator", "dojo_admin", "referee"]
-    scope_type: Literal["global", "tournament", "dojo"] = "global"
+    role: Literal["organizer", "table_operator", "dojo_admin", "referee", "sensei"]
+    scope_type: Literal["global", "tournament", "dojo", "tatami"] = "global"
     scope_id: int | None = None
 
 
@@ -460,6 +460,23 @@ class TeamUpdate(BaseModel):
     dojo_id: int | None = None
     members: list[TeamMemberIn] | None = Field(default=None, min_length=1)
     override: Override | None = None
+
+
+class RefereeIn(BaseModel):
+    person_id: int
+
+
+class RefereeAssignIn(BaseModel):
+    """Asignación opcional de un árbitro (sección 20)."""
+
+    person_id: int
+    target_type: Literal["tatami", "category", "match"]
+    target_id: int
+    position: str = Field(default="", max_length=40)  # «Árbitro central», «Juez 1»…
+
+
+class PresenceIn(BaseModel):
+    device_id: str = Field(min_length=8, max_length=40)
 
 
 class LineupBoutIn(BaseModel):

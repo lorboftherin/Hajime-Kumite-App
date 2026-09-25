@@ -2912,6 +2912,206 @@
     }
    }
   },
+  "/api/v1/tournaments/{tid}/referees": {
+   "get": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "List Referees",
+    "operationId": "list_referees_api_v1_tournaments__tid__referees_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "Register Referee",
+    "description": "Registra a una persona como árbitro del torneo (no necesita dojo).",
+    "operationId": "register_referee_api_v1_tournaments__tid__referees_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefereeIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/referee-assignments": {
+   "post": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "Assign Referee",
+    "description": "Asigna un árbitro a un tatami, una categoría o un combate.",
+    "operationId": "assign_referee_api_v1_tournaments__tid__referee_assignments_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefereeAssignIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/referee-assignments/{aid}": {
+   "delete": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "Unassign Referee",
+    "operationId": "unassign_referee_api_v1_referee_assignments__aid__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "aid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Aid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/tournaments/{tid}/public": {
    "put": {
     "tags": [
@@ -3755,6 +3955,201 @@
         "schema": {}
        }
       }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/referees": {
+   "get": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "Match Referees",
+    "description": "Jueces sugeridos para registrar quién dio cada bandera o nota.",
+    "operationId": "match_referees_api_v1_matches__mid__referees_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/referees": {
+   "get": {
+    "tags": [
+     "referees"
+    ],
+    "summary": "Category Referees",
+    "description": "Jueces sugeridos para una ronda de kata por puntuación.",
+    "operationId": "category_referees_api_v1_categories__cid__referees_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/presence": {
+   "post": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Presence",
+    "description": "Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate.",
+    "operationId": "presence_api_v1_matches__mid__presence_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PresenceIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Leave",
+    "operationId": "leave_api_v1_matches__mid__presence_delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     },
+     {
+      "name": "device_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Device Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -7431,6 +7826,21 @@
     ],
     "title": "PersonUpdate"
    },
+   "PresenceIn": {
+    "properties": {
+     "device_id": {
+      "type": "string",
+      "maxLength": 40,
+      "minLength": 8,
+      "title": "Device Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "device_id"
+    ],
+    "title": "PresenceIn"
+   },
    "PublicLiveIn": {
     "properties": {
      "enabled": {
@@ -7458,6 +7868,54 @@
     ],
     "title": "PublicLiveIn",
     "description": "Activa o desactiva el seguimiento en vivo público del torneo."
+   },
+   "RefereeAssignIn": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "target_type": {
+      "type": "string",
+      "enum": [
+       "tatami",
+       "category",
+       "match"
+      ],
+      "title": "Target Type"
+     },
+     "target_id": {
+      "type": "integer",
+      "title": "Target Id"
+     },
+     "position": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "Position",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id",
+     "target_type",
+     "target_id"
+    ],
+    "title": "RefereeAssignIn",
+    "description": "Asignación opcional de un árbitro (sección 20)."
+   },
+   "RefereeIn": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id"
+    ],
+    "title": "RefereeIn"
    },
    "RegistrationCreate": {
     "properties": {
@@ -7796,7 +8254,8 @@
        "organizer",
        "table_operator",
        "dojo_admin",
-       "referee"
+       "referee",
+       "sensei"
       ],
       "title": "Role"
      },
@@ -7805,7 +8264,8 @@
       "enum": [
        "global",
        "tournament",
-       "dojo"
+       "dojo",
+       "tatami"
       ],
       "title": "Scope Type",
       "default": "global"

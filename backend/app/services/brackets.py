@@ -597,6 +597,7 @@ def bracket_out(db: Session, cid: int) -> s.BracketOut:
                 "order": p.order,
                 "kata_name": p.kata_name,
                 "scores": p.scores,
+                "judge_person_ids": p.judge_person_ids,
                 "total": float(ranked[rid].result.total) if rid in ranked else None,
                 "rank": ranked[rid].rank if rid in ranked else None,
                 "tied": ranked[rid].unresolved_tie if rid in ranked else False,
@@ -1167,10 +1168,20 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
         if pid and pid in other_people:
             conflicts.append({"registration_id": rid, "name": parts[rid].name if rid in parts else ""})
     current = next((q for q in queue if q["match"].status == "in_progress"), None)
+    from app.services import operation, referees
+
     return {
         "tatami": {"id": tat.id, "name": tat.name, "number": tat.number},
         "current": current,
         "queue": queue,
         "participants": {k: v.model_dump() for k, v in parts.items()},
         "conflicts": conflicts,
+        # Vista de varios tatamis: avance, quién opera ahora, operadores y árbitros asignados.
+        "progress": {
+            "done": sum(1 for it in sched["items"] if it["match"].status == "finished"),
+            "total": len(sched["items"]),
+        },
+        "operators": operation.tatami_operators(db, tat.id),
+        "assigned_operators": operation.assigned_operators(db, tat.id),
+        "referees": referees.for_tatami(db, tat.id),
     }

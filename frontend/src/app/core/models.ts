@@ -22,8 +22,8 @@ export interface RoleOut {
 }
 
 export interface RoleIn {
-  role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee';
-  scope_type: 'global' | 'tournament' | 'dojo';
+  role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee' | 'sensei';
+  scope_type: 'global' | 'tournament' | 'dojo' | 'tatami';
   scope_id: number | null;
 }
 
@@ -442,6 +442,36 @@ export interface TatamiQueue {
   queue: QueueItem[];
   participants: Record<string, Participant>;
   conflicts: Array<{ registration_id: number; name: string }>;
+  /** Vista de varios tatamis (MVP-3). */
+  progress?: { done: number; total: number };
+  operators?: Array<{ user: string; matches: string[] }>;
+  assigned_operators?: string[];
+  referees?: Array<{ name: string; position: string }>;
+}
+
+// --- Árbitros (registro y asignación opcionales) ---
+export interface RefereeAssignment {
+  id: number;
+  person_id: number;
+  name: string;
+  target_type: 'tatami' | 'category' | 'match';
+  target_id: number;
+  target: string;
+  position: string;
+}
+
+export interface RefereeOverview {
+  referees: Array<{ person_id: number; name: string; assignments: number }>;
+  assignments: RefereeAssignment[];
+}
+
+export interface SuggestedJudges {
+  assigned: Array<{ person_id: number; name: string; position: string; via: string }>;
+  others: Array<{ person_id: number; name: string }>;
+}
+
+export interface PresenceOut {
+  others: Array<{ user: string; same_user: boolean; since: string }>;
 }
 
 // --- Resultados ---
@@ -557,6 +587,7 @@ export interface DojoHistoryTournament {
 export interface DojoHistory {
   dojo_id: number;
   name: string;
+  senseis?: Array<{ person_id: number; name: string }>;
   tournaments: DojoHistoryTournament[];
 }
 

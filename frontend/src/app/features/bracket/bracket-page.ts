@@ -8,7 +8,7 @@ import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { FilesService } from '../../core/files.service';
 import { FORMAT_LABEL, METHOD_LABEL, THIRD_PLACE_LABEL } from '../../core/format';
-import { Bracket, BracketVersion, Category, Match, Tournament } from '../../core/models';
+import { Bracket, BracketVersion, Category, Match, SuggestedJudges, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { StatusBadge } from '../../shared/badge';
 import { Hanko } from '../../shared/hanko';
@@ -69,6 +69,9 @@ export class BracketPage {
   // Kata por puntuación
   readonly scoring = signal<number | null>(null); // registration_id en edición
   scoreInputs: Array<number | null> = [];
+  /** Qué juez dio cada nota (opcional, sección 20). */
+  judgeInputs: Array<number | null> = [];
+  readonly judgeOptions = signal<SuggestedJudges | null>(null);
   kataName = '';
   readonly tieOrder = signal<number[]>([]);
   tieReason = '';
@@ -308,6 +311,18 @@ export class BracketPage {
     const n = this.judges();
     const prev = (row['scores'] as number[] | null) ?? [];
     this.scoreInputs = Array.from({ length: n }, (_, i) => prev[i] ?? null);
+    const prevJudges = (row['judge_person_ids'] as Array<number | null> | null) ?? [];
+    const assigned = this.judgeOptions()?.assigned ?? [];
+    this.judgeInputs = Array.from({ length: n }, (_, i) => prevJudges[i] ?? assigned[i]?.person_id ?? null);
+    if (!this.judgeOptions()) {
+      this.api.get<SuggestedJudges>(`/categories/${this.catId()}/referees`).subscribe({
+        next: (j) => {
+          this.judgeOptions.set(j);
+          this.judgeInputs = this.judgeInputs.map((x, i) => x ?? j.assigned[i]?.person_id ?? null);
+        },
+        error: () => {},
+      });
+    }
     this.kataName = row['kata_name'] ?? '';
     this.scoring.set(row['registration_id']);
   }
@@ -320,7 +335,13 @@ export class BracketPage {
     }
     const res = await this.mut.post<Bracket>(
       `/categories/${this.catId()}/kata-scores`,
-      { registration_id: row['registration_id'], scores, kata_name: this.kataName || null, version: row['version'] },
+      {
+        registration_id: row['registration_id'],
+        scores,
+        judge_person_ids: this.judgeInputs.some((x) => x !== null) ? this.judgeInputs : null,
+        kata_name: this.kataName || null,
+        version: row['version'],
+      },
       { success: 'Notas registradas', onConflict: () => this.load() },
     );
     if (res) {

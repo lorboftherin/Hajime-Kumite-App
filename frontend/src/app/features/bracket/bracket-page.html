@@ -168,6 +168,19 @@
                         <label class="field judge">
                           <span>J{{ $index + 1 }}</span>
                           <input type="number" step="0.1" min="0" max="10" [(ngModel)]="scoreInputs[$index]" />
+                          @if (judgeOptions(); as jo) {
+                            @if (jo.assigned.length || jo.others.length) {
+                              <select class="jsel" [(ngModel)]="judgeInputs[$index]" [attr.aria-label]="'Quién es el juez ' + ($index + 1)">
+                                <option [ngValue]="null">—</option>
+                                @for (r of jo.assigned; track r.person_id) {
+                                  <option [ngValue]="r.person_id">{{ r.name }}</option>
+                                }
+                                @for (r of jo.others; track r.person_id) {
+                                  <option [ngValue]="r.person_id">{{ r.name }}</option>
+                                }
+                              </select>
+                            }
+                          }
                         </label>
                       }
                     </div>

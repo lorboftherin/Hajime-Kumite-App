@@ -274,7 +274,12 @@ export class UsersPage {
     this.api.get<User[]>('/users').subscribe({ next: (u) => this.users.set(u), error: () => {} });
     // Nombres de torneos y dojos para mostrar el alcance de cada rol.
     this.api.get<Tournament[]>('/tournaments').subscribe({
-      next: (ts) => this.scopeNames.update((m) => ({ ...m, ...Object.fromEntries(ts.map((t) => [`tournament:${t.id}`, t.name])) })),
+      next: (ts) =>
+        this.scopeNames.update((m) => ({
+          ...m,
+          ...Object.fromEntries(ts.map((t) => [`tournament:${t.id}`, t.name])),
+          ...Object.fromEntries(ts.flatMap((t) => t.tatamis.map((tt) => [`tatami:${tt.id}`, `${tt.name} · ${t.name}`]))),
+        })),
       error: () => {},
     });
     this.api.get<Dojo[]>('/dojos').subscribe({

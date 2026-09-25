@@ -22,6 +22,7 @@ from app.db.models import (
     ImportRow,
     Match,
     Person,
+    PersonRole,
     Registration,
     Tournament,
     User,
@@ -258,7 +259,20 @@ COLUMNS = [
     ("grado", "Grado (p. ej. 8 kyu, 1 dan)"),
     ("categoria_peso", "Categoría de peso (p. ej. -45)"),
     ("modalidades", "Modalidades (kumite, kata)"),
+    ("rol", "Rol (competidor, árbitro, sensei)"),
 ]
+
+# Rol de la fila: vacío = competidor (compatibilidad con archivos anteriores).
+ROLE_WORDS = {
+    "competidor": "competitor",
+    "competidora": "competitor",
+    "arbitro": "referee",
+    "árbitro": "referee",
+    "arbitra": "referee",
+    "árbitra": "referee",
+    "juez": "referee",
+    "sensei": "sensei",
+}
 
 
 def excel_template() -> bytes:
@@ -283,6 +297,7 @@ def excel_template() -> bytes:
             "8 kyu",
             "-40",
             "kumite, kata",
+            "competidor",
         ]
     )
     dv = DataValidation(type="list", formula1='"M,F"', allow_blank=False)
@@ -295,6 +310,8 @@ def excel_template() -> bytes:
     info.append(["Una fila por competidor. La fila 2 es un ejemplo: bórrela antes de subir el archivo."])
     info.append(["El documento es opcional; sin documento la persona queda con identidad incompleta."])
     info.append(["Modalidades: kumite, kata o ambas separadas por coma."])
+    info.append(["Rol: competidor (por defecto), árbitro o sensei; puede ir más de uno separado por coma."])
+    info.append(["Un árbitro no necesita dojo ni modalidades; un sensei queda registrado en su dojo."])
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -389,7 +406,13 @@ def _validate_row(rec: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     if bad:
         errors.append(f"Modalidad inválida: {', '.join(bad)}")
     data["modalidades"] = [m for m in mods if m in ("kumite", "kata")]
-    if not data["dojo"]:
+    words = [w.strip().lower() for w in str(data.get("rol") or "").replace(";", ",").split(",") if w.strip()]
+    unknown = [w for w in words if w not in ROLE_WORDS]
+    if unknown:
+        errors.append(f"Rol inválido: {', '.join(unknown)}")
+    roles = sorted({ROLE_WORDS[w] for w in words if w in ROLE_WORDS}) or ["competitor"]
+    data["rol"] = roles
+    if not data["dojo"] and ("competitor" in roles or "sensei" in roles):
         errors.append("Falta dojo (use 'Independiente' si no tiene)")
     return data, errors
 
@@ -428,10 +451,11 @@ def create_import_preview(db: Session, user: User, tid: int, filename: str, cont
             seen_in_file.setdefault(key, rec["_row"])
             grade_ord = grade_to_ordinal(data["grado"]) if data["grado"] else None
             comp = Competitor(data["sexo"], bd, grade_ord, data["categoria_peso"] or None)
-            for mod in data["modalidades"]:
-                matches = suggest_categories(comp, rules, t.age_reference_date, mod)
-                suggested += [int(r.id) for r in matches]
-            existing_dojo = people.find_dojo_by_name(db, data["dojo"])
+            if "competitor" in data["rol"]:
+                for mod in data["modalidades"]:
+                    matches = suggest_categories(comp, rules, t.age_reference_date, mod)
+                    suggested += [int(r.id) for r in matches]
+            existing_dojo = people.find_dojo_by_name(db, data["dojo"]) if data["dojo"] else None
             data["dojo_id"] = existing_dojo.id if existing_dojo else None
         status = "error" if errors else ("duplicate" if dups else "new")
         db.add(
@@ -456,6 +480,25 @@ def get_batch(db: Session, bid: int) -> ImportBatch:
     if b is None:
         raise NotFound("Importación no encontrada")
     return b
+
+
+def _import_roles(db: Session, person_id: int, roles: list[str], tid: int, dojo_id: int | None) -> None:
+    """Árbitro del torneo y sensei de su dojo, sin duplicar roles existentes."""
+    wanted = []
+    if "referee" in roles:
+        wanted.append(("referee", "tournament", tid))
+    if "sensei" in roles and dojo_id:
+        wanted.append(("sensei", "dojo", dojo_id))
+    for role, scope, sid in wanted:
+        exists = db.scalar(
+            select(PersonRole.id).where(
+                PersonRole.person_id == person_id,
+                PersonRole.role == role,
+                ((PersonRole.scope_type == scope) & (PersonRole.scope_id == sid)) | (PersonRole.scope_type == "global"),
+            )
+        )
+        if not exists:
+            db.add(PersonRole(person_id=person_id, role=role, scope_type=scope, scope_id=sid))
 
 
 def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> dict[str, Any]:
@@ -491,8 +534,9 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                 continue
             rd = row.data
             bd = date.fromisoformat(rd["fecha_nacimiento"]) if rd["fecha_nacimiento"] else None
+            roles = rd.get("rol") or ["competitor"]
             dojo_id = rd.get("dojo_id")
-            if not dojo_id:
+            if not dojo_id and rd["dojo"]:
                 existing = people.find_dojo_by_name(db, rd["dojo"])
                 dojo_id = existing.id if existing else people.create_dojo_nocommit(db, user, rd["dojo"]).id
             if d and d.action == "use_existing":
@@ -500,7 +544,7 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                     raise InvalidState(f"Fila {row.row_number}: falta la persona existente")
                 person = people.get_person(db, d.person_id)
                 m = people.current_membership(db, person.id, t.start_date)
-                if m is None or m.dojo_id != dojo_id:
+                if dojo_id and (m is None or m.dojo_id != dojo_id):
                     if m:
                         m.end_date = t.start_date
                     db.add(DojoMembership(person_id=person.id, dojo_id=dojo_id, start_date=t.start_date))
@@ -541,7 +585,10 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                     ) from e
                 created_people += 1
             db.flush()
+            _import_roles(db, person.id, roles, t.id, dojo_id)
             cat_ids = d.category_ids if d and d.category_ids else row.suggested_category_ids
+            if "competitor" not in roles:
+                cat_ids = []
             for cid in cat_ids:
                 try:
                     create_registration(

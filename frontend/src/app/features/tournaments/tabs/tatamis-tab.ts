@@ -33,6 +33,36 @@ interface TatamiView {
             <button class="btn sm ghost" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode"><app-icon name="print" /> Planilla PDF</button>
           </div>
           @if (v.data; as q) {
+            @if (q.progress; as pr) {
+              <div class="progress" [attr.aria-label]="pr.done + ' de ' + pr.total + ' combates'">
+                <div class="bar"><span [style.width.%]="pr.total ? (100 * pr.done) / pr.total : 0"></span></div>
+                <span class="small muted num">{{ pr.done }} de {{ pr.total }} combates</span>
+              </div>
+            }
+            <div class="people small">
+              <div>
+                <span class="muted">Operando ahora:</span>
+                @for (o of q.operators ?? []; track o.user; let last = $last) {
+                  <span class="op live"><i aria-hidden="true"></i>{{ o.user }} <span class="muted">({{ o.matches.join(', ') }})</span></span>@if (!last) {, }
+                } @empty {
+                  <span class="muted">nadie</span>
+                }
+                @if ((q.operators?.length ?? 0) > 1) {
+                  <span class="badge yamabuki">varias tablets</span>
+                }
+              </div>
+              @if (q.assigned_operators?.length) {
+                <div><span class="muted">Operadores del tatami:</span> {{ q.assigned_operators!.join(', ') }}</div>
+              }
+              @if (q.referees?.length) {
+                <div>
+                  <span class="muted">Árbitros:</span>
+                  @for (r of q.referees!; track $index; let last = $last) {
+                    {{ r.name }}@if (r.position) { <span class="muted">({{ r.position }})</span>}@if (!last) {, }
+                  }
+                </div>
+              }
+            </div>
             @if (q.conflicts.length) {
               <div class="alert warn small">
                 <strong>Competidores con combates pendientes en otro tatami:</strong>
@@ -48,8 +78,8 @@ interface TatamiView {
               <div class="match current">
                 <div class="grow">
                   <div class="m-meta"><span class="badge matcha live">En curso</span> <span class="num n">{{ cur.number }}</span> {{ cur.category_name }} <span class="code">{{ cur.match.code }}</span></div>
-                  <div class="fighter aka"><span class="pname">{{ pname(q, cur.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small></div>
-                  <div class="fighter ao"><span class="pname">{{ pname(q, cur.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small></div>
+                  <div class="fighter aka"><span class="pname">{{ pname(q, cur.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small><span class="pts num">{{ cur.match.aka_score ?? 0 }}</span></div>
+                  <div class="fighter ao"><span class="pname">{{ pname(q, cur.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small><span class="pts num">{{ cur.match.ao_score ?? 0 }}</span></div>
                 </div>
                 <a class="btn primary" [routerLink]="['/mesa', cur.match.id]" [queryParams]="{ tatami: v.tatami.id }"><app-icon name="open" /> Abrir mesa</a>
               </div>
@@ -103,6 +133,46 @@ interface TatamiView {
     .tatami {
       margin: 0;
     }
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0.35rem 0 0.5rem;
+      .bar {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--kasumi);
+        overflow: hidden;
+        span {
+          display: block;
+          height: 100%;
+          border-radius: 3px;
+          background: var(--matcha);
+        }
+      }
+    }
+    .people {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      margin-bottom: 0.5rem;
+      .op i {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 0.3rem;
+        border-radius: 50%;
+        background: var(--matcha);
+        vertical-align: middle;
+      }
+    }
+    .pts {
+      margin-left: auto;
+      padding-left: 0.75rem;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
     .tatami-head {
       display: flex;
       align-items: center;
@@ -155,6 +225,9 @@ interface TatamiView {
       }
     }
     .fighter {
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
       padding: 0.1rem 0 0.1rem 0.65rem;
       border-left: 3px solid transparent;
       line-height: 1.5;

@@ -191,8 +191,22 @@ interface MergeResult {
                   <option value="global">Global</option>
                   <option value="tournament">Por torneo</option>
                   <option value="dojo">Por dojo</option>
+                  @if (newRole.role === 'table_operator') {
+                    <option value="tatami">Por tatami</option>
+                  }
                 </select>
-                @if (newRole.scope_type === 'tournament') {
+                @if (newRole.scope_type === 'tatami') {
+                  <select name="sid" [(ngModel)]="newRole.scope_id" aria-label="Tatami">
+                    <option [ngValue]="null">— Tatami —</option>
+                    @for (t of tournaments(); track t.id) {
+                      <optgroup [label]="t.name">
+                        @for (tt of t.tatamis; track tt.id) {
+                          <option [ngValue]="tt.id">{{ tt.name }}</option>
+                        }
+                      </optgroup>
+                    }
+                  </select>
+                } @else if (newRole.scope_type === 'tournament') {
                   <select name="sid" [(ngModel)]="newRole.scope_id">
                     <option [ngValue]="null">— Torneo —</option>
                     @for (t of tournaments(); track t.id) {
@@ -385,6 +399,7 @@ export class PersonDetailPage {
     table_operator: 'Operador de mesa',
     dojo_admin: 'Administrador de dojo',
     referee: 'Árbitro',
+    sensei: 'Sensei',
   };
   readonly roleKeys = Object.keys(this.roleLabel);
   mergeQ = '';
@@ -472,13 +487,14 @@ export class PersonDetailPage {
   private async loadRoles(id: number): Promise<void> {
     try {
       this.roles.set(await firstValueFrom(this.api.get<RoleOut[]>(`/persons/${id}/roles`)));
+      if (this.roles().some((r) => r.scope_type === 'tatami' || r.scope_type === 'tournament')) this.onScopeType('tatami');
     } catch {
       this.roles.set([]);
     }
   }
 
   onScopeType(t: string): void {
-    if (t === 'tournament' && !this.tournaments().length) {
+    if ((t === 'tournament' || t === 'tatami') && !this.tournaments().length) {
       this.api.get<Tournament[]>('/tournaments').subscribe({ next: (l) => this.tournaments.set(l), error: () => {} });
     }
   }
@@ -487,6 +503,13 @@ export class PersonDetailPage {
     if (r.scope_type === 'global') return 'Global';
     if (r.scope_type === 'tournament') return 'Torneo: ' + (this.tournaments().find((t) => t.id === r.scope_id)?.name ?? `#${r.scope_id}`);
     if (r.scope_type === 'dojo') return 'Dojo: ' + (this.dojoName(r.scope_id) || `#${r.scope_id}`);
+    if (r.scope_type === 'tatami') {
+      for (const t of this.tournaments()) {
+        const tt = t.tatamis.find((x) => x.id === r.scope_id);
+        if (tt) return `${tt.name} · ${t.name}`;
+      }
+      return `Tatami #${r.scope_id}`;
+    }
     return `${r.scope_type} #${r.scope_id ?? ''}`;
   }
 

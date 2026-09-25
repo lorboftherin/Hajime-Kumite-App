@@ -6,7 +6,19 @@ import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
-import { Category, Color, EventIn, FinishOut, MatchEvent, Scoreboard, Suggestion, TatamiQueue, Tournament } from '../../core/models';
+import {
+  Category,
+  Color,
+  EventIn,
+  FinishOut,
+  MatchEvent,
+  PresenceOut,
+  Scoreboard,
+  Suggestion,
+  SuggestedJudges,
+  TatamiQueue,
+  Tournament,
+} from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
 import { LabelPipe } from '../../shared/pipes';
@@ -21,6 +33,22 @@ interface LogRow {
   time: string;
   annulled: boolean;
   pending: boolean;
+}
+
+const PRESENCE_MS = 15000;
+
+/** Identificador estable de esta tablet (para avisar si otra abre el mismo combate). */
+function deviceId(): string {
+  try {
+    let id = localStorage.getItem('hajime.device');
+    if (!id) {
+      id = newId();
+      localStorage.setItem('hajime.device', id);
+    }
+    return id;
+  } catch {
+    return newId();
+  }
 }
 
 const METHODS = ['points', 'point_gap', 'senshu', 'hantei', 'golden_point', 'hansoku', 'kiken', 'shikkaku', 'walkover', 'decision'];
@@ -97,6 +125,20 @@ export class MesaPage {
   private flagsId = newId();
 
   readonly isKata = computed(() => this.category()?.modality === 'kata');
+
+  /** Otras tablets con este mismo combate abierto (aviso; no bloquea). */
+  readonly others = signal<PresenceOut['others']>([]);
+  private readonly device = deviceId();
+  readonly othersText = computed(() => {
+    const o = this.others();
+    if (!o.length) return '';
+    const names = [...new Set(o.map((x) => (x.same_user ? 'tu mismo usuario' : x.user)))].join(', ');
+    return `Este combate también está abierto en otra tablet (${names}). Registren desde una sola para no duplicar puntos.`;
+  });
+
+  /** Kata: qué juez dio cada bandera (opcional, sección 20). */
+  readonly judgeOptions = signal<SuggestedJudges | null>(null);
+  readonly judgeIds = signal<Array<number | null>>([]);
   readonly judges = computed(() => {
     const c = this.category();
     const d = (this.tournament()?.kata_defaults ?? {}) as Record<string, any>;
@@ -245,6 +287,7 @@ export class MesaPage {
 
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 200);
+    const presence = setInterval(() => this.heartbeat(), PRESENCE_MS);
     const refresh = setInterval(() => {
       // No se refresca mientras hay envíos en curso o pendientes: un GET lento no debe pisar un POST.
       if (!this.pending().length && !this.sending() && !this.finishOpen()) this.reload(true);
@@ -253,6 +296,8 @@ export class MesaPage {
       this.destroyed = true;
       clearInterval(tick);
       clearInterval(refresh);
+      clearInterval(presence);
+      this.leave(this.id());
       if (this.retryTimer) clearTimeout(this.retryTimer);
       this.retryTimer = null;
     });
@@ -268,6 +313,8 @@ export class MesaPage {
         this.moreOpen.set(null);
         this.restorePending(id);
         this.load(id);
+        this.others.set([]);
+        this.heartbeat(id);
       });
     });
     effect(() => {
@@ -344,6 +391,40 @@ export class MesaPage {
     if (ev.target === ev.currentTarget && !this.finishing()) this.finishOpen.set(false);
   }
 
+  // --- Presencia: varias tablets en el mismo combate ---
+  private previousId: number | null = null;
+
+  private async heartbeat(id = this.id()): Promise<void> {
+    if (this.previousId !== null && this.previousId !== id) this.leave(this.previousId);
+    this.previousId = id;
+    try {
+      const r = await firstValueFrom(this.api.post<PresenceOut>(`/matches/${id}/presence`, { device_id: this.device }));
+      if (!this.destroyed && id === this.id()) this.others.set(r.others);
+    } catch {
+      /* solo informativo */
+    }
+  }
+
+  private leave(id: number): void {
+    this.api.delete(`/matches/${id}/presence?device_id=${encodeURIComponent(this.device)}`).subscribe({ error: () => {} });
+  }
+
+  // --- Kata: jueces (opcional) ---
+  private async loadJudges(id: number): Promise<void> {
+    try {
+      const j = await firstValueFrom(this.api.get<SuggestedJudges>(`/matches/${id}/referees`));
+      this.judgeOptions.set(j);
+      // Los asignados al combate, la categoría o el tatami se proponen en orden.
+      this.judgeIds.set(Array.from({ length: this.judges() }, (_, i) => j.assigned[i]?.person_id ?? null));
+    } catch {
+      this.judgeOptions.set(null);
+    }
+  }
+
+  setJudge(i: number, pid: number | null): void {
+    this.judgeIds.update((v) => v.map((x, j) => (j === i ? pid : x)));
+  }
+
   // --- Carga ---
   async load(id: number): Promise<void> {
     this.loadError.set('');
@@ -360,6 +441,7 @@ export class MesaPage {
         }
       }
       this.votes.set(Array.from({ length: this.judges() }, () => null));
+      if (this.isKata()) this.loadJudges(id);
     } catch (e) {
       this.loadError.set(ApiError.from(e).fullMessage);
     }
@@ -659,8 +741,10 @@ export class MesaPage {
 
   async submitFlags(): Promise<void> {
     if (this.flagsBusy()) return;
+    const ids = this.judgeIds();
     const body = {
       votes: this.votes(),
+      judge_person_ids: ids.some((x) => x !== null) ? ids : null,
       head_judge_vote: this.headVote(),
       event_id: this.flagsId,
       at: new Date().toISOString(),

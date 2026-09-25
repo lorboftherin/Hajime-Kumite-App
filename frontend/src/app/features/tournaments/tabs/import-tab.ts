@@ -77,6 +77,9 @@ interface Decision {
                   <td class="mono">{{ r.row_number }}</td>
                   <td>
                     <strong>{{ r.data['apellidos'] }}, {{ r.data['nombres'] }}</strong>
+                    @for (role of staffRoles(r.data['rol']); track role) {
+                      <span class="badge ai">{{ role }}</span>
+                    }
                     <div class="muted small">
                       {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} · {{ r.data['grado'] || 's/g' }}
                       @if (r.data['numero_documento']) { · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }} }
@@ -218,6 +221,12 @@ interface Decision {
   `,
 })
 export class ImportTab {
+  /** Roles distintos de competidor (árbitro, sensei) para mostrarlos en la vista previa. */
+  staffRoles(roles: unknown): string[] {
+    const label: Record<string, string> = { referee: 'Árbitro', sensei: 'Sensei' };
+    return Array.isArray(roles) ? roles.filter((r) => r in label).map((r) => label[r]) : [];
+  }
+
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
   private files = inject(FilesService);

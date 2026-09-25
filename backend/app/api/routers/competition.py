@@ -10,14 +10,16 @@ from app.api.deps import DB, CurrentUser, ensure_operator, ensure_organizer
 from app.api.errors import NotFound
 from app.db.models import Bracket
 from app.services import brackets as svc
-from app.services import reports, teams
+from app.services import operation, referees, reports, teams
 from app.services.tournaments import get_category
 
 router = APIRouter()
 
 
-def _tid_of_match(db, mid: int) -> int:
-    return get_category(db, svc.get_match(db, mid).category_id).tournament_id
+def _ensure_match_operator(db, user, mid: int) -> None:
+    """Organizador u operador de mesa (global, del torneo o del tatami de la categoría)."""
+    c = get_category(db, svc.get_match(db, mid).category_id)
+    ensure_operator(db, user, c.tournament_id, c.tatami_id)
 
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -80,14 +82,14 @@ def get_match(mid: int, db: DB, _: CurrentUser):
 @router.post("/matches/{mid}/events", response_model=s.ScoreboardOut, tags=["matches"])
 def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser):
     """Idempotente: reenviar el mismo ``id`` devuelve 200 sin duplicar."""
-    ensure_operator(db, user, _tid_of_match(db, mid))
+    _ensure_match_operator(db, user, mid)
     sb, created = svc.add_event(db, user, mid, data)
     return JSONResponse(sb.model_dump(mode="json"), status_code=201 if created else 200)
 
 
 @router.post("/matches/{mid}/finish", tags=["matches"])
 def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser):
-    ensure_operator(db, user, _tid_of_match(db, mid))
+    _ensure_match_operator(db, user, mid)
     sb, affected = svc.finish(db, user, mid, data)
     return {"scoreboard": sb.model_dump(mode="json"), "affected_matches": affected}
 
@@ -100,13 +102,36 @@ def team_match(mid: int, db: DB, _: CurrentUser):
 
 @router.put("/matches/{mid}/lineup", tags=["teams"])
 def set_lineup(mid: int, data: s.LineupIn, db: DB, user: CurrentUser):
-    ensure_operator(db, user, _tid_of_match(db, mid))
+    _ensure_match_operator(db, user, mid)
     return teams.set_lineup(db, user, mid, data)
+
+
+@router.get("/matches/{mid}/referees", tags=["referees"])
+def match_referees(mid: int, db: DB, _: CurrentUser):
+    """Jueces sugeridos para registrar quién dio cada bandera o nota."""
+    return referees.for_match(db, mid)
+
+
+@router.get("/categories/{cid}/referees", tags=["referees"])
+def category_referees(cid: int, db: DB, _: CurrentUser):
+    """Jueces sugeridos para una ronda de kata por puntuación."""
+    return referees.for_category(db, cid)
+
+
+@router.post("/matches/{mid}/presence", tags=["matches"])
+def presence(mid: int, data: s.PresenceIn, db: DB, user: CurrentUser):
+    """Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate."""
+    return operation.heartbeat(db, user, mid, data.device_id)
+
+
+@router.delete("/matches/{mid}/presence", status_code=204, tags=["matches"])
+def leave(mid: int, device_id: str, db: DB, _: CurrentUser):
+    operation.leave(db, mid, device_id)
 
 
 @router.post("/matches/{mid}/official-result", tags=["shadow"])
 def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUser):
-    ensure_operator(db, user, _tid_of_match(db, mid))
+    _ensure_match_operator(db, user, mid)
     sc = reports.set_official_result(db, user, mid, data)
     return {"match_id": sc.match_id, "official_winner_registration_id": sc.official_winner_registration_id}
 
@@ -116,13 +141,14 @@ def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUse
 
 @router.post("/matches/{mid}/flags", tags=["kata"])
 def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser):
-    ensure_operator(db, user, _tid_of_match(db, mid))
+    _ensure_match_operator(db, user, mid)
     return svc.record_flags(db, user, mid, data)
 
 
 @router.post("/categories/{cid}/kata-scores", response_model=s.BracketOut, tags=["kata"])
 def kata_score(cid: int, data: s.KataScoreIn, db: DB, user: CurrentUser):
-    ensure_operator(db, user, get_category(db, cid).tournament_id)
+    c = get_category(db, cid)
+    ensure_operator(db, user, c.tournament_id, c.tatami_id)
     return svc.record_kata_score(db, user, cid, data)
 
 

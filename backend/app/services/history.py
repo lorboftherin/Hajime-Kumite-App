@@ -17,6 +17,7 @@ from app.db.models import (
     GradeRecord,
     Match,
     Person,
+    PersonRole,
     Registration,
     TeamMember,
     Tournament,
@@ -214,4 +215,20 @@ def dojo_history(db: Session, dojo_id: int) -> dict[str, Any]:
                 "person_id": reg.person_id,
             }
         )
-    return {"dojo_id": d.id, "name": d.name, "tournaments": list(by_t.values())}
+    senseis = db.scalars(
+        select(Person)
+        .join(PersonRole, PersonRole.person_id == Person.id)
+        .where(
+            PersonRole.role == "sensei",
+            PersonRole.scope_type == "dojo",
+            PersonRole.scope_id == d.id,
+            Person.merged_into_id.is_(None),
+        )
+        .order_by(Person.last_names)
+    ).all()
+    return {
+        "dojo_id": d.id,
+        "name": d.name,
+        "senseis": [{"person_id": p.id, "name": f"{p.first_names} {p.last_names}"} for p in senseis],
+        "tournaments": list(by_t.values()),
+    }

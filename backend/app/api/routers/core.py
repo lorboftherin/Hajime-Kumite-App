@@ -19,7 +19,17 @@ from app.api.deps import (
     roles_of,
 )
 from app.api.errors import Conflict, NotFound, TooManyRequests, Unauthorized
-from app.db.models import AuditEntry, CategoryTemplate, Dojo, IdentityDocument, Person, PersonRole, RuleOverride, User
+from app.db.models import (
+    AuditEntry,
+    CategoryTemplate,
+    Dojo,
+    IdentityDocument,
+    Person,
+    PersonRole,
+    RuleOverride,
+    Tatami,
+    User,
+)
 from app.domain.identity import normalize_document, normalize_name
 from app.security import (
     clear_login_failures,
@@ -94,6 +104,13 @@ def add_role(person_id: int, data: s.RoleIn, db: DB, admin: AdminUser):
         raise Conflict("Un rol por torneo o por dojo necesita scope_id")
     if data.role not in ROLES:
         raise Conflict("Rol desconocido")
+    if data.scope_type == "tatami":
+        if data.role != "table_operator":
+            raise Conflict("Solo el operador de mesa se asigna a un tatami")
+        if db.get(Tatami, data.scope_id) is None:
+            raise NotFound("Tatami no encontrado")
+    if data.role == "sensei" and data.scope_type not in ("dojo", "global"):
+        raise Conflict("El sensei se registra en su dojo")
     r = PersonRole(person_id=person_id, role=data.role, scope_type=data.scope_type, scope_id=data.scope_id)
     db.add(r)
     db.flush()
