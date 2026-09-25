@@ -80,3 +80,28 @@ recibir avisos y, por privacidad, ver el detalle completo del propio historial.
 - [ ] ¿Quién puede editar una persona o dojo compartidos entre organizaciones? Propuesta: el dojo reclamado; si nadie lo reclamó, la organización que la creó; con historial de cambios.
 - [ ] Pasarela de pago y proveedor de comprobantes electrónicos.
 - [ ] Validación legal: inscripción del banco de datos ante la autoridad, política de privacidad, términos de uso y consentimiento de menores que cubra la publicación y las estadísticas.
+
+## Plataformas: web primero, app del celular con el mismo código
+
+| Paso | Qué | Por qué |
+| --- | --- | --- |
+| 1. Web + PWA (ahora) | La misma app Angular, instalable desde el navegador en celular, tablet y PC; portal público generado en el servidor (SSR) para Google; mesa con modo offline | Un solo código, sin tiendas ni comisiones, llega a todos los dispositivos, y el público entra con un enlace de WhatsApp sin instalar nada |
+| 2. App en las tiendas (con tracción, Fase 6) | La misma app empaquetada con Capacitor para Google Play y App Store; notificaciones push nativas y cámara (QR) | Presencia en las tiendas y notificaciones más confiables, sin reescribir la interfaz |
+
+No conviene hacer apps nativas separadas (Swift/Kotlin) ni reescribir en
+Flutter o React Native: serían dos o tres interfaces que mantener para la misma
+API. La API ya está pensada para varios clientes (sección 23).
+
+### Cobros y tiendas
+
+- **Cobrar en la web, no dentro de la app.** Apple y Google cobran una comisión
+  (de hasta 15–30 %) por suscripciones digitales vendidas dentro de sus apps y
+  exigen su propio sistema de pago. La membresía de dojo y Competidor Plus se
+  venden en la web con la pasarela local; la app de las tiendas es gratis y el
+  usuario entra con su cuenta. Las reglas de cada tienda sobre enlazar a pagos
+  externos cambian según el país: revisarlas al publicar.
+- **Requisitos de las tiendas:** cuenta de desarrollador (Apple, pago anual;
+  Google, pago único), política de privacidad, borrar la cuenta desde la app y
+  declarar el público objetivo. Como hay menores, las cuentas las tienen los
+  adultos (competidores mayores de edad, padres o apoderados y dojos); la app
+  no se publica como app infantil.
