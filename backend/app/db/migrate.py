@@ -13,6 +13,8 @@ BASELINE = "0001"
 # Base creada con create_all (sin Alembic): la revisión que corresponde según
 # qué tablas ya existen. La última que coincide manda.
 LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"))
+# Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
+LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)
 
 
 def alembic_config() -> Config:
@@ -30,5 +32,8 @@ def upgrade_database(engine: Engine) -> None:
             # Base creada antes de las migraciones: se marca con la revisión
             # que ya tiene (normalmente el esquema inicial).
             rev = [r for table, r in LEGACY_MARKERS if table in tables][-1]
+            for table, column, r in LEGACY_COLUMNS:
+                if table in tables and column in {c["name"] for c in inspect(conn).get_columns(table)}:
+                    rev = r
             command.stamp(cfg, rev)
         command.upgrade(cfg, "head")

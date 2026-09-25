@@ -363,6 +363,16 @@ class TournamentOut(ORM):
     template_id: int | None
     version: int
     tatamis: list[TatamiOut] = []
+    public_token: str | None = None
+    public_names: str = "short"
+
+
+class PublicLiveIn(BaseModel):
+    """Activa o desactiva el seguimiento en vivo público del torneo."""
+
+    enabled: bool
+    names: Literal["short", "full"] = "short"
+    regenerate: bool = False  # nuevo enlace: el anterior deja de funcionar
 
 
 class StatusChange(BaseModel):

@@ -236,6 +236,10 @@ class Tournament(Base, Timestamped, Versioned):
     kumite_rules: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     kata_defaults: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     template_id: Mapped[int | None] = mapped_column(ForeignKey("category_templates.id"), nullable=True)
+    # Seguimiento en vivo público (opcional): enlace secreto sin inicio de sesión.
+    # Sin token no hay vista pública. ``public_names``: "short" (Diego R.) o "full".
+    public_token: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    public_names: Mapped[str] = mapped_column(String(10), default="short", server_default="short")
 
     tatamis: Mapped[list[Tatami]] = relationship(back_populates="tournament", lazy="selectin", order_by="Tatami.number")
 

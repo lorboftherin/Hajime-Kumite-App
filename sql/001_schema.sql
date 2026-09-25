@@ -234,6 +234,8 @@ CREATE TABLE tournaments (
 	kumite_rules NVARCHAR(max) NOT NULL, 
 	kata_defaults NVARCHAR(max) NOT NULL, 
 	template_id INTEGER NULL, 
+	public_token VARCHAR(40) NULL, 
+	public_names VARCHAR(10) NOT NULL DEFAULT 'short', 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -243,6 +245,7 @@ CREATE TABLE tournaments (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE INDEX ix_tournaments_public_token ON tournaments (public_token);
 CREATE TABLE dojo_memberships (
 	id INTEGER NOT NULL IDENTITY, 
 	person_id INTEGER NOT NULL, 

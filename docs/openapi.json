@@ -2912,6 +2912,64 @@
     }
    }
   },
+  "/api/v1/tournaments/{tid}/public": {
+   "put": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Set Public",
+    "description": "Activa el seguimiento en vivo público (enlace secreto) y el estilo de nombres.",
+    "operationId": "set_public_api_v1_tournaments__tid__public_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PublicLiveIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/imports/template.xlsx": {
    "get": {
     "tags": [
@@ -4225,6 +4283,292 @@
       "schema": {
        "type": "integer",
        "title": "Dojo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/persons/{person_id}/stats": {
+   "get": {
+    "tags": [
+     "history",
+     "stats"
+    ],
+    "summary": "Person Stats",
+    "description": "Perfil deportivo: números de kumite, medallas, índice Hajime e insignias.",
+    "operationId": "person_stats_api_v1_persons__person_id__stats_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "person_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/leaders": {
+   "get": {
+    "tags": [
+     "history",
+     "stats"
+    ],
+    "summary": "Tournament Leaders",
+    "description": "Premios automáticos y tablas de líderes del torneo.",
+    "operationId": "tournament_leaders_api_v1_tournaments__tid__leaders_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/leaders": {
+   "get": {
+    "tags": [
+     "history",
+     "stats"
+    ],
+    "summary": "Global Leaders",
+    "description": "Líderes de todos los torneos oficiales (opcionalmente de un año).",
+    "operationId": "global_leaders_api_v1_leaders_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "year",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/summary": {
+   "get": {
+    "tags": [
+     "history",
+     "stats"
+    ],
+    "summary": "Match Summary",
+    "description": "Hoja del combate con técnicas por lado y línea de tiempo del marcador.",
+    "operationId": "match_summary_api_v1_matches__mid__summary_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/{token}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Live",
+    "description": "Tatamis en vivo, resultados, medallero y premios del torneo.",
+    "operationId": "live_api_v1_public__token__get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/{token}/tatamis/{tatami_id}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Overlay",
+    "description": "Marcador del tatami para el overlay de la transmisión.",
+    "operationId": "overlay_api_v1_public__token__tatamis__tatami_id__get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
       }
      }
     ],
@@ -7087,6 +7431,34 @@
     ],
     "title": "PersonUpdate"
    },
+   "PublicLiveIn": {
+    "properties": {
+     "enabled": {
+      "type": "boolean",
+      "title": "Enabled"
+     },
+     "names": {
+      "type": "string",
+      "enum": [
+       "short",
+       "full"
+      ],
+      "title": "Names",
+      "default": "short"
+     },
+     "regenerate": {
+      "type": "boolean",
+      "title": "Regenerate",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "enabled"
+    ],
+    "title": "PublicLiveIn",
+    "description": "Activa o desactiva el seguimiento en vivo público del torneo."
+   },
    "RegistrationCreate": {
     "properties": {
      "person_id": {
@@ -8436,6 +8808,22 @@
       "type": "array",
       "title": "Tatamis",
       "default": []
+     },
+     "public_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Token"
+     },
+     "public_names": {
+      "type": "string",
+      "title": "Public Names",
+      "default": "short"
      }
     },
     "type": "object",

@@ -9,8 +9,8 @@ from app.api import schemas as s
 from app.api.deps import DB, CurrentUser, ensure_organizer
 from app.api.errors import AppError
 from app.db.models import Category, Registration, Tournament
+from app.services import public, teams
 from app.services import registrations as regs
-from app.services import teams
 from app.services import tournaments as svc
 from app.services.brackets import tatami_queue
 
@@ -208,6 +208,13 @@ def suggest(tid: int, person_id: int, db: DB, _: CurrentUser, modality: str | No
         s.SuggestionOut(category_id=c.id, name=c.name, modality=c.modality)
         for c in regs.suggestions(db, tid, person_id, modality)
     ]
+
+
+@router.put("/tournaments/{tid}/public", response_model=s.TournamentOut, tags=["public"])
+def set_public(tid: int, data: s.PublicLiveIn, db: DB, user: CurrentUser):
+    """Activa el seguimiento en vivo público (enlace secreto) y el estilo de nombres."""
+    ensure_organizer(db, user, tid)
+    return public.set_public(db, user, tid, data)
 
 
 # --- Importación Excel ----------------------------------------------------------
