@@ -90,3 +90,24 @@ def test_upgrade_keeps_existing_data(tmp_path):
         assert conn.execute(text("SELECT count(*) FROM match_events")).scalar() == 1
         assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert "parent_match_id" in {c["name"] for c in inspect(conn).get_columns("matches")}
+
+
+def test_wait_for_database_retries_until_it_answers(monkeypatch):
+    """Azure SQL serverless en pausa: la primera conexión falla y la app reintenta."""
+    from sqlalchemy.exc import OperationalError
+
+    from app.db import base
+
+    engine = create_engine("sqlite://")
+    real_connect = engine.connect
+    calls = {"n": 0}
+
+    def flaky_connect():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise OperationalError("SELECT 1", {}, Exception("Database is not currently available"))
+        return real_connect()
+
+    monkeypatch.setattr(engine, "connect", flaky_connect)
+    base.wait_for_database(engine, attempts=5, delay=0)
+    assert calls["n"] == 3

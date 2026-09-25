@@ -49,7 +49,6 @@ def make_engine(url: str) -> Engine:
         kwargs["pool_pre_ping"] = True
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
-
         file_db = url not in ("sqlite://", "sqlite:///:memory:")
 
         @event.listens_for(engine, "connect")
@@ -63,6 +62,31 @@ def make_engine(url: str) -> Engine:
                 dbapi_conn.execute("PRAGMA busy_timeout=15000")
 
     return engine
+
+
+def wait_for_database(engine: Engine, attempts: int = 12, delay: float = 10.0) -> None:
+    """Espera a que la base responda antes de arrancar.
+
+    Azure SQL serverless se pausa sola cuando nadie la usa y tarda cerca de un
+    minuto en despertar: la primera conexión falla mientras tanto. En lugar de
+    caerse, la app reintenta durante unos dos minutos.
+    """
+    import logging
+    import time
+
+    from sqlalchemy.exc import DBAPIError
+
+    log = logging.getLogger("hajime.db")
+    for i in range(1, attempts + 1):
+        try:
+            with engine.connect() as conn:
+                conn.exec_driver_sql("SELECT 1")
+            return
+        except DBAPIError as e:
+            if i == attempts:
+                raise
+            log.warning("La base de datos aún no responde (intento %s de %s): %s", i, attempts, str(e)[:200])
+            time.sleep(delay)
 
 
 _engine: Engine | None = None

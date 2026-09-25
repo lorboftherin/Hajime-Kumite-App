@@ -76,3 +76,43 @@ jobs:
           docker push "$IMAGE:sha-${GITHUB_SHA::7}"
           if [ "$GITHUB_REF_NAME" = "main" ]; then docker tag hajime:ci "$IMAGE:latest" && docker push "$IMAGE:latest"; fi
           echo "Imagen publicada: $IMAGE:$BRANCH" >> "$GITHUB_STEP_SUMMARY"
+      - name: Imagen para Azure (con el driver de SQL Server)
+        if: github.event_name == 'push'
+        run: |
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
+          docker build --build-arg WITH_MSSQL=true -t hajime:azure .
+          docker run --rm hajime:azure python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers(), pyodbc.drivers()"
+          docker tag hajime:azure "$IMAGE:$BRANCH-azure"
+          docker tag hajime:azure "$IMAGE:sha-${GITHUB_SHA::7}-azure"
+          docker push "$IMAGE:$BRANCH-azure"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}-azure"
+          if [ "$GITHUB_REF_NAME" = "main" ]; then docker tag hajime:azure "$IMAGE:azure" && docker push "$IMAGE:azure"; fi
+          echo "Imagen Azure: $IMAGE:sha-${GITHUB_SHA::7}-azure" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-test:
+    # Publica cada versión en el ambiente de pruebas de Azure. Se activa sola
+    # cuando existen las variables del repositorio AZURE_CLIENT_ID,
+    # AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID (ver infra/azure/conectar-github.sh).
+    needs: [docker]
+    if: >-
+      github.event_name == 'push' && vars.AZURE_CLIENT_ID != '' &&
+      github.ref_name == (vars.AZURE_TEST_BRANCH || 'main')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Actualizar la app de pruebas
+        run: |
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          az extension add --name containerapp --upgrade --only-show-errors
+          az containerapp update -g hajime-test -n hajime-test --image "$IMAGE:sha-${GITHUB_SHA::7}-azure" -o none
+          FQDN=$(az containerapp show -g hajime-test -n hajime-test --query properties.configuration.ingress.fqdn -o tsv)
+          for i in $(seq 1 30); do curl -sf "https://$FQDN/health" && break; sleep 10; done
+          echo "Publicado en pruebas: https://$FQDN" >> "$GITHUB_STEP_SUMMARY"

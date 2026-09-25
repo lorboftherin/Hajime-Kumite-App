@@ -22,6 +22,8 @@
 
 ## Azure (propuesta inicial, sección 22)
 
+**Paso a paso con scripts listos:** [`docs/despliegue-azure.md`](despliegue-azure.md) (`infra/azure/`).
+
 1. **Azure SQL Database** en un tier económico (serverless con autopausa o Basic),
    con backups automáticos. Antes de cada torneo real, además, hacer una
    exportación manual (`.bacpac`).

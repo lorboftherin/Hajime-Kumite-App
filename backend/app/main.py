@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.errors import install_handlers
 from app.api.routers import competition, core, history, public, tournaments
 from app.config import DEFAULT_SECRET, get_settings
-from app.db.base import get_engine
+from app.db.base import get_engine, wait_for_database
 
 
 @asynccontextmanager
@@ -20,6 +20,8 @@ async def lifespan(_: FastAPI):
         raise RuntimeError(
             "HAJIME_JWT_SECRET (mínimo 32 caracteres) o HAJIME_SECRET_FILE debe configurarse fuera de dev/test"
         )
+    if get_engine().url.get_backend_name() != "sqlite":
+        wait_for_database(get_engine())  # Azure SQL serverless puede estar en pausa
     if get_engine().url.get_backend_name() == "sqlite" or settings.auto_create_schema:
         # SQLite (desarrollo, pruebas, instalación local): se aplican las
         # migraciones al iniciar, así una actualización no pierde datos.
