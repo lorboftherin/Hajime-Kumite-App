@@ -94,12 +94,24 @@ API. La API ya está pensada para varios clientes (sección 23).
 
 ### Cobros y tiendas
 
-- **Cobrar en la web, no dentro de la app.** Apple y Google cobran una comisión
-  (de hasta 15–30 %) por suscripciones digitales vendidas dentro de sus apps y
-  exigen su propio sistema de pago. La membresía de dojo y Competidor Plus se
-  venden en la web con la pasarela local; la app de las tiendas es gratis y el
-  usuario entra con su cuenta. Las reglas de cada tienda sobre enlazar a pagos
-  externos cambian según el país: revisarlas al publicar.
+- **Decisión: app instalable en Google Play y App Store, con los cobros en la
+  web.** Apple y Google cobran una comisión (de hasta 15–30 %) por suscripciones
+  digitales vendidas dentro de sus apps. La app de las tiendas es gratis y el
+  usuario entra con su cuenta; se paga en la web con la pasarela local.
+- **Google Play:** se permiten apps «de solo consumo» (se entra con la cuenta y
+  se usa lo pagado en otro lado). Dentro de la app no hay botón ni enlace de
+  pago; se puede informar que existen otras opciones sin enlazar.
+- **App Store:**
+  - Membresía de dojo: se vende a organizaciones para sus miembros o alumnos,
+    lo que Apple permite cobrar fuera de la app (regla 3.1.3(c), servicios a
+    organizaciones).
+  - Competidor Plus es una suscripción personal: para servicios multiplataforma
+    Apple pide que también se pueda comprar dentro de la app (regla 3.1.3(b)).
+    Propuesta inicial: no ofrecer Plus en la app de iPhone (se ve en la web) o,
+    si crece, ofrecerlo también con compra dentro de la app y aceptar la
+    comisión en esas compras.
+  - Las reglas cambian por país y por fallos judiciales (Epic contra Apple en
+    2025, acuerdo de Google en 2026): confirmarlas al publicar.
 - **Requisitos de las tiendas:** cuenta de desarrollador (Apple, pago anual;
   Google, pago único), política de privacidad, borrar la cuenta desde la app y
   declarar el público objetivo. Como hay menores, las cuentas las tienen los
