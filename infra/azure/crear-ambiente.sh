@@ -12,7 +12,10 @@ set -euo pipefail
 AMBIENTE="${1:-test}"
 case "$AMBIENTE" in test | prod) ;; *) echo "Uso: bash crear-ambiente.sh test|prod" && exit 1 ;; esac
 
-REGION="${REGION:-eastus2}"                       # región de Azure (cambiable con REGION=...)
+# Regiones a probar, en orden: Azure a veces no acepta bases nuevas en una
+# región por falta de capacidad (RegionDoesNotAllowProvisioning). Brasil Sur es
+# la más cercana a Perú. Se puede forzar una con REGIONES="brazilsouth".
+REGIONES="${REGIONES:-brazilsouth southcentralus centralus eastus westus2 eastus2 canadacentral}"
 RG="hajime-$AMBIENTE"                             # grupo de recursos: todo lo de este ambiente
 APP="hajime-$AMBIENTE"                            # la app (Container App)
 ENTORNO="hajime-$AMBIENTE-env"                    # entorno de Container Apps
@@ -24,7 +27,7 @@ SQL_USER="hajimeadmin"
 # main, se usa la de esa rama; luego será ghcr.io/lorboftherin/hajime-kumite-app:azure
 IMAGEN="${IMAGEN:-ghcr.io/lorboftherin/hajime-kumite-app:claude-gracious-feynman-qtapgx-azure}"
 
-echo "== Hajime en Azure: ambiente '$AMBIENTE' en $REGION =="
+echo "== Hajime en Azure: ambiente '$AMBIENTE' =="
 
 # Datos que no deben quedar en el código: se piden aquí y viajan como secretos.
 read -r -s -p "Clave para el usuario admin de Hajime (mín. 8 caracteres): " ADMIN_PASS; echo
@@ -43,15 +46,37 @@ az provider register --namespace Microsoft.Sql --wait
 az extension add --name containerapp --upgrade --only-show-errors
 
 echo "-> Grupo de recursos $RG…"
-az group create -n "$RG" -l "$REGION" -o none
+if [ "$(az group exists -n "$RG")" = "false" ]; then
+  az group create -n "$RG" -l "${REGIONES%% *}" -o none
+fi
 
-echo "-> Servidor y base de datos Azure SQL…"
-az sql server create -g "$RG" -n "$SQL_SERVER" -l "$REGION" \
-  --admin-user "$SQL_USER" --admin-password "$SQL_PASS" --minimal-tls-version 1.2 -o none
+echo "-> Servidor Azure SQL (probando regiones)…"
+REGION=""
+if az sql server show -g "$RG" -n "$SQL_SERVER" -o none 2>/dev/null; then
+  REGION="$(az sql server show -g "$RG" -n "$SQL_SERVER" --query location -o tsv)"   # ya existía
+else
+  for R in $REGIONES; do
+    echo "   · $R…"
+    if az sql server create -g "$RG" -n "$SQL_SERVER" -l "$R" \
+      --admin-user "$SQL_USER" --admin-password "$SQL_PASS" --minimal-tls-version 1.2 -o none 2>/tmp/sql-err.txt; then
+      REGION="$R"
+      break
+    fi
+    grep -q "RegionDoesNotAllowProvisioning\|not accepting creation" /tmp/sql-err.txt || { cat /tmp/sql-err.txt; exit 1; }
+    echo "     no acepta bases nuevas ahora; pruebo la siguiente"
+  done
+fi
+[ -n "$REGION" ] || { echo "Ninguna región aceptó la base. Prueba más tarde o con REGIONES=\"...\"."; exit 1; }
+echo "   Región elegida: $REGION"
+# Si el servidor ya existía, su clave no se conoce: se asigna una nueva.
+az sql server update -g "$RG" -n "$SQL_SERVER" --admin-password "$SQL_PASS" -o none
 # Permite conexiones desde servicios de Azure (la app). Nada más entra.
 az sql server firewall-rule create -g "$RG" -s "$SQL_SERVER" -n PermitirAzure \
   --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 -o none
-if [ "$AMBIENTE" = "test" ]; then
+echo "-> Base de datos…"
+if az sql db show -g "$RG" -s "$SQL_SERVER" -n "$SQL_DB" -o none 2>/dev/null; then
+  echo "   ya existía"
+elif [ "$AMBIENTE" = "test" ]; then
   # Oferta gratuita permanente; si se agota en el mes, la base se pausa (no cobra).
   az sql db create -g "$RG" -s "$SQL_SERVER" -n "$SQL_DB" -e GeneralPurpose -f Gen5 -c 2 \
     --compute-model Serverless --use-free-limit --free-limit-exhaustion-behavior AutoPause \
@@ -63,14 +88,20 @@ else
 fi
 DB_URL="mssql+pyodbc://$SQL_USER:$SQL_PASS@$SQL_SERVER.database.windows.net:1433/$SQL_DB?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no"
 
-echo "-> Entorno de Container Apps…"
-az containerapp env create -g "$RG" -n "$ENTORNO" -l "$REGION" -o none
+echo "-> Entorno de Container Apps en $REGION…"
+if ! az containerapp env show -g "$RG" -n "$ENTORNO" -o none 2>/dev/null; then
+  az containerapp env create -g "$RG" -n "$ENTORNO" -l "$REGION" -o none
+fi
 
 if [ "$AMBIENTE" = "test" ]; then MIN=0; else MIN=1; fi   # test se apaga sin uso; prod siempre encendida
 
 echo "-> App $APP (imagen $IMAGEN)…"
 REGISTRO=()
 if [ -n "$GH_USER" ]; then REGISTRO=(--registry-server ghcr.io --registry-username "$GH_USER" --registry-password "$GH_TOKEN"); fi
+if az containerapp show -g "$RG" -n "$APP" -o none 2>/dev/null; then
+  echo "   la app ya existía: se reemplaza su configuración"
+  az containerapp delete -g "$RG" -n "$APP" --yes -o none
+fi
 az containerapp create -g "$RG" -n "$APP" --environment "$ENTORNO" \
   --image "$IMAGEN" "${REGISTRO[@]}" \
   --target-port 8000 --ingress external --cpu 0.5 --memory 1.0Gi \
