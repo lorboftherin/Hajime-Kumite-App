@@ -7,6 +7,7 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 - Especificación: [`docs/documento-maestro-v0.2.md`](docs/documento-maestro-v0.2.md)
 - Revisión técnica y decisiones tomadas: [`docs/revision-v0.2.md`](docs/revision-v0.2.md)
 - Despliegue: [`docs/despliegue.md`](docs/despliegue.md)
+- Modelo de negocio (freemium en tres niveles): [`docs/modelo-negocio.md`](docs/modelo-negocio.md)
 
 ## Stack
 
