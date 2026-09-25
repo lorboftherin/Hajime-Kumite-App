@@ -227,6 +227,13 @@ export class BracketPage {
 
   openMatch(m: Match): void {
     if (this.swapMode()) return;
+    const c = this.category();
+    // Un combate de kumite individual cerrado abre su hoja (línea de tiempo, técnicas, compartir);
+    // desde ahí se puede ir a la mesa para corregir.
+    if (m.status === 'finished' && c?.modality === 'kumite' && !c.is_team && m.method !== 'bye') {
+      this.router.navigate(['/combates', m.id]);
+      return;
+    }
     if (this.canOpen(m)) this.router.navigate(['/mesa', m.id]);
   }
 

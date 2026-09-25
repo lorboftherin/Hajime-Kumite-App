@@ -154,8 +154,11 @@ def _team_credits(db: Session, reg_ids: list[int]) -> dict[int, set[int]]:
     return out
 
 
-def _medals(db: Session, tournament_ids: list[int] | None) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
-    """Medallas por persona (individuales y de equipo) y oros invictos."""
+def _medals(
+    db: Session, tournament_ids: list[int] | None, dojo_of: dict[int, str] | None = None
+) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    """Medallas por persona (individuales y de equipo) y oros invictos.
+    Completa ``dojo_of`` para quien no tiene combates de kumite (p. ej. kata)."""
     stmt = (
         select(CategoryResult, Registration)
         .join(Registration, Registration.id == CategoryResult.registration_id)
@@ -184,6 +187,8 @@ def _medals(db: Session, tournament_ids: list[int] | None) -> tuple[dict[int, di
             ).all()
             clean = bool(played) and all(m.winner_registration_id == r.id for m in played)
         for pid in people:
+            if dojo_of is not None and pid not in dojo_of:
+                dojo_of[pid] = r.display_name if r.team_id else r.dojo.name
             medals[pid][key] += 1
             if clean:
                 unbeaten[pid] += 1
@@ -250,7 +255,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
 
 def _leaders(db: Session, tournament_ids: list[int] | None, limit: int = 10) -> dict[str, Any]:
     lines, dojo_of = _lines_by_person(db, tournament_ids)
-    medals, _ = _medals(db, tournament_ids)
+    medals, _ = _medals(db, tournament_ids, dojo_of)
     pids = set(lines) | set(medals)
     names = {p.id: _name(p) for p in db.scalars(select(Person).where(Person.id.in_(pids or {0}))).all()}
     rows = []
@@ -304,7 +309,7 @@ def tournament_leaders(db: Session, tid: int) -> dict[str, Any]:
     awards = []
     if board["mvp"]:
         r = board["mvp"][0]
-        awards.append(_award("mvp", "Competidor del torneo", "Mayor índice Hajime", r, f"{r['mvp_index']} pts"))
+        awards.append(_award("mvp", "Competidor del torneo", "Mayor índice Hajime", r, f"{r['mvp_index']:g} pts"))
     if board["ippon"]:
         r = board["ippon"][0]
         awards.append(_award("ippon", "Rey del ippon", "Más ippons marcados", r, f"{r['ippon']} ippon"))

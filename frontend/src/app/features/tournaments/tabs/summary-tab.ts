@@ -7,6 +7,7 @@ import { DialogService } from '../../../core/dialog.service';
 import { CATEGORY_STATUS, FORMAT_LABEL, THIRD_PLACE_LABEL, TOURNAMENT_STATUS } from '../../../core/format';
 import { Registration, Template, Tournament } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
+import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
@@ -125,6 +126,60 @@ const HINT: Record<string, string> = {
           <div><dt>Tatamis</dt><dd class="num">{{ t.tatamis.length }}</dd></div>
         </dl>
       </section>
+
+      <section class="card live" aria-labelledby="live-title">
+        <div class="general-head">
+          <div>
+            <h3 id="live-title">Seguimiento en vivo y transmisión</h3>
+            <p class="small muted">
+              Una página pública para familias y público, y un marcador para transmitir en vivo con OBS o vMix.
+              Sin inicio de sesión: quien tenga el enlace puede verla.
+            </p>
+          </div>
+          @if (t.public_token) {
+            <button class="btn sm" (click)="setPublic(false)">Desactivar</button>
+          } @else {
+            <button class="btn sm primary" (click)="setPublic(true)">Activar</button>
+          }
+        </div>
+        @if (t.public_token) {
+          <div class="live-grid">
+            <label class="field">
+              <span>Nombres en la vista pública</span>
+              <select [ngModel]="t.public_names" (ngModelChange)="setPublic(true, $event)">
+                <option value="short">Abreviados: «Diego R.» (recomendado para menores)</option>
+                <option value="full">Completos</option>
+              </select>
+            </label>
+            <div class="field">
+              <span>Página pública</span>
+              <div class="row">
+                <input readonly [value]="publicUrl(t.public_token)" (focus)="$any($event.target).select()" aria-label="Enlace público" />
+                <button class="btn sm" (click)="copy(publicUrl(t.public_token))">Copiar</button>
+                <a class="btn sm" [href]="publicUrl(t.public_token)" target="_blank" rel="noopener">Abrir</a>
+              </div>
+            </div>
+          </div>
+          @if (t.tatamis.length) {
+            <div class="field overlays">
+              <span>Overlay de transmisión (fuente de navegador 1920×1080, fondo transparente)</span>
+              <ul>
+                @for (tat of t.tatamis; track tat.id) {
+                  <li>
+                    <strong>{{ tat.name }}</strong>
+                    <code>{{ overlayUrl(t.public_token, tat.id) }}</code>
+                    <button class="btn sm ghost" (click)="copy(overlayUrl(t.public_token, tat.id))">Copiar</button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+          <p class="small muted">
+            Solo se publican nombres, dojos, marcadores, resultados y medallero; nunca documentos ni fechas de nacimiento.
+            <button class="linkish" (click)="regenerate()">Cambiar el enlace</button> si se compartió por error.
+          </p>
+        }
+      </section>
     }
 
     @if (edit(); as f) {
@@ -229,6 +284,63 @@ const HINT: Record<string, string> = {
         font-weight: 700;
       }
     }
+    .live {
+      margin-top: 1.25rem;
+      h3 {
+        margin: 0;
+      }
+      p {
+        margin: 0.25rem 0 0;
+        max-width: 44rem;
+      }
+    }
+    .live-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      gap: 1rem;
+      margin: 1rem 0;
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      input {
+        flex: 1;
+      }
+    }
+    .overlays ul {
+      list-style: none;
+      margin: 0.25rem 0 0.75rem;
+      padding: 0;
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.35rem 0;
+        border-bottom: 1px solid var(--kasumi);
+        flex-wrap: wrap;
+      }
+      code {
+        flex: 1;
+        font-size: 0.8rem;
+        color: var(--sumi-2);
+        word-break: break-all;
+      }
+    }
+    .linkish {
+      border: 0;
+      background: none;
+      padding: 0;
+      color: var(--ai-ink, var(--ai));
+      text-decoration: underline;
+      cursor: pointer;
+      font: inherit;
+    }
+    @media (max-width: 760px) {
+      .live-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     .general-head {
       display: flex;
       align-items: flex-start;
@@ -265,6 +377,7 @@ export class SummaryTab {
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
+  private toast = inject(ToastService);
 
   readonly formatLabel = FORMAT_LABEL;
   readonly thirdLabel = THIRD_PLACE_LABEL;
@@ -273,6 +386,42 @@ export class SummaryTab {
   readonly genOpen = signal(false);
   readonly templates = signal<Template[]>([]);
   genTemplate: number | null = null;
+
+  publicUrl(token: string): string {
+    return `${location.origin}/vivo/${token}`;
+  }
+
+  overlayUrl(token: string, tatami: number): string {
+    return `${location.origin}/overlay/${token}/${tatami}`;
+  }
+
+  async copy(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toast.ok('Enlace copiado');
+    } catch {
+      this.toast.warn('No se pudo copiar: selecciona el enlace y cópialo a mano');
+    }
+  }
+
+  async setPublic(enabled: boolean, names?: string, regenerate = false): Promise<void> {
+    const t = this.ctx.tournament();
+    if (!t) return;
+    const body = { enabled, names: names ?? t.public_names ?? 'short', regenerate };
+    const res = await this.mut.put<Tournament>(`/tournaments/${t.id}/public`, body, {
+      success: enabled ? 'Seguimiento en vivo activo' : 'Seguimiento en vivo desactivado',
+    });
+    if (res) this.ctx.reload();
+  }
+
+  async regenerate(): Promise<void> {
+    const ok = await this.dialog.confirm({
+      title: 'Cambiar el enlace público',
+      message: 'El enlace y los overlays actuales dejarán de funcionar. Habrá que compartir los nuevos.',
+      confirmText: 'Cambiar enlace',
+    });
+    if (ok) this.setPublic(true, undefined, true);
+  }
 
   readonly transitions = computed(() => NEXT[this.ctx.tournament()?.status ?? ''] ?? []);
   /** Acciones habituales a la vista; las destructivas (cancelar) quedan en «Más». */

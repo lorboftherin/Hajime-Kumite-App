@@ -13,6 +13,8 @@
   color-scheme: dark;
   /* Marca: el trazo ao se aclara para leerse sobre fondo oscuro (docs/marca). */
   --logo-ao: #4a77b8;
+  --chart-aka: #d9534a;
+  --chart-ao: #5a83c0;
   --washi: #141311;
   --kinu: #1d1b19;
   --sumi: #ede7da;
@@ -52,6 +54,9 @@
   /* Marca: colores del ensō (docs/marca). */
   --logo-aka: #be3b2c;
   --logo-ao: #24477a;
+  /* Series aka/ao en gráficos (validadas: banda de luminosidad, croma y daltonismo). */
+  --chart-aka: #b8322a;
+  --chart-ao: #3d6aad;
   color-scheme: light;
   /* Washi (papel) · docs/diseno.md §2 */
   --washi: #f5f0e6;

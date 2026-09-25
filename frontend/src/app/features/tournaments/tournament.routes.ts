@@ -8,6 +8,7 @@ export const TOURNAMENT_TABS: Routes = [
   { path: 'importar', loadComponent: () => import('./tabs/import-tab').then((m) => m.ImportTab), title: 'Importar Excel · Hajime' },
   { path: 'tatamis', loadComponent: () => import('./tabs/tatamis-tab').then((m) => m.TatamisTab), title: 'Tatamis · Hajime' },
   { path: 'resultados', loadComponent: () => import('./tabs/results-tab').then((m) => m.ResultsTab), title: 'Resultados · Hajime' },
+  { path: 'lideres', loadComponent: () => import('./tabs/leaders-tab').then((m) => m.LeadersTab), title: 'Líderes · Hajime' },
   { path: 'shadow', loadComponent: () => import('./tabs/shadow-tab').then((m) => m.ShadowTab), title: 'Shadow Mode · Hajime' },
   { path: 'auditoria', loadComponent: () => import('./tabs/audit-tab').then((m) => m.AuditTab), title: 'Auditoría · Hajime' },
 ];

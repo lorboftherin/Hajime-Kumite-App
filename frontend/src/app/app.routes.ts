@@ -13,6 +13,18 @@ export const routes: Routes = [
     title: 'Cambiar contraseña · Hajime',
   },
   {
+    // Seguimiento en vivo público (sin inicio de sesión; solo con enlace activo).
+    path: 'vivo/:token',
+    loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),
+    title: 'En vivo · Hajime',
+  },
+  {
+    // Overlay para transmisiones (OBS/vMix): fondo transparente.
+    path: 'overlay/:token/:tatami',
+    loadComponent: () => import('./features/public/overlay').then((m) => m.OverlayPage),
+    title: 'Overlay · Hajime',
+  },
+  {
     // Mesa de kumite: pantalla completa, sin navegación.
     path: 'mesa/:matchId',
     canActivate: [authGuard],
@@ -40,6 +52,11 @@ export const routes: Routes = [
         path: 'categorias/:id/llave',
         loadComponent: () => import('./features/bracket/bracket-page').then((m) => m.BracketPage),
         title: 'Llave · Hajime',
+      },
+      {
+        path: 'combates/:id',
+        loadComponent: () => import('./features/matches/match-summary').then((m) => m.MatchSummaryPage),
+        title: 'Combate · Hajime',
       },
       {
         path: 'personas',

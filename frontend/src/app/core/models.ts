@@ -186,6 +186,9 @@ export interface Tournament {
   template_id: number | null;
   version: number;
   tatamis: Tatami[];
+  /** Enlace secreto del seguimiento en vivo público (null = desactivado). */
+  public_token?: string | null;
+  public_names?: 'short' | 'full';
 }
 
 // --- Inscripciones ---
@@ -555,4 +558,183 @@ export interface DojoHistory {
   dojo_id: number;
   name: string;
   tournaments: DojoHistoryTournament[];
+}
+
+// --- Estadísticas, líderes y premios ---
+export interface Techniques {
+  yuko: number;
+  waza_ari: number;
+  ippon: number;
+}
+
+export interface KumiteStats {
+  matches: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points_for: number;
+  points_against: number;
+  techniques: Techniques;
+  techniques_against: Techniques;
+  senshu: number;
+  wins_by_method: Record<string, number>;
+  fastest_win: number | null;
+  longest_streak: number;
+  win_pct: number | null;
+  senshu_pct: number | null;
+  avg_points: number | null;
+}
+
+export interface BadgeOut {
+  code: string;
+  name: string;
+  kanji: string;
+  description: string;
+  earned: boolean;
+}
+
+export interface PersonStats {
+  person_id: number;
+  name: string;
+  kumite: KumiteStats;
+  medals: { gold: number; silver: number; bronze: number };
+  tournaments: number;
+  best_kata_score: number | null;
+  mvp_index: number;
+  badges: BadgeOut[];
+  form: Array<'win' | 'loss' | 'draw'>;
+}
+
+export interface LeaderRow {
+  person_id: number;
+  name: string;
+  dojo: string | null;
+  matches: number;
+  wins: number;
+  points: number;
+  ippon: number;
+  waza_ari: number;
+  yuko: number;
+  senshu: number;
+  fastest_win: number | null;
+  medals: { gold: number; silver: number; bronze: number };
+  mvp_index: number;
+}
+
+export interface Leaders {
+  mvp: LeaderRow[];
+  wins: LeaderRow[];
+  ippon: LeaderRow[];
+  points: LeaderRow[];
+  senshu: LeaderRow[];
+  fastest_win: LeaderRow[];
+  mvp_weights: Record<string, number>;
+}
+
+export interface Award {
+  code?: string;
+  title: string;
+  detail: string;
+  person_id?: number | null;
+  name: string;
+  dojo: string | null;
+  value: string;
+}
+
+export interface TournamentLeaders {
+  tournament_id: number;
+  is_test: boolean;
+  awards: Award[];
+  leaders: Leaders;
+}
+
+export interface TimelinePoint {
+  elapsed: number;
+  aka: number;
+  ao: number;
+  type: 'point' | 'sanction' | 'finish';
+  color: Color | null;
+  value: number | null;
+  event_id: string;
+}
+
+export interface MatchSummarySide {
+  registration_id: number | null;
+  name: string | null;
+  dojo: string | null;
+  score: number;
+  techniques: Techniques;
+  sanction: number;
+}
+
+export interface MatchSummary {
+  match: { id: number; code: string; status: string; method: string | null; winner: Color | null; parent_match_id: number | null; technical: boolean | null };
+  category: { id: number; name: string; modality: string };
+  tournament: { id: number; name: string; date: string } | null;
+  aka: MatchSummarySide;
+  ao: MatchSummarySide;
+  senshu: Color | null;
+  elapsed: number;
+  duration: number | null;
+  timeline: TimelinePoint[];
+}
+
+// --- Seguimiento en vivo público ---
+export interface PublicSide {
+  name: string;
+  dojo: string;
+}
+
+export interface PublicMatch {
+  number: string | null;
+  code: string;
+  category: string;
+  status: string;
+  aka: PublicSide | null;
+  ao: PublicSide | null;
+  score: [number, number];
+  winner: Color | null;
+  method: string | null;
+  bout?: PublicMatch;
+}
+
+export interface PublicLive {
+  tournament: { name: string; start_date: string; end_date: string | null; venue: string; city: string; status: string };
+  tatamis: Array<{
+    id: number;
+    number: number;
+    name: string;
+    current: PublicMatch | null;
+    upcoming: PublicMatch[];
+    last: PublicMatch | null;
+    done: number;
+    total: number;
+  }>;
+  categories: Array<{ name: string; modality: string; status: string }>;
+  results: Array<{ category: string; places: Array<{ place: number; name: string; dojo: string }> }>;
+  medal_table: Array<{ rank: number; dojo_name: string; gold: number; silver: number; bronze: number; total: number }>;
+  awards: Award[];
+  server_time: string;
+}
+
+export interface OverlayData {
+  tournament: string;
+  tatami: { number: number; name: string };
+  server_time: string;
+  match: {
+    number: string | null;
+    code: string;
+    category: string;
+    status: string;
+    aka: PublicSide | null;
+    ao: PublicSide | null;
+    score: [number, number];
+    sanction: [string | null, string | null];
+    senshu: Color | null;
+    elapsed: number;
+    running: boolean;
+    duration: number;
+    winner: Color | null;
+    team: { aka: string; ao: string; wins: [number, number]; bout: number; extra: boolean } | null;
+  } | null;
 }

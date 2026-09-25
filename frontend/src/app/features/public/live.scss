@@ -1,0 +1,383 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--washi);
+  color: var(--sumi);
+}
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  background: color-mix(in srgb, var(--washi) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--kasumi);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  .mark {
+    width: 30px;
+    height: 30px;
+  }
+  .word {
+    height: 1.25rem;
+    margin-top: 4px;
+  }
+}
+.live-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--shu-ink, var(--shu));
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-left: 4px;
+}
+.pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--sumi-2);
+  i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--matcha);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  &.stale i {
+    background: var(--yamabuki);
+  }
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+.hero {
+  padding: 28px 0 12px;
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.7rem, 5vw, 2.6rem);
+    line-height: 1.15;
+  }
+  p {
+    margin: 6px 0 0;
+    color: var(--sumi-2);
+  }
+}
+.jump {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 20px;
+  a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--kasumi-2);
+    background: var(--kinu);
+    color: var(--sumi-2);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+}
+.sec {
+  margin: 32px 0 12px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  .muted {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 400;
+  }
+}
+.muted {
+  color: var(--nezumi-ink);
+}
+.idle {
+  color: var(--nezumi-ink);
+  margin: 8px 0;
+}
+
+/* ---------- Tatamis ---------- */
+.tatamis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  scroll-margin-top: 70px;
+}
+.tat {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--kinu);
+  border: 1px solid var(--kasumi);
+  > header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+    }
+  }
+  .prog {
+    font-size: 0.8rem;
+    color: var(--nezumi-ink);
+  }
+}
+.now {
+  margin-top: 12px;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--sumi-2);
+  margin-bottom: 8px;
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--shu);
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+}
+.teamline {
+  font-size: 0.85rem;
+  color: var(--sumi-2);
+  margin-bottom: 6px;
+}
+.board {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.board .s {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 12px;
+  color: #fff;
+  min-width: 0;
+  &.aka {
+    background: #8e2a22;
+  }
+  &.ao {
+    background: #1f3d68;
+    text-align: right;
+  }
+  .nm {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dj {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &.won .nm::after {
+    content: ' 勝';
+    font-family: var(--font-display);
+  }
+}
+.board .sc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  background: #121110;
+  color: #f5f0e6;
+  font-weight: 900;
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+  .d {
+    color: #7c7568;
+    font-weight: 400;
+  }
+}
+.next {
+  margin-top: 12px;
+  .lbl {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nezumi-ink);
+  }
+  ol {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+  }
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--kasumi);
+    font-size: 0.9rem;
+  }
+  .n {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: var(--nezumi-ink);
+    align-self: center;
+  }
+  .aka {
+    border-left: 3px solid var(--chart-aka);
+    padding-left: 4px;
+    margin-right: 4px;
+  }
+  .ao {
+    border-left: 3px solid var(--chart-ao);
+    padding-left: 4px;
+    margin-left: 4px;
+  }
+  .cat {
+    grid-column: 2;
+    font-size: 0.75rem;
+    color: var(--nezumi-ink);
+  }
+}
+.last {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: var(--sumi-2);
+}
+
+/* ---------- Premios, resultados y medallero ---------- */
+section[id] {
+  scroll-margin-top: 70px;
+}
+.awards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.award {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--kinu);
+  border: 1px solid var(--kasumi);
+  border-left: 4px solid var(--shu);
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nezumi-ink);
+  }
+  strong {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+  }
+  .muted {
+    font-size: 0.8rem;
+  }
+}
+.res {
+  border-bottom: 1px solid var(--kasumi);
+  summary {
+    padding: 12px 0;
+    cursor: pointer;
+    font-weight: 600;
+  }
+}
+.podium {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .grow {
+    flex: 1;
+  }
+  .muted {
+    font-size: 0.85rem;
+  }
+}
+.place {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.8rem;
+  &.p1 {
+    background: var(--kin);
+  }
+  &.p2 {
+    background: var(--gin);
+  }
+  &.p3 {
+    background: var(--dou);
+  }
+}
+.medals {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--kinu);
+  border-radius: 12px;
+  overflow: hidden;
+  th,
+  td {
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--kasumi);
+    font-variant-numeric: tabular-nums;
+  }
+  th:nth-child(2),
+  td:nth-child(2) {
+    text-align: left;
+  }
+  th {
+    font-size: 0.75rem;
+    color: var(--nezumi-ink);
+    font-weight: 600;
+  }
+}
+.foot {
+  margin-top: 40px;
+  font-size: 0.8rem;
+  color: var(--nezumi-ink);
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse i,
+  .kicker .dot {
+    animation: none;
+  }
+}

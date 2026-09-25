@@ -28,5 +28,13 @@ Capturas de la interfaz actual (rediseño visual «Dō»). Todos los datos son f
 | `19-equipos-enfrentamiento.png` | Mesa de un enfrentamiento de kumite por equipos ya decidido: 1–1 en victorias, 4–4 en puntos y un hikiwake; lo gana AO en el combate extra. |
 | `19b-equipos-combate.png` | Un combate individual del enfrentamiento en la mesa: los integrantes con su equipo como subtítulo y, arriba, el enlace «Combate 3 · Shizen A 1–1 Tsuchi A» para volver. |
 | `19c-equipos-hikiwake.png` | Hoja de cierre de un combate por equipos con la opción «Hikiwake · empate» elegida. |
+| `20-lideres-premios.png` | Pestaña Líderes: premios automáticos del torneo (competidor del torneo, rey del ippon, victoria más rápida, primera ventaja, mejor kata) y la tabla del índice Hajime. |
+| `21-perfil-deportivo.png` | Perfil deportivo de un competidor: combates, victorias, puntos por combate, senshu, racha, técnicas marcadas y recibidas, cómo gana e insignias. |
+| `22-hoja-del-combate.png` | Hoja de un combate: marcador, línea de tiempo del puntaje (AKA/AO según el tiempo de reloj), técnicas por lado y momentos. |
+| `22b-tarjeta-para-compartir.png` | Imagen 1080×1080 del resultado, generada con «Compartir resultado», para redes o WhatsApp. |
+| `23-en-vivo-celular.png` | Hajime en vivo en un celular (390×844): combate en curso por tatami y los que siguen, con nombres abreviados. |
+| `23b-en-vivo-escritorio.png` | La misma página en vivo en una computadora. |
+| `24-overlay-transmision.png` | Overlay del marcador para OBS/vMix (1920×1080) sobre un fondo simulado: nombres, dojos, puntos, senshu, Chui y reloj. |
+| `25-activar-en-vivo.png` | Tarjeta del Resumen del torneo para activar el seguimiento en vivo, elegir el estilo de nombres y copiar los enlaces. |
 | `08-tema-oscuro.png` | Resumen del torneo en tema oscuro «Yoru». |
 | `09-celular.png` | Lista de torneos en un celular (390×844) con la barra de navegación inferior. |

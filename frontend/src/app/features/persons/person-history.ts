@@ -5,11 +5,12 @@ import { ApiService } from '../../core/api.service';
 import { REGISTRATION_STATUS, fmtDate, matchScoreText, methodText } from '../../core/format';
 import { PersonHistory } from '../../core/models';
 import { Hanko } from '../../shared/hanko';
+import { PersonStatsView } from '../../shared/person-stats';
 
 /** Historial deportivo de una persona (GET /persons/{id}/history). Foto al momento de cada torneo. */
 @Component({
   selector: 'app-person-history',
-  imports: [RouterLink, Hanko],
+  imports: [RouterLink, Hanko, PersonStatsView],
   template: `
     @if (history(); as h) {
       <div class="summary">
@@ -41,6 +42,8 @@ import { Hanko } from '../../shared/hanko';
           }
         </section>
       </div>
+
+      <app-person-stats [personId]="personId()" />
 
       <h2 class="section-title">Torneos</h2>
       @for (t of h.tournaments; track t.tournament_id + '-' + t.category_id) {
@@ -81,7 +84,7 @@ import { Hanko } from '../../shared/hanko';
                 @for (m of t.matches; track m.match_id) {
                   <tr>
                     <td class="color"><span class="strip" [class.aka]="m.color === 'aka'" [class.ao]="m.color === 'ao'" [title]="m.color === 'aka' ? 'Aka' : 'Ao'"></span><span class="sr-only">{{ m.color === 'aka' ? 'Aka' : 'Ao' }}</span></td>
-                    <td><span class="code">{{ m.code }}</span></td>
+                    <td><a class="code" [routerLink]="['/combates', m.match_id]" title="Hoja del combate">{{ m.code }}</a></td>
                     <td>
                       @if (m.method === 'draw') {
                         <span class="badge plain">Empate</span>

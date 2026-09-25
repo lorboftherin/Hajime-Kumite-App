@@ -25,15 +25,37 @@ def alembic_config() -> Config:
 
 def upgrade_database(engine: Engine) -> None:
     cfg = alembic_config()
-    with engine.begin() as conn:
-        cfg.attributes["connection"] = conn
-        tables = set(inspect(conn).get_table_names())
-        if "users" in tables and "alembic_version" not in tables:
-            # Base creada antes de las migraciones: se marca con la revisión
-            # que ya tiene (normalmente el esquema inicial).
-            rev = [r for table, r in LEGACY_MARKERS if table in tables][-1]
-            for table, column, r in LEGACY_COLUMNS:
-                if table in tables and column in {c["name"] for c in inspect(conn).get_columns(table)}:
-                    rev = r
-            command.stamp(cfg, rev)
-        command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        sqlite = conn.dialect.name == "sqlite"
+        if sqlite:
+            # En SQLite el modo batch recrea las tablas (copia, DROP, renombra):
+            # con claves foráneas activas el DROP falla si hay filas que la
+            # referencian. Se desactivan solo durante la migración (fuera de la
+            # transacción, donde el PRAGMA tiene efecto) y luego se verifica.
+            conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            conn.commit()
+        try:
+            with conn.begin():
+                cfg.attributes["connection"] = conn
+                _stamp_legacy(cfg, conn)
+                command.upgrade(cfg, "head")
+            if sqlite:
+                broken = conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if broken:
+                    raise RuntimeError(f"La migración dejó referencias rotas: {broken[:5]}")
+        finally:
+            if sqlite:
+                conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                conn.commit()
+
+
+def _stamp_legacy(cfg: Config, conn) -> None:
+    tables = set(inspect(conn).get_table_names())
+    if "users" in tables and "alembic_version" not in tables:
+        # Base creada antes de las migraciones: se marca con la revisión que
+        # ya tiene (normalmente el esquema inicial).
+        rev = [r for table, r in LEGACY_MARKERS if table in tables][-1]
+        for table, column, r in LEGACY_COLUMNS:
+            if table in tables and column in {c["name"] for c in inspect(conn).get_columns(table)}:
+                rev = r
+        command.stamp(cfg, rev)
