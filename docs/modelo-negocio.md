@@ -3,6 +3,16 @@
 Decisión del 25/09/2026. Completa la sección 3 del documento maestro, que dejaba
 la monetización abierta.
 
+## Etapas
+
+| Etapa | Cobro |
+| --- | --- |
+| **Pruebas y marcha blanca** (ahora) | **Todo gratis para quien tenga cuenta.** Los niveles existen en el sistema, pero una sola opción de configuración da acceso completo a todas las cuentas. |
+| **Lanzamiento** | Se activan los niveles de abajo y los cobros. Quienes participaron en la marcha blanca pueden recibir un beneficio (por ejemplo, meses gratis o precio de fundador). |
+
+Así los permisos por nivel se construyen y prueban desde ya, y el día del
+lanzamiento solo se cambia la configuración, sin tocar el código.
+
 ## Niveles
 
 | Nivel | Para quién | Precio | Qué incluye |
@@ -29,7 +39,7 @@ clientes.
    - Entidad *Organización* (liga, club organizador o dojo) dueña de sus torneos, usuarios y plantillas.
    - Las personas y dojos siguen siendo compartidos: así cada competidor tiene un solo historial en todos los torneos.
    - Planes y derechos (*entitlements*) verificados en la API, no solo en la pantalla.
-   - Al principio el Admin activa las membresías a mano, sin cobro automático, para trabajar con organizaciones piloto.
+   - Durante la marcha blanca rige un plan «Marcha blanca» con acceso completo para toda cuenta; el Admin puede además activar membresías a mano.
 2. **Portal público.**
    - Páginas abiertas y con buscador de torneos, dojos y perfiles básicos.
    - Generadas en el servidor (Angular SSR) para que Google las indexe.
@@ -56,6 +66,7 @@ clientes.
 
 ## Decisiones abiertas
 
+- [ ] Fecha de lanzamiento y beneficio para quienes participaron en la marcha blanca.
 - [ ] Precios en soles de cada nivel, y si el Premium cobra por mes, por torneo o por número de competidores.
 - [ ] ¿Premium único o dividido en Dojo y Organizador?
 - [ ] ¿Quién puede editar una persona o dojo compartidos entre organizaciones? Propuesta: el dojo reclamado; si nadie lo reclamó, la organización que la creó; con historial de cambios.
