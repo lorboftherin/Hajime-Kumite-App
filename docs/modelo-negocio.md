@@ -128,8 +128,10 @@ API. La API ya está pensada para varios clientes (sección 23).
 - **Lo que ya sirve en cualquier país:** reglas de kumite y kata configurables
   por torneo, tipos de documento genéricos (DNI, CE, pasaporte, otro), API
   pensada para varios clientes.
-- **Lo que hay que preparar para vender fuera de Perú** (al construir
-  «Organizaciones»):
+- **Mercado: Perú.** Vender en otros países es un plan de largo plazo: no se
+  invierte tiempo en eso ahora. Lo de abajo queda solo como referencia para
+  cuando llegue el momento.
+- **Lo que habría que preparar para vender fuera de Perú (largo plazo):**
   - país, zona horaria y moneda por organización y por torneo (hoy la hora se
     muestra en hora de Lima);
   - protección de datos por país: en Perú la Ley 29733; cada país nuevo tiene
