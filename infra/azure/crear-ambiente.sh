@@ -20,7 +20,7 @@ RG="hajime-$AMBIENTE"                             # grupo de recursos: todo lo d
 APP="hajime-$AMBIENTE"                            # la app (Container App)
 ENTORNO="hajime-$AMBIENTE-env"                    # entorno de Container Apps
 SUFIJO="$(az account show --query id -o tsv | tr -d '-' | cut -c1-6)"
-SQL_SERVER="hajime-$AMBIENTE-sql-$SUFIJO"         # nombre único en todo Azure
+# Servidor SQL: "hajime-<ambiente>-sql-<sufijo>-<región>" (nombre único en todo Azure).
 SQL_DB="hajime"
 SQL_USER="hajimeadmin"
 # Imagen con el driver de SQL Server. Mientras la rama de desarrollo no se une a
@@ -52,18 +52,26 @@ fi
 
 echo "-> Servidor Azure SQL (probando regiones)…"
 REGION=""
-if az sql server show -g "$RG" -n "$SQL_SERVER" -o none 2>/dev/null; then
-  REGION="$(az sql server show -g "$RG" -n "$SQL_SERVER" --query location -o tsv)"   # ya existía
+SQL_SERVER=""
+# ¿Ya hay un servidor listo de un intento anterior? Se reutiliza.
+EXISTE="$(az sql server list -g "$RG" --query "[?state=='Ready'] | [0].[name, location]" -o tsv 2>/dev/null || true)"
+if [ -n "$EXISTE" ]; then
+  SQL_SERVER="$(echo "$EXISTE" | cut -f1)"
+  REGION="$(echo "$EXISTE" | cut -f2)"
+  echo "   ya existía: $SQL_SERVER"
 else
   for R in $REGIONES; do
+    NOMBRE="hajime-$AMBIENTE-sql-$SUFIJO-$R"
     echo "   · $R…"
-    if az sql server create -g "$RG" -n "$SQL_SERVER" -l "$R" \
+    if az sql server create -g "$RG" -n "$NOMBRE" -l "$R" \
       --admin-user "$SQL_USER" --admin-password "$SQL_PASS" --minimal-tls-version 1.2 -o none 2>/tmp/sql-err.txt; then
       REGION="$R"
+      SQL_SERVER="$NOMBRE"
       break
     fi
-    grep -q "RegionDoesNotAllowProvisioning\|not accepting creation" /tmp/sql-err.txt || { cat /tmp/sql-err.txt; exit 1; }
-    echo "     no acepta bases nuevas ahora; pruebo la siguiente"
+    grep -q "RegionDoesNotAllowProvisioning\|not accepting creation\|InvalidResourceLocation" /tmp/sql-err.txt \
+      || { cat /tmp/sql-err.txt; exit 1; }
+    echo "     no disponible ahora; pruebo la siguiente"
   done
 fi
 [ -n "$REGION" ] || { echo "Ninguna región aceptó la base. Prueba más tarde o con REGIONES=\"...\"."; exit 1; }
