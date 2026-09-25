@@ -117,3 +117,26 @@ API. La API ya está pensada para varios clientes (sección 23).
   declarar el público objetivo. Como hay menores, las cuentas las tienen los
   adultos (competidores mayores de edad, padres o apoderados y dojos); la app
   no se publica como app infantil.
+
+## Dominio y expansión a otros países
+
+- **Dominio: `.com`** (no `.pe`), porque la plataforma podría venderse en otros
+  países. Registrarlo en Cloudflare, a precio de costo. Pruebas (TEST) en un
+  subdominio del dominio actual en Cloudflare; producción en el `.com` propio.
+  Se sugiere reservar también las variantes más obvias de la marca si están
+  libres.
+- **Lo que ya sirve en cualquier país:** reglas de kumite y kata configurables
+  por torneo, tipos de documento genéricos (DNI, CE, pasaporte, otro), API
+  pensada para varios clientes.
+- **Lo que hay que preparar para vender fuera de Perú** (al construir
+  «Organizaciones»):
+  - país, zona horaria y moneda por organización y por torneo (hoy la hora se
+    muestra en hora de Lima);
+  - protección de datos por país: en Perú la Ley 29733; cada país nuevo tiene
+    su propia ley y sus reglas sobre datos de menores;
+  - cobros y comprobantes por país (la pasarela y la facturación electrónica
+    cambian);
+  - interfaz en español primero; preparar los textos para traducir (inglés,
+    portugués) cuando haga falta;
+  - región de Azure cercana a Latinoamérica y la opción de guardar los datos
+    en la región que exija cada país.
