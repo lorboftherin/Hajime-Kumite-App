@@ -40,10 +40,10 @@ interface TatamiView {
               </div>
             }
             <div class="people small">
-              <div>
+              <div class="line">
                 <span class="muted">Operando ahora:</span>
-                @for (o of q.operators ?? []; track o.user; let last = $last) {
-                  <span class="op live"><i aria-hidden="true"></i>{{ o.user }} <span class="muted">({{ o.matches.join(', ') }})</span></span>@if (!last) {, }
+                @for (o of q.operators ?? []; track o.user) {
+                  <span class="op"><i aria-hidden="true"></i>{{ o.user }}<span class="muted">· {{ o.matches.join(', ') }}</span></span>
                 } @empty {
                   <span class="muted">nadie</span>
                 }
@@ -52,13 +52,13 @@ interface TatamiView {
                 }
               </div>
               @if (q.assigned_operators?.length) {
-                <div><span class="muted">Operadores del tatami:</span> {{ q.assigned_operators!.join(', ') }}</div>
+                <div class="line"><span class="muted">Operadores del tatami:</span><span>{{ q.assigned_operators!.join(', ') }}</span></div>
               }
               @if (q.referees?.length) {
-                <div>
+                <div class="line">
                   <span class="muted">Árbitros:</span>
-                  @for (r of q.referees!; track $index; let last = $last) {
-                    {{ r.name }}@if (r.position) { <span class="muted">({{ r.position }})</span>}@if (!last) {, }
+                  @for (r of q.referees!; track $index) {
+                    <span class="ref">{{ r.name }}@if (r.position) {<span class="muted">· {{ r.position }}</span>}</span>
                   }
                 </div>
               }
@@ -157,6 +157,18 @@ interface TatamiView {
       flex-direction: column;
       gap: 0.2rem;
       margin-bottom: 0.5rem;
+      .line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.2rem 0.6rem;
+      }
+      .op,
+      .ref {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
       .op i {
         display: inline-block;
         width: 7px;

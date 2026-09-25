@@ -36,5 +36,9 @@ Capturas de la interfaz actual (rediseño visual «Dō»). Todos los datos son f
 | `23b-en-vivo-escritorio.png` | La misma página en vivo en una computadora. |
 | `24-overlay-transmision.png` | Overlay del marcador para OBS/vMix (1920×1080) sobre un fondo simulado: nombres, dojos, puntos, senshu, Chui y reloj. |
 | `25-activar-en-vivo.png` | Tarjeta del Resumen del torneo para activar el seguimiento en vivo, elegir el estilo de nombres y copiar los enlaces. |
+| `26-tatamis-en-vivo.png` | Pestaña Tatamis con varios tatamis: avance, marcador del combate en curso, quién opera ahora (aviso «varias tablets»), operadores y árbitros del tatami. |
+| `27-aviso-dos-tablets.png` | Mesa con el aviso de que el mismo combate está abierto en otra tablet. |
+| `28-arbitros.png` | Pestaña Árbitros: árbitros del torneo, asignaciones a tatami con su puesto y formulario de nueva asignación. |
+| `29-operador-por-tatami.png` | Rol de operador de mesa con ámbito «Por tatami» en la ficha de la persona. |
 | `08-tema-oscuro.png` | Resumen del torneo en tema oscuro «Yoru». |
 | `09-celular.png` | Lista de torneos en un celular (390×844) con la barra de navegación inferior. |

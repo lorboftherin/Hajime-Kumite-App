@@ -50,9 +50,17 @@ def make_engine(url: str) -> Engine:
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
 
+        file_db = url not in ("sqlite://", "sqlite:///:memory:")
+
         @event.listens_for(engine, "connect")
         def _fk_on(dbapi_conn, _):  # pragma: no cover - trivial
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
+            if file_db:
+                # Varias mesas a la vez (MVP-3): WAL deja leer mientras otra
+                # mesa escribe, y la espera evita «database is locked».
+                dbapi_conn.execute("PRAGMA journal_mode=WAL")
+                dbapi_conn.execute("PRAGMA synchronous=NORMAL")
+                dbapi_conn.execute("PRAGMA busy_timeout=15000")
 
     return engine
 

@@ -89,6 +89,26 @@ Provocar cada caso a propósito y marcar el resultado.
 | ☐ | Enfrentamiento por equipos | Abrir la mesa de un enfrentamiento de kumite por equipos, confirmar la alineación y operar los 3 combates | Cada combate se opera en la mesa normal; al cerrar el 2.º ganado por el mismo equipo, el enfrentamiento se decide y la llave avanza |
 | ☐ | Hikiwake y combate extra | Empatar en victorias y en puntos (un combate en hikiwake) | La mesa pide un combate extra; al cerrarlo gana ese equipo por "Combate extra" |
 
+### Torneo con varios tatamis (MVP-3)
+
+1. **Un operador por tatami.** En *Personas*, abre la ficha de cada operador y agrégale el rol *Operador de mesa* con
+   ámbito *Por tatami*: solo podrá registrar los combates de las categorías asignadas a ese tatami.
+2. **Árbitros (opcional).** En la pestaña *Árbitros* del torneo registra a los árbitros (no necesitan dojo) y asígnalos
+   a su tatami con el puesto (*Árbitro central*, *Juez 1*…). También se pueden importar con la columna *Rol* del Excel.
+   En kata, la mesa los propone para anotar qué juez dio cada bandera o nota.
+3. **Durante el torneo**, la pestaña *Tatamis* muestra el avance de cada tatami, el marcador del combate en curso,
+   quién está operando ahora y sus árbitros. Si dos tablets abren el mismo combate, ambas ven un aviso: registren desde
+   una sola.
+4. **Ensayo antes del torneo.** Con el servidor encendido, simula varios tatamis operados a la vez (crea un torneo de
+   prueba, que no cuenta en historiales ni estadísticas):
+
+   ```bash
+   cd backend
+   python scripts/simulate_multi_tatami.py --url http://localhost:8000 --password <clave del admin> --tatamis 4
+   ```
+
+   Debe terminar con `RESULTADO: OK`. En esta máquina, 8 tatamis con 240 combates en paralelo terminaron sin errores.
+
 ## 4. Después del mock: comparación y hallazgos
 
 1. En *Shadow Mode* (pestaña del torneo), cargar para cada combate el

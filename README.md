@@ -62,7 +62,7 @@ Capturas: [`docs/screenshots/`](docs/screenshots/).
 | MVP-3 | Equipos temporales (kata y kumite): inscripción con titulares y suplentes, enfrentamientos por equipos con alineación, hikiwake, desempate por puntos o combate extra, historial de cada integrante | ✅ API + UI |
 | MVP-3 | Rol Operador de Mesa por torneo; control de versiones y eventos idempotentes para varias mesas a la vez | ✅ API + UI |
 | Extra | Ideas de CricHeroes: hoja del combate con línea de tiempo, perfil deportivo con insignias, líderes y premios automáticos, tarjeta para compartir, seguimiento en vivo público y overlay para transmisiones | ✅ API + UI |
-| MVP-3 | Operador limitado a un tatami, vista de todos los tatamis para el organizador, registro y asignación opcional de árbitros | ⏳ Pendiente |
+| MVP-3 | Operador limitado a un tatami, aviso de dos tablets en el mismo combate, vista de todos los tatamis (avance, quién opera, árbitros), árbitros opcionales (registro, asignación, juez de cada bandera o nota), rol sensei e importación de árbitros y senseis por Excel | ✅ API + UI |
 
 ## Principios que guían el código
 

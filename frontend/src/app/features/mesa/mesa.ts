@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
 import {
@@ -71,6 +72,7 @@ export class MesaPage {
   private dialog = inject(DialogService);
   private toast = inject(ToastService);
   private router = inject(Router);
+  private auth = inject(AuthService);
 
   readonly matchId = input.required<string>();
   readonly tatami = input<string | undefined>(undefined);
@@ -132,8 +134,8 @@ export class MesaPage {
   readonly othersText = computed(() => {
     const o = this.others();
     if (!o.length) return '';
-    const names = [...new Set(o.map((x) => (x.same_user ? 'tu mismo usuario' : x.user)))].join(', ');
-    return `Este combate también está abierto en otra tablet (${names}). Registren desde una sola para no duplicar puntos.`;
+    const names = [...new Set(o.map((x) => (x.same_user ? 'otra sesión tuya' : x.user)))].join(' y ');
+    return `Este combate también está abierto en: ${names}. Registren desde una sola tablet para no duplicar puntos.`;
   });
 
   /** Kata: qué juez dio cada bandera (opcional, sección 20). */
@@ -348,6 +350,21 @@ export class MesaPage {
     const msg = `Hay ${n} evento(s) sin enviar`;
     ev.returnValue = msg;
     return msg;
+  }
+
+  /** Al cerrar la pestaña o la app, se avisa que esta tablet dejó el combate (keepalive). */
+  @HostListener('window:pagehide')
+  onPageHide(): void {
+    const token = this.auth.token();
+    try {
+      fetch(`/api/v1/matches/${this.id()}/presence?device_id=${encodeURIComponent(this.device)}`, {
+        method: 'DELETE',
+        keepalive: true,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      /* el latido caduca solo */
+    }
   }
 
   /** Escape cierra el menú «Más» o la hoja de cierre (si no hay un diálogo encima). */

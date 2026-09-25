@@ -76,7 +76,12 @@ const TARGET_LABEL: Record<string, string> = { tatami: 'Tatami', category: 'Cate
               @for (a of data()?.assignments ?? []; track a.id) {
                 <tr>
                   <td>{{ a.name }}</td>
-                  <td><span class="muted small">{{ targetLabel[a.target_type] }}</span> {{ a.target }}</td>
+                  <td>
+                    @if (a.target_type !== 'tatami') {
+                      <span class="muted small">{{ targetLabel[a.target_type] }}</span>
+                    }
+                    {{ a.target }}
+                  </td>
                   <td>{{ a.position || '—' }}</td>
                   <td class="right"><button class="btn sm ghost" (click)="remove(a)">Quitar</button></td>
                 </tr>
