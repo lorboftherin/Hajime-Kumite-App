@@ -210,7 +210,7 @@ def withdraw(db: Session, user: User, rid: int, reason: str, version: int | None
     pending = db.scalars(
         select(Match).where(
             Match.category_id == c.id,
-            Match.is_current.is_(True),
+            Match.is_current,
             Match.parent_match_id.is_(None),
             Match.status.in_(("pending", "ready", "in_progress")),
             (Match.aka_registration_id == r.id) | (Match.ao_registration_id == r.id),
@@ -218,7 +218,7 @@ def withdraw(db: Session, user: User, rid: int, reason: str, version: int | None
     ).all()
     started = db.scalar(
         select(Match.id).where(
-            Match.category_id == c.id, Match.is_current.is_(True), Match.status.in_(("in_progress", "finished"))
+            Match.category_id == c.id, Match.is_current, Match.status.in_(("in_progress", "finished"))
         )
     )
     db.commit()

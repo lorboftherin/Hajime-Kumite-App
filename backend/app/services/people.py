@@ -68,7 +68,7 @@ def create_dojo_nocommit(db: Session, user: User, name: str) -> Dojo:
 
 
 def independent_dojo(db: Session) -> Dojo:
-    d = db.scalar(select(Dojo).where(Dojo.is_independent.is_(True)).order_by(Dojo.id))
+    d = db.scalar(select(Dojo).where(Dojo.is_independent).order_by(Dojo.id))
     if d is None:
         d = Dojo(name="Independiente", short_name="IND", is_independent=True)
         db.add(d)

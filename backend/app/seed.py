@@ -139,7 +139,7 @@ def cmd_admin(username: str, password: str, force: bool = False) -> None:
 
 
 def _admin(db) -> User:
-    u = db.scalar(select(User).where(User.is_admin.is_(True)))
+    u = db.scalar(select(User).where(User.is_admin))
     if u is None:
         raise SystemExit("Primero crea un admin: python -m app.seed admin --username admin --password ...")
     return u

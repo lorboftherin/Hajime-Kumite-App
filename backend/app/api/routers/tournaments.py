@@ -26,7 +26,7 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 def list_tournaments(db: DB, _: CurrentUser, include_test: bool = True):
     stmt = select(Tournament).order_by(Tournament.start_date.desc())
     if not include_test:
-        stmt = stmt.where(Tournament.is_test.is_(False))
+        stmt = stmt.where(~Tournament.is_test)
     return db.scalars(stmt).all()
 
 

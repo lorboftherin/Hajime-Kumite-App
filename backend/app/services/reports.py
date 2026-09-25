@@ -154,7 +154,7 @@ def comparison_report(db: Session, tid: int) -> dict[str, Any]:
         .join(Category, Category.id == Match.category_id)
         .where(
             Category.tournament_id == tid,
-            Match.is_current.is_(True),
+            Match.is_current,
             Match.parent_match_id.is_(None),
             Match.status.in_(("finished", "needs_review")),
         )

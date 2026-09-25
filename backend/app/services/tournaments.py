@@ -276,7 +276,7 @@ def _has_started_matches(db: Session, cid: int) -> bool:
         db.scalar(
             select(func.count())
             .select_from(Match)
-            .where(Match.category_id == cid, Match.is_current.is_(True), Match.status.in_(("in_progress", "finished")))
+            .where(Match.category_id == cid, Match.is_current, Match.status.in_(("in_progress", "finished")))
         )
     )
 

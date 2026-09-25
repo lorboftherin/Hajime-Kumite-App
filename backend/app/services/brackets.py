@@ -82,7 +82,7 @@ def current_matches(db: Session, cid: int, *, bouts: bool = False) -> list[Match
     """Combates vigentes de la llave. Los combates individuales de un
     enfrentamiento por equipos no son parte de la llave: solo se incluyen
     con ``bouts=True``."""
-    stmt = select(Match).where(Match.category_id == cid, Match.is_current.is_(True))
+    stmt = select(Match).where(Match.category_id == cid, Match.is_current)
     if not bouts:
         stmt = stmt.where(Match.parent_match_id.is_(None))
     return list(db.scalars(stmt.order_by(Match.round, Match.position)).all())
@@ -102,7 +102,7 @@ def _started(db: Session, cid: int) -> bool:
     started_matches = db.scalar(
         select(func.count())
         .select_from(Match)
-        .where(Match.category_id == cid, Match.is_current.is_(True), Match.status.in_(("in_progress", "finished")))
+        .where(Match.category_id == cid, Match.is_current, Match.status.in_(("in_progress", "finished")))
     )
     scored = db.scalar(
         select(func.count())
@@ -1150,7 +1150,7 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
         select(Match)
         .join(Category, Category.id == Match.category_id)
         .where(
-            Match.is_current.is_(True),
+            Match.is_current,
             Match.status.in_(("ready", "in_progress")),
             Category.tatami_id.is_not(None),
             Category.tatami_id != tatami_id,

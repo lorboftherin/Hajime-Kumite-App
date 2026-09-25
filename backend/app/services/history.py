@@ -31,7 +31,7 @@ def _match_rows(db: Session, reg_ids: list[int]) -> list[Match]:
     return list(
         db.scalars(
             select(Match).where(
-                Match.is_current.is_(True),
+                Match.is_current,
                 Match.status == "finished",
                 Match.parent_match_id.is_(None),
                 or_(Match.aka_registration_id.in_(reg_ids), Match.ao_registration_id.in_(reg_ids)),
@@ -60,7 +60,7 @@ def _team_registrations(db: Session, person_id: int) -> tuple[dict[int, str], se
     reg_ids = [r.id for r in regs]
     bouts = db.scalars(
         select(Match).where(
-            Match.is_current.is_(True),
+            Match.is_current,
             Match.parent_match_id.is_not(None),
             or_(Match.aka_registration_id.in_(reg_ids), Match.ao_registration_id.in_(reg_ids)),
         )
@@ -89,7 +89,7 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
         .join(Tournament, Tournament.id == Registration.tournament_id)
         .where(
             or_(Registration.person_id == p.id, Registration.id.in_(team_regs or {0})),
-            Tournament.is_test.is_(False),
+            ~Tournament.is_test,
         )
         .order_by(Tournament.start_date.desc())
     ).all()
@@ -189,7 +189,7 @@ def dojo_history(db: Session, dojo_id: int) -> dict[str, Any]:
         .join(Registration, Registration.id == CategoryResult.registration_id)
         .join(Category, Category.id == CategoryResult.category_id)
         .join(Tournament, Tournament.id == Category.tournament_id)
-        .where(Registration.dojo_id == d.id, Tournament.is_test.is_(False), Category.status == "finished")
+        .where(Registration.dojo_id == d.id, ~Tournament.is_test, Category.status == "finished")
         .order_by(Tournament.start_date.desc(), CategoryResult.place)
     ).all()
     by_t: dict[int, dict[str, Any]] = {}

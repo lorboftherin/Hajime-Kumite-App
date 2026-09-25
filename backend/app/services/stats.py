@@ -87,11 +87,11 @@ def _kumite_matches(db: Session, tournament_ids: list[int] | None) -> list[tuple
         .join(Category, Category.id == Match.category_id)
         .join(Tournament, Tournament.id == Category.tournament_id)
         .where(
-            Match.is_current.is_(True),
+            Match.is_current,
             Match.status == "finished",
             Category.modality == "kumite",
-            Tournament.is_test.is_(False),
-            or_(Match.parent_match_id.is_not(None), Category.is_team.is_(False)),
+            ~Tournament.is_test,
+            or_(Match.parent_match_id.is_not(None), ~Category.is_team),
         )
         .order_by(Match.finished_at, Match.id)
     )
@@ -137,7 +137,7 @@ def _team_credits(db: Session, reg_ids: list[int]) -> dict[int, set[int]]:
         bouts = db.scalars(
             select(Match).where(
                 Match.parent_match_id.is_not(None),
-                Match.is_current.is_(True),
+                Match.is_current,
                 or_(Match.aka_registration_id == r.id, Match.ao_registration_id == r.id),
             )
         ).all()
@@ -164,7 +164,7 @@ def _medals(
         .join(Registration, Registration.id == CategoryResult.registration_id)
         .join(Category, Category.id == CategoryResult.category_id)
         .join(Tournament, Tournament.id == Category.tournament_id)
-        .where(Tournament.is_test.is_(False), Category.status == "finished", CategoryResult.place <= 3)
+        .where(~Tournament.is_test, Category.status == "finished", CategoryResult.place <= 3)
     )
     if tournament_ids is not None:
         stmt = stmt.where(Category.tournament_id.in_(tournament_ids or [0]))
@@ -179,7 +179,7 @@ def _medals(
         if key == "gold":
             played = db.scalars(
                 select(Match).where(
-                    Match.is_current.is_(True),
+                    Match.is_current,
                     Match.parent_match_id.is_(None),
                     Match.status == "finished",
                     or_(Match.aka_registration_id == r.id, Match.ao_registration_id == r.id),
@@ -223,7 +223,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
         .join(Tournament, Tournament.id == Registration.tournament_id)
         .where(
             or_(Registration.person_id == p.id, Registration.id.in_(team_regs or [0])),
-            Tournament.is_test.is_(False),
+            ~Tournament.is_test,
         )
         .distinct()
     ).all()
@@ -231,7 +231,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
         select(KataPerformance.total)
         .join(Registration, Registration.id == KataPerformance.registration_id)
         .join(Tournament, Tournament.id == Registration.tournament_id)
-        .where(Registration.person_id == p.id, Tournament.is_test.is_(False), KataPerformance.total.is_not(None))
+        .where(Registration.person_id == p.id, ~Tournament.is_test, KataPerformance.total.is_not(None))
         .order_by(KataPerformance.total.desc())
     )
     badges = earned_badges(st, medals, len(tournaments), unbeaten.get(p.id, 0))
@@ -338,7 +338,7 @@ def tournament_leaders(db: Session, tid: int) -> dict[str, Any]:
 
 
 def global_leaders(db: Session, year: int | None = None) -> dict[str, Any]:
-    stmt = select(Tournament.id).where(Tournament.is_test.is_(False))
+    stmt = select(Tournament.id).where(~Tournament.is_test)
     if year:
         stmt = stmt.where(Tournament.start_date >= date(year, 1, 1), Tournament.start_date <= date(year, 12, 31))
     ids = list(db.scalars(stmt).all())
