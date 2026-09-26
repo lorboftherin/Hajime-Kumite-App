@@ -225,8 +225,11 @@ def for_tatami(db: Session, tatami_id: int) -> list[dict[str, Any]]:
     t = db.get(Tatami, tatami_id)
     if t is None:
         return []
-    rows = db.scalars(
-        select(RefereeAssignment)
+    # Solo columnas: la cola del tatami (que la mesa pide seguido) incluye esto,
+    # y cargar la persona completa arrastraría sus documentos y roles.
+    rows = db.execute(
+        select(Person.first_names, Person.last_names, RefereeAssignment.position)
+        .join(Person, Person.id == RefereeAssignment.person_id)
         .where(
             RefereeAssignment.tournament_id == t.tournament_id,
             RefereeAssignment.target_type == "tatami",
@@ -234,4 +237,4 @@ def for_tatami(db: Session, tatami_id: int) -> list[dict[str, Any]]:
         )
         .order_by(RefereeAssignment.id)
     ).all()
-    return [{"name": _name(a.person), "position": a.position} for a in rows]
+    return [{"name": f"{first} {last}", "position": position} for first, last, position in rows]

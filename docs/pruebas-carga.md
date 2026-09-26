@@ -97,8 +97,10 @@ vencido al pasar de 500 entradas).
 - **Un contenedor es un solo servidor:** con 0,5 CPU, cada copia rinde la mitad
   de lo medido aquí. Para un evento con miles de espectadores: subir
   `--max-replicas`, o pasar a 1 CPU por copia.
-- **El vivo se comparte 2 s:** un espectador puede ver un punto hasta 2 s
-  después de marcado. Se ajusta con `HAJIME_PUBLIC_CACHE_SECONDS`.
+- **Demora del vivo:** un espectador puede ver un punto unos segundos después
+  de marcado (lo que el navegador reutiliza la respuesta,
+  `HAJIME_PUBLIC_CACHE_SECONDS`, 3 s, más hasta 1,5 s de caché en memoria del
+  servidor). Ver «Instantánea compartida del vivo».
 
 ## Resultado en Azure (ambiente de pruebas, 26/09/2026)
 
@@ -163,6 +165,60 @@ de 20 s.
    copia hoy rinde bastante menos de la mitad de lo medido en local.
 3. Repetir esta prueba después de 1 y 2: la meta es que la mesa responda en
    menos de medio segundo el 95 % de las veces (descontando la red).
+
+## Instantánea compartida del vivo (26/09/2026)
+
+Respuesta a «Qué haría falta» (punto 1). Cuatro cambios:
+
+1. **Una sola instantánea para todos los procesos y copias** (tabla
+   `public_snapshots`, `app/services/public_snapshots.py`). Guarda el JSON ya
+   armado del vivo y de cada overlay. Toda escritura que cambia algo visible
+   (puntos y reloj, cierres, banderas y notas de kata, alineaciones, llaves,
+   tatami, cola o estado de una categoría, activar o desactivar el enlace) la
+   marca como vencida en su misma transacción, con una sola función
+   (`invalidate`) llamada desde tres puntos comunes: `audit()`,
+   `brackets.sync()` y `brackets.add_event()`. El vivo solo se recalcula si
+   algo cambió (o si tiene más de 30 s), y **un solo proceso a la vez**: toma
+   un turno con un UPDATE atómico; los demás siguen sirviendo la versión
+   anterior mientras tanto. Dentro de cada proceso, además, un solo hilo por
+   vista consulta la base; y delante hay una caché en memoria de 1,5 s.
+2. **El navegador revalida en vez de descargar:** ETag y
+   `Cache-Control: public, max-age=3`; si nada cambió, 304 sin cuerpo. El
+   overlay no se guarda en el navegador (su reloj corre): el servidor adelanta
+   el tiempo transcurrido desde que se calculó.
+3. **Hilos propios para `/public`** (2 por proceso, `HAJIME_PUBLIC_THREADS`):
+   el vivo ya no ocupa los 4 hilos que atienden a las mesas.
+4. **Menos consultas.** Todo se carga por lotes (combates, inscripciones,
+   resultados y eventos del torneo, una consulta cada uno); la llave ya no
+   escribe al leerla (antes borraba y volvía a insertar el podio en cada GET
+   y chocaba con las mesas), y se agregaron los índices de las lecturas
+   calientes. En un torneo de 8 tatamis (prueba
+   `tests/api/test_public_consultas.py`, que fija el techo):
+
+| Lectura | Consultas antes | Consultas ahora | Techo en la prueba |
+| --- | --- | --- | --- |
+| Vivo público (un cálculo) | 346 | 8 | 15 |
+| Cola del tatami (la mesa la pide seguido) | 159 | 8 | 10 |
+| Overlay de un tatami | 20 | 6 | 10 |
+
+Con ~2 ms por viaje a Azure SQL, un cálculo del vivo pasa de ~0,7 s de
+consultas a ~16 ms, y además ocurre una vez por cambio en lugar de una vez
+por espectador y proceso.
+
+`prueba_carga.py --tatamis 8`, local (4 núcleos, SQLite, 2 procesos × 4 hilos,
+como el contenedor), antes y después, mismo torneo (56 combates):
+
+| Corrida | Duración | Peticiones/s | Mesa: mediana · p95 · máx | Vivo: mediana · p95 · máx | Errores |
+| --- | --- | --- | --- | --- | --- |
+| Antes, 300 espectadores | 69 s | 61 | 43 ms · 1 102 ms · 2 171 ms | 14 ms · 1 015 ms · 1 997 ms | 0 |
+| **Ahora, 300 espectadores** | **42 s** | **79** | **16 ms · 40 ms · 238 ms** | **3 ms · 35 ms · 235 ms** | **0** |
+| Antes, 1000 espectadores | 75 s | 106 | 94 ms · 1 315 ms · 2 997 ms | 18 ms · 853 ms · 2 550 ms | 0 |
+| **Ahora, 1000 espectadores** | **43 s** | **215** | **21 ms · 69 ms · 375 ms** | **5 ms · 53 ms · 364 ms** | **0** |
+
+El p95 de la mesa bajó de más de un segundo a 40–70 ms y ya no depende de
+cuánta gente mira el vivo; el torneo termina en 42 s (el ritmo de las mesas)
+en lugar de 69–75 s. Falta repetir la prueba en Azure (Azure SQL y 0,5 CPU
+por copia) para confirmar la meta de la mesa por debajo de 0,5 s de servidor.
 
 ## Cómo repetir la prueba contra Azure
 

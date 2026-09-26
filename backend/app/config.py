@@ -34,8 +34,15 @@ class Settings(BaseSettings):
     # de uno a otro (medido: 3 veces menos peticiones por segundo). Para usar más de
     # un núcleo se levantan varios procesos (HAJIME_WORKERS en el contenedor).
     worker_threads: int = 4
-    # Segundos que se comparte la respuesta del vivo público entre espectadores (0 = sin caché).
-    public_cache_seconds: float = 2.0
+    # Vivo público (ver app.services.public_snapshots). Segundos que el navegador
+    # reutiliza la respuesta sin preguntar (max-age); después pregunta con ETag y
+    # recibe 304 si nada cambió. 0 = sin caché: se calcula en cada petición.
+    public_cache_seconds: float = 3.0
+    # Edad máxima de la instantánea guardada en la base aunque nadie la haya
+    # invalidado (red de seguridad para cambios que no pasan por invalidate()).
+    public_snapshot_max_age: float = 30.0
+    # Hilos propios para /public: el vivo nunca ocupa los hilos de las mesas.
+    public_threads: int = 2
     # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.
     secret_file: str | None = None
 
