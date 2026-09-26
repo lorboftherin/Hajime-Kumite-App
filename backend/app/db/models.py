@@ -21,7 +21,10 @@ from sqlalchemy import (
     Numeric,
     String,
     Unicode,
+    UnicodeText,
     UniqueConstraint,
+    false,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -127,6 +130,9 @@ class PersonRole(Base, Timestamped):
     scope_type: Mapped[str] = mapped_column(String(20), default="global")  # global | tournament | dojo
     scope_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     person: Mapped[Person] = relationship(back_populates="roles")
+
+    # Permisos por ámbito y operadores asignados a un tatami se buscan por rol y ámbito.
+    __table_args__ = (Index("ix_person_roles_scope", "role", "scope_type", "scope_id"),)
 
 
 class PersonMerge(Base):
@@ -244,6 +250,17 @@ class Tournament(Base, Timestamped, Versioned):
     """Torneo."""
 
     __tablename__ = "tournaments"
+    # El enlace público se busca por token en cada visita al vivo. Único solo
+    # entre los que tienen enlace: en SQL Server un UNIQUE común admite un solo NULL.
+    __table_args__ = (
+        Index(
+            "uq_tournaments_public_token",
+            "public_token",
+            unique=True,
+            mssql_where=text("public_token IS NOT NULL"),
+            sqlite_where=text("public_token IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Unicode(200))
     start_date: Mapped[date] = mapped_column(Date)
@@ -260,7 +277,7 @@ class Tournament(Base, Timestamped, Versioned):
     template_id: Mapped[int | None] = mapped_column(ForeignKey("category_templates.id"), nullable=True)
     # Seguimiento en vivo público (opcional): enlace secreto sin inicio de sesión.
     # Sin token no hay vista pública. ``public_names``: "short" (Diego R.) o "full".
-    public_token: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    public_token: Mapped[str | None] = mapped_column(String(40), nullable=True)
     public_names: Mapped[str] = mapped_column(String(10), default="short", server_default="short")
 
     tatamis: Mapped[list[Tatami]] = relationship(back_populates="tournament", lazy="selectin", order_by="Tatami.number")
@@ -279,7 +296,11 @@ class Category(Base, Timestamped, Versioned, CategoryFieldsMixin):
     """CategoriaTorneo."""
 
     __tablename__ = "categories"
-    __table_args__ = (Index("ix_categories_tournament", "tournament_id", "status"),)
+    __table_args__ = (
+        Index("ix_categories_tournament", "tournament_id", "status"),
+        # Orden de combates de un tatami (cola de la mesa, vivo público, planilla).
+        Index("ix_categories_tatami", "tatami_id", "status", "queue_position"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
     status: Mapped[str] = mapped_column(String(20), default="open")
@@ -321,7 +342,7 @@ class Registration(Base, Timestamped, Versioned):
     person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True, index=True)
     team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True, index=True)
     # Foto al momento del torneo
-    dojo_id: Mapped[int] = mapped_column(ForeignKey("dojos.id"))
+    dojo_id: Mapped[int] = mapped_column(ForeignKey("dojos.id"), index=True)
     branch_id: Mapped[int | None] = mapped_column(ForeignKey("branches.id"), nullable=True)
     grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
     grade_ordinal: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -377,6 +398,7 @@ class RuleOverride(Base):
     """OverrideRegla: advertencia aceptada con usuario y motivo."""
 
     __tablename__ = "rule_overrides"
+    __table_args__ = (Index("ix_rule_overrides_entity", "entity", "entity_id"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     entity: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[int] = mapped_column(Integer)
@@ -457,6 +479,11 @@ class Match(Base, Timestamped, Versioned):
     __table_args__ = (
         UniqueConstraint("bracket_version_id", "code"),
         Index("ix_matches_category", "category_id", "status"),
+        # Combates vigentes de una categoría (llave, cola, vivo) y combates de
+        # una inscripción (conflictos entre tatamis, estadísticas, retiros).
+        Index("ix_matches_category_current", "category_id", "is_current"),
+        Index("ix_matches_aka_registration", "aka_registration_id"),
+        Index("ix_matches_ao_registration", "ao_registration_id"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
@@ -512,7 +539,7 @@ class KataPerformance(Base, Timestamped, Versioned):
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), index=True)
     match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), nullable=True)
     round_number: Mapped[int] = mapped_column(Integer, default=1)
-    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
     kata_name: Mapped[str | None] = mapped_column(Unicode(80), nullable=True)
     total: Mapped[float | None] = mapped_column(Numeric(6, 1), nullable=True)
@@ -540,7 +567,7 @@ class CategoryResult(Base):
     __table_args__ = (UniqueConstraint("category_id", "registration_id"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), index=True)
-    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
     place: Mapped[int] = mapped_column(Integer)
     computed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
@@ -589,6 +616,25 @@ class ShadowComparison(Base, Timestamped):
     official_ao_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     finding: Mapped[str | None] = mapped_column(Unicode(1000), nullable=True)
     error_source: Mapped[str | None] = mapped_column(String(20), nullable=True)  # app | paper | none
+
+
+class PublicSnapshot(Base):
+    """Instantánea compartida del vivo público (ver ``app.services.public_snapshots``).
+
+    Una fila por torneo y vista (``live`` u ``overlay:<tatami_id>``): la
+    respuesta ya serializada que comparten todos los procesos y copias. Las
+    escrituras que cambian algo visible la marcan ``dirty`` en su misma
+    transacción; ``lease_until`` asegura que solo un proceso la recalcule.
+    """
+
+    __tablename__ = "public_snapshots"
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40), primary_key=True)
+    payload: Mapped[str | None] = mapped_column(UnicodeText, nullable=True)
+    etag: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    computed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    dirty: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    lease_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 # ---------------------------------------------------------------------------

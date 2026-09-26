@@ -6,6 +6,10 @@ import { ApiService } from '../../core/api.service';
 import { PublicLive, PublicMatch } from '../../core/models';
 import { Enso, HajimeWord } from '../../shared/enso';
 
+// Cada consulta pasa por la caché HTTP del navegador: el servidor responde con
+// ETag y `Cache-Control: max-age` (HAJIME_PUBLIC_CACHE_SECONDS). Si nada cambió,
+// el navegador revalida con If-None-Match, recibe 304 sin cuerpo y entrega la
+// respuesta anterior como un 200 normal: aquí no hace falta manejar el 304.
 const REFRESH_MS = 5000;
 
 /**

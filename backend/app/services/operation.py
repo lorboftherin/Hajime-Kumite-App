@@ -14,7 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.base import utcnow
-from app.db.models import Category, Match, MatchPresence, PersonRole, User
+from app.db.models import Category, Match, MatchPresence, Person, PersonRole, User
 from app.services.brackets import get_match
 
 ACTIVE_SECONDS = 45
@@ -64,27 +64,31 @@ def leave(db: Session, mid: int, device_id: str) -> None:
 
 
 def tatami_operators(db: Session, tatami_id: int) -> list[dict[str, Any]]:
-    """Quién tiene abierta una mesa de este tatami ahora (incluye combates por equipos)."""
+    """Quién tiene abierta una mesa de este tatami ahora (incluye combates por equipos).
+
+    Una sola consulta, con el usuario: la mesa pide la cola del tatami seguido."""
     since = utcnow() - timedelta(seconds=ACTIVE_SECONDS)
     rows = db.execute(
-        select(MatchPresence, Match)
+        select(MatchPresence.user_id, Match.code, User)
         .join(Match, Match.id == MatchPresence.match_id)
         .join(Category, Category.id == Match.category_id)
+        .outerjoin(User, User.id == MatchPresence.user_id)
         .where(Category.tatami_id == tatami_id, MatchPresence.last_seen >= since)
     ).all()
     out: dict[int | None, dict[str, Any]] = {}
-    for pres, m in rows:
-        key = pres.user_id
-        entry = out.setdefault(key, {"user": _user_name(db.get(User, key) if key else None), "matches": set()})
-        entry["matches"].add(m.code)
+    for user_id, code, u in rows:
+        entry = out.setdefault(user_id, {"user": _user_name(u), "matches": set()})
+        entry["matches"].add(code)
     return [{"user": e["user"], "matches": sorted(e["matches"])} for e in out.values()]
 
 
 def assigned_operators(db: Session, tatami_id: int) -> list[str]:
     """Personas con rol de operador de mesa limitado a este tatami."""
-    rows = db.scalars(
-        select(PersonRole).where(
-            PersonRole.role == "table_operator", PersonRole.scope_type == "tatami", PersonRole.scope_id == tatami_id
-        )
+    # Solo columnas: cargar la persona completa arrastraría sus documentos y roles.
+    rows = db.execute(
+        select(Person.first_names, Person.last_names)
+        .join(PersonRole, PersonRole.person_id == Person.id)
+        .where(PersonRole.role == "table_operator", PersonRole.scope_type == "tatami", PersonRole.scope_id == tatami_id)
+        .order_by(PersonRole.id)
     ).all()
-    return [f"{r.person.first_names} {r.person.last_names}" for r in rows if r.person]
+    return [f"{first} {last}" for first, last in rows]
