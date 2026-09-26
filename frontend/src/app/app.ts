@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
+import { MobileService } from './core/mobile.service';
 import { ThemeService } from './core/theme.service';
 import { UpdateService } from './core/update.service';
 import { DialogHost } from './shared/dialog-host';
@@ -16,5 +17,6 @@ export class App {
     inject(ThemeService);
     inject(AuthService).refreshMe();
     inject(UpdateService).start();
+    inject(MobileService).start();
   }
 }

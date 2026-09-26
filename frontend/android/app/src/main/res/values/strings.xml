@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hajime</string>
+    <string name="title_activity_main">Hajime</string>
+    <string name="package_name">com.hajime.torneos</string>
+    <string name="custom_url_scheme">com.hajime.torneos</string>
+</resources>

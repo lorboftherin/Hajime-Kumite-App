@@ -8,3 +8,6 @@ backend/.venv
 **/.ruff_cache
 .git
 docs/screenshots
+frontend/android/app/build
+frontend/android/.gradle
+frontend/android/build

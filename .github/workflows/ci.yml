@@ -42,6 +42,44 @@ jobs:
       - run: npm ci
       - run: npx ng build
 
+  android:
+    # App de Android de prueba (APK instalable sin Google Play): la misma
+    # interfaz empaquetada con Capacitor. Se descarga desde los artefactos de
+    # la corrida (ver docs/app-celular.md).
+    needs: [frontend]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - run: npm ci
+      - run: npm run build:mobile
+      - run: npx cap sync android
+      - name: Compilar el APK de prueba
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon --quiet
+      - name: Nombrar el APK
+        run: |
+          mkdir -p ../apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk "../apk/hajime-${GITHUB_SHA::7}.apk"
+          echo "APK de prueba: hajime-${GITHUB_SHA::7}.apk (en los artefactos de esta corrida)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hajime-android-apk
+          path: apk/*.apk
+          retention-days: 30
+
   docker:
     # Construye la imagen "todo en uno", la prueba y la publica en GHCR.
     needs: [backend, frontend]

@@ -7,13 +7,14 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 - Especificación: [`docs/documento-maestro-v0.2.md`](docs/documento-maestro-v0.2.md)
 - Revisión técnica y decisiones tomadas: [`docs/revision-v0.2.md`](docs/revision-v0.2.md)
 - Despliegue: [`docs/despliegue.md`](docs/despliegue.md)
+- App del celular (PWA y APK de Android): [`docs/app-celular.md`](docs/app-celular.md)
 - Modelo de negocio (freemium en tres niveles): [`docs/modelo-negocio.md`](docs/modelo-negocio.md)
 
 ## Stack
 
 | Capa | Tecnología | Carpeta |
 | --- | --- | --- |
-| Frontend | Angular 21 (SPA, lista para PWA; requiere Node 22) | [`frontend/`](frontend/) |
+| Frontend | Angular 21 (PWA instalable y sin conexión; app de Android con Capacitor; requiere Node 22) | [`frontend/`](frontend/) |
 | API | FastAPI, `/api/v1`, OpenAPI en `/docs` | [`backend/`](backend/) |
 | Dominio | Python puro, sin BD (llaves, marcador, kata, reglas) | [`backend/app/domain/`](backend/app/domain/) |
 | Persistencia | SQL Server / Azure SQL (SQLite en desarrollo) | [`sql/`](sql/) |

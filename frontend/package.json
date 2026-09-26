@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:mobile": "ng build --configuration mobile",
+    "android": "npm run build:mobile && npx cap sync android && npx cap open android"
   },
   "private": true,
   "packageManager": "npm@10.9.7",
