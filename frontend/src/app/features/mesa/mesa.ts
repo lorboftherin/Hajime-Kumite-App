@@ -1,4 +1,14 @@
-import { Component, DestroyRef, HostListener, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -7,7 +17,15 @@ import { ApiService } from '../../core/api.service';
 import { apiBase } from '../../core/server';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
-import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
+import {
+  EVENT_LABEL,
+  MATCH_STATUS,
+  METHOD_LABEL,
+  POINT_LABEL,
+  fmtTime,
+  mmss,
+  newId,
+} from '../../core/format';
 import {
   Category,
   Color,
@@ -24,7 +42,15 @@ import {
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
 import { LabelPipe } from '../../shared/pipes';
-import { Pending, SeqGuard, foldClock, loadPending, retryDecision, retryDelay, savePending } from './mesa-logic';
+import {
+  Pending,
+  SeqGuard,
+  foldClock,
+  loadPending,
+  retryDecision,
+  retryDelay,
+  savePending,
+} from './mesa-logic';
 import { TeamMatchPanel } from './team-match';
 
 interface LogRow {
@@ -53,7 +79,18 @@ function deviceId(): string {
   }
 }
 
-const METHODS = ['points', 'point_gap', 'senshu', 'hantei', 'golden_point', 'hansoku', 'kiken', 'shikkaku', 'walkover', 'decision'];
+const METHODS = [
+  'points',
+  'point_gap',
+  'senshu',
+  'hantei',
+  'golden_point',
+  'hansoku',
+  'kiken',
+  'shikkaku',
+  'walkover',
+  'decision',
+];
 const UNDO_SKIP = new Set(['annul', 'finish']);
 
 /**
@@ -61,11 +98,27 @@ const UNDO_SKIP = new Set(['annul', 'finish']);
  * El POST es idempotente: ante un error de red se reintenta con el MISMO id (cola con backoff).
  * La cola se guarda en localStorage por combate (hajime.mesa.pending.<id>) y se restaura al volver.
  */
+/** Vibración breve al tocar (celulares que la tienen): confirma el toque sin mirar. */
+function buzz(pattern: number | number[]): void {
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    /* sin vibración */
+  }
+}
+
 @Component({
   selector: 'app-mesa',
   imports: [FormsModule, RouterLink, LabelPipe, TeamMatchPanel],
   templateUrl: './mesa.html',
-  styleUrls: ['./mesa.scss', './mesa-stage.scss', './mesa-center.scss', './mesa-kata.scss', './mesa-sheet.scss'],
+  styleUrls: [
+    './mesa.scss',
+    './mesa-stage.scss',
+    './mesa-center.scss',
+    './mesa-kata.scss',
+    './mesa-sheet.scss',
+    './mesa-phone.scss',
+  ],
 })
 export class MesaPage {
   private api = inject(ApiService);
@@ -110,14 +163,21 @@ export class MesaPage {
 
   readonly unlocked = signal(false);
   readonly finishOpen = signal(false);
-  finishForm = { winner: null as Color | 'draw' | null, method: 'points', reason: '', time_over: true };
+  finishForm = {
+    winner: null as Color | 'draw' | null,
+    method: 'points',
+    reason: '',
+    time_over: true,
+  };
   private finishId = '';
   readonly finishing = signal(false);
 
   /** Menú «Más» abierto (acciones raras) por lado. Solo presentación. */
   readonly moreOpen = signal<Color | null>(null);
   /** Tatami de origen (número y número de combate en la cola), solo para el encabezado. */
-  readonly tatamiInfo = signal<{ number: number; name: string; matchNumber: string | null } | null>(null);
+  readonly tatamiInfo = signal<{ number: number; name: string; matchNumber: string | null } | null>(
+    null,
+  );
 
   // Kata por banderas
   readonly votes = signal<Array<Color | null>>([]);
@@ -135,7 +195,9 @@ export class MesaPage {
   readonly othersText = computed(() => {
     const o = this.others();
     if (!o.length) return '';
-    const names = [...new Set(o.map((x) => (x.same_user ? 'otra sesión tuya' : x.user)))].join(' y ');
+    const names = [...new Set(o.map((x) => (x.same_user ? 'otra sesión tuya' : x.user)))].join(
+      ' y ',
+    );
     return `Este combate también está abierto en: ${names}. Registren desde una sola tablet para no duplicar puntos.`;
   });
 
@@ -152,7 +214,12 @@ export class MesaPage {
   readonly finished = computed(() => this.match()?.status === 'finished');
   readonly playable = computed(() => {
     const m = this.match();
-    return !!m && !!m.aka_registration_id && !!m.ao_registration_id && !['pending', 'bye', 'void'].includes(m.status);
+    return (
+      !!m &&
+      !!m.aka_registration_id &&
+      !!m.ao_registration_id &&
+      !['pending', 'bye', 'void'].includes(m.status)
+    );
   });
   readonly locked = computed(() => !this.playable() || (this.finished() && !this.unlocked()));
 
@@ -169,14 +236,19 @@ export class MesaPage {
   );
   readonly duration = computed(() => this.sb()?.duration_seconds ?? 0);
   readonly remaining = computed(() => Math.max(0, this.duration() - this.clock().elapsed));
-  readonly timeOver = computed(() => this.duration() > 0 && this.clock().elapsed >= this.duration());
+  readonly timeOver = computed(
+    () => this.duration() > 0 && this.clock().elapsed >= this.duration(),
+  );
   readonly timerText = computed(() => mmss(Math.ceil(this.remaining())));
-  readonly started = computed(() => !!this.sb()?.started || this.pendingHere().some((p) => p.body.type === 'start'));
+  readonly started = computed(
+    () => !!this.sb()?.started || this.pendingHere().some((p) => p.body.type === 'start'),
+  );
 
   readonly suggestionText = computed(() => {
     const s = this.sb()?.suggestion;
     if (!s) return '';
-    if (s.winner) return `Sugerencia: gana ${s.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[s.method ?? ''] ?? s.method}`;
+    if (s.winner)
+      return `Sugerencia: gana ${s.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[s.method ?? ''] ?? s.method}`;
     if (s.needs === 'hantei') return 'Empate: se necesita hantei (decisión de jueces)';
     if (s.needs === 'golden_point') return 'Empate: punto de oro (senshu)';
     return s.reason ?? '';
@@ -186,8 +258,14 @@ export class MesaPage {
     const sb = this.sb();
     if (!sb) return [];
     const annulled = new Set(sb.annulled_event_ids);
-    const labelOf = (e: { type: string; color?: string | null; value?: number | null; method?: string | null; target_id?: string | null; reason?: string | null }): string =>
-      this.describe(e, sb);
+    const labelOf = (e: {
+      type: string;
+      color?: string | null;
+      value?: number | null;
+      method?: string | null;
+      target_id?: string | null;
+      reason?: string | null;
+    }): string => this.describe(e, sb);
     const rows: LogRow[] = [...sb.events]
       .sort((a, b) => a.device_at.localeCompare(b.device_at))
       .map((e) => ({
@@ -258,7 +336,9 @@ export class MesaPage {
     }
   });
   readonly durationText = computed(() => mmss(this.duration()));
-  readonly clockWarn = computed(() => !this.timeOver() && this.remaining() <= 15 && this.clock().running);
+  readonly clockWarn = computed(
+    () => !this.timeOver() && this.remaining() <= 15 && this.clock().running,
+  );
 
   /** Tono del aviso del servidor: ganador sugerido (matcha) o decisión necesaria (yamabuki). */
   readonly suggestionTone = computed(() => {
@@ -295,8 +375,12 @@ export class MesaPage {
       // No se refresca mientras hay envíos en curso o pendientes: un GET lento no debe pisar un POST.
       if (!this.pending().length && !this.sending() && !this.finishOpen()) this.reload(true);
     }, 15000);
+    this.keepAwake();
+    document.addEventListener('visibilitychange', this.onVisibility);
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      document.removeEventListener('visibilitychange', this.onVisibility);
+      this.wakeLock?.release().catch(() => {});
       clearInterval(tick);
       clearInterval(refresh);
       clearInterval(presence);
@@ -336,7 +420,11 @@ export class MesaPage {
       const q = await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${t}/queue`));
       if (this.destroyed) return;
       const item = [q.current, ...q.queue].find((it) => it?.match.id === matchId) ?? null;
-      this.tatamiInfo.set({ number: q.tatami.number, name: q.tatami.name, matchNumber: item?.number ?? null });
+      this.tatamiInfo.set({
+        number: q.tatami.number,
+        name: q.tatami.name,
+        matchNumber: item?.number ?? null,
+      });
     } catch {
       /* solo informativo */
     }
@@ -358,11 +446,14 @@ export class MesaPage {
   onPageHide(): void {
     const token = this.auth.token();
     try {
-      fetch(`${apiBase()}/matches/${this.id()}/presence?device_id=${encodeURIComponent(this.device)}`, {
-        method: 'DELETE',
-        keepalive: true,
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      fetch(
+        `${apiBase()}/matches/${this.id()}/presence?device_id=${encodeURIComponent(this.device)}`,
+        {
+          method: 'DELETE',
+          keepalive: true,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
     } catch {
       /* el latido caduca solo */
     }
@@ -416,7 +507,9 @@ export class MesaPage {
     if (this.previousId !== null && this.previousId !== id) this.leave(this.previousId);
     this.previousId = id;
     try {
-      const r = await firstValueFrom(this.api.post<PresenceOut>(`/matches/${id}/presence`, { device_id: this.device }));
+      const r = await firstValueFrom(
+        this.api.post<PresenceOut>(`/matches/${id}/presence`, { device_id: this.device }),
+      );
       if (!this.destroyed && id === this.id()) this.others.set(r.others);
     } catch {
       /* solo informativo */
@@ -424,7 +517,9 @@ export class MesaPage {
   }
 
   private leave(id: number): void {
-    this.api.delete(`/matches/${id}/presence?device_id=${encodeURIComponent(this.device)}`).subscribe({ error: () => {} });
+    this.api
+      .delete(`/matches/${id}/presence?device_id=${encodeURIComponent(this.device)}`)
+      .subscribe({ error: () => {} });
   }
 
   // --- Kata: jueces (opcional) ---
@@ -433,7 +528,9 @@ export class MesaPage {
       const j = await firstValueFrom(this.api.get<SuggestedJudges>(`/matches/${id}/referees`));
       this.judgeOptions.set(j);
       // Los asignados al combate, la categoría o el tatami se proponen en orden.
-      this.judgeIds.set(Array.from({ length: this.judges() }, (_, i) => j.assigned[i]?.person_id ?? null));
+      this.judgeIds.set(
+        Array.from({ length: this.judges() }, (_, i) => j.assigned[i]?.person_id ?? null),
+      );
     } catch {
       this.judgeOptions.set(null);
     }
@@ -452,10 +549,14 @@ export class MesaPage {
       if (this.destroyed) return;
       this.setScoreboard(sb, seq);
       if (this.category()?.id !== sb.match.category_id) {
-        const c = await firstValueFrom(this.api.get<Category>(`/categories/${sb.match.category_id}`));
+        const c = await firstValueFrom(
+          this.api.get<Category>(`/categories/${sb.match.category_id}`),
+        );
         this.category.set(c);
         if (this.tournament()?.id !== c.tournament_id) {
-          this.tournament.set(await firstValueFrom(this.api.get<Tournament>(`/tournaments/${c.tournament_id}`)));
+          this.tournament.set(
+            await firstValueFrom(this.api.get<Tournament>(`/tournaments/${c.tournament_id}`)),
+          );
         }
       }
       this.votes.set(Array.from({ length: this.judges() }, () => null));
@@ -512,7 +613,9 @@ export class MesaPage {
         const p = this.pending()[0];
         const seq = this.seq.next();
         try {
-          const sb = await firstValueFrom(this.api.post<Scoreboard>(`/matches/${p.matchId}/events`, p.body));
+          const sb = await firstValueFrom(
+            this.api.post<Scoreboard>(`/matches/${p.matchId}/events`, p.body),
+          );
           if (this.destroyed) return;
           this.pending.update((q) => q.filter((x) => x !== p));
           this.offline.set(false);
@@ -555,7 +658,9 @@ export class MesaPage {
           if (decision === 'stuck') {
             this.offline.set(true);
             this.stuck.set(p);
-            this.toast.error(`${EVENT_LABEL[p.body.type] ?? p.body.type}: el servidor falla (${err.fullMessage}). La cola queda detenida.`);
+            this.toast.error(
+              `${EVENT_LABEL[p.body.type] ?? p.body.type}: el servidor falla (${err.fullMessage}). La cola queda detenida.`,
+            );
             return;
           }
           if (decision === 'auth') {
@@ -608,19 +713,37 @@ export class MesaPage {
 
   // --- Acciones de mesa ---
   point(color: Color, value: number): void {
+    buzz(18);
     this.send('point', { color, value });
   }
 
   sanction(color: Color, level: number): void {
+    buzz([12, 40, 12]);
     this.send('sanction', { color, value: level });
   }
 
   hajime(): void {
+    buzz(30);
     this.send(this.started() ? 'resume' : 'start');
   }
 
   yame(): void {
+    buzz([30, 40, 30]);
     this.send('pause');
+  }
+
+  /** En el celular, la pantalla no se apaga mientras la mesa está abierta (Wake Lock). */
+  private wakeLock: WakeLockSentinel | null = null;
+  private readonly onVisibility = () => {
+    if (document.visibilityState === 'visible') this.keepAwake();
+  };
+  private async keepAwake(): Promise<void> {
+    try {
+      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+      this.wakeLock = await navigator.wakeLock.request('screen');
+    } catch {
+      /* sin permiso o sin batería suficiente: la app sigue igual */
+    }
   }
 
   adjust(seconds: number): void {
@@ -628,7 +751,10 @@ export class MesaPage {
     this.send('time_adjust', { value: seconds });
   }
 
-  async special(type: 'senshu_cancel' | 'kiken' | 'shikkaku' | 'walkover' | 'hantei', color: Color): Promise<void> {
+  async special(
+    type: 'senshu_cancel' | 'kiken' | 'shikkaku' | 'walkover' | 'hantei',
+    color: Color,
+  ): Promise<void> {
     const who = color === 'aka' ? 'AKA' : 'AO';
     const text: Record<string, string> = {
       senshu_cancel: `Cancelar el senshu de ${who}`,
@@ -637,7 +763,11 @@ export class MesaPage {
       walkover: `${who} no se presenta (walkover)`,
       hantei: `Hantei: los jueces dan la victoria a ${who}`,
     };
-    const ok = await this.dialog.confirm({ title: EVENT_LABEL[type], message: text[type] + '.', confirmText: 'Registrar' });
+    const ok = await this.dialog.confirm({
+      title: EVENT_LABEL[type],
+      message: text[type] + '.',
+      confirmText: 'Registrar',
+    });
     if (ok) this.send(type, { color });
   }
 
@@ -658,8 +788,11 @@ export class MesaPage {
     const sug = s.suggestion;
     // Sin sugerencia del servidor no se preselecciona ganador: el operador debe elegir.
     this.finishForm = {
-      winner: (this.finished() ? (s.winner ?? (s.method === 'draw' ? 'draw' : null)) : sug.winner) ?? null,
-      method: (this.finished() ? s.method : sug.method) ?? (sug.needs === 'hantei' ? 'hantei' : 'points'),
+      winner:
+        (this.finished() ? (s.winner ?? (s.method === 'draw' ? 'draw' : null)) : sug.winner) ??
+        null,
+      method:
+        (this.finished() ? s.method : sug.method) ?? (sug.needs === 'hantei' ? 'hantei' : 'points'),
       reason: '',
       time_over: this.timeOver(),
     };
@@ -683,8 +816,10 @@ export class MesaPage {
   timeEndText(): string {
     const t = this.timeEndSuggestion();
     if (!t) return '';
-    if (t.winner) return `Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[t.method ?? ''] ?? t.method}`;
-    if (t.needs === 'hantei') return 'Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)';
+    if (t.winner)
+      return `Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[t.method ?? ''] ?? t.method}`;
+    if (t.needs === 'hantei')
+      return 'Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)';
     if (t.needs === 'golden_point') return 'Si terminó el tiempo: empate, punto de oro';
     return t.reason ?? '';
   }
@@ -730,7 +865,11 @@ export class MesaPage {
     this.finishing.set(true);
     const seq = this.seq.next();
     const res = await this.mut.run<FinishOut>(
-      (override) => this.api.post<FinishOut>(`/matches/${this.id()}/finish`, override ? { ...body, override } : body),
+      (override) =>
+        this.api.post<FinishOut>(
+          `/matches/${this.id()}/finish`,
+          override ? { ...body, override } : body,
+        ),
       { success: 'Combate cerrado', onConflict: () => this.reload() },
     );
     this.finishing.set(false);
@@ -769,10 +908,11 @@ export class MesaPage {
     };
     this.flagsBusy.set(true);
     // mut.post reenvía el MISMO cuerpo con override={reason} si el servidor responde 409 WARNINGS.
-    const res = await this.mut.post<{ winner: Color | null; needs_head_judge: boolean; affected?: string[] }>(
-      `/matches/${this.id()}/flags`,
-      body,
-    );
+    const res = await this.mut.post<{
+      winner: Color | null;
+      needs_head_judge: boolean;
+      affected?: string[];
+    }>(`/matches/${this.id()}/flags`, body);
     this.flagsBusy.set(false);
     if (!res) return;
     if (res.needs_head_judge) {
@@ -785,7 +925,11 @@ export class MesaPage {
     this.toast.ok(`Gana ${res.winner === 'aka' ? 'AKA' : 'AO'} por banderas`);
     await this.reload();
     if (res.affected?.length) {
-      await this.dialog.alert('Combates siguientes afectados', 'Revisa estos combates:', res.affected);
+      await this.dialog.alert(
+        'Combates siguientes afectados',
+        'Revisa estos combates:',
+        res.affected,
+      );
     }
   }
 
@@ -835,11 +979,18 @@ export class MesaPage {
     const s = this.sb();
     if (!s) return '';
     const lvl = s.sanction[color];
-    return lvl ? s.sanction_labels[lvl - 1] ?? `Nivel ${lvl}` : '';
+    return lvl ? (s.sanction_labels[lvl - 1] ?? `Nivel ${lvl}`) : '';
   }
 
   describe(
-    e: { type: string; color?: string | null; value?: number | null; method?: string | null; target_id?: string | null; reason?: string | null },
+    e: {
+      type: string;
+      color?: string | null;
+      value?: number | null;
+      method?: string | null;
+      target_id?: string | null;
+      reason?: string | null;
+    },
     sb: Scoreboard,
   ): string {
     const who = e.color ? e.color.toUpperCase() + ' · ' : '';
@@ -854,7 +1005,9 @@ export class MesaPage {
         return `Ajuste de tiempo: ${r > 0 ? '+' : ''}${r} s al restante`;
       }
       case 'annul': {
-        const t = sb.events.find((x) => x.id === e.target_id) ?? this.pending().find((p) => p.body.id === e.target_id)?.body;
+        const t =
+          sb.events.find((x) => x.id === e.target_id) ??
+          this.pending().find((p) => p.body.id === e.target_id)?.body;
         return `Deshacer: ${t ? this.describe(t, sb) : 'evento'}`;
       }
       case 'finish':

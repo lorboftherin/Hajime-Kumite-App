@@ -1,0 +1,419 @@
+// Mesa en el celular: la forma principal de operar para árbitros y mesas.
+// Todo lo que se toca durante el combate (marcadores, HAJIME/YAME, puntos y
+// sanciones) cabe en una sola pantalla sin desplazarse, con los puntos abajo,
+// al alcance de los pulgares. Se carga al final para sobrescribir el resto.
+
+/* ======================= Celular vertical ======================= */
+@media (orientation: portrait) and (max-width: 700px) {
+  .mesa {
+    overscroll-behavior: none; // sin «tirar para recargar» a mitad de combate
+  }
+  .hdr {
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+  .stage:not(.kata) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-areas:
+      'aka-top ao-top'
+      'aka-who ao-who'
+      'aka-score ao-score'
+      'center center'
+      'aka-points ao-points'
+      'aka-ladder ao-ladder';
+    column-gap: 8px;
+    row-gap: 6px;
+    padding: 8px;
+  }
+  // Los paneles se disuelven: sus piezas pasan a la cuadrícula del escenario
+  // y cada pieza conserva el color de su lado.
+  .stage:not(.kata) .side {
+    display: contents;
+    > * {
+      background: var(--aka-panel);
+      border-radius: 12px;
+      box-shadow: inset 0 0 0 1px rgba(245, 240, 230, 0.07);
+    }
+    &.ao > * {
+      background: var(--ao-panel);
+    }
+    > .side-top {
+      grid-area: aka-top;
+      min-height: 34px;
+      padding: 4px 10px 0;
+      border-radius: 12px 12px 0 0;
+      box-shadow: none;
+    }
+    > .who {
+      grid-area: aka-who;
+      padding: 2px 10px 6px;
+      border-radius: 0;
+      box-shadow: none;
+      text-align: left;
+    }
+    > .score-box {
+      grid-area: aka-score;
+      width: auto;
+      height: clamp(84px, 12vh, 120px);
+      border-radius: 0 0 12px 12px;
+      box-shadow: none;
+    }
+    > .points {
+      grid-area: aka-points;
+      background: none;
+      box-shadow: none;
+    }
+    > .ladder {
+      grid-area: aka-ladder;
+      background: none;
+      box-shadow: none;
+    }
+    &.ao > .side-top {
+      grid-area: ao-top;
+    }
+    &.ao > .who {
+      grid-area: ao-who;
+    }
+    &.ao > .score-box {
+      grid-area: ao-score;
+    }
+    &.ao > .points {
+      grid-area: ao-points;
+    }
+    &.ao > .ladder {
+      grid-area: ao-ladder;
+    }
+  }
+  // Las tres piezas de arriba (rótulo, nombre, marcador) se leen como un solo panel.
+  .stage:not(.kata) .side > .side-top,
+  .stage:not(.kata) .side > .who {
+    margin-bottom: -6px;
+    padding-bottom: 8px;
+  }
+  .stage:not(.kata) .clabel {
+    font-size: 0.875rem;
+    letter-spacing: 0.22em;
+  }
+  .stage:not(.kata) .more-btn {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 0.8125rem;
+  }
+  .stage:not(.kata) .pname {
+    font-size: 1.05rem;
+    line-height: 1.15;
+    -webkit-line-clamp: 2;
+    min-height: 2.3em;
+  }
+  .stage:not(.kata) .pdojo {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+  .stage:not(.kata) .score {
+    font-size: min(92cqh, 55cqw);
+  }
+  // Senshu como superíndice, a la derecha del número y sin taparlo.
+  .stage:not(.kata) .senshu {
+    left: 100%;
+    right: auto;
+    top: -4px;
+    margin: 0 0 0 4px;
+    height: 32px;
+    width: 32px;
+    font-size: 1rem;
+  }
+  .adjust .adj-label {
+    display: none;
+  }
+  // Puntos: tres botones apilados por lado, grandes, a la altura del pulgar.
+  .stage:not(.kata) .points {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .stage:not(.kata) .pbtn {
+    min-height: 54px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    b {
+      font-size: 1.5rem;
+    }
+    span {
+      font-size: 0.9375rem;
+    }
+  }
+  // Sanciones: fila compacta con el nombre solo en el nivel vigente.
+  .stage:not(.kata) .ladder {
+    gap: 2px;
+  }
+  .stage:not(.kata) .mark {
+    min-height: 46px;
+    padding: 4px 0 2px;
+  }
+  .stage:not(.kata) .ink-mark {
+    height: 22px;
+  }
+  .stage:not(.kata) .mlabel {
+    font-size: 0.5625rem;
+    line-height: 1.1;
+  }
+  // Centro: reloj y HAJIME/YAME lado a lado; deshacer y finalizar debajo.
+  .stage:not(.kata) .center {
+    grid-area: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'clock go'
+      'adjust adjust'
+      'slot slot'
+      'foot foot';
+    gap: 6px;
+    padding: 8px;
+  }
+  .stage:not(.kata) .clock {
+    grid-area: clock;
+    padding: 6px 4px 8px;
+  }
+  .stage:not(.kata) .digits {
+    font-size: min(30cqi, 3.6rem);
+  }
+  .stage:not(.kata) .clock-label,
+  .stage:not(.kata) .clock-sub {
+    font-size: 0.6875rem;
+  }
+  .stage:not(.kata) .go {
+    grid-area: go;
+    min-height: 0;
+    height: 100%;
+    font-size: 1.35rem;
+    small {
+      font-size: 0.85rem;
+    }
+  }
+  .stage:not(.kata) .adjust {
+    grid-area: adjust;
+    button {
+      min-height: 36px;
+      font-size: 0.875rem;
+    }
+  }
+  .stage:not(.kata) .slot {
+    grid-area: slot;
+  }
+  .stage:not(.kata) .suggest {
+    padding: 8px 10px;
+    font-size: 0.875rem;
+  }
+  .stage:not(.kata) .center-foot {
+    grid-area: foot;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 6px;
+  }
+  .stage:not(.kata) .undo {
+    min-height: 48px;
+    padding: 4px 8px;
+    .undo-main {
+      font-size: 0.9375rem;
+    }
+    .undo-what {
+      font-size: 0.75rem;
+    }
+  }
+  .stage:not(.kata) .finish {
+    min-height: 48px;
+    font-size: 0.875rem;
+  }
+
+  // Kata por banderas: los dos lados juntos arriba y los jueces a la vista.
+  .stage.kata {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'aka ao'
+      'center center'
+      'judges judges';
+    gap: 8px;
+    padding: 8px;
+  }
+  .stage.kata .side {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'top' 'who' 'score';
+    padding: 8px 10px 10px;
+    row-gap: 4px;
+  }
+  .stage.kata .score-box {
+    width: auto;
+    height: 64px;
+  }
+  .stage.kata .pname {
+    font-size: 1rem;
+    min-height: 2.3em;
+  }
+  .stage.kata .pdojo {
+    font-size: 0.72rem;
+  }
+  .stage.kata .center {
+    padding: 8px;
+    gap: 6px;
+  }
+  .stage.kata .kpreview {
+    padding: 8px;
+  }
+  .stage.kata .kp-text {
+    font-size: 1.1rem;
+  }
+  .stage.kata .register {
+    min-height: 52px;
+    font-size: 1.1rem;
+  }
+  .stage.kata .judges {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .stage.kata .judge {
+    padding: 6px 8px;
+  }
+  .stage.kata .flag {
+    min-height: 56px;
+  }
+}
+
+/* ======================= Celular horizontal ======================= */
+@media (orientation: landscape) and (max-height: 520px) {
+  .mesa {
+    overscroll-behavior: none;
+  }
+  .hdr {
+    min-height: 40px;
+    padding: 4px 8px;
+  }
+  .hbtn {
+    min-height: 32px;
+  }
+  .stage {
+    gap: 6px;
+    padding: 6px 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 24vw) minmax(0, 1fr);
+  }
+  .side {
+    gap: 4px;
+    padding: 6px 8px 8px;
+    border-radius: 12px;
+  }
+  .side-top {
+    min-height: 26px;
+  }
+  .clabel {
+    font-size: 0.8125rem;
+  }
+  .more-btn {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 0.75rem;
+  }
+  .pname {
+    font-size: 1rem;
+  }
+  .pdojo {
+    font-size: 0.6875rem;
+    margin-top: 0;
+  }
+  .score-box {
+    min-height: 56px;
+  }
+  .score {
+    font-size: min(92cqh, 40cqw);
+  }
+  .senshu {
+    height: 30px;
+    width: 30px;
+    font-size: 1rem;
+  }
+  .ladder {
+    gap: 2px;
+  }
+  .mark {
+    min-height: 34px;
+    padding: 2px 0;
+  }
+  .ink-mark {
+    height: 18px;
+  }
+  .mlabel {
+    font-size: 0.5rem;
+  }
+  .pbtn {
+    min-height: 46px;
+    b {
+      font-size: 1.25rem;
+    }
+    span {
+      font-size: 0.6875rem;
+    }
+  }
+  .center {
+    padding: 6px;
+    gap: 4px;
+  }
+  .clock {
+    padding: 4px 4px 6px;
+  }
+  .clock-label,
+  .clock-sub {
+    font-size: 0.625rem;
+  }
+  .digits {
+    font-size: min(34cqi, 2.9rem);
+  }
+  .go {
+    min-height: 44px;
+    font-size: 1.1rem;
+    small {
+      font-size: 0.75rem;
+    }
+  }
+  .adjust button {
+    min-height: 30px;
+    font-size: 0.8125rem;
+  }
+  .slot {
+    display: none;
+  }
+  .center-foot {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 4px;
+    margin-top: 0;
+  }
+  .undo {
+    min-height: 40px;
+    padding: 2px 6px;
+    .undo-main {
+      font-size: 0.8125rem;
+    }
+    .undo-what {
+      font-size: 0.625rem;
+    }
+  }
+  .finish {
+    min-height: 40px;
+    font-size: 0.75rem;
+  }
+  // El historial completo se consulta en vertical o en pantallas más altas.
+  .log {
+    display: none;
+  }
+  .stage.kata .flag {
+    min-height: 48px;
+  }
+  .kcap,
+  .adjust .adj-label {
+    display: none;
+  }
+  .stage.kata .judges {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}

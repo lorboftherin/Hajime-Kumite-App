@@ -42,3 +42,6 @@ Capturas de la interfaz actual (rediseño visual «Dō»). Todos los datos son f
 | `29-operador-por-tatami.png` | Rol de operador de mesa con ámbito «Por tatami» en la ficha de la persona. |
 | `08-tema-oscuro.png` | Resumen del torneo en tema oscuro «Yoru». |
 | `09-celular.png` | Lista de torneos en un celular (390×844) con la barra de navegación inferior. |
+| `30-mesa-celular.png` | Mesa de kumite en un celular en vertical (412×915): marcadores arriba, reloj y HAJIME al centro, puntos al alcance de los pulgares y sanciones abajo, todo sin desplazarse. |
+| `31-mesa-celular-horizontal.png` | La misma mesa con el celular en horizontal: tres columnas compactas. |
+| `32-mesa-kata-celular.png` | Kata por banderas en el celular: los dos lados juntos, vista previa y las banderas de cada juez. |
