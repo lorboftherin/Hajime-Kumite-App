@@ -11,32 +11,54 @@ import base64
 import hashlib
 import hmac
 import os
-import threading
-import time
 from datetime import UTC, datetime, timedelta
 
 import jwt
 
 from app.config import get_settings
 
-_ITER = 390_000
+_ALGO = "pbkdf2_sha256"
 
 
-def hash_password(password: str) -> str:
+def hash_password(password: str, iterations: int | None = None) -> str:
+    iters = iterations or get_settings().password_iterations
     salt = os.urandom(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _ITER)
-    return f"pbkdf2_sha256${_ITER}${base64.b64encode(salt).decode()}${base64.b64encode(dk).decode()}"
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iters)
+    return f"{_ALGO}${iters}${base64.b64encode(salt).decode()}${base64.b64encode(dk).decode()}"
 
 
 def verify_password(password: str, stored: str) -> bool:
+    """Acepta hashes de cualquier coste: el número de iteraciones va en el propio hash."""
     try:
         algo, iters, salt_b64, hash_b64 = stored.split("$")
+        salt, expected, n = base64.b64decode(salt_b64), base64.b64decode(hash_b64), int(iters)
     except ValueError:
         return False
-    if algo != "pbkdf2_sha256":
+    if algo != _ALGO:
         return False
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), base64.b64decode(salt_b64), int(iters))
-    return hmac.compare_digest(dk, base64.b64decode(hash_b64))
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, n)
+    return hmac.compare_digest(dk, expected)
+
+
+def password_needs_rehash(stored: str) -> bool:
+    """True si el hash se hizo con otro coste que el configurado (se rehace al entrar)."""
+    try:
+        algo, iters, _, _ = stored.split("$")
+        return algo != _ALGO or int(iters) != get_settings().password_iterations
+    except ValueError:
+        return True
+
+
+# Hash de referencia para usuarios inexistentes: se verifica igual contra él para
+# que la respuesta tarde lo mismo y no delate qué usuarios existen.
+_DUMMY_HASH: str | None = None
+
+
+def burn_password_check(password: str) -> None:
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        _DUMMY_HASH = hash_password("usuario-inexistente")
+    verify_password(password, _DUMMY_HASH)
 
 
 def create_token(user_id: int, token_version: int = 0) -> str:
@@ -58,39 +80,3 @@ def decode_token(token: str) -> tuple[int, int] | None:
         return int(payload["sub"]), int(payload.get("tv", 0))
     except (jwt.PyJWTError, KeyError, ValueError):
         return None
-
-
-# ---------------------------------------------------------------------------
-# Límite de intentos de inicio de sesión (en memoria, por proceso)
-# ---------------------------------------------------------------------------
-
-MAX_FAILURES = 5
-WINDOW_SECONDS = 10 * 60
-LOCK_SECONDS = 5 * 60
-_failures: dict[str, list[float]] = {}
-_lock = threading.Lock()
-
-
-def login_locked_for(key: str) -> int:
-    """Segundos que faltan para poder reintentar (0 = permitido)."""
-    now = time.monotonic()
-    with _lock:
-        recent = [t for t in _failures.get(key, []) if now - t < WINDOW_SECONDS]
-        _failures[key] = recent
-        if len(recent) >= MAX_FAILURES:
-            remaining = LOCK_SECONDS - (now - recent[-1])
-            if remaining <= 0:
-                _failures.pop(key, None)  # cumplió el bloqueo: vuelve a empezar
-                return 0
-            return max(1, int(remaining))
-    return 0
-
-
-def register_login_failure(key: str) -> None:
-    with _lock:
-        _failures.setdefault(key, []).append(time.monotonic())
-
-
-def clear_login_failures(key: str) -> None:
-    with _lock:
-        _failures.pop(key, None)

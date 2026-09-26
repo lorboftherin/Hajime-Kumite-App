@@ -1,6 +1,8 @@
 """Cuentas: cambio de contraseña, administración de usuarios y límite de intentos."""
 
-from app import security
+from datetime import timedelta
+
+from app.services import login_guard
 
 
 def login(api, username, password):
@@ -50,13 +52,13 @@ def test_admin_deactivates_and_resets(client):
 def test_login_throttle(client, monkeypatch):
     api = client
     api.post("/users", {"username": "carla", "password": "inicial123"}, expect=201)
-    for _ in range(security.MAX_FAILURES):
+    for _ in range(login_guard.MAX_FAILURES):
         assert login(api, "carla", "mala").status_code == 401
     r = login(api, "carla", "inicial123")
     assert r.status_code == 429 and r.json()["error"]["code"] == "TOO_MANY_ATTEMPTS"
     # Pasado el bloqueo, vuelve a permitir
-    real = security.time.monotonic
-    monkeypatch.setattr(security.time, "monotonic", lambda: real() + security.LOCK_SECONDS + 1)
+    real = login_guard.utcnow
+    monkeypatch.setattr(login_guard, "utcnow", lambda: real() + login_guard.LOCK + timedelta(seconds=1))
     assert login(api, "carla", "inicial123").status_code == 200
 
 

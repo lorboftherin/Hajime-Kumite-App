@@ -8,6 +8,8 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from .errors import DomainError
+
 # ---------------------------------------------------------------------------
 # Grados: escala ordinal. 10.º kyu = 1 … 1.er kyu = 10, 1.er dan = 11, …
 # ---------------------------------------------------------------------------
@@ -18,14 +20,14 @@ _GRADE_RE = re.compile(r"^\s*(\d{1,2})\s*(kyu|dan)\s*$", re.IGNORECASE)
 def grade_to_ordinal(grade: str) -> int:
     m = _GRADE_RE.match(grade or "")
     if not m:
-        raise ValueError(f"Grado inválido: {grade!r} (use p. ej. '8 kyu' o '1 dan')")
+        raise DomainError(f"Grado inválido: {grade!r} (use p. ej. '8 kyu' o '1 dan')")
     n, kind = int(m.group(1)), m.group(2).lower()
     if kind == "kyu":
         if not 1 <= n <= 10:
-            raise ValueError("kyu debe estar entre 1 y 10")
+            raise DomainError("kyu debe estar entre 1 y 10")
         return 11 - n
     if not 1 <= n <= 10:
-        raise ValueError("dan debe estar entre 1 y 10")
+        raise DomainError("dan debe estar entre 1 y 10")
     return 10 + n
 
 

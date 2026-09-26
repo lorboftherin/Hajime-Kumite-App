@@ -50,7 +50,16 @@ def make_engine(url: str) -> Engine:
             # hilos atendiendo peticiones, para que nadie espere una libre.
             kwargs.update(pool_size=20, max_overflow=40)
     else:
-        kwargs.update(pool_pre_ping=True, pool_size=20, max_overflow=40, pool_recycle=1800)
+        # Pool por proceso, pequeño y configurable (ver db_pool_size en config.py).
+        # pool_pre_ping descarta las conexiones que Azure SQL cerró al pausarse.
+        s = get_settings()
+        kwargs.update(
+            pool_pre_ping=True,
+            pool_size=s.db_pool_size,
+            max_overflow=s.db_max_overflow,
+            pool_timeout=s.db_pool_timeout,
+            pool_recycle=1800,
+        )
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
         file_db = url not in ("sqlite://", "sqlite:///:memory:")

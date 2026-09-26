@@ -12,7 +12,12 @@ from sqlalchemy.engine import Engine
 BASELINE = "0001"
 # Base creada con create_all (sin Alembic): la revisión que corresponde según
 # qué tablas ya existen. La última que coincide manda.
-LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"), ("match_presence", "0004"))
+LEGACY_MARKERS = (
+    ("users", BASELINE),
+    ("teams", "0002"),
+    ("match_presence", "0004"),
+    ("login_attempts", "0005_intentos_login"),
+)
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)
 

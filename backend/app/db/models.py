@@ -589,3 +589,23 @@ class AuditEntry(Base):
     before: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     after: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     reason: Mapped[str | None] = mapped_column(Unicode(1000), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Seguridad
+# ---------------------------------------------------------------------------
+
+
+class LoginAttempt(Base):
+    """Intentos fallidos de inicio de sesión (ver app/services/login_guard.py).
+
+    Vive en la base y no en memoria para que el bloqueo valga igual en todos
+    los procesos y copias del servidor.
+    """
+
+    __tablename__ = "login_attempts"
+    # "u|<usuario>|<ip>" o "ip|<ip>"
+    key: Mapped[str] = mapped_column(String(160), primary_key=True)
+    failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    window_start: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)

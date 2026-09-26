@@ -78,4 +78,5 @@ abran la app (por ejemplo, el enlace «en vivo» compartido por WhatsApp).
 - `frontend/capacitor.config.ts` y `frontend/android/`: empaquetado.
   `core/mobile.service.ts` maneja el botón «atrás» de Android.
 - `backend/app/config.py`: el CORS acepta los orígenes de Capacitor
-  (`https://localhost`, `capacitor://localhost`).
+  (`https://localhost`, `capacitor://localhost`) en `dev` y `test`. En `prod`
+  hay que declararlos en `HAJIME_CORS_ORIGINS` (ver `docs/despliegue.md`).
