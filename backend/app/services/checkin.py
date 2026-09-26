@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 import secrets
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select
@@ -29,6 +29,7 @@ from app.api import schemas as s
 from app.api.errors import InvalidState, NotFound
 from app.db.base import utcnow
 from app.db.models import Category, Registration, RuleOverride, Tournament, User
+from app.domain.categories import parse_weight_range
 from app.domain.identity import normalize_name
 from app.services.audit import apply_warnings, audit, bump
 from app.services.registrations import get_registration, registration_out, suggestions, update_registration
@@ -45,46 +46,17 @@ CODE_LENGTH = 6
 # Rango de peso de una categoría
 # ---------------------------------------------------------------------------
 
-_NUM = r"(\d+(?:[.,]\d+)?)"
-
 
 def parse_weight_class(label: str | None) -> tuple[Decimal | None, Decimal | None]:
-    """Rango (mínimo, máximo) en kg a partir de la etiqueta ``weight_class``.
-
-    «-45» o «-45 kg» → (None, 45); «+68» → (68, None); «45-50» → (45, 50);
-    «45» → (None, 45). Una etiqueta que no se entiende → (None, None).
-
-    Al integrar con las reglas deportivas (``weight_min_kg``/``weight_max_kg``
-    en la categoría) esta función queda solo como respaldo para las
-    categorías que no tengan el rango explícito: ver :func:`weight_range`.
-    """
-    if not label:
-        return None, None
-    txt = label.strip().lower().replace("kg", "").replace("−", "-").replace("–", "-").replace(" ", "")
-    txt = txt.replace("menosde", "-").replace("masde", "+").replace("másde", "+")
-
-    def num(x: str) -> Decimal:
-        return Decimal(x.replace(",", "."))
-
-    try:
-        if m := re.fullmatch(_NUM + "-" + _NUM, txt):
-            lo, hi = num(m.group(1)), num(m.group(2))
-            return (lo, hi) if lo <= hi else (hi, lo)
-        if m := re.fullmatch(r"-" + _NUM, txt):
-            return None, num(m.group(1))
-        if m := re.fullmatch(r"\+" + _NUM, txt):
-            return num(m.group(1)), None
-        if m := re.fullmatch(_NUM, txt):
-            return None, num(m.group(1))
-    except InvalidOperation:  # pragma: no cover - el regex ya filtra
-        pass
-    return None, None
+    """Rango (mínimo, máximo) en kg de la etiqueta ``weight_class``: el mismo
+    parser de las reglas deportivas (:func:`app.domain.categories.parse_weight_range`)."""
+    return parse_weight_range(label)
 
 
 def weight_range(c: Category) -> tuple[Decimal | None, Decimal | None]:
-    """Rango de peso de la categoría: columnas explícitas si existen, si no la etiqueta."""
-    lo = getattr(c, "weight_min_kg", None)
-    hi = getattr(c, "weight_max_kg", None)
+    """Rango de peso de la categoría: ``weight_min_kg``/``weight_max_kg`` (reglas
+    deportivas); solo si faltan los dos, se deduce de la etiqueta."""
+    lo, hi = c.weight_min_kg, c.weight_max_kg
     if lo is not None or hi is not None:
         return (Decimal(str(lo)) if lo is not None else None, Decimal(str(hi)) if hi is not None else None)
     return parse_weight_class(c.weight_class)

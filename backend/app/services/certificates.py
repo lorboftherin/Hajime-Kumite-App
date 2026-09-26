@@ -6,8 +6,7 @@ descargan por categoría, por dojo (todos los de sus competidores) o por
 persona. Los textos de firma (nombre y cargo) y el organizador se editan por
 torneo (``certificate_*`` en ``tournaments``).
 
-TODO(entitlements): al integrar, estos PDF exigen la feature «certificates» del
-plan (``entitlements``); el chequeo va en los routers junto a los permisos.
+Las descargas exigen el derecho «certificates» del plan (:func:`require_certificates`).
 """
 
 from __future__ import annotations
@@ -24,20 +23,25 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import is_organizer, roles_of
+from app.api.deps import dojo_admin_ids, is_organizer, roles_of
 from app.api.errors import InvalidState
+from app.config import get_settings
 from app.db.models import (
     Category,
     CategoryResult,
+    Guardianship,
     KataPerformance,
     Match,
+    Person,
     Registration,
     Team,
     TeamMember,
     Tournament,
     User,
 )
+from app.services import entitlements, mail
 from app.services.checkin import NO_SHOW_REASON
+from app.services.claims import is_guardian
 from app.services.reports import AI, KASUMI, NEZUMI, SHU, SUMI, USUZUMI, _enso
 from app.services.tournaments import get_category, get_tournament
 
@@ -73,26 +77,36 @@ MONTHS = (
 
 
 def can_download_person(db: Session, user: User, tid: int, person_id: int) -> bool:
-    """Organizador del torneo o la propia persona.
-
-    TODO(cuentas): cuando existan cuentas de competidor con tutor, el tutor
-    de un menor también descarga sus diplomas: agregar aquí esa relación.
-    """
+    """Organizador del torneo, la propia persona (``users.person_id``) o su padre,
+    madre o apoderado verificado (``guardianships``)."""
     if is_organizer(db, user, tid):
         return True
-    return user.person_id is not None and user.person_id == person_id
+    if user.person_id is not None and user.person_id == person_id:
+        return True
+    return is_guardian(db, user, person_id)
 
 
 def can_download_dojo(db: Session, user: User, tid: int, dojo_id: int | None) -> bool:
-    """Organizador del torneo; con dojo, también su sensei o administrador de dojo."""
+    """Organizador del torneo; con dojo, también su administrador (``dojo_admin``,
+    el mismo rol del portal del dojo) o su sensei."""
     if is_organizer(db, user, tid):
         return True
     if dojo_id is None:
         return False
-    return any(
-        r.role in ("sensei", "dojo_admin") and r.scope_type == "dojo" and r.scope_id == dojo_id
-        for r in roles_of(db, user)
-    )
+    if dojo_id in dojo_admin_ids(db, user):
+        return True
+    return any(r.role == "sensei" and r.scope_type == "dojo" and r.scope_id == dojo_id for r in roles_of(db, user))
+
+
+def require_certificates(db: Session, user: User, t: Tournament, person_id: int | None = None) -> None:
+    """Derecho «certificates» (``app.services.entitlements``): lo paga la
+    organización del torneo; para los diplomas de una persona basta también que
+    ella tenga Competidor Plus. En marcha blanca siempre pasa."""
+    if person_id is not None:
+        person = db.get(Person, person_id)
+        if person is not None and entitlements.has(db, person, "certificates"):
+            return
+    entitlements.require_for_tournament(db, user, t, "certificates")
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +293,65 @@ def person_certificates(db: Session, person_id: int) -> list[dict[str, Any]]:
         key=lambda x: x["start_date"],
         reverse=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Aviso por correo (opcional: HAJIME_NOTIFY_DIPLOMAS)
+# ---------------------------------------------------------------------------
+
+
+def notify_diplomas_ready(db: Session, c: Category) -> int:
+    """Encola «Tus diplomas están listos» para cada persona que recibe diploma o
+    certificado en la categoría recién finalizada: a su cuenta (``users.person_id``)
+    y a su padre, madre o apoderado (``guardianships``), si tienen correo.
+
+    Va en la transacción de quien cierra la categoría. Apagado salvo
+    ``HAJIME_NOTIFY_DIPLOMAS=true``. Devuelve cuántos correos encoló.
+    """
+    if not get_settings().notify_diplomas:
+        return 0
+    db.flush()
+    names: dict[int, str] = {}
+    for p in participations(db, [c]):
+        for pid, name in _people(p):
+            if pid is not None:
+                names[pid] = name
+    if not names:
+        return 0
+    t = get_tournament(db, c.tournament_id)
+    owners = db.execute(
+        select(User.email, User.person_id).where(
+            User.person_id.in_(list(names)), User.is_active, User.email.is_not(None)
+        )
+    ).all()
+    tutors = db.execute(
+        select(User.email, Guardianship.person_id)
+        .join(Guardianship, Guardianship.user_id == User.id)
+        .where(Guardianship.person_id.in_(list(names)), User.is_active, User.email.is_not(None))
+    ).all()
+    base = get_settings().frontend_url()
+    sent: set[tuple[str, int]] = set()
+    for email, pid in [*owners, *tutors]:
+        key = (email.lower(), pid)
+        if not email or key in sent:
+            continue
+        sent.add(key)
+        paragraphs = [
+            f"La categoría «{c.name}» del torneo «{t.name}» terminó y el diploma de {names[pid]} ya está listo.",
+            "Puedes descargarlo desde «Mis perfiles» en Hajime.",
+        ]
+        mail.enqueue(
+            db,
+            email,
+            mail.render(
+                "Tus diplomas están listos · Hajime",
+                "Tus diplomas están listos",
+                paragraphs,
+                ("Ver mis perfiles", f"{base}/mis-perfiles"),
+            ),
+            kind="diplomas_ready",
+        )
+    return len(sent)
 
 
 # ---------------------------------------------------------------------------

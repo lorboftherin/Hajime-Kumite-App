@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
-from app.api.deps import is_staff
+from app.api.deps import ORG_ADMIN_ROLES, is_org_admin, is_org_member, memberships_of
 from app.api.errors import AppError, Forbidden, InvalidState, NotFound
 from app.db.models import CategoryTemplate, TemplateCategory, Tournament, User
 from app.domain.categories import grade_to_ordinal, ordinal_to_grade
@@ -30,25 +30,51 @@ FIELDS = list(s.CategoryFields.model_fields)
 
 
 def can_edit_template(db: Session, user: User, tpl: CategoryTemplate | None = None) -> bool:
-    """Quién edita plantillas: el Admin Global y los organizadores.
-
-    Punto único para extender: cuando las plantillas tengan organización
-    (``organization_id``), un organizador solo editará las de la suya; el
-    Admin, todas. ``tpl=None`` pregunta si puede crear una plantilla nueva.
-    """
+    """Quién edita una plantilla: el Admin Global, todas; owner/admin de la
+    organización dueña, las de ella. Las plantillas globales
+    (``organization_id`` NULL), solo el Admin."""
     if user.is_admin:
         return True
-    return is_staff(db, user)
+    if tpl is None or tpl.organization_id is None:
+        return False
+    return is_org_admin(db, user, tpl.organization_id)
 
 
-def ensure_can_edit(db: Session, user: User, tpl: CategoryTemplate | None = None) -> None:
+def can_create_in(db: Session, user: User, organization_id: int | None) -> bool:
+    """Crear una plantilla en la organización (``None`` = global: solo el Admin)."""
+    if user.is_admin:
+        return True
+    return organization_id is not None and is_org_admin(db, user, organization_id)
+
+
+def can_view_template(db: Session, user: User, tpl: CategoryTemplate) -> bool:
+    """Globales para todos; las de una organización, para sus miembros (y el Admin)."""
+    return tpl.organization_id is None or is_org_member(db, user, tpl.organization_id)
+
+
+def ensure_can_edit(db: Session, user: User, tpl: CategoryTemplate) -> None:
     if not can_edit_template(db, user, tpl):
-        raise Forbidden("Solo el Admin y los organizadores editan plantillas")
+        raise Forbidden("Solo el Admin edita plantillas globales; las de una organización, su owner o admin")
 
 
-def get_template(db: Session, template_id: int) -> CategoryTemplate:
+def ensure_can_create(db: Session, user: User, organization_id: int | None) -> None:
+    if not can_create_in(db, user, organization_id):
+        raise Forbidden("Elige una organización donde seas owner o admin (solo el Admin crea plantillas globales)")
+
+
+def default_org(db: Session, user: User) -> int | None:
+    """Organización donde el usuario puede crear plantillas si no indica una
+    (la primera donde es owner/admin); el Admin crea globales."""
+    if user.is_admin:
+        return None
+    admin_orgs = sorted(oid for oid, role in memberships_of(db, user).items() if role in ORG_ADMIN_ROLES)
+    return admin_orgs[0] if admin_orgs else None
+
+
+def get_template(db: Session, template_id: int, user: User | None = None) -> CategoryTemplate:
+    """Plantilla por id; con ``user``, solo si la puede ver (si no, 404 como si no existiera)."""
     t = db.get(CategoryTemplate, template_id)
-    if t is None:
+    if t is None or (user is not None and not can_view_template(db, user, t)):
         raise NotFound("Plantilla no encontrada")
     return t
 
@@ -80,7 +106,7 @@ def _touch(t: CategoryTemplate, user: User) -> None:
 
 
 def update_template(db: Session, user: User, tpl_id: int, data: s.TemplateUpdate) -> CategoryTemplate:
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     check_version(t, data.version, "La plantilla")
     changes = data.model_dump(exclude_unset=True, exclude={"version"})
@@ -94,15 +120,31 @@ def update_template(db: Session, user: User, tpl_id: int, data: s.TemplateUpdate
     return t
 
 
-def duplicate_template(db: Session, user: User, tpl_id: int, name: str | None) -> CategoryTemplate:
-    src = get_template(db, tpl_id)
-    ensure_can_edit(db, user, None)
-    t = CategoryTemplate(name=(name or f"{src.name} (copia)")[:200], description=src.description, updated_by_id=user.id)
+def duplicate_template(
+    db: Session, user: User, tpl_id: int, name: str | None, organization_id: int | None = None
+) -> CategoryTemplate:
+    src = get_template(db, tpl_id, user)
+    if organization_id is None:
+        organization_id = src.organization_id if can_create_in(db, user, src.organization_id) else default_org(db, user)
+    ensure_can_create(db, user, organization_id)
+    t = CategoryTemplate(
+        name=(name or f"{src.name} (copia)")[:200],
+        description=src.description,
+        organization_id=organization_id,
+        updated_by_id=user.id,
+    )
     db.add(t)
     db.flush()
     for it in src.items:
         db.add(TemplateCategory(template_id=t.id, **{f: getattr(it, f) for f in FIELDS}))
-    audit(db, user, "template", t.id, "duplicate", after={"from": src.id, "items": len(src.items)})
+    audit(
+        db,
+        user,
+        "template",
+        t.id,
+        "duplicate",
+        after={"from": src.id, "items": len(src.items), "organization_id": organization_id},
+    )
     db.commit()
     db.refresh(t)
     return t
@@ -110,7 +152,7 @@ def duplicate_template(db: Session, user: User, tpl_id: int, name: str | None) -
 
 def delete_template(db: Session, user: User, tpl_id: int) -> dict[str, Any]:
     """Borra la plantilla si ningún torneo la usó; si no, la archiva."""
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     if t.id in used_template_ids(db):
         if not t.is_archived:
@@ -128,7 +170,7 @@ def delete_template(db: Session, user: User, tpl_id: int) -> dict[str, Any]:
 
 
 def add_item(db: Session, user: User, tpl_id: int, data: s.CategoryFields) -> TemplateCategory:
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     fields = data.model_dump()
     _check_codes([*({"code": i.code} for i in t.items), fields])
@@ -152,7 +194,7 @@ def _get_item(db: Session, tpl_id: int, item_id: int) -> TemplateCategory:
 
 
 def update_item(db: Session, user: User, tpl_id: int, item_id: int, data: s.TemplateItemUpdate) -> TemplateCategory:
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     it = _get_item(db, tpl_id, item_id)
     changes = data.model_dump(exclude_unset=True)
@@ -172,7 +214,7 @@ def update_item(db: Session, user: User, tpl_id: int, item_id: int, data: s.Temp
 
 
 def delete_item(db: Session, user: User, tpl_id: int, item_id: int) -> None:
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     it = _get_item(db, tpl_id, item_id)
     audit(db, user, "template", t.id, "delete_item", before={"id": it.id, "code": it.code, "name": it.name})
@@ -187,7 +229,7 @@ def replace_items(db: Session, user: User, tpl_id: int, data: s.TemplateItemsRep
     Filas con ``id`` se actualizan, sin ``id`` se crean y las que ya no vienen
     se borran. El orden de la lista es el orden de la plantilla.
     """
-    t = get_template(db, tpl_id)
+    t = get_template(db, tpl_id, user)
     ensure_can_edit(db, user, t)
     check_version(t, data.version, "La plantilla")
     rows = [r.model_dump() for r in data.items]
@@ -388,14 +430,27 @@ def parse_excel(content: bytes) -> tuple[dict[str, str], list[s.CategoryFields]]
 
 
 def import_excel(
-    db: Session, user: User, content: bytes, filename: str, template_id: int | None = None
+    db: Session,
+    user: User,
+    content: bytes,
+    filename: str,
+    template_id: int | None = None,
+    organization_id: int | None = None,
 ) -> CategoryTemplate:
-    """Sin ``template_id`` crea una plantilla nueva; con él, reemplaza sus categorías."""
+    """Sin ``template_id`` crea una plantilla nueva (en ``organization_id`` o la del
+    usuario); con él, reemplaza sus categorías."""
+    if template_id is None:
+        organization_id = organization_id if organization_id is not None else default_org(db, user)
+        ensure_can_create(db, user, organization_id)
     meta, items = parse_excel(content)
     if template_id is None:
-        ensure_can_edit(db, user, None)
         name = meta.get("name") or filename.rsplit(".", 1)[0] or "Plantilla importada"
-        t = CategoryTemplate(name=name[:200], description=meta.get("description", "")[:1000], updated_by_id=user.id)
+        t = CategoryTemplate(
+            name=name[:200],
+            description=meta.get("description", "")[:1000],
+            organization_id=organization_id,
+            updated_by_id=user.id,
+        )
         db.add(t)
         db.flush()
         for it in items:
@@ -404,6 +459,6 @@ def import_excel(
         db.commit()
         db.refresh(t)
         return t
-    t = get_template(db, template_id)
+    t = get_template(db, template_id, user)
     rows = [s.TemplateItemRow(**it.model_dump()) for it in items]
     return replace_items(db, user, t.id, s.TemplateItemsReplace(version=t.version, items=rows))

@@ -4,6 +4,7 @@ import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { AuthService } from './auth.service';
 import { SessionExpiredService } from './session-expired.service';
+import { ToastService } from './toast.service';
 import { apiBase } from './server';
 
 /** Agrega el JWT como Bearer a las llamadas a la API. */
@@ -55,9 +56,16 @@ function toApiError(err: HttpErrorResponse): Observable<never> {
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const expired = inject(SessionExpiredService);
+  const toast = inject(ToastService);
   return next(req).pipe(
     catchError((err: unknown) => {
       if (!(err instanceof HttpErrorResponse)) return throwError(() => ApiError.from(err));
+      if (err.status === 402) {
+        // Plan requerido: aviso claro con «Ver planes», venga de donde venga la petición.
+        const e = ApiError.from(err);
+        if (e.planRequired) toast.planRequired(e.message);
+        return throwError(() => e);
+      }
       if (err.status !== 401 || endsWithAny(req.url, CREDENTIAL_PATHS) || endsWithAny(req.url, SESSION_PATHS)) {
         return toApiError(err);
       }

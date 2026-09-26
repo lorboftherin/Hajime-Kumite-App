@@ -29,6 +29,7 @@ class EventType(StrEnum):
     KIKEN = "kiken"  # color que abandona
     SHIKKAKU = "shikkaku"  # color descalificado
     WALKOVER = "walkover"  # color que NO se presenta
+    GOLDEN_POINT = "golden_point"  # empieza el periodo extra de punto de oro
     FINISH = "finish"  # color ganador + method
 
 
@@ -46,6 +47,28 @@ class TimeMode(StrEnum):
 DEFAULT_SANCTIONS = ["Chui 1", "Chui 2", "Chui 3", "Hansoku-chui", "Hansoku"]
 
 
+class SanctionPreset(StrEnum):
+    """Escaleras de faltas: una sola (actual) o dos categorías separadas
+    (categoría 1: contacto; categoría 2: el resto), como el reglamento WKF
+    anterior a 2019."""
+
+    SINGLE = "single"
+    TWO_CATEGORIES = "two_categories"
+
+
+# Tipo de falta (opcional en cada sanción). La categoría indica a qué escalera
+# va con el preset de dos categorías; "other" la elige la mesa.
+INFRACTIONS: dict[str, tuple[str, str | None]] = {
+    "excessive_contact": ("Contacto excesivo", "c1"),
+    "jogai": ("Jogai (salida del área)", "c2"),
+    "mubobi": ("Mubobi (se pone en peligro)", "c2"),
+    "simulation": ("Simulación o exageración", "c2"),
+    "avoiding": ("Evasión del combate", "c2"),
+    "other": ("Otra", None),
+}
+LADDERS = ("c1", "c2")
+
+
 @dataclass(frozen=True)
 class KumiteRules:
     duration_seconds: int = 120
@@ -55,10 +78,37 @@ class KumiteRules:
     lead_victory: int | None = 8
     tie_rule: TieRule = TieRule.HANTEI
     sanction_levels: tuple[str, ...] = tuple(DEFAULT_SANCTIONS)
+    # Faltas en dos escaleras (por defecto una sola, como hasta ahora).
+    sanction_preset: SanctionPreset = SanctionPreset.SINGLE
+    sanction_levels_c2: tuple[str, ...] | None = None  # None = la misma lista que la categoría 1
+    # Senshu perdido automáticamente si su poseedor recibe una sanción de
+    # nivel >= ``senshu_loss_level`` en los últimos ``senshu_loss_last_seconds``
+    # del tiempo reglamentario. Apagado por defecto (la mesa usa senshu_cancel).
+    senshu_auto_loss: bool = False
+    senshu_loss_level: int = 1
+    senshu_loss_last_seconds: int = 15
+    # Punto de oro: periodo extra cronometrado (0 = sin límite de tiempo).
+    golden_point_seconds: int = 60
 
     @property
     def hansoku_level(self) -> int:
         return len(self.sanction_levels)
+
+    @property
+    def levels_c2(self) -> tuple[str, ...]:
+        return self.sanction_levels_c2 or self.sanction_levels
+
+    @property
+    def two_ladders(self) -> bool:
+        return self.sanction_preset == SanctionPreset.TWO_CATEGORIES
+
+    def ladder_of(self, infraction: str | None, ladder: str | None) -> str:
+        """Escalera de una sanción: con una sola escalera siempre "c1"."""
+        if not self.two_ladders:
+            return "c1"
+        if ladder in LADDERS:
+            return ladder
+        return (INFRACTIONS.get(infraction or "") or ("", None))[1] or "c1"
 
 
 @dataclass(frozen=True)
@@ -71,13 +121,20 @@ class MatchEvent:
     target_id: str | None = None
     method: str | None = None
     reason: str | None = None
+    infraction: str | None = None  # tipo de falta (INFRACTIONS), opcional
+    ladder: str | None = None  # "c1" | "c2" con el preset de dos categorías
 
 
 @dataclass
 class Scoreboard:
     score: dict[str, int] = field(default_factory=lambda: {AKA: 0, AO: 0})
     sanction: dict[str, int] = field(default_factory=lambda: {AKA: 0, AO: 0})  # nivel más alto
+    # Segunda escalera (preset de dos categorías); siempre 0 con una sola.
+    sanction_c2: dict[str, int] = field(default_factory=lambda: {AKA: 0, AO: 0})
     senshu: str | None = None
+    senshu_lost: list[str] = field(default_factory=list)  # colores que perdieron el senshu (manual o automático)
+    golden_point: bool = False  # en periodo de punto de oro
+    golden_point_winner: str | None = None  # primer punto del periodo
     elapsed_seconds: float = 0.0
     running: bool = False
     started: bool = False
@@ -131,6 +188,10 @@ def compute_scoreboard(events: list[MatchEvent], rules: KumiteRules, now: dateti
     senshu_cancelled: set[str] = set()
     auto_pause = rules.time_mode == TimeMode.EFFECTIVE and rules.auto_pause_on_point
 
+    def elapsed_at(at: datetime) -> float:
+        extra = (at - run_since).total_seconds() if run_since is not None else 0.0
+        return sb.elapsed_seconds + extra
+
     # Un punto anulado no cuenta para el marcador, pero la pausa automática que
     # provocó sí ocurrió en el tatami: el reloj estuvo detenido hasta el
     # siguiente "resume". Por eso el efecto sobre el tiempo se conserva.
@@ -156,12 +217,25 @@ def compute_scoreboard(events: list[MatchEvent], rules: KumiteRules, now: dateti
         elif e.type == EventType.POINT and e.color in COLORS:
             if sb.senshu is None and sb.score[AKA] == 0 and sb.score[AO] == 0:
                 sb.senshu = e.color
+            if sb.golden_point and sb.golden_point_winner is None:
+                sb.golden_point_winner = e.color
             sb.score[e.color] += int(e.value or 0)
             if auto_pause and run_since is not None:
                 sb.elapsed_seconds += (e.at - run_since).total_seconds()
                 run_since = None
         elif e.type == EventType.SANCTION and e.color in COLORS:
-            sb.sanction[e.color] = max(sb.sanction[e.color], int(e.value or 0))
+            level = int(e.value or 0)
+            ladder = sb.sanction_c2 if rules.ladder_of(e.infraction, e.ladder) == "c2" else sb.sanction
+            ladder[e.color] = max(ladder[e.color], level)
+            if (
+                rules.senshu_auto_loss
+                and sb.senshu == e.color
+                and level >= rules.senshu_loss_level
+                and elapsed_at(e.at) >= rules.duration_seconds - rules.senshu_loss_last_seconds
+            ):
+                senshu_cancelled.add(e.color)
+        elif e.type == EventType.GOLDEN_POINT:
+            sb.golden_point = True
         elif e.type == EventType.SENSHU_CANCEL and e.color in COLORS:
             senshu_cancelled.add(e.color)
         elif e.type == EventType.HANTEI:
@@ -180,6 +254,7 @@ def compute_scoreboard(events: list[MatchEvent], rules: KumiteRules, now: dateti
                 sb.elapsed_seconds += (e.at - run_since).total_seconds()
                 run_since = None
 
+    sb.senshu_lost = sorted(senshu_cancelled)
     if sb.senshu in senshu_cancelled:
         sb.senshu = None
     if run_since is not None:
@@ -198,10 +273,26 @@ class Decision:
     reason: str | None = None
 
 
+def period_seconds(sb: Scoreboard, rules: KumiteRules) -> float | None:
+    """Duración del periodo en curso: la reglamentaria o, en punto de oro,
+    la reglamentaria más el periodo extra (``None`` = punto de oro sin límite)."""
+    if not sb.golden_point:
+        return float(rules.duration_seconds)
+    if not rules.golden_point_seconds:
+        return None
+    return float(rules.duration_seconds + rules.golden_point_seconds)
+
+
+def is_time_over(sb: Scoreboard, rules: KumiteRules) -> bool:
+    limit = period_seconds(sb, rules)
+    return limit is not None and sb.elapsed_seconds >= limit
+
+
 def suggest_decision(sb: Scoreboard, rules: KumiteRules, time_over: bool) -> Decision:
     """Ganador que el sistema sugiere según el estado del marcador.
 
-    La mesa confirma (o corrige) con un evento ``finish``.
+    La mesa confirma (o corrige) con un evento ``finish``. En punto de oro,
+    ``time_over`` se refiere al fin del periodo extra.
     """
     if sb.walkover:
         return Decision(other(sb.walkover), "walkover")
@@ -210,13 +301,19 @@ def suggest_decision(sb: Scoreboard, rules: KumiteRules, time_over: bool) -> Dec
     if sb.kiken:
         return Decision(other(sb.kiken), "kiken")
     for c in COLORS:
-        if sb.sanction[c] >= rules.hansoku_level:
+        if sb.sanction[c] >= rules.hansoku_level or (rules.two_ladders and sb.sanction_c2[c] >= len(rules.levels_c2)):
             return Decision(other(c), "hansoku")
     diff = sb.score[AKA] - sb.score[AO]
     if rules.lead_victory and abs(diff) >= rules.lead_victory:
         return Decision(AKA if diff > 0 else AO, "point_gap")
     if sb.hantei:
         return Decision(sb.hantei, "hantei")
+    if sb.golden_point:
+        if sb.golden_point_winner:
+            return Decision(sb.golden_point_winner, "golden_point")
+        if time_over:
+            return Decision(None, None, needs="hantei", reason="Punto de oro sin puntos: decisión de jueces")
+        return Decision(None, None)
     if not time_over:
         return Decision(None, None)
     if diff:

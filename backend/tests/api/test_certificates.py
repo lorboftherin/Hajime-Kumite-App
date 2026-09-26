@@ -113,6 +113,37 @@ def test_person_and_dojo_downloads_and_permissions(client):
     assert api.raw("GET", f"/persons/{pid}/certificates", headers=h).status_code == 200
     assert api.raw("GET", f"/persons/{other}/certificates", headers=h).status_code == 403
 
+    # El padre, madre o apoderado verificado también.
+    from sqlalchemy import select
+
+    from app.db import base
+    from app.db.models import Guardianship, User
+
+    api.post("/users", {"username": "mama", "password": "secret123"}, expect=201)
+    tok = api.c.post("/api/v1/auth/login", json={"username": "mama", "password": "secret123"}).json()["access_token"]
+    hg = {"Authorization": f"Bearer {tok}"}
+    assert api.raw("GET", f"/tournaments/{t['id']}/persons/{other}/diplomas.pdf", headers=hg).status_code == 403
+    db = next(base.get_session())
+    uid = db.scalar(select(User.id).where(User.username == "mama"))
+    db.add(Guardianship(user_id=uid, person_id=other, relation="parent"))
+    db.commit()
+    db.close()
+    assert api.raw("GET", f"/tournaments/{t['id']}/persons/{other}/diplomas.pdf", headers=hg).status_code == 200
+    assert api.raw("GET", f"/persons/{other}/certificates", headers=hg).status_code == 200
+
+    # El administrador del dojo (portal del dojo) descarga los de su dojo.
+    dojo_a = regs[0]["dojo_id"]
+    da = api.person("Admin", "Del Dojo", dojo_a)
+    api.post(f"/persons/{da['id']}/roles", {"role": "dojo_admin", "scope_type": "dojo", "scope_id": dojo_a}, expect=201)
+    api.post("/users", {"username": "dojoadmin", "password": "secret123", "person_id": da["id"]}, expect=201)
+    tok = api.c.post("/api/v1/auth/login", json={"username": "dojoadmin", "password": "secret123"}).json()[
+        "access_token"
+    ]
+    hd = {"Authorization": f"Bearer {tok}"}
+    url0 = f"/tournaments/{t['id']}/diplomas.pdf"
+    assert api.raw("GET", url0, params={"dojo_id": dojo_a}, headers=hd).status_code == 200
+    assert api.raw("GET", url0, params={"dojo_id": regs[1]["dojo_id"]}, headers=hd).status_code == 403
+
     # El sensei del dojo descarga los de su dojo.
     dojo_id = regs[1]["dojo_id"]
     s = api.person("Sensei", "Del Dojo", dojo_id)
@@ -143,3 +174,56 @@ def test_signer_texts_are_editable(client):
         "Rosa Quispe",
         "Presidenta",
     )
+
+
+def test_certificates_require_plan_when_enforced(client, monkeypatch):
+    from app.config import get_settings
+    from tests.api.test_organizaciones import new_tournament, org_with_owner
+
+    api = client
+    org, owner, _ = org_with_owner(api, "Liga Diplomas", "duena_dip")
+    t = new_tournament(owner, org["id"], is_test=True)
+    owner.patch(f"/tournaments/{t['id']}/status", {"status": "registration_open", "version": t["version"]})
+    c, regs = category_with(api, t["id"], 2)
+    play_out(api, c["id"])
+    monkeypatch.setattr(get_settings(), "billing_mode", "enforced")
+    r = owner.raw("GET", f"/categories/{c['id']}/diplomas.pdf")
+    assert r.status_code == 402 and r.json()["error"]["details"]["feature"] == "certificates"
+    assert owner.raw("GET", f"/tournaments/{t['id']}/diplomas.pdf").status_code == 402
+    # El Admin Global no se bloquea.
+    assert api.raw("GET", f"/categories/{c['id']}/diplomas.pdf").status_code == 200
+
+
+def test_diplomas_ready_email_is_optional(client, monkeypatch):
+    from app.config import get_settings
+    from app.db import base
+    from app.services import mail
+
+    api = client
+
+    def setup(tag):
+        t = setup_tournament(api)
+        c, regs = category_with(api, t["id"], 2, code=tag)
+        pid = regs[0]["person_id"]
+        uid = api.post("/users", {"username": f"u{tag}", "password": "secret123", "person_id": pid}, expect=201)["id"]
+        api.patch(f"/users/{uid}", {"email": f"{tag.lower()}@example.com"})
+        return c
+
+    mail.CONSOLE_OUTBOX.clear()
+    c = setup("OFF")
+    mail.drain(base.session_factory())
+    mail.CONSOLE_OUTBOX.clear()
+    play_out(api, c["id"])
+    mail.drain(base.session_factory())
+    assert not [m for m in mail.CONSOLE_OUTBOX if "diplomas" in m.subject.lower()]
+
+    monkeypatch.setattr(get_settings(), "notify_diplomas", True)
+    c = setup("ON")
+    mail.drain(base.session_factory())
+    mail.CONSOLE_OUTBOX.clear()
+    play_out(api, c["id"])
+    mail.drain(base.session_factory())
+    sent = [m for m in mail.CONSOLE_OUTBOX if "diplomas" in m.subject.lower()]
+    assert [m.to for m in sent] == ["on@example.com"]
+    assert c["name"] in sent[0].text
+    mail.CONSOLE_OUTBOX.clear()

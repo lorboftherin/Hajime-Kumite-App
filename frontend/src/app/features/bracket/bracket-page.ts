@@ -8,7 +8,17 @@ import { ApiService } from '../../core/api.service';
 import { DialogService } from '../../core/dialog.service';
 import { FilesService } from '../../core/files.service';
 import { FORMAT_LABEL, METHOD_LABEL, THIRD_PLACE_LABEL } from '../../core/format';
-import { Bracket, BracketVersion, Category, Match, SuggestedJudges, Tournament } from '../../core/models';
+import {
+  Bracket,
+  BracketChange,
+  BracketVersion,
+  Category,
+  KataCatalog,
+  Match,
+  Registration,
+  SuggestedJudges,
+  Tournament,
+} from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { StatusBadge } from '../../shared/badge';
 import { Hanko } from '../../shared/hanko';
@@ -29,6 +39,15 @@ const PLACE: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const KIND_LABEL: Record<string, string> = {
   third_place: 'Combate por el 3.º puesto',
   repechage: 'Repechaje',
+};
+
+const CHANGE_TEXT: Record<string, string> = {
+  bye: 'ocupa un bye de primera ronda',
+  round_robin: 'se agregaron sus combates',
+  kata_rounds: 'entra al final del orden de salida',
+  walkover: 'pierde por walkover su combate pendiente',
+  walkover_pending: 'perderá por walkover en cuanto se conozca a su rival',
+  none: 'no tenía combates por disputar',
 };
 
 @Component({
@@ -68,6 +87,16 @@ export class BracketPage {
   // Historial
   readonly versions = signal<BracketVersion[] | null>(null);
 
+  // Añadir o quitar de la llave ya generada
+  readonly entrantMode = signal<'add' | 'remove' | null>(null);
+  readonly categoryRegs = signal<Registration[]>([]);
+  entrant = { registration_id: null as number | null, reason: '' };
+
+  // Catálogo de katas (autocompletar)
+  readonly catalog = signal<string[]>([]);
+  /** Notas atléticas (con notas técnico / atléticas). */
+  athleticInputs: Array<number | null> = [];
+
   // Kata por puntuación
   readonly scoring = signal<number | null>(null); // registration_id en edición
   scoreInputs: Array<number | null> = [];
@@ -82,7 +111,7 @@ export class BracketPage {
 
   readonly mainRounds = computed(() => {
     const b = this.bracket();
-    if (!b || b.format !== 'single_elimination') return [];
+    if (!b || !['single_elimination', 'groups_knockout'].includes(b.format)) return [];
     const main = b.matches.filter((m) => m.kind === 'main');
     const n = Math.max(0, ...main.map((m) => m.round));
     const rounds: Array<{ round: number; label: string; matches: Match[] }> = [];
@@ -98,7 +127,7 @@ export class BracketPage {
 
   readonly extraMatches = computed(() =>
     (this.bracket()?.matches ?? [])
-      .filter((m) => m.kind !== 'main')
+      .filter((m) => m.kind !== 'main' && m.kind !== 'group')
       .sort((a, b) => a.kind.localeCompare(b.kind) || a.round - b.round || a.position - b.position),
   );
 
@@ -114,19 +143,53 @@ export class BracketPage {
 
   readonly tiedRows = computed(() => this.kataRows().filter((r) => r['tied']));
 
-  readonly judges = computed(() => {
-    const c = this.category();
-    const d = (this.tournament()?.kata_defaults ?? {}) as Record<string, any>;
-    const method = c?.kata_method ?? d['method'] ?? 'flags';
-    return Number(c?.kata_judges ?? d['judges'] ?? (method === 'scores' ? 5 : 3));
+  /** Grupos (formato grupos + eliminación) con sus combates. */
+  readonly groupTables = computed(() => {
+    const b = this.bracket();
+    if (!b?.groups) return [];
+    const matches = b.matches.filter((m) => m.kind === 'group');
+    return b.groups.map((g) => ({
+      ...g,
+      matches: matches
+        .filter((m) => m.code.startsWith('G' + g.letter))
+        .sort((a, b) => a.round - b.round || a.position - b.position),
+    }));
   });
 
-  /** Notas descartadas por lado; igual que el backend: 0 con 3 jueces, si no 1 (o la configuración del torneo). */
-  readonly discards = computed(() => {
-    const d = (this.tournament()?.kata_defaults ?? {}) as Record<string, any>;
-    const cfg = d['discard_each_side'];
-    if (cfg !== undefined && cfg !== null && cfg !== '') return Number(cfg);
-    return this.judges() === 3 ? 0 : 1;
+  /** Kata: configuración efectiva (torneo → categoría, con el preset WKF), igual que el backend. */
+  readonly kataCfg = computed(() => {
+    const c = this.category();
+    const explicit = {
+      ...((this.tournament()?.kata_defaults ?? {}) as Record<string, any>),
+      ...((c?.kata_rules ?? {}) as Record<string, any>),
+    };
+    const method = c?.kata_method ?? explicit['method'] ?? 'flags';
+    let judges = Number(c?.kata_judges ?? explicit['judges'] ?? (method === 'scores' ? 5 : 3));
+    let discard = explicit['discard_each_side'];
+    let split = !!explicit['split'];
+    if (explicit['preset'] === 'wkf') {
+      if (!c?.kata_judges && explicit['judges'] === undefined) judges = 7;
+      if (discard === undefined || discard === null) discard = 2;
+      if (explicit['split'] === undefined) split = true;
+    }
+    return {
+      method,
+      judges,
+      discard: discard === undefined || discard === null || discard === '' ? (judges === 3 ? 0 : 1) : Number(discard),
+      split,
+    };
+  });
+
+  readonly judges = computed(() => this.kataCfg().judges);
+
+  /** Notas descartadas por lado; igual que el backend: 0 con 3 jueces, si no 1 (o la configuración). */
+  readonly discards = computed(() => this.kataCfg().discard);
+
+  /** Rondas de kata: la ronda en curso ya empezó si alguien tiene nota. */
+  readonly roundStarted = computed(() => this.kataRows().some((r) => (r['scores'] ?? []).length));
+  readonly previousRounds = computed(() => {
+    const kr = this.bracket()?.kata_rounds;
+    return kr ? kr.rounds.filter((r) => r.round < kr.current) : [];
   });
 
   /** Notas en orden de juez, con un decimal y marcando las descartadas (las k más bajas y las k más altas). */
@@ -341,6 +404,9 @@ export class BracketPage {
     const n = this.judges();
     const prev = (row['scores'] as number[] | null) ?? [];
     this.scoreInputs = Array.from({ length: n }, (_, i) => prev[i] ?? null);
+    const prevAth = (row['athletic_scores'] as number[] | null) ?? [];
+    this.athleticInputs = Array.from({ length: n }, (_, i) => prevAth[i] ?? null);
+    this.loadCatalog();
     const prevJudges = (row['judge_person_ids'] as Array<number | null> | null) ?? [];
     const assigned = this.judgeOptions()?.assigned ?? [];
     this.judgeInputs = Array.from({ length: n }, (_, i) => prevJudges[i] ?? assigned[i]?.person_id ?? null);
@@ -359,7 +425,13 @@ export class BracketPage {
 
   async saveScore(row: Record<string, any>): Promise<void> {
     const scores = this.scoreInputs.map((x) => Math.round(Number(x) * 10) / 10);
-    if (scores.some((x) => isNaN(x) || x === null)) {
+    const athletic = this.athleticInputs.map((x) => Math.round(Number(x) * 10) / 10);
+    const split = this.kataCfg().split;
+    if (
+      [...scores, ...(split ? athletic : [])].some((x) => isNaN(x) || x === null) ||
+      this.scoreInputs.some((x) => x === null) ||
+      (split && this.athleticInputs.some((x) => x === null))
+    ) {
       this.dialog.alert('Notas incompletas', 'Ingresa la nota de cada juez (un decimal).');
       return;
     }
@@ -368,6 +440,8 @@ export class BracketPage {
       {
         registration_id: row['registration_id'],
         scores,
+        athletic_scores: split ? athletic : null,
+        round_number: row['round_number'] ?? null,
         judge_person_ids: this.judgeInputs.some((x) => x !== null) ? this.judgeInputs : null,
         kata_name: this.kataName || null,
         version: row['version'],
@@ -377,6 +451,77 @@ export class BracketPage {
     if (res) {
       this.bracket.set(res);
       this.scoring.set(null);
+    }
+  }
+
+  private loadCatalog(): void {
+    if (this.catalog().length) return;
+    this.api.get<KataCatalog>('/kata-catalog').subscribe({ next: (c) => this.catalog.set(c.katas), error: () => {} });
+  }
+
+  /** Orden de salida de la ronda en curso: subir o bajar a alguien. */
+  async moveOrder(i: number, dir: -1 | 1): Promise<void> {
+    const ids = this.kataRows().map((r) => r['registration_id'] as number);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    const res = await this.mut.put<Bracket>(`/categories/${this.catId()}/kata-order`, { registration_ids: ids });
+    if (res) this.bracket.set(res);
+  }
+
+  // --- Añadir o quitar de la llave ya generada ---
+  async openEntrants(mode: 'add' | 'remove'): Promise<void> {
+    const c = this.category();
+    if (!c) return;
+    this.entrant = { registration_id: null, reason: '' };
+    try {
+      this.categoryRegs.set(
+        await firstValueFrom(
+          this.api.get<Registration[]>(`/tournaments/${c.tournament_id}/registrations`, {
+            category_id: c.id,
+            include_withdrawn: false,
+          }),
+        ),
+      );
+    } catch (e) {
+      this.dialog.alert('Error', ApiError.from(e).fullMessage);
+      return;
+    }
+    this.entrantMode.set(mode);
+  }
+
+  /** Para añadir: inscritos activos que no están en la llave; para quitar: los que sí están. */
+  readonly entrantChoices = computed(() => {
+    const b = this.bracket();
+    const inBracket = new Set<number>([
+      ...((b?.slots ?? []).filter((x) => x !== null) as number[]),
+      ...(b?.standings ?? []).map((s) => s['registration_id'] as number),
+    ]);
+    const regs = this.categoryRegs();
+    return this.entrantMode() === 'add'
+      ? regs.filter((r) => !inBracket.has(r.id))
+      : regs.filter((r) => inBracket.has(r.id));
+  });
+
+  async saveEntrant(): Promise<void> {
+    const mode = this.entrantMode();
+    const b = this.bracket();
+    if (!mode || !b || !this.entrant.registration_id) return;
+    const path = `/categories/${this.catId()}/bracket/entrants${mode === 'remove' ? '/remove' : ''}`;
+    const res = await this.mut.post<BracketChange>(
+      path,
+      { registration_id: this.entrant.registration_id, reason: this.entrant.reason, version: b.version },
+      { onConflict: () => this.load() },
+    );
+    if (res) {
+      const who = this.categoryRegs().find((r) => r.id === this.entrant.registration_id)?.person_name ?? '';
+      this.dialog.alert(
+        mode === 'add' ? 'Añadido a la llave' : 'Quitado de la llave',
+        `${who}: ${CHANGE_TEXT[res.result.mode] ?? res.result.mode}. Se guardó la versión v${res.bracket.version_number}.`,
+      );
+      this.entrantMode.set(null);
+      this.bracket.set(res.bracket);
+      this.load();
     }
   }
 

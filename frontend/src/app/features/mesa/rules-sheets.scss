@@ -1,0 +1,146 @@
+/* Hojas de la mesa para reglas configurables: tipo de falta, hantei y
+   notas de kata en llave. Usan la paleta de la mesa (--y-*, definida en .mesa). */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 7, 6, 0.74);
+  backdrop-filter: blur(3px);
+}
+
+.rsheet {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: var(--y-panel, #1b1917);
+  border: 1px solid var(--y-line, #34302b);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  color: var(--y-text, #f5f0e6);
+  h3 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+}
+
+.opts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  &.two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--y-line, #34302b);
+  background: var(--y-panel-2, #24211e);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  small {
+    color: var(--y-dim, #a79f91);
+  }
+  &.on {
+    border-color: currentColor;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+  &.aka {
+    color: var(--shu, #d9534a);
+  }
+  &.ao {
+    color: var(--ai, #5a83c0);
+  }
+}
+
+.withvotes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--y-dim, #a79f91);
+}
+
+.jcount,
+.acts {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.jcount {
+  justify-content: flex-start;
+}
+
+.votes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vrow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.flag {
+  min-height: 44px;
+  min-width: 84px;
+  border-radius: 10px;
+  border: 1px solid var(--y-line, #34302b);
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  &.aka.on {
+    background: var(--shu, #d9534a);
+    color: #fff;
+  }
+  &.ao.on {
+    background: var(--ai, #5a83c0);
+    color: #fff;
+  }
+}
+
+.qbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 240, 230, 0.3);
+  background: transparent;
+  color: var(--y-text, #f5f0e6);
+  font-weight: 600;
+  cursor: pointer;
+  &.primary {
+    background: var(--y-text, #f5f0e6);
+    color: var(--y-bg, #121110);
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.warn {
+  margin: 0;
+  color: var(--yamabuki, #d4a64a);
+}

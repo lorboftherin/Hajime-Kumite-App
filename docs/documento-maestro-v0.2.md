@@ -295,8 +295,8 @@ La llave se genera separando competidores del mismo dojo en las rondas iniciales
 | Final directa | 2 inscritos | MVP-2 |
 | Round robin | 3 a 5 inscritos, a criterio del organizador | MVP-2 |
 | Rondas de kata por puntuación | Ver sección 19 | MVP-2 |
-| Grupos + eliminación | Categorías grandes | Futuro |
-| Doble eliminación | A evaluar | Futuro |
+| Grupos + eliminación | Categorías grandes | Implementado (`groups_knockout`, configurable) |
+| Doble eliminación | A evaluar | Fuera de alcance por ahora |
 
 ### Algoritmo de generación (eliminación directa)
 
@@ -312,7 +312,10 @@ La llave se genera separando competidores del mismo dojo en las rondas iniciales
 - Mover o intercambiar competidores entre posiciones, agregar o quitar byes.
 - Regenerar la llave completa solo si no hay combates iniciados; si los hay, la edición es manual y se advierte.
 - Retiro después de publicada: regenerar (si no empezó) o walkover al rival.
+- Inscripción tardía con la llave generada: ocupa un bye de primera ronda no disputado (el que mejor separa dojos); quitar de la llave deja bye o walkover; el cambio de categoría el día del torneo combina ambas con advertencia.
 - Cada versión de la llave queda guardada.
+
+Todas las opciones configurables de llaves, round robin, repechaje, separación y categorías (cupo, división, rango de peso, modo de edad) están en [reglas-configurables.md](reglas-configurables.md).
 
 ### Terceros lugares
 
@@ -326,7 +329,7 @@ La regla se configura por torneo y se puede sobrescribir por categoría. Cambia 
 
 ### Round robin
 
-Todos contra todos. Clasificación por victorias; desempate configurable (enfrentamiento directo, luego diferencia de puntos, luego puntos a favor).
+Todos contra todos. Clasificación por victorias; desempate configurable (por defecto: enfrentamiento directo, luego diferencia de puntos, luego puntos a favor; también menos sanciones y sorteo). Opción de dos bronces desde 5 inscritos.
 
 ### Impresión
 
@@ -352,9 +355,11 @@ La mesa revisa la llave y llama a rojo (aka) y azul (ao), avisa el siguiente com
 | Criterio de empate | Punto de oro, hantei, senshu + hantei | Hantei |
 | Escala de sanciones | Lista editable de niveles | Chui 1, Chui 2, Chui 3, Hansoku-chui, Hansoku |
 
+Además: escaleras de faltas en dos categorías con tipo de falta, senshu perdido automáticamente, punto de oro con periodo extra y opciones de kumite por equipos. Ver [reglas-configurables.md](reglas-configurables.md).
+
 ### Tipos de evento
 
-Punto (color, valor), sanción (color, nivel), inicio, pausa, reanudación, ajuste de tiempo, anulación de evento, decisión de hantei, kiken (abandono), shikkaku (descalificación), walkover y fin de combate con ganador.
+Punto (color, valor), sanción (color, nivel y tipo de falta opcional), inicio de punto de oro, inicio, pausa, reanudación, ajuste de tiempo, anulación de evento, decisión de hantei, kiken (abandono), shikkaku (descalificación), walkover y fin de combate con ganador.
 
 ### Correcciones
 
@@ -392,7 +397,7 @@ Cada categoría de kata se configura con dos ejes independientes: el método de 
 ### Rondas
 
 - Ronda única (MVP-2): todos ejecutan en el orden definido y se genera la clasificación; oro, plata y bronces según la regla de terceros lugares.
-- Rondas múltiples (futuro): los N mejores de cada grupo pasan a la siguiente ronda; N es configurable.
+- Rondas múltiples: los N mejores de cada grupo pasan a la siguiente ronda; N es configurable (`rounds`, `first_round_groups`, `round_order`). Puntuación en llave, preset WKF (7 jueces, técnico/atlético) y catálogo de katas: ver [reglas-configurables.md](reglas-configurables.md).
 
 ### Registro del kata ejecutado
 

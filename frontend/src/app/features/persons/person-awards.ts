@@ -23,12 +23,20 @@ import { DatePipe } from '../../shared/pipes';
               <span class="muted small">de {{ r.of }}</span>
             </div>
             <div class="grow">
-              <a
-                [routerLink]="['/ranking']"
-                [queryParams]="{ temporada: r.season_id, grupo: r.group_key }"
-              >
+              @if (links()) {
+                <a
+                  [routerLink]="['/ranking']"
+                  [queryParams]="{ temporada: r.season_id, grupo: r.group_key }"
+                >
+                  <strong>{{ r.season_name }}</strong>
+                </a>
+              } @else if (r.is_public) {
+                <a [routerLink]="['/ranking', r.slug]"
+                  ><strong>{{ r.season_name }}</strong></a
+                >
+              } @else {
                 <strong>{{ r.season_name }}</strong>
-              </a>
+              }
               <div class="muted small">{{ r.group_label }}</div>
             </div>
             <div class="pts">
@@ -139,6 +147,8 @@ export class PersonAwards {
   private api = inject(ApiService);
   private files = inject(FilesService);
   readonly personId = input.required<number>();
+  /** Enlaces a la página interna de ranking (staff); fuera, al ranking público si lo hay. */
+  readonly links = input(true);
   readonly certs = signal<PersonCertificates[]>([]);
   readonly ranking = signal<PersonRanking[]>([]);
 
@@ -157,7 +167,7 @@ export class PersonAwards {
   }
 
   open(tid: number): void {
-    // TODO(entitlements): feature «certificates» del plan del organizador.
+    // Derecho «certificates»: de la organización del torneo o Competidor Plus de la persona.
     this.files.open(`/tournaments/${tid}/persons/${this.personId()}/diplomas.pdf`);
   }
 }

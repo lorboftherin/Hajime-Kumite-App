@@ -28,11 +28,7 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
           <span>Conjuntos de categorías listos para copiar a un torneo</span>
         </div>
         @if (canCreate()) {
-          <label class="btn" title="Crear una plantilla desde un Excel (.xlsx)">
-            <app-icon name="upload" /> Importar Excel
-            <input type="file" accept=".xlsx" hidden (change)="importFile($event, null)" />
-          </label>
-          <button class="btn primary" (click)="newOpen.set(true)">
+          <button class="btn primary" (click)="openNew()">
             <app-icon name="plus" /> Nueva plantilla
           </button>
         }
@@ -48,7 +44,7 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
             >
               <span class="name">{{ t.name }}</span>
               <span class="muted small num">
-                {{ t.items.length }} categorías · v{{ t.version }}
+                {{ t.items.length }} categorías · {{ orgName(t) }}
                 @if (t.is_archived) {
                   · archivada
                 }
@@ -364,8 +360,24 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
             ><span>Descripción</span
             ><textarea name="nd" rows="3" [(ngModel)]="meta.description"></textarea>
           </label>
+          @if (orgChoices().length > 1) {
+            <label class="field">
+              <span>Organización</span>
+              <select name="org" [(ngModel)]="newOrg">
+                @for (o of orgChoices(); track o.id) {
+                  <option [ngValue]="o.id">{{ o.name }}</option>
+                }
+              </select>
+            </label>
+          } @else if (orgChoices().length === 1) {
+            <p class="hint">Organización: {{ orgChoices()[0].name }}</p>
+          }
           <div class="form-actions">
-            <button class="btn primary" [disabled]="!meta.name.trim()">Crear</button>
+            <label class="btn" title="Crear la plantilla desde un Excel (.xlsx)">
+              <app-icon name="upload" /> Importar Excel
+              <input type="file" accept=".xlsx" hidden (change)="importFile($event, null)" />
+            </label>
+            <button class="btn primary" [disabled]="!meta.name.trim()">Crear vacía</button>
           </div>
         </form>
       </app-modal>
@@ -580,10 +592,40 @@ export class TemplateListPage {
     }
   }
 
+  /** Dónde se puede crear: Global (solo el Admin) y las organizaciones donde es owner/admin. */
+  readonly orgChoices = computed(() => {
+    const u = this.auth.user();
+    const orgs = (u?.organizations ?? [])
+      .filter((o) => o.role === 'owner' || o.role === 'admin')
+      .map((o) => ({ id: o.id as number | null, name: o.name }));
+    return u?.is_admin ? [{ id: null, name: 'Global (todas las organizaciones)' }, ...orgs] : orgs;
+  });
+  newOrg: number | null = null;
+
+  /** Nombre de la organización dueña (o «Global») para mostrar en la lista. */
+  orgName(t: Template): string {
+    if (!t.organization_id) return 'Global';
+    return (
+      (this.auth.user()?.organizations ?? []).find((o) => o.id === t.organization_id)?.name ??
+      'Otra organización'
+    );
+  }
+
+  openNew(): void {
+    this.meta = { name: '', description: '' };
+    this.newOrg = this.orgChoices()[0]?.id ?? null;
+    this.newOpen.set(true);
+  }
+
   async create(): Promise<void> {
     const res = await this.mut.post<Template>(
       '/templates',
-      { name: this.meta.name.trim(), description: this.meta.description, items: [] },
+      {
+        name: this.meta.name.trim(),
+        description: this.meta.description,
+        organization_id: this.newOrg,
+        items: [],
+      },
       { success: 'Plantilla creada' },
     );
     if (res) {
@@ -676,9 +718,14 @@ export class TemplateListPage {
       if (!ok) return;
     }
     try {
-      const path = target ? `/templates/import?template_id=${target.id}` : '/templates/import';
+      const path = target
+        ? `/templates/import?template_id=${target.id}`
+        : this.newOrg !== null
+          ? `/templates/import?organization_id=${this.newOrg}`
+          : '/templates/import';
       const res = await firstValueFrom(this.api.upload<Template>(path, file));
       this.toast.ok(`Plantilla «${res.name}»: ${res.items.length} categorías importadas`);
+      this.newOpen.set(false);
       await this.load(res.id);
     } catch (e) {
       const err = ApiError.from(e);

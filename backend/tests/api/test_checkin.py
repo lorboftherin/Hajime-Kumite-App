@@ -31,6 +31,7 @@ def _setup(api, n=3, **tkw):
         ("+68", (Decimal("68"), None)),
         ("45-50", (Decimal("45"), Decimal("50"))),
         ("−52,5", (None, Decimal("52.5"))),
+        ("45–50 kg", (Decimal("45"), Decimal("50"))),
         ("Libre", (None, None)),
         (None, (None, None)),
     ],

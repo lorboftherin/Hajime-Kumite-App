@@ -24,12 +24,11 @@ Y el torneo (`tournaments`):
 | `checkin_required` | Check-in obligatorio: la verificación previa y las llaves avisan de los no acreditados |
 | `weigh_in_tolerance_kg` | Tolerancia de peso (por defecto 0) |
 
-**Rango de peso de una categoría.** Se lee de `weight_min_kg`/`weight_max_kg` si
-la categoría los tiene (los agrega el trabajo de reglas deportivas); si no, se
-deduce de la etiqueta `weight_class`: «-45» = hasta 45 kg, «+68» = más de 68 kg,
-«45-50» = de 45 a 50 kg (`app/services/checkin.py`, `parse_weight_class`). Al
-integrar ambos trabajos, `weight_range` usa las columnas y la etiqueta queda
-solo como respaldo para categorías antiguas.
+**Rango de peso de una categoría.** Es el de las reglas deportivas:
+`weight_min_kg`/`weight_max_kg` de la categoría (`app/services/checkin.py`,
+`weight_range`). Solo si faltan los dos se deduce de la etiqueta `weight_class`
+con el mismo parser del dominio (`app.domain.categories.parse_weight_range`):
+«-45» = hasta 45 kg, «+68» = más de 68 kg, «45-50» = de 45 a 50 kg.
 
 ## La mesa de acreditación (tablet)
 
@@ -110,3 +109,17 @@ Todo lo anterior es del organizador del torneo (o el Admin) y queda auditado.
 
 - `NOT_CHECKED_IN` (advertencia), solo con check-in obligatorio.
 - `WEIGHT_OUT_OF_RANGE` (advertencia): pesos fuera de rango sin mover ni aceptar.
+
+## Diplomas: permisos, plan y aviso por correo
+
+Los diplomas (`app/services/certificates.py`) los descargan el organizador del
+torneo; por dojo, además, su administrador (`dojo_admin`) o su sensei; por
+persona, además, la propia persona y su padre, madre o apoderado verificado
+(`guardianships`). Exigen el derecho **«certificates»** del plan: de la
+organización del torneo o, para los de una persona, también su Competidor Plus
+(en marcha blanca siempre pasa; ver `docs/organizaciones-y-planes.md`).
+
+Con `HAJIME_NOTIFY_DIPLOMAS=true`, al finalizar una categoría con podio se
+encola «Tus diplomas están listos» (bandeja de salida `outbox_emails`) para cada
+cuenta con correo de quien recibe diploma y de su apoderado. Lo descargan desde
+«Mis perfiles».

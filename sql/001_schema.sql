@@ -10,6 +10,35 @@ CREATE TABLE login_attempts (
 	PRIMARY KEY ([key])
 );
 
+CREATE TABLE outbox_emails (
+	id INTEGER NOT NULL IDENTITY, 
+	to_address NVARCHAR(254) NOT NULL, 
+	subject NVARCHAR(250) NOT NULL, 
+	html NVARCHAR(max) NOT NULL, 
+	text NVARCHAR(max) NOT NULL, 
+	kind VARCHAR(40) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	attempts INTEGER NOT NULL, 
+	last_error NVARCHAR(1000) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	next_attempt_at DATETIME2 NOT NULL, 
+	locked_until DATETIME2 NULL, 
+	sent_at DATETIME2 NULL, 
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_outbox_emails_pending ON outbox_emails (status, next_attempt_at);
+CREATE TABLE plans (
+	code VARCHAR(40) NOT NULL, 
+	name NVARCHAR(120) NOT NULL, 
+	audience VARCHAR(20) NOT NULL, 
+	price_pen_month NUMERIC(10, 2) NULL, 
+	price_pen_year NUMERIC(10, 2) NULL, 
+	features NVARCHAR(max) NOT NULL, 
+	sort_order INTEGER NOT NULL, 
+	PRIMARY KEY (code)
+);
+
 CREATE TABLE users (
 	id INTEGER NOT NULL IDENTITY, 
 	username VARCHAR(80) NOT NULL, 
@@ -20,6 +49,8 @@ CREATE TABLE users (
 	token_version INTEGER NOT NULL, 
 	must_change_password BIT NOT NULL, 
 	display_name NVARCHAR(200) NOT NULL, 
+	email NVARCHAR(254) NULL, 
+	email_verified_at DATETIME2 NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -28,6 +59,7 @@ CREATE TABLE users (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE UNIQUE INDEX uq_users_email ON users (email) WHERE email IS NOT NULL;
 CREATE TABLE audit_log (
 	id INTEGER NOT NULL IDENTITY, 
 	at DATETIME2 NOT NULL, 
@@ -45,34 +77,52 @@ CREATE TABLE audit_log (
 
 CREATE INDEX ix_audit_entity ON audit_log (entity, entity_id);
 CREATE INDEX ix_audit_log_tournament_id ON audit_log (tournament_id);
-CREATE TABLE category_templates (
+CREATE TABLE email_verifications (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	email NVARCHAR(254) NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	used_at DATETIME2 NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
+);
+
+CREATE INDEX ix_email_verifications_user_id ON email_verifications (user_id);
+CREATE TABLE organizations (
 	id INTEGER NOT NULL IDENTITY, 
 	name NVARCHAR(200) NOT NULL, 
-	description NVARCHAR(1000) NOT NULL, 
-	is_archived BIT NOT NULL DEFAULT 0, 
+	slug VARCHAR(80) NOT NULL, 
+	kind VARCHAR(20) NOT NULL, 
+	country VARCHAR(2) NOT NULL DEFAULT 'PE', 
+	timezone VARCHAR(60) NOT NULL DEFAULT 'America/Lima', 
+	currency VARCHAR(3) NOT NULL DEFAULT 'PEN', 
+	logo NVARCHAR(500) NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
 	version INTEGER NOT NULL, 
 	PRIMARY KEY (id), 
+	UNIQUE (slug), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
-CREATE TABLE dojos (
+CREATE TABLE password_resets (
 	id INTEGER NOT NULL IDENTITY, 
-	name NVARCHAR(200) NOT NULL, 
-	short_name NVARCHAR(40) NOT NULL, 
-	city NVARCHAR(100) NOT NULL, 
-	is_claimed BIT NOT NULL, 
-	is_independent BIT NOT NULL, 
+	user_id INTEGER NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
 	created_at DATETIME2 NOT NULL, 
-	updated_at DATETIME2 NOT NULL, 
-	updated_by_id INTEGER NULL, 
-	version INTEGER NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	used_at DATETIME2 NULL, 
+	ip VARCHAR(45) NOT NULL, 
 	PRIMARY KEY (id), 
-	FOREIGN KEY(updated_by_id) REFERENCES users (id)
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
 );
 
+CREATE INDEX ix_password_resets_user_id ON password_resets (user_id);
 CREATE TABLE persons (
 	id INTEGER NOT NULL IDENTITY, 
 	first_names NVARCHAR(120) NOT NULL, 
@@ -84,6 +134,7 @@ CREATE TABLE persons (
 	merged_into_id INTEGER NULL, 
 	anonymized_at DATETIME2 NULL, 
 	is_test_data BIT NOT NULL, 
+	public_id VARCHAR(24) NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -94,6 +145,7 @@ CREATE TABLE persons (
 );
 
 CREATE INDEX ix_persons_normalized_name ON persons (normalized_name);
+CREATE UNIQUE INDEX uq_persons_public_id ON persons (public_id) WHERE public_id IS NOT NULL;
 CREATE TABLE ranking_seasons (
 	id INTEGER NOT NULL IDENTITY, 
 	name NVARCHAR(200) NOT NULL, 
@@ -150,19 +202,22 @@ CREATE TABLE user_sessions (
 
 CREATE INDEX ix_user_sessions_previous_token_hash ON user_sessions (previous_token_hash);
 CREATE INDEX ix_user_sessions_user_id ON user_sessions (user_id);
-CREATE TABLE branches (
+CREATE TABLE category_templates (
 	id INTEGER NOT NULL IDENTITY, 
-	dojo_id INTEGER NOT NULL, 
-	name NVARCHAR(120) NOT NULL, 
+	name NVARCHAR(200) NOT NULL, 
+	description NVARCHAR(1000) NOT NULL, 
+	organization_id INTEGER NULL, 
+	is_archived BIT NOT NULL DEFAULT 0, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
+	version INTEGER NOT NULL, 
 	PRIMARY KEY (id), 
-	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
+	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
-CREATE INDEX ix_branches_dojo_id ON branches (dojo_id);
+CREATE INDEX ix_category_templates_organization_id ON category_templates (organization_id);
 CREATE TABLE data_consents (
 	id INTEGER NOT NULL IDENTITY, 
 	person_id INTEGER NOT NULL, 
@@ -180,6 +235,24 @@ CREATE TABLE data_consents (
 );
 
 CREATE INDEX ix_data_consents_person_id ON data_consents (person_id);
+CREATE TABLE dojos (
+	id INTEGER NOT NULL IDENTITY, 
+	name NVARCHAR(200) NOT NULL, 
+	short_name NVARCHAR(40) NOT NULL, 
+	city NVARCHAR(100) NOT NULL, 
+	is_claimed BIT NOT NULL, 
+	is_independent BIT NOT NULL, 
+	organization_id INTEGER NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	updated_by_id INTEGER NULL, 
+	version INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
+	FOREIGN KEY(updated_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_dojos_organization_id ON dojos (organization_id);
 CREATE TABLE grade_history (
 	id INTEGER NOT NULL IDENTITY, 
 	person_id INTEGER NOT NULL, 
@@ -211,6 +284,19 @@ CREATE TABLE identity_documents (
 );
 
 CREATE INDEX ix_identity_documents_person_id ON identity_documents (person_id);
+CREATE TABLE organization_members (
+	id INTEGER NOT NULL IDENTITY, 
+	organization_id INTEGER NOT NULL, 
+	user_id INTEGER NOT NULL, 
+	role VARCHAR(20) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_organization_member UNIQUE (organization_id, user_id), 
+	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_organization_members_user_id ON organization_members (user_id);
 CREATE TABLE person_merges (
 	id INTEGER NOT NULL IDENTITY, 
 	kept_person_id INTEGER NOT NULL, 
@@ -242,6 +328,66 @@ CREATE TABLE person_roles (
 
 CREATE INDEX ix_person_roles_person_id ON person_roles (person_id);
 CREATE INDEX ix_person_roles_scope ON person_roles (role, scope_type, scope_id);
+CREATE TABLE subscriptions (
+	id INTEGER NOT NULL IDENTITY, 
+	organization_id INTEGER NULL, 
+	person_id INTEGER NULL, 
+	user_id INTEGER NULL, 
+	plan_code VARCHAR(40) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	current_period_end DATETIME2 NULL, 
+	source VARCHAR(20) NOT NULL, 
+	reference VARCHAR(120) NULL, 
+	notes NVARCHAR(500) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	created_by_id INTEGER NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(plan_code) REFERENCES plans (code), 
+	FOREIGN KEY(created_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_subscriptions_organization_id ON subscriptions (organization_id);
+CREATE INDEX ix_subscriptions_person_id ON subscriptions (person_id);
+CREATE INDEX ix_subscriptions_user_id ON subscriptions (user_id);
+CREATE TABLE branches (
+	id INTEGER NOT NULL IDENTITY, 
+	dojo_id INTEGER NOT NULL, 
+	name NVARCHAR(120) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	updated_by_id INTEGER NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
+	FOREIGN KEY(updated_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_branches_dojo_id ON branches (dojo_id);
+CREATE TABLE profile_claims (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	relationship VARCHAR(20) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	evidence NVARCHAR(500) NOT NULL, 
+	document_match BIT NULL, 
+	consent_id INTEGER NULL, 
+	created_at DATETIME2 NOT NULL, 
+	reviewed_by_id INTEGER NULL, 
+	reviewed_at DATETIME2 NULL, 
+	reason NVARCHAR(500) NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(consent_id) REFERENCES data_consents (id), 
+	FOREIGN KEY(reviewed_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_profile_claims_person_id ON profile_claims (person_id);
+CREATE INDEX ix_profile_claims_status ON profile_claims (status, person_id);
+CREATE INDEX ix_profile_claims_user_id ON profile_claims (user_id);
 CREATE TABLE ranking_entries (
 	id INTEGER NOT NULL IDENTITY, 
 	season_id INTEGER NOT NULL, 
@@ -290,6 +436,11 @@ CREATE TABLE template_categories (
 	kata_structure VARCHAR(20) NULL, 
 	kata_judges INTEGER NULL, 
 	sort_order INTEGER NOT NULL, 
+	max_entrants INTEGER NULL, 
+	weight_min_kg NUMERIC(5, 1) NULL, 
+	weight_max_kg NUMERIC(5, 1) NULL, 
+	kata_rules NVARCHAR(max) NULL, 
+	competition_rules NVARCHAR(max) NULL, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(template_id) REFERENCES category_templates (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
@@ -310,9 +461,14 @@ CREATE TABLE tournaments (
 	default_third_place_rule VARCHAR(30) NOT NULL, 
 	kumite_rules NVARCHAR(max) NOT NULL, 
 	kata_defaults NVARCHAR(max) NOT NULL, 
+	competition_rules NVARCHAR(max) NULL, 
+	age_mode VARCHAR(10) NOT NULL DEFAULT 'date', 
 	template_id INTEGER NULL, 
 	public_token VARCHAR(40) NULL, 
 	public_names VARCHAR(10) NOT NULL DEFAULT 'short', 
+	organization_id INTEGER NOT NULL, 
+	self_registration_open BIT NOT NULL DEFAULT 0, 
+	self_registration_closes_at DATETIME2 NULL, 
 	checkin_required BIT NOT NULL DEFAULT 0, 
 	weigh_in_tolerance_kg NUMERIC(4, 2) NOT NULL DEFAULT '0', 
 	certificate_organizer NVARCHAR(200) NOT NULL DEFAULT '', 
@@ -324,9 +480,11 @@ CREATE TABLE tournaments (
 	version INTEGER NOT NULL, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(template_id) REFERENCES category_templates (id), 
+	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE INDEX ix_tournaments_organization_id ON tournaments (organization_id);
 CREATE UNIQUE INDEX uq_tournaments_public_token ON tournaments (public_token) WHERE public_token IS NOT NULL;
 CREATE TABLE dojo_memberships (
 	id INTEGER NOT NULL IDENTITY, 
@@ -347,6 +505,22 @@ CREATE TABLE dojo_memberships (
 
 CREATE INDEX ix_dojo_memberships_dojo_id ON dojo_memberships (dojo_id);
 CREATE INDEX ix_dojo_memberships_person_id ON dojo_memberships (person_id);
+CREATE TABLE guardianships (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	relationship VARCHAR(20) NOT NULL, 
+	claim_id INTEGER NULL, 
+	verified_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_guardianship UNIQUE (user_id, person_id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(claim_id) REFERENCES profile_claims (id)
+);
+
+CREATE INDEX ix_guardianships_person_id ON guardianships (person_id);
+CREATE INDEX ix_guardianships_user_id ON guardianships (user_id);
 CREATE TABLE import_batches (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -420,6 +594,23 @@ CREATE TABLE teams (
 );
 
 CREATE INDEX ix_teams_tournament_id ON teams (tournament_id);
+CREATE TABLE tournament_invitations (
+	id INTEGER NOT NULL IDENTITY, 
+	tournament_id INTEGER NOT NULL, 
+	dojo_id INTEGER NULL, 
+	token VARCHAR(64) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	created_by_id INTEGER NULL, 
+	revoked_at DATETIME2 NULL, 
+	uses INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
+	UNIQUE (token), 
+	FOREIGN KEY(created_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_tournament_invitations_tournament_id ON tournament_invitations (tournament_id);
 CREATE TABLE categories (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -451,6 +642,11 @@ CREATE TABLE categories (
 	kata_structure VARCHAR(20) NULL, 
 	kata_judges INTEGER NULL, 
 	sort_order INTEGER NOT NULL, 
+	max_entrants INTEGER NULL, 
+	weight_min_kg NUMERIC(5, 1) NULL, 
+	weight_max_kg NUMERIC(5, 1) NULL, 
+	kata_rules NVARCHAR(max) NULL, 
+	competition_rules NVARCHAR(max) NULL, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
 	FOREIGN KEY(tatami_id) REFERENCES tatamis (id), 
@@ -460,6 +656,25 @@ CREATE TABLE categories (
 
 CREATE INDEX ix_categories_tatami ON categories (tatami_id, status, queue_position);
 CREATE INDEX ix_categories_tournament ON categories (tournament_id, status);
+CREATE TABLE dojo_admin_requests (
+	id INTEGER NOT NULL IDENTITY, 
+	tournament_id INTEGER NOT NULL, 
+	invitation_id INTEGER NULL, 
+	dojo_id INTEGER NOT NULL, 
+	user_id INTEGER NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	decided_at DATETIME2 NULL, 
+	decided_by_id INTEGER NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
+	FOREIGN KEY(invitation_id) REFERENCES tournament_invitations (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(decided_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_dojo_admin_requests_tournament_id ON dojo_admin_requests (tournament_id);
 CREATE TABLE import_rows (
 	id INTEGER NOT NULL IDENTITY, 
 	batch_id INTEGER NOT NULL, 
@@ -518,6 +733,23 @@ CREATE TABLE category_merges (
 	FOREIGN KEY(created_by_id) REFERENCES users (id)
 );
 
+CREATE TABLE category_splits (
+	id INTEGER NOT NULL IDENTITY, 
+	source_category_id INTEGER NOT NULL, 
+	new_category_id INTEGER NOT NULL, 
+	criterion VARCHAR(20) NOT NULL, 
+	moved_registration_ids NVARCHAR(max) NOT NULL, 
+	before NVARCHAR(max) NOT NULL, 
+	reason NVARCHAR(500) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	created_by_id INTEGER NULL, 
+	undone_at DATETIME2 NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(source_category_id) REFERENCES categories (id), 
+	FOREIGN KEY(new_category_id) REFERENCES categories (id), 
+	FOREIGN KEY(created_by_id) REFERENCES users (id)
+);
+
 CREATE TABLE registrations (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -533,6 +765,8 @@ CREATE TABLE registrations (
 	age_at_reference INTEGER NULL, 
 	status VARCHAR(20) NOT NULL, 
 	withdrawn_reason NVARCHAR(500) NULL, 
+	requested_by_id INTEGER NULL, 
+	rejection_reason NVARCHAR(500) NULL, 
 	seed INTEGER NULL, 
 	checkin_status VARCHAR(10) NOT NULL DEFAULT 'pending', 
 	checked_in_at DATETIME2 NULL, 
@@ -553,6 +787,7 @@ CREATE TABLE registrations (
 	FOREIGN KEY(team_id) REFERENCES teams (id), 
 	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
 	FOREIGN KEY(branch_id) REFERENCES branches (id), 
+	FOREIGN KEY(requested_by_id) REFERENCES users (id), 
 	FOREIGN KEY(checked_in_by_id) REFERENCES users (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
@@ -663,8 +898,10 @@ CREATE TABLE kata_performances (
 	registration_id INTEGER NOT NULL, 
 	[order] INTEGER NOT NULL, 
 	kata_name NVARCHAR(80) NULL, 
-	total NUMERIC(6, 1) NULL, 
+	total NUMERIC(7, 2) NULL, 
 	scores NVARCHAR(max) NULL, 
+	athletic_scores NVARCHAR(max) NULL, 
+	group_number INTEGER NULL, 
 	judge_person_ids NVARCHAR(max) NULL, 
 	tie_break_place INTEGER NULL, 
 	created_at DATETIME2 NOT NULL, 
@@ -689,6 +926,8 @@ CREATE TABLE match_events (
 	target_id VARCHAR(36) NULL, 
 	method VARCHAR(30) NULL, 
 	reason NVARCHAR(500) NULL, 
+	infraction VARCHAR(30) NULL, 
+	ladder VARCHAR(2) NULL, 
 	device_at DATETIME2 NOT NULL, 
 	received_at DATETIME2 NOT NULL, 
 	user_id INTEGER NULL, 

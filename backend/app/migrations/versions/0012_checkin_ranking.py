@@ -1,7 +1,7 @@
 """acreditación y pesaje, plantillas archivadas, diplomas y ranking por temporada
 
-Revision ID: 0009_checkin_ranking
-Revises: 0008_mesa_principal
+Revision ID: 0012_checkin_ranking
+Revises: 0011_cuentas
 Create Date: 2026-09-26 17:18:50.455762
 """
 
@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0009_checkin_ranking"
-down_revision = "0008_mesa_principal"
+revision = "0012_checkin_ranking"
+down_revision = "0011_cuentas"
 branch_labels = None
 depends_on = None
 

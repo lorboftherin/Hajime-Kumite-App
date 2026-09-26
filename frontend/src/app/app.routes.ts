@@ -21,6 +21,39 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/delete-account').then((m) => m.DeleteAccountPage),
     title: 'Borrar mi cuenta · Hajime',
   },
+  // --- Cuentas sin sesión (docs/cuentas-y-correo.md) ---
+  {
+    path: 'recuperar-clave',
+    loadComponent: () => import('./features/cuenta/forgot-password').then((m) => m.ForgotPasswordPage),
+    title: 'Recuperar contraseña · Hajime',
+  },
+  {
+    // El enlace del correo lleva el token en el fragmento: /restablecer-clave#<token>.
+    path: 'restablecer-clave',
+    loadComponent: () => import('./features/cuenta/reset-password').then((m) => m.ResetPasswordPage),
+    title: 'Contraseña nueva · Hajime',
+  },
+  {
+    path: 'verificar-correo',
+    loadComponent: () => import('./features/cuenta/verify-email').then((m) => m.VerifyEmailPage),
+    title: 'Confirmar correo · Hajime',
+  },
+  {
+    path: 'crear-cuenta',
+    loadComponent: () => import('./features/cuenta/signup').then((m) => m.SignupPage),
+    title: 'Crear cuenta · Hajime',
+  },
+  {
+    path: 'privacidad',
+    loadComponent: () => import('./features/cuenta/privacy').then((m) => m.PrivacyPage),
+    title: 'Privacidad · Hajime',
+  },
+  {
+    // Perfil público básico del competidor (sin inicio de sesión).
+    path: 'competidor/:publicId',
+    loadComponent: () => import('./features/competidor/public-profile').then((m) => m.PublicProfilePage),
+    title: 'Competidor · Hajime',
+  },
   {
     // Seguimiento en vivo público (sin inicio de sesión; solo con enlace activo).
     path: 'vivo/:token',
@@ -54,6 +87,21 @@ export const routes: Routes = [
     children: [
       // El operador de un tatami entra a «Mi tatami»; los demás, a la lista de torneos.
       { path: '', pathMatch: 'full', redirectTo: () => homePath(inject(AuthService).user()) },
+      {
+        path: 'mis-perfiles',
+        loadComponent: () => import('./features/cuenta/my-profiles').then((m) => m.MyProfilesPage),
+        title: 'Mis perfiles · Hajime',
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/cuenta/account').then((m) => m.AccountPage),
+        title: 'Mi cuenta · Hajime',
+      },
+      {
+        path: 'solicitudes',
+        loadComponent: () => import('./features/cuenta/claims-review').then((m) => m.ClaimsReviewPage),
+        title: 'Solicitudes de perfil · Hajime',
+      },
       {
         path: 'mi-tatami',
         loadComponent: () => import('./features/mesa/my-tatami').then((m) => m.MyTatamiPage),
@@ -114,6 +162,32 @@ export const routes: Routes = [
         path: 'plantillas',
         loadComponent: () => import('./features/templates/template-list').then((m) => m.TemplateListPage),
         title: 'Plantillas · Hajime',
+      },
+      {
+        path: 'organizacion',
+        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        title: 'Organización · Hajime',
+      },
+      {
+        path: 'organizacion/:id',
+        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        title: 'Organización · Hajime',
+      },
+      {
+        path: 'planes',
+        loadComponent: () => import('./features/organizations/plans-page').then((m) => m.PlansPage),
+        title: 'Planes · Hajime',
+      },
+      {
+        path: 'mis-competidores',
+        loadComponent: () => import('./features/dojo-portal/dojo-portal').then((m) => m.DojoPortalPage),
+        title: 'Mis competidores · Hajime',
+      },
+      {
+        // Enlace de invitación a la autoinscripción de un torneo.
+        path: 'invitacion/:token',
+        loadComponent: () => import('./features/dojo-portal/invitation').then((m) => m.InvitationPage),
+        title: 'Invitación · Hajime',
       },
       {
         path: 'usuarios',

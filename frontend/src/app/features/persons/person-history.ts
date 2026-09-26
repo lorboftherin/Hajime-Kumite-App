@@ -51,9 +51,9 @@ import { PersonStatsView } from '../../shared/person-stats';
           <div class="tour-head">
             <div class="grow">
               <div class="eyebrow num">{{ fdate(t.date) }}</div>
-              <h3><a [routerLink]="['/torneos', t.tournament_id]">{{ t.tournament_name }}</a></h3>
+              <h3><a [routerLink]="links() ? ['/torneos', t.tournament_id] : null">{{ t.tournament_name }}</a></h3>
               <div class="small cat">
-                <a [routerLink]="['/categorias', t.category_id, 'llave']">{{ t.category_name }}</a>
+                <a [routerLink]="links() ? ['/categorias', t.category_id, 'llave'] : null">{{ t.category_name }}</a>
                 @if (t.merged) {
                   <span class="badge nezumi" title="La categoría original se fusionó con otra">Categoría fusionada</span>
                 }
@@ -290,6 +290,9 @@ import { PersonStatsView } from '../../shared/person-stats';
 export class PersonHistoryView {
   private api = inject(ApiService);
   readonly personId = input.required<number>();
+  /** Enlaces al torneo y a la llave (solo para quien lee el torneo). La hoja del combate
+   * la ven también la propia persona y su apoderado. */
+  readonly links = input(true);
 
   readonly history = signal<PersonHistory | null>(null);
   readonly error = signal('');

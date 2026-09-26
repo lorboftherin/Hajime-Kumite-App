@@ -11,13 +11,15 @@ import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { MoreMenu } from '../../../shared/more-menu';
 import { LabelPipe } from '../../../shared/pipes';
+import { RulesForm, cleanRules, editableKata, kataPayload } from '../../../shared/rules-form';
+import { CategorySplitDialog } from '../category-split';
 import { PluralPipe, plural, pluralWord } from '../../../shared/plural';
 import { BracketGenerator } from '../../checkin/bracket-absent';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-categories-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu, PluralPipe],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu, PluralPipe, RulesForm, CategorySplitDialog],
   template: `
     <div class="toolbar">
       <div class="search">
@@ -85,6 +87,9 @@ import { TournamentContext } from '../tournament-context';
                 @if (c.advice.length && c.status !== 'empty') {
                   <div class="small advice">Sugerencia: {{ adviceText(c.advice) }}</div>
                 }
+                @if (c.split_from_id) {
+                  <div class="small muted">← dividida de {{ catName(c.split_from_id) }}</div>
+                }
               </td>
               <td class="nowrap">
                 {{ c.modality | label: modalityLabel }}
@@ -93,7 +98,12 @@ import { TournamentContext } from '../tournament-context';
                 }
                 <span class="muted">· {{ c.sex | label: sexLabel }}</span>
               </td>
-              <td class="center"><span class="count-cell" [class.zero]="!c.entrant_count">{{ c.entrant_count }}</span></td>
+              <td class="center">
+                <span class="count-cell" [class.zero]="!c.entrant_count" [class.over]="!!c.max_entrants && c.entrant_count > c.max_entrants">{{ c.entrant_count }}</span>
+                @if (c.max_entrants) {
+                  <span class="muted small">/ {{ c.max_entrants }}</span>
+                }
+              </td>
               <td><app-status [status]="c.status" /></td>
               <td class="nowrap">
                 @if (c.tatami_id) {
@@ -113,6 +123,12 @@ import { TournamentContext } from '../tournament-context';
                     <button class="menu-item" (click)="openEdit(c)">Editar categoría</button>
                   }
                   <button class="menu-item" (click)="openTatami(c)">Asignar tatami</button>
+                  @if (['open', 'ready'].includes(c.status) && c.entrant_count >= 2) {
+                    <button class="menu-item" (click)="splitCat.set(c)">Dividir categoría…</button>
+                  }
+                  @if (c.has_split) {
+                    <button class="menu-item" (click)="unsplit(c)">Deshacer división</button>
+                  }
                   @if (mergeTargets().has(c.id)) {
                     <button class="menu-item" (click)="unmerge(c)">Separar (deshacer fusión)</button>
                   }
@@ -161,6 +177,10 @@ import { TournamentContext } from '../tournament-context';
           <button class="btn primary" (click)="doMerge()">Fusionar</button>
         </div>
       </app-modal>
+    }
+
+    @if (splitCat(); as c) {
+      <app-category-split [category]="c" (closed)="splitCat.set(null)" (done)="splitCat.set(null); reload()" />
     }
 
     @if (tatamiCat(); as c) {
@@ -228,6 +248,7 @@ import { TournamentContext } from '../tournament-context';
                 <option [ngValue]="null">Por defecto del torneo</option>
                 <option value="single_elimination">Eliminación directa</option>
                 <option value="round_robin">Round robin</option>
+                <option value="groups_knockout">Grupos + eliminación</option>
                 @if (c.modality === 'kata') {
                   <option value="kata_rounds">Rondas de kata</option>
                 }
@@ -240,14 +261,50 @@ import { TournamentContext } from '../tournament-context';
           @if (c.entrant_count) {
             <p class="hint">Cambiar edades, sexo, grados o peso no mueve a los {{ c.entrant_count | plural: 'inscrito' : 'inscritos' }}: revisa sus inscripciones si ya no encajan.</p>
           }
-          <!--
-            Sección «Reglas»: la completa la configuración de reglas de la categoría
-            (kumite, kata, máximo de inscritos, modo de edad). Sus campos se agregan
-            al mismo cuerpo del PATCH /categories/{id} en saveEdit().
-          -->
+          <!-- Sección «Reglas» (docs/reglas-configurables.md): vacío = hereda del torneo.
+               Sus campos van en el mismo PATCH /categories/{id} de saveEdit(). -->
           <section class="rules-slot" aria-labelledby="cat-rules-title">
             <h3 class="sec" id="cat-rules-title">Reglas</h3>
-            <p class="hint">Las reglas de combate de esta categoría se configuran aquí.</p>
+            <p class="hint">Cada campo vacío hereda la regla del torneo.</p>
+            <div class="grid-3">
+              <label class="field">
+                <span>Terceros lugares</span>
+                <select name="tp" [(ngModel)]="ec.third_place_rule" [disabled]="formatLocked(c)">
+                  <option [ngValue]="null">Por defecto del torneo</option>
+                  <option value="two_bronzes">Dos bronces</option>
+                  <option value="third_place_match">Combate por el 3.º</option>
+                  <option value="repechage">Repechaje</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Cupo (máx. inscritos)</span>
+                <input type="number" min="2" name="max" [(ngModel)]="ec.max_entrants" placeholder="Sin cupo" />
+                <span class="hint">Al superarlo se advierte y se sugiere dividir.</span>
+              </label>
+              @if (c.modality === 'kumite') {
+                <div class="grid-2">
+                  <label class="field">
+                    <span>Peso desde (kg)</span>
+                    <input type="number" step="0.1" name="wmin" [(ngModel)]="ec.weight_min_kg" placeholder="De la etiqueta" />
+                  </label>
+                  <label class="field">
+                    <span>Hasta (kg)</span>
+                    <input type="number" step="0.1" name="wmax" [(ngModel)]="ec.weight_max_kg" placeholder="De la etiqueta" />
+                  </label>
+                </div>
+              }
+            </div>
+            <app-rules-form
+              mode="category"
+              [modality]="c.modality"
+              [isTeam]="c.is_team"
+              [kumite]="ruleKumite"
+              [kata]="ruleKata"
+              [competition]="ruleComp"
+            />
+            @if (formatLocked(c)) {
+              <p class="hint">Con combates iniciados no cambian el formato ni las reglas de kata.</p>
+            }
           </section>
           <div class="form-actions">
             <button type="button" class="btn" (click)="editCat.set(null)">Cancelar</button>
@@ -305,9 +362,11 @@ import { TournamentContext } from '../tournament-context';
                 <option [ngValue]="null">Por defecto del torneo</option>
                 <option value="single_elimination">Eliminación directa</option>
                 <option value="round_robin">Round robin</option>
+                <option value="groups_knockout">Grupos + eliminación</option>
                 <option value="kata_rounds">Rondas de kata</option>
               </select>
             </label>
+            <label class="field"><span>Cupo (máx. inscritos)</span><input type="number" min="2" name="max" [(ngModel)]="nc.max_entrants" placeholder="Sin cupo" /></label>
             <label class="field inline" style="align-self: end; min-height: 2.5rem"><input type="checkbox" name="team" [(ngModel)]="nc.is_team" /> Por equipos</label>
             @if (nc.modality === 'kumite') {
               <label class="field"><span>Duración (seg)</span><input type="number" name="dur" [(ngModel)]="nc.duration_seconds" /></label>
@@ -386,6 +445,9 @@ import { TournamentContext } from '../tournament-context';
         color: var(--nezumi-ink);
         font-weight: 400;
       }
+      &.over {
+        color: var(--yamabuki-ink);
+      }
     }
     .actions {
       white-space: nowrap;
@@ -431,6 +493,7 @@ export class CategoriesTab {
   readonly mergeOpen = signal(false);
   readonly createOpen = signal(false);
   readonly tatamiCat = signal<Category | null>(null);
+  readonly splitCat = signal<Category | null>(null);
   merge = { target_id: null as number | null, new_name: '', reason: '' };
   tat = { tatami_id: null as number | null, queue_position: null as number | null };
   nc = this.blankCategory();
@@ -517,6 +580,17 @@ export class CategoriesTab {
     });
     if (!ok) return;
     const res = await this.mut.post<Category>(`/categories/${c.id}/unmerge`, {}, { success: 'Fusión deshecha' });
+    if (res) this.reload();
+  }
+
+  async unsplit(c: Category): Promise<void> {
+    const ok = await this.dialog.confirm({
+      title: 'Deshacer división',
+      message: `Los inscritos vuelven a ${c.name}, que recupera su nombre y rangos; la categoría creada al dividir se cancela.`,
+      confirmText: 'Deshacer',
+    });
+    if (!ok) return;
+    const res = await this.mut.post<Category>(`/categories/${c.id}/unsplit`, {}, { success: 'División deshecha' });
     if (res) this.reload();
   }
 
@@ -631,8 +705,17 @@ export class CategoriesTab {
       weight_class: c?.weight_class ?? '',
       duration_seconds: c?.duration_seconds ?? null,
       format: c?.format ?? null,
+      third_place_rule: c?.third_place_rule ?? null,
+      max_entrants: c?.max_entrants ?? null,
+      weight_min_kg: c?.weight_min_kg ?? null,
+      weight_max_kg: c?.weight_max_kg ?? null,
     };
   }
+
+  /** Reglas de la categoría en edición (vacío = hereda del torneo). */
+  ruleKumite: Record<string, any> = {};
+  ruleKata: Record<string, any> = {};
+  ruleComp: Record<string, any> = {};
 
   formatLocked(c: Category): boolean {
     return ['in_progress', 'finished'].includes(c.status);
@@ -640,6 +723,15 @@ export class CategoriesTab {
 
   openEdit(c: Category): void {
     this.ec = this.editFields(c);
+    this.ruleKumite = { ...(c.kumite_rules ?? {}) };
+    // Las columnas de kata (método, estructura, jueces) se editan junto con kata_rules.
+    this.ruleKata = {
+      ...editableKata(c.kata_rules),
+      method: c.kata_method ?? undefined,
+      structure: c.kata_structure ?? undefined,
+      judges: c.kata_judges ?? undefined,
+    };
+    this.ruleComp = { ...(c.competition_rules ?? {}) };
     this.editCat.set(c);
   }
 
@@ -656,12 +748,28 @@ export class CategoriesTab {
       weight_class: f.weight_class.trim() || null,
       duration_seconds: c.modality === 'kumite' ? num(f.duration_seconds) : c.duration_seconds,
       format: f.format,
+      third_place_rule: f.third_place_rule,
+      max_entrants: num(f.max_entrants),
+      kumite_rules: cleanRules(this.ruleKumite),
+      competition_rules: cleanRules(this.ruleComp),
     };
-    // Solo se envía lo que cambió (el formato no se toca si la categoría ya empezó).
+    if (c.modality === 'kumite') {
+      next['weight_min_kg'] = num(f.weight_min_kg);
+      next['weight_max_kg'] = num(f.weight_max_kg);
+    } else {
+      const { method, structure, judges, ...rest } = this.ruleKata;
+      next['kata_method'] = method ?? null;
+      next['kata_structure'] = structure ?? null;
+      next['kata_judges'] = judges ?? null;
+      next['kata_rules'] = kataPayload(rest);
+    }
+    // Solo se envía lo que cambió (lo estructural no se toca si la categoría ya empezó).
+    const structural = ['format', 'third_place_rule', 'kata_method', 'kata_structure', 'kata_judges', 'kata_rules'];
+    const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
     const body: Record<string, unknown> = { version: c.version };
     for (const [k, v] of Object.entries(next)) {
-      if (k === 'format' && this.formatLocked(c)) continue;
-      if ((c as unknown as Record<string, unknown>)[k] !== v) body[k] = v;
+      if (structural.includes(k) && this.formatLocked(c)) continue;
+      if (!same((c as unknown as Record<string, unknown>)[k], v)) body[k] = v;
     }
     if (Object.keys(body).length === 1) {
       this.editCat.set(null);
@@ -695,6 +803,7 @@ export class CategoriesTab {
       kata_method: null as string | null,
       kata_judges: null as number | null,
       is_team: false,
+      max_entrants: null as number | null,
       team_bouts: 3,
       team_tie_rule: 'points' as 'points' | 'extra_bout',
     };
@@ -710,6 +819,7 @@ export class CategoriesTab {
     const body = {
       ...fields,
       weight_class: fields.weight_class || null,
+      max_entrants: fields.max_entrants || null,
       kumite_rules: fields.is_team && fields.modality === 'kumite' ? { team_bouts, team_tie_rule } : null,
     };
     const res = await this.mut.post<Category>(`/tournaments/${this.ctx.id()}/categories`, body, {

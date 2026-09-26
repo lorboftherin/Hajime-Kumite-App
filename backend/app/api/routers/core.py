@@ -7,7 +7,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 
 from app.api import schemas as s
 from app.api.deps import (
@@ -18,9 +18,11 @@ from app.api.deps import (
     StaffUser,
     _bearer,
     can_view_documents,
+    dojo_admin_ids,
     ensure_organizer,
     ensure_staff,
     forget_roles,
+    memberships_of,
     roles_of,
 )
 from app.api.errors import Conflict, Forbidden, NotFound, TooManyRequests, Unauthorized
@@ -29,8 +31,10 @@ from app.db.models import (
     Bracket,
     Category,
     Dojo,
+    Guardianship,
     IdentityDocument,
     Match,
+    Organization,
     Person,
     PersonRole,
     Registration,
@@ -42,7 +46,7 @@ from app.db.models import (
 )
 from app.domain.identity import normalize_document, normalize_name
 from app.security import burn_password_check, decode_token, hash_password, password_needs_rehash, verify_password
-from app.services import people, sessions
+from app.services import accounts, people, sessions
 from app.services.audit import audit, bump, check_version, snapshot
 from app.services.login_guard import clear_login_failures, login_locked_for, register_login_failure
 
@@ -61,6 +65,9 @@ def login(data: s.LoginIn, db: DB, request: Request):
     if wait:
         raise TooManyRequests(f"Demasiados intentos fallidos. Intenta de nuevo en {wait // 60 + 1} min.")
     u = db.scalar(select(User).where(User.username == username))
+    if u is None and "@" in username:
+        # Las cuentas de competidor entran con su correo.
+        u = db.scalar(select(User).where(User.email == username))
     if u is None:
         burn_password_check(data.password)  # mismo tiempo de respuesta que con un usuario real
     if u is None or not u.is_active or not verify_password(data.password, u.password_hash):
@@ -162,6 +169,11 @@ def user_out(db, u: User) -> s.UserOut:
     out = s.UserOut.model_validate(u)
     out.roles = [s.RoleOut.model_validate(r) for r in roles_of(db, u)]
     out.can_view_documents = can_view_documents(db, u)
+    mine = memberships_of(db, u)
+    if mine:
+        rows = db.scalars(select(Organization).where(Organization.id.in_(mine)).order_by(Organization.name)).all()
+        out.organizations = [s.UserOrganizationOut(id=o.id, name=o.name, slug=o.slug, role=mine[o.id]) for o in rows]
+    out.dojo_admin_of = sorted(dojo_admin_ids(db, u))
     return out
 
 
@@ -184,6 +196,10 @@ def delete_account(data: s.AccountDelete, db: DB, user: CurrentUser):
     user.display_name = ""
     user.password_hash = hash_password(secrets.token_urlsafe(32))
     user.person_id = None
+    user.email = None
+    user.email_verified_at = None
+    # Deja de ser padre, madre o apoderado verificado de cualquier menor.
+    db.execute(delete(Guardianship).where(Guardianship.user_id == user.id))
     user.is_active = False
     user.token_version = (user.token_version or 0) + 1
     sessions.revoke_all(db, user.id)
@@ -211,9 +227,18 @@ def add_role(person_id: int, data: s.RoleIn, db: DB, admin: AdminUser):
         raise Conflict("Rol desconocido")
     if data.scope_type == "tatami" and data.role != "table_operator":
         raise Conflict("Solo el operador de mesa se asigna a un tatami")
+    if data.scope_type == "organization" and data.role not in ("organizer", "table_operator", "referee"):
+        raise Conflict("Ese rol no tiene ámbito de organización")
+    if data.role == "dojo_admin" and data.scope_type != "dojo":
+        raise Conflict("El admin de dojo se registra en su dojo")
     if data.role == "sensei" and data.scope_type not in ("dojo", "global"):
         raise Conflict("El sensei se registra en su dojo")
-    scope_model = {"tournament": (Tournament, "Torneo"), "dojo": (Dojo, "Dojo"), "tatami": (Tatami, "Tatami")}
+    scope_model = {
+        "tournament": (Tournament, "Torneo"),
+        "dojo": (Dojo, "Dojo"),
+        "tatami": (Tatami, "Tatami"),
+        "organization": (Organization, "Organización"),
+    }
     if data.scope_type in scope_model:
         model, label = scope_model[data.scope_type]
         if db.get(model, data.scope_id) is None:
@@ -259,6 +284,8 @@ def create_user(data: s.UserCreate, db: DB, admin: AdminUser):
     db.add(u)
     db.flush()
     audit(db, admin, "user", u.id, "create", after={"username": username, "is_admin": data.is_admin})
+    if data.email:
+        accounts.set_email(db, admin, u, data.email)
     db.commit()
     return user_out(db, u)
 
@@ -275,6 +302,8 @@ def update_user(user_id: int, data: s.UserAdminUpdate, db: DB, admin: AdminUser)
     for k in ("is_active", "is_admin", "display_name", "person_id"):
         if k in changes:
             setattr(u, k, changes[k])
+    if "email" in changes:
+        accounts.set_email(db, admin, u, changes["email"] or None)
     if data.reset_password:
         u.password_hash = hash_password(data.reset_password)
         u.must_change_password = True
@@ -393,11 +422,15 @@ def create_person(data: s.PersonCreate, db: DB, user: CurrentUser):
 
 @router.get("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
 def get_person(person_id: int, db: DB, user: CurrentUser):
-    """Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos)."""
+    """Ficha de una persona: Admin y organizadores, el admin de su dojo actual
+    (con documentos), o la propia persona (sin documentos)."""
     privileged = can_view_documents(db, user)
+    p = people.get_person(db, person_id)
+    if not privileged and dojo_admin_ids(db, user):
+        m = people.current_membership(db, p.id)
+        privileged = m is not None and m.dojo_id in dojo_admin_ids(db, user)
     if not privileged and user.person_id != person_id:
         raise Forbidden("Solo los organizadores ven fichas de otras personas")
-    p = people.get_person(db, person_id)
     out = people.person_out(db, p, privileged)
     if privileged and (out.documents or out.birth_date):
         people.log_sensitive_view(db, user, p.id)

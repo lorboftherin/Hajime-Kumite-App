@@ -322,7 +322,7 @@ export class ResultsTab {
   private api = inject(ApiService);
   private mut = inject(MutationService);
 
-  // --- Diplomas (TODO(entitlements): feature «certificates» del plan) ---
+  // --- Diplomas (derecho «certificates» del plan: sin él, el servidor responde 402) ---
   readonly dojoOpen = signal(false);
   readonly dojoId = signal(0);
   readonly kind = signal<'all' | 'podium' | 'participation'>('all');

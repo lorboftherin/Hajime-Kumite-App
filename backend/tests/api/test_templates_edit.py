@@ -171,10 +171,41 @@ def test_permissions(client):
     assert api.raw("PATCH", f"/templates/{t['id']}", json={"version": 1, "name": "Y"}, headers=h).status_code == 403
     assert api.raw("POST", f"/templates/{t['id']}/duplicate", json={}, headers=h).status_code == 403
     assert api.raw("DELETE", f"/templates/{t['id']}", headers=h).status_code == 403
-    # Un organizador (rol de cualquier ámbito) sí edita.
+    # Plantillas globales: solo el Admin. Un organizador con rol global no las edita.
     p = api.person("Orga", "Nizadora", api.dojo("Org")["id"])
     api.post(f"/persons/{p['id']}/roles", {"role": "organizer", "scope_type": "global"}, expect=201)
     api.post("/users", {"username": "orga", "password": "secret123", "person_id": p["id"]}, expect=201)
     tok = api.c.post("/api/v1/auth/login", json={"username": "orga", "password": "secret123"}).json()["access_token"]
     ho = {"Authorization": f"Bearer {tok}"}
-    assert api.raw("POST", f"/templates/{t['id']}/duplicate", json={}, headers=ho).status_code == 201
+    assert api.raw("PATCH", f"/templates/{t['id']}", json={"version": 1, "name": "Y"}, headers=ho).status_code == 403
+    assert api.raw("POST", "/templates", json={"name": "Global"}, headers=ho).status_code == 403
+
+
+def test_templates_by_organization(client):
+    from tests.api.test_organizaciones import org_with_owner
+
+    api = client
+    glob = _tpl(api, "Global")
+    org_a, owner_a, _ = org_with_owner(api, "Liga de Lima", "duena_a")
+    org_b, owner_b, _ = org_with_owner(api, "Liga del Callao", "duena_b")
+    # Sin indicar organización, la plantilla es de la suya.
+    mine = owner_a.post("/templates", {"name": "Liga Lima 2026", "items": [ITEM]}, expect=201)
+    assert mine["organization_id"] == org_a["id"] and mine["can_edit"] is True
+    assert owner_a.raw("POST", "/templates", json={"name": "Ajena", "organization_id": org_b["id"]}).status_code == 403
+    # Cada organización ve las globales y las suyas.
+    seen_a = {t["id"] for t in owner_a.get("/templates")}
+    seen_b = {t["id"] for t in owner_b.get("/templates")}
+    assert {glob["id"], mine["id"]} <= seen_a
+    assert glob["id"] in seen_b and mine["id"] not in seen_b
+    assert owner_b.raw("GET", f"/templates/{mine['id']}").status_code == 404
+    assert owner_b.raw("PATCH", f"/templates/{mine['id']}", json={"version": 1, "name": "X"}).status_code == 404
+    # La global no la edita, pero la duplica en su organización.
+    g = next(t for t in owner_a.get("/templates") if t["id"] == glob["id"])
+    assert g["can_edit"] is False
+    assert owner_a.raw("PATCH", f"/templates/{glob['id']}", json={"version": 1, "name": "X"}).status_code == 403
+    copy = owner_a.post(f"/templates/{glob['id']}/duplicate", {}, expect=201)
+    assert copy["organization_id"] == org_a["id"] and copy["can_edit"] is True
+    upd = owner_a.patch(f"/templates/{mine['id']}", {"version": mine["version"], "description": "Oficial"})
+    assert upd["description"] == "Oficial"
+    # El Admin ve todas.
+    assert {glob["id"], mine["id"], copy["id"]} <= {t["id"] for t in api.get("/templates")}

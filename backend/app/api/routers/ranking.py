@@ -14,6 +14,7 @@ from app.api.errors import Forbidden, NotFound
 from app.db.models import RankingSeason
 from app.services import people
 from app.services import ranking as svc
+from app.services.claims import is_guardian
 
 router = APIRouter(tags=["ranking"])
 
@@ -116,7 +117,7 @@ def recompute(sid: int, db: DB, user: CurrentUser):
 @router.get("/persons/{person_id}/ranking")
 def person_ranking(person_id: int, db: DB, user: CurrentUser):
     """Puesto de la persona en cada temporada (perfil)."""
-    if not is_staff(db, user) and user.person_id != person_id:
+    if not is_staff(db, user) and user.person_id != person_id and not is_guardian(db, user, person_id):
         raise Forbidden("Solo los organizadores ven el ranking de otras personas")
     people.get_person(db, person_id)
     return svc.person_positions(db, person_id)

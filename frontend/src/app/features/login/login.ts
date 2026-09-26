@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiError } from '../../core/api-error';
+import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { isMobileApp, serverUrl, setServerUrl } from '../../core/server';
 import { AuthFrame } from '../../shared/auth-frame';
@@ -9,7 +10,7 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, AuthFrame, Enso, HajimeWord, HajimeTagline],
+  imports: [FormsModule, RouterLink, AuthFrame, Enso, HajimeWord, HajimeTagline],
   template: `
     <app-auth-frame>
       <div class="login">
@@ -30,10 +31,10 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="login-title">
           <div>
             <h1 id="login-title">Ingresar</h1>
-            <p class="muted small lead">Usa la cuenta que te entregó la organización.</p>
+            <p class="muted small lead">Con tu usuario o tu correo.</p>
           </div>
           <label class="field">
-            <span>Usuario</span>
+            <span>Usuario o correo</span>
             <input
               name="username"
               [(ngModel)]="username"
@@ -52,6 +53,7 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
               required
             />
           </label>
+          <a class="small forgot" routerLink="/recuperar-clave">¿Olvidaste tu contraseña?</a>
           @if (error()) {
             <div class="alert" [class.danger]="!locked()" [class.warn]="locked()" role="alert">
               @if (locked()) {
@@ -76,6 +78,11 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
             }
             Ingresar
           </button>
+          @if (openSignup()) {
+            <p class="small center signup">
+              ¿Compites o tienes hijos que compiten? <a routerLink="/crear-cuenta">Crea tu cuenta</a>
+            </p>
+          }
           @if (mobile) {
             <details class="server">
               <summary class="small muted">Servidor: {{ server() }}</summary>
@@ -99,6 +106,14 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
     </app-auth-frame>
   `,
   styles: `
+    .forgot {
+      align-self: flex-end;
+      margin-top: -0.5rem;
+    }
+    .signup {
+      margin: 0;
+      text-align: center;
+    }
     .server {
       margin-top: 0.25rem;
       summary {
@@ -243,6 +258,14 @@ export class LoginPage {
   /** App del celular: se puede apuntar a otro servidor (p. ej. pruebas vs. producción). */
   readonly mobile = isMobileApp;
   readonly server = signal(serverUrl());
+  /** Registro abierto de cuentas de competidor (HAJIME_OPEN_SIGNUP). */
+  readonly openSignup = signal(false);
+
+  constructor() {
+    inject(ApiService)
+      .get<{ open_signup: boolean }>('/auth/options')
+      .subscribe({ next: (o) => this.openSignup.set(!!o.open_signup), error: () => {} });
+  }
 
   changeServer(url: string): void {
     setServerUrl(url);
