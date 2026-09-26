@@ -92,7 +92,9 @@ jobs:
       - name: La versión es la misma en VERSION, pyproject y package.json
         run: python scripts/version.py --check
       - name: Scripts de operación sin errores (shellcheck)
-        run: shellcheck -x -P SCRIPTDIR infra/azure/*.sh scripts/*.sh
+        # --severity=warning: los avisos «info» cambian entre versiones de shellcheck
+        # (el runner trae una más antigua que la de desarrollo) y no son errores.
+        run: shellcheck -x -P SCRIPTDIR --severity=warning infra/azure/*.sh scripts/*.sh
       - name: El DDL de SQL Server está al día (sql/001_schema.sql)
         working-directory: backend
         run: |
