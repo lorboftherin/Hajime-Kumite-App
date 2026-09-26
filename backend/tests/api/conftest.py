@@ -15,6 +15,11 @@ from app.security import hash_password
 
 @pytest.fixture()
 def client():
+    from app.api.routers import public as public_router
+    from app.config import get_settings
+
+    get_settings().public_cache_seconds = 0  # las pruebas ven cada cambio al instante
+    public_router.clear_cache()
     engine = base.init_engine("sqlite://")
     Base.metadata.create_all(engine)
     db = next(base.get_session())

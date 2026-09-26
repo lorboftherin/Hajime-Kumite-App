@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     load_base_template: bool = True
     # SQL Server: crear tablas al arrancar (SQLite siempre las crea).
     auto_create_schema: bool = False
+    # Segundos que se comparte la respuesta del vivo público entre espectadores (0 = sin caché).
+    public_cache_seconds: float = 2.0
     # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.
     secret_file: str | None = None
 

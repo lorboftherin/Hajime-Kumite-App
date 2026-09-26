@@ -66,3 +66,21 @@ def test_overlay_follows_the_live_bout_of_a_team_match(client):
     ov = api.c.get(f"/api/v1/public/{token}/tatamis/{tat}").json()["match"]
     assert ov["team"] == {"aka": tm["aka"]["name"], "ao": tm["ao"]["name"], "wins": [1, 0], "bout": 2, "extra": False}
     assert ov["score"] == [0, 1] and ov["aka"]["dojo"] == tm["aka"]["name"] and ov["running"] is False
+
+
+def test_public_live_is_shared_between_spectators(client, monkeypatch):
+    """Cientos de espectadores no deben costar cientos de cálculos: la respuesta se comparte unos segundos."""
+    from app.api.routers import public as public_router
+    from app.config import get_settings
+
+    calls = []
+    monkeypatch.setattr(public_router.public, "live", lambda db, token: calls.append(token) or {"token": token})
+    get_settings().public_cache_seconds = 60
+    public_router.clear_cache()
+    for _ in range(50):
+        assert client.c.get("/api/v1/public/abc").json() == {"token": "abc"}
+    client.c.get("/api/v1/public/otro")
+    assert calls == ["abc", "otro"]
+    get_settings().public_cache_seconds = 0
+    client.c.get("/api/v1/public/abc")
+    assert calls == ["abc", "otro", "abc"]
