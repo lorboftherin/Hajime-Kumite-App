@@ -18,9 +18,11 @@ from app.api.deps import (
     StaffUser,
     _bearer,
     can_view_documents,
+    dojo_admin_ids,
     ensure_organizer,
     ensure_staff,
     forget_roles,
+    memberships_of,
     roles_of,
 )
 from app.api.errors import Conflict, Forbidden, NotFound, TooManyRequests, Unauthorized
@@ -32,6 +34,7 @@ from app.db.models import (
     Dojo,
     IdentityDocument,
     Match,
+    Organization,
     Person,
     PersonRole,
     Registration,
@@ -164,6 +167,11 @@ def user_out(db, u: User) -> s.UserOut:
     out = s.UserOut.model_validate(u)
     out.roles = [s.RoleOut.model_validate(r) for r in roles_of(db, u)]
     out.can_view_documents = can_view_documents(db, u)
+    mine = memberships_of(db, u)
+    if mine:
+        rows = db.scalars(select(Organization).where(Organization.id.in_(mine)).order_by(Organization.name)).all()
+        out.organizations = [s.UserOrganizationOut(id=o.id, name=o.name, slug=o.slug, role=mine[o.id]) for o in rows]
+    out.dojo_admin_of = sorted(dojo_admin_ids(db, u))
     return out
 
 
@@ -213,9 +221,18 @@ def add_role(person_id: int, data: s.RoleIn, db: DB, admin: AdminUser):
         raise Conflict("Rol desconocido")
     if data.scope_type == "tatami" and data.role != "table_operator":
         raise Conflict("Solo el operador de mesa se asigna a un tatami")
+    if data.scope_type == "organization" and data.role not in ("organizer", "table_operator", "referee"):
+        raise Conflict("Ese rol no tiene ámbito de organización")
+    if data.role == "dojo_admin" and data.scope_type != "dojo":
+        raise Conflict("El admin de dojo se registra en su dojo")
     if data.role == "sensei" and data.scope_type not in ("dojo", "global"):
         raise Conflict("El sensei se registra en su dojo")
-    scope_model = {"tournament": (Tournament, "Torneo"), "dojo": (Dojo, "Dojo"), "tatami": (Tatami, "Tatami")}
+    scope_model = {
+        "tournament": (Tournament, "Torneo"),
+        "dojo": (Dojo, "Dojo"),
+        "tatami": (Tatami, "Tatami"),
+        "organization": (Organization, "Organización"),
+    }
     if data.scope_type in scope_model:
         model, label = scope_model[data.scope_type]
         if db.get(model, data.scope_id) is None:
@@ -395,11 +412,15 @@ def create_person(data: s.PersonCreate, db: DB, user: CurrentUser):
 
 @router.get("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
 def get_person(person_id: int, db: DB, user: CurrentUser):
-    """Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos)."""
+    """Ficha de una persona: Admin y organizadores, el admin de su dojo actual
+    (con documentos), o la propia persona (sin documentos)."""
     privileged = can_view_documents(db, user)
+    p = people.get_person(db, person_id)
+    if not privileged and dojo_admin_ids(db, user):
+        m = people.current_membership(db, p.id)
+        privileged = m is not None and m.dojo_id in dojo_admin_ids(db, user)
     if not privileged and user.person_id != person_id:
         raise Forbidden("Solo los organizadores ven fichas de otras personas")
-    p = people.get_person(db, person_id)
     out = people.person_out(db, p, privileged)
     if privileged and (out.documents or out.birth_date):
         people.log_sensitive_view(db, user, p.id)
@@ -459,8 +480,15 @@ def revert_merge(merge_id: int, db: DB, admin: AdminUser):
 
 
 @router.get("/templates", response_model=list[s.TemplateOut], tags=["templates"])
-def list_templates(db: DB, _: CurrentUser):
-    return db.scalars(select(CategoryTemplate).order_by(CategoryTemplate.name)).all()
+def list_templates(db: DB, user: CurrentUser):
+    """Plantillas globales y las de las organizaciones del usuario (todas para el Admin)."""
+    stmt = select(CategoryTemplate).order_by(CategoryTemplate.name)
+    if not user.is_admin:
+        orgs = list(memberships_of(db, user))
+        stmt = stmt.where(
+            or_(CategoryTemplate.organization_id.is_(None), CategoryTemplate.organization_id.in_(orgs or [0]))
+        )
+    return db.scalars(stmt).all()
 
 
 @router.post("/templates", response_model=s.TemplateOut, status_code=201, tags=["templates"])

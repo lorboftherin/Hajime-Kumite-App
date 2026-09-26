@@ -22,7 +22,7 @@ from app.api.errors import NotFound
 from app.db.base import utcnow
 from app.db.models import Category, CategoryResult, Match, Person, Registration, Tatami, Tournament, User
 from app.domain.kumite import compute_scoreboard
-from app.services import reports
+from app.services import entitlements, reports
 from app.services import stats as stats_svc
 from app.services.audit import audit, bump
 from app.services.brackets import (
@@ -293,6 +293,7 @@ def live(db: Session, token: str) -> dict[str, Any]:
 def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     """Marcador del tatami para el overlay de la transmisión (OBS, vMix…)."""
     t = by_token(db, token)
+    entitlements.require_for_tournament(db, None, t, "live_overlay")
     tat = db.get(Tatami, tatami_id)
     if tat is None or tat.tournament_id != t.id:
         raise NotFound("Tatami no encontrado")

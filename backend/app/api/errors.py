@@ -61,6 +61,17 @@ class TooManyRequests(AppError):
     code = "TOO_MANY_ATTEMPTS"
 
 
+class PlanRequired(AppError):
+    """402: la función necesita un plan que la organización (o la persona) no tiene.
+
+    ``details``: ``feature``, ``plan`` (código del plan más económico que la
+    incluye), ``plan_name`` y ``organization_id`` si aplica.
+    """
+
+    status_code = 402
+    code = "PLAN_REQUIRED"
+
+
 class Conflict(AppError):
     status_code = 409
     code = "CONFLICT"
