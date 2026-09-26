@@ -23,8 +23,16 @@ export interface RoleOut {
 
 export interface RoleIn {
   role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee' | 'sensei';
-  scope_type: 'global' | 'tournament' | 'dojo' | 'tatami';
+  scope_type: 'global' | 'organization' | 'tournament' | 'dojo' | 'tatami';
   scope_id: number | null;
+}
+
+/** Organización de la que la cuenta es miembro (GET /auth/me). */
+export interface UserOrganization {
+  id: number;
+  name: string;
+  slug: string;
+  role: OrgRole;
 }
 
 export interface User {
@@ -40,6 +48,14 @@ export interface User {
   roles?: RoleOut[];
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento. */
   can_view_documents?: boolean;
+  /** Correo de la cuenta (recuperar la contraseña, avisos). */
+  email?: string | null;
+  /** null = el correo aún no se confirmó con el enlace. */
+  email_verified_at?: string | null;
+  /** Organizaciones de la cuenta con su rol. */
+  organizations?: UserOrganization[];
+  /** Dojos que administra (rol dojo_admin): «Mis competidores». */
+  dojo_admin_of?: number[];
 }
 
 export interface TokenOut {
@@ -130,7 +146,7 @@ export interface CategoryFields {
   grade_min: number | null;
   grade_max: number | null;
   weight_class: string | null;
-  format: 'single_elimination' | 'round_robin' | 'kata_rounds' | null;
+  format: 'single_elimination' | 'round_robin' | 'kata_rounds' | 'groups_knockout' | null;
   third_place_rule: 'two_bronzes' | 'third_place_match' | 'repechage' | null;
   duration_seconds: number | null;
   kumite_rules: Record<string, unknown> | null;
@@ -138,6 +154,13 @@ export interface CategoryFields {
   kata_structure: 'bracket' | 'rounds' | null;
   kata_judges: number | null;
   sort_order: number;
+  /** Cupo: al superarlo se advierte y se sugiere dividir. */
+  max_entrants?: number | null;
+  weight_min_kg?: number | null;
+  weight_max_kg?: number | null;
+  /** Overrides de la categoría (docs/reglas-configurables.md). */
+  kata_rules?: Record<string, unknown> | null;
+  competition_rules?: Record<string, unknown> | null;
 }
 
 export interface TemplateItem extends CategoryFields {
@@ -150,6 +173,13 @@ export interface Template {
   description: string;
   version: number;
   items: TemplateItem[];
+  /** Organización dueña; null = plantilla global (solo el Admin la edita). */
+  organization_id?: number | null;
+  /** Archivada: no se ofrece para torneos nuevos (algún torneo la usó). */
+  is_archived?: boolean;
+  /** Algún torneo la usó para generar categorías: no se borra, se archiva. */
+  in_use?: boolean;
+  can_edit?: boolean;
 }
 
 export interface Category extends CategoryFields {
@@ -164,6 +194,10 @@ export interface Category extends CategoryFields {
   version: number;
   entrant_count: number;
   advice: string[];
+  /** Categoría de la que salió al dividir. */
+  split_from_id?: number | null;
+  /** Tiene divisiones activas (se pueden deshacer). */
+  has_split?: boolean;
 }
 
 // --- Torneos ---
@@ -189,12 +223,26 @@ export interface Tournament {
   default_third_place_rule: string;
   kumite_rules: Record<string, unknown>;
   kata_defaults: Record<string, unknown>;
+  competition_rules?: Record<string, unknown> | null;
+  /** Edad: a la fecha de referencia (date) o por año de nacimiento (birth_year). */
+  age_mode?: 'date' | 'birth_year';
   template_id: number | null;
   version: number;
   tatamis: Tatami[];
   /** Enlace secreto del seguimiento en vivo público (null = desactivado). */
   public_token?: string | null;
   public_names?: 'short' | 'full';
+  organization_id?: number;
+  organization_name?: string;
+  /** Autoinscripción por dojo abierta (y hasta cuándo, en UTC). */
+  self_registration_open?: boolean;
+  self_registration_closes_at?: string | null;
+  /** Acreditación obligatoria: la verificación previa avisa de los no acreditados. */
+  checkin_required?: boolean;
+  weigh_in_tolerance_kg?: number;
+  certificate_organizer?: string;
+  certificate_signer_name?: string;
+  certificate_signer_title?: string;
   /** Dirección fija de la página pública: /t/<slug>. */
   public_slug?: string | null;
   /** Horarios estimados: zona horaria y margen entre combates (s). */
@@ -216,8 +264,16 @@ export interface Registration {
   age_at_reference: number | null;
   status: string;
   withdrawn_reason: string | null;
+  /** Autoinscripción: motivo del rechazo y cuenta que la pidió. */
+  rejection_reason?: string | null;
+  requested_by_id?: number | null;
   seed: number | null;
   version: number;
+  checkin_status?: CheckinStatus;
+  checked_in_at?: string | null;
+  weight_kg?: number | null;
+  weighed_at?: string | null;
+  weigh_in_result?: WeighInResult | null;
   /** Nombre de la persona o, en categorías por equipos, del equipo. */
   person_name: string;
   dojo_name: string;
@@ -257,6 +313,8 @@ export interface TeamDecision {
   points: Record<Color, number>;
   draws: number;
   needs_extra_bout: boolean;
+  /** Combate extra empatado con la regla «hantei»: se corrige con la decisión de jueces. */
+  extra_bout_needs_hantei?: boolean;
   pending_bouts: number;
   reason: string | null;
 }
@@ -265,7 +323,14 @@ export interface TeamMatch {
   match: Match;
   category_id: number;
   category_name: string;
-  settings: { bouts: number; tie_rule: 'points' | 'extra_bout' };
+  settings: {
+    bouts: number;
+    tie_rule: 'points' | 'extra_bout';
+    extra_bout_tie?: 'hantei' | 'repeat';
+    empty_slot_walkover?: boolean;
+    lock_order?: boolean;
+    min_starters?: number | null;
+  };
   aka: TeamSide | null;
   ao: TeamSide | null;
   bouts: TeamBout[];
@@ -364,6 +429,51 @@ export interface Bracket {
   matches: Match[];
   podium: { places?: Array<{ place: number; registration_id: number }>; complete?: boolean };
   standings: Array<Record<string, any>> | null;
+  /** Grupos + eliminación: tabla de cada grupo. */
+  groups?: Array<{ letter: string; standings: Array<Record<string, any>> }> | null;
+  /** Rondas de kata: ronda en curso, cortes y detalle de cada ronda. */
+  kata_rounds?: KataRounds | null;
+}
+
+export interface KataRounds {
+  current: number;
+  total: number;
+  cuts: number[];
+  needs_review: boolean;
+  rounds: Array<{
+    round: number;
+    complete: boolean;
+    qualified: number[];
+    cut_tied: boolean;
+    standings: Array<Record<string, any>>;
+  }>;
+}
+
+/** Resultado de añadir o quitar a alguien de una llave ya generada. */
+export interface BracketChange {
+  result: {
+    mode: string;
+    position?: number;
+    match?: string;
+    matches_added?: number;
+    matches_voided?: number;
+  };
+  bracket: Bracket;
+}
+
+/** Valores por defecto de las reglas configurables (GET /rules/defaults). */
+export interface RulesDefaults {
+  kumite: Record<string, any>;
+  kata: Record<string, any>;
+  competition: Record<string, any>;
+  round_robin_criteria: string[];
+  infractions: Record<string, { label: string; ladder: string | null }>;
+  age_modes: string[];
+}
+
+export interface KataCatalog {
+  styles: Array<{ style: string; katas: string[] }>;
+  katas: string[];
 }
 
 export interface BracketVersion {
@@ -385,6 +495,8 @@ export interface MatchEvent {
   target_id: string | null;
   method: string | null;
   reason: string | null;
+  infraction?: string | null;
+  ladder?: string | null;
   device_at: string;
   received_at: string;
 }
@@ -397,6 +509,11 @@ export interface EventIn {
   value?: number | null;
   target_id?: string | null;
   reason?: string | null;
+  /** Sanción: tipo de falta y escalera (preset de dos categorías). */
+  infraction?: string | null;
+  ladder?: 'c1' | 'c2' | null;
+  /** Hantei: votos de los jueces (opcional). */
+  votes?: Array<Color | null> | null;
   /** Requerido (motivo) para tocar un combate ya cerrado: 409 WARNINGS MATCH_FINISHED. */
   override?: Override | null;
 }
@@ -407,6 +524,9 @@ export interface ScoreboardRules {
   tie_rule?: string;
   lead_victory?: number | null;
   point_values?: number[];
+  sanction_preset?: 'single' | 'two_categories' | string;
+  senshu_auto_loss?: boolean;
+  golden_point_seconds?: number;
 }
 
 export interface Scoreboard {
@@ -416,7 +536,20 @@ export interface Scoreboard {
   score: Record<Color, number>;
   sanction: Record<Color, number>;
   sanction_labels: string[];
+  /** Segunda escalera (preset de dos categorías) y tipos de falta. */
+  sanction_c2?: Record<Color, number> | null;
+  sanction_labels_c2?: string[] | null;
+  infractions?: Record<string, { label: string; ladder: string | null }> | null;
   senshu: Color | null;
+  senshu_lost?: Color[];
+  /** Punto de oro: periodo extra en curso y duración total del periodo. */
+  golden_point?: boolean;
+  period_seconds?: number | null;
+  hantei_votes?: Array<{
+    judge_number: number;
+    color: Color | null;
+    judge_person_id: number | null;
+  }>;
   elapsed_seconds: number;
   duration_seconds: number;
   running: boolean;
@@ -497,7 +630,13 @@ export interface CategoryResult {
   category_name: string;
   status: string;
   merged_into_id: number | null;
-  places: Array<{ place: number; registration_id: number; name: string; dojo_id: number; dojo_name: string }>;
+  places: Array<{
+    place: number;
+    registration_id: number;
+    name: string;
+    dojo_id: number;
+    dojo_name: string;
+  }>;
 }
 
 export interface MedalRow {
@@ -716,7 +855,15 @@ export interface MatchSummarySide {
 }
 
 export interface MatchSummary {
-  match: { id: number; code: string; status: string; method: string | null; winner: Color | null; parent_match_id: number | null; technical: boolean | null };
+  match: {
+    id: number;
+    code: string;
+    status: string;
+    method: string | null;
+    winner: Color | null;
+    parent_match_id: number | null;
+    technical: boolean | null;
+  };
   category: { id: number; name: string; modality: string };
   tournament: { id: number; name: string; date: string } | null;
   aka: MatchSummarySide;
@@ -771,8 +918,19 @@ export interface PublicLive {
     total: number;
   }>;
   categories: Array<{ id?: number; name: string; modality: string; status: string }>;
-  results: Array<{ category_id?: number; category: string; places: Array<{ place: number; name: string; dojo: string }> }>;
-  medal_table: Array<{ rank: number; dojo_name: string; gold: number; silver: number; bronze: number; total: number }>;
+  results: Array<{
+    category_id?: number;
+    category: string;
+    places: Array<{ place: number; name: string; dojo: string; public_id?: string | null }>;
+  }>;
+  medal_table: Array<{
+    rank: number;
+    dojo_name: string;
+    gold: number;
+    silver: number;
+    bronze: number;
+    total: number;
+  }>;
   awards: Award[];
   server_time: string;
 }
@@ -799,4 +957,306 @@ export interface OverlayData {
     winner: Color | null;
     team: { aka: string; ao: string; wins: [number, number]; bout: number; extra: boolean } | null;
   } | null;
+}
+
+// --- Organizaciones, planes y suscripciones ---
+export type OrgRole = 'owner' | 'admin' | 'member';
+export type OrgKind = 'league' | 'dojo' | 'organizer';
+
+export interface Subscription {
+  id: number;
+  organization_id: number | null;
+  person_id: number | null;
+  user_id: number | null;
+  plan_code: string;
+  plan_name: string;
+  status: 'trial' | 'active' | 'past_due' | 'canceled';
+  current_period_end: string | null;
+  source: 'manual' | 'payment';
+  reference: string | null;
+  notes: string;
+  created_at: string;
+  /** Vigente: da acceso hoy. */
+  is_current: boolean;
+}
+
+export interface Organization {
+  id: number;
+  name: string;
+  slug: string;
+  kind: OrgKind;
+  country: string;
+  timezone: string;
+  currency: string;
+  logo: string | null;
+  version: number;
+  created_at: string;
+  my_role: OrgRole | null;
+  can_manage: boolean;
+  subscription: Subscription | null;
+  /** Funciones disponibles hoy (en marcha blanca, todas). */
+  features: string[];
+  tournament_count: number;
+}
+
+export interface OrgMember {
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: OrgRole;
+}
+
+export interface Plan {
+  code: string;
+  name: string;
+  audience: 'organization' | 'person' | 'all';
+  price_pen_month: number | null;
+  price_pen_year: number | null;
+  features: string[];
+}
+
+export interface PlansOut {
+  mode: 'marcha_blanca' | 'enforced';
+  plans: Plan[];
+  features: Record<string, string>;
+}
+
+// --- Autoinscripción por dojo ---
+export interface Invitation {
+  id: number;
+  tournament_id: number;
+  dojo_id: number | null;
+  dojo_name: string | null;
+  token: string;
+  created_at: string;
+  revoked_at: string | null;
+  uses: number;
+}
+
+export interface InvitationInfo {
+  tournament_id: number;
+  tournament_name: string;
+  organization_name: string;
+  start_date: string;
+  dojo_id: number | null;
+  dojo_name: string | null;
+  self_registration_open: boolean;
+  already_admin: boolean;
+  my_dojo_ids: number[];
+}
+
+export interface DojoAdminRequest {
+  id: number;
+  tournament_id: number;
+  dojo_id: number;
+  dojo_name: string;
+  user_id: number;
+  username: string;
+  display_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  current_admins: string[];
+}
+
+export interface DojoRegistration extends Registration {
+  tournament_name: string;
+  category_name: string;
+}
+
+export interface RegistrationRequests {
+  registrations: DojoRegistration[];
+  dojo_admin_requests: DojoAdminRequest[];
+  count: number;
+}
+
+export interface RegistrationDecision {
+  approved: number[];
+  rejected: number[];
+  skipped: Array<{ id: number; reason: string }>;
+}
+
+export interface OpenTournament {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string | null;
+  venue: string;
+  city: string;
+  organization_name: string;
+  self_registration_closes_at: string | null;
+}
+
+// --- Acreditación y pesaje ---
+export type CheckinStatus = 'pending' | 'present' | 'absent';
+export type WeighInResult = 'ok' | 'over' | 'under';
+
+/** Fila de GET /tournaments/{id}/checkin (una por inscripción). */
+export interface CheckinRow {
+  registration_id: number;
+  person_id: number | null;
+  team_id: number | null;
+  name: string;
+  dojo_id: number;
+  dojo_name: string;
+  category_id: number;
+  category_name: string;
+  category_status: string;
+  modality: string;
+  weight_class: string | null;
+  weight_min_kg: number | null;
+  weight_max_kg: number | null;
+  needs_weigh_in: boolean;
+  status: string;
+  checkin_status: CheckinStatus;
+  checked_in_at: string | null;
+  weight_kg: number | null;
+  weighed_at: string | null;
+  weigh_in_result: WeighInResult | null;
+  weigh_in_resolved: boolean;
+  code: string | null;
+  version: number;
+}
+
+export interface CheckinCategoryCount {
+  category_id: number;
+  category_name: string;
+  total: number;
+  present: number;
+  absent: number;
+  pending: number;
+}
+
+export interface CheckinList {
+  tournament_id: number;
+  checkin_required: boolean;
+  weigh_in_tolerance_kg: number;
+  rows: CheckinRow[];
+  categories: CheckinCategoryCount[];
+  totals: { total: number; present: number; absent: number; pending: number };
+}
+
+export interface AbsentWithBracket {
+  registration_id: number;
+  category_id: number;
+  category_name: string;
+  options: string[];
+  message: string;
+}
+
+export interface CheckinResult {
+  changed: number[];
+  registrations: Registration[];
+  absent_with_bracket: AbsentWithBracket[];
+  name?: string;
+  code?: string;
+}
+
+export interface WeightSuggestion {
+  category_id: number;
+  name: string;
+  weight_class: string | null;
+  range: string;
+}
+
+export interface WeighInItem {
+  registration_id: number;
+  category_id: number;
+  category_name: string;
+  result: WeighInResult;
+  range: string;
+  warnings: Array<{ code: string; message: string }>;
+  suggestions: WeightSuggestion[];
+}
+
+export interface WeighInOut {
+  weight_kg: number;
+  results: WeighInItem[];
+}
+
+export interface Credential {
+  name: string;
+  dojo_name: string;
+  code: string | null;
+  person_id: number | null;
+  categories: string[];
+}
+
+// --- Diplomas ---
+export interface PersonCertificates {
+  tournament_id: number;
+  tournament_name: string;
+  start_date: string;
+  is_test: boolean;
+  items: Array<{ category_id: number; category_name: string; place: number | null }>;
+}
+
+// --- Ranking ---
+export interface RankingPoints {
+  gold: number;
+  silver: number;
+  bronze: number;
+  participation: number;
+}
+
+export interface RankingSeason {
+  id: number;
+  name: string;
+  slug: string;
+  year: number;
+  date_from: string | null;
+  date_to: string | null;
+  tournament_ids: number[];
+  points: RankingPoints;
+  multipliers: Record<string, number>;
+  min_entrants_walkover_gold: number;
+  is_public: boolean;
+  computed_at: string | null;
+  version: number;
+  tournaments?: Array<{ id: number; name: string; start_date: string; multiplier: number }>;
+}
+
+export interface RankingRow {
+  rank: number;
+  person_id: number | null;
+  name: string;
+  dojo_id: number | null;
+  dojo_name: string;
+  points: number;
+  golds: number;
+  silvers: number;
+  bronzes: number;
+  participations: number;
+  tournaments: number;
+}
+
+export interface RankingGroup {
+  key: string;
+  label: string;
+  modality: string;
+  competitors?: number;
+  rows?: RankingRow[];
+}
+
+export interface RankingDetail {
+  season: RankingSeason;
+  groups: RankingGroup[];
+  persons: RankingGroup[];
+  dojos: RankingRow[];
+}
+
+export interface PersonRanking {
+  season_id: number;
+  season_name: string;
+  slug: string;
+  year: number;
+  is_public: boolean;
+  group_key: string;
+  group_label: string;
+  modality: string;
+  rank: number;
+  of: number;
+  points: number;
+  golds: number;
+  silvers: number;
+  bronzes: number;
 }

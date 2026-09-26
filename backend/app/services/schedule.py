@@ -4,7 +4,9 @@ Para cada tatami se recorre su cola (el mismo orden que la planilla y la mesa,
 ``brackets.schedule_items``) y se asigna una hora a cada combate que falta:
 
 * **Duración de un combate** = duración de la categoría (kumite: la de sus
-  reglas; kata: ``KATA_SECONDS``) × el *ritmo* real del tatami, más el margen
+  reglas; kata por banderas: dos ejecuciones; kata por rondas: cada ejecución
+  sin nota de la ronda en curso, ``performance_seconds`` de las reglas de kata
+  o 3 minutos) × el *ritmo* real del tatami, más el margen
   entre combates del torneo (``match_overhead_seconds``, 60 s por defecto:
   saludo, llamado, cambio de protecciones).
 * **Ritmo del tatami** = cuánto duraron de verdad sus últimos combates cerrados
@@ -16,6 +18,10 @@ Para cada tatami se recorre su cola (el mismo orden que la planilla y la mesa,
   esperado del combate en curso. Sin hora planificada ni combates empezados, y
   con el torneo sin iniciar, no se estima nada: no hay de dónde partir.
 
+Grupos + eliminación entran solos: ``schedule_items`` ya pone los grupos
+primero. Las inscripciones ausentes (acreditación) no ocupan tiempo: su combate
+será un walkover y su ejecución de kata no se hace.
+
 Las horas se redondean al minuto: así la instantánea pública no cambia de ETag
 en cada recálculo si nada se movió. Se calcula junto con la instantánea
 pública (``app.services.public``), no en cada visita, y en la cola del tatami
@@ -25,6 +31,7 @@ del organizador con las filas que esa consulta ya cargó (sin consultas extra).
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -34,12 +41,12 @@ from sqlalchemy.orm import Session, lazyload
 from app.api.errors import Conflict, NotFound
 from app.api.schemas import ScheduleSettingsIn, TatamiUpdate
 from app.db.base import utcnow
-from app.db.models import Category, Match, Tatami, Tournament, User
+from app.db.models import Category, KataPerformance, Match, Registration, Tatami, Tournament, User
 from app.services.audit import audit, bump
 from app.services.brackets import SCHEDULED, queue_order, schedule_items
 
 DEFAULT_TZ = "America/Lima"
-KATA_SECONDS = 120  # una ejecución de kata con su calificación
+KATA_SECONDS = 180  # una ejecución de kata con su calificación (``performance_seconds``)
 MIN_SAMPLES = 3  # combates cerrados para confiar del todo en el ritmo real
 SAMPLES = 10  # se miran los últimos N combates cerrados del tatami
 FACTOR_RANGE = (0.5, 3.0)
@@ -91,11 +98,23 @@ def _minute(value: datetime) -> datetime:
 
 
 def nominal_seconds(c: Category, t: Tournament) -> int:
+    """Duración nominal de un combate de la categoría (sin margen)."""
     if c.modality == "kata":
-        return KATA_SECONDS
+        return 2 * kata_seconds(c, t)  # banderas: dos ejecuciones por combate
     from app.services.tournaments import effective_kumite_rules
 
     return int(effective_kumite_rules(c, t).duration_seconds)
+
+
+def kata_seconds(c: Category, t: Tournament) -> int:
+    """Una ejecución de kata con su calificación: ``performance_seconds`` de las
+    reglas de kata de la categoría (o del torneo), 3 minutos por defecto."""
+    from app.services.tournaments import effective_kata
+
+    try:
+        return max(30, int(effective_kata(c, t).get("performance_seconds") or KATA_SECONDS))
+    except (TypeError, ValueError):
+        return KATA_SECONDS
 
 
 def _factor(samples: list[tuple[float, float]]) -> float:
@@ -110,22 +129,83 @@ def _factor(samples: list[tuple[float, float]]) -> float:
     return (n * f + max(0, MIN_SAMPLES - n)) / max(n, MIN_SAMPLES)
 
 
-def plan(
+@dataclass
+class Slot:
+    """Un turno pendiente de un tatami: un combate o una ejecución de kata por rondas."""
+
+    tatami: Tatami
+    category_id: int
+    number: str  # «T1-004» o, en kata por rondas, «T1 · ronda 2, turno 3»
+    status: str  # pending | ready | in_progress
+    registrations: tuple[int, ...]
+    match: Match | None = None
+    performance: KataPerformance | None = None
+    eta: datetime | None = None
+    turn: int | None = None  # kata por rondas: turno de salida dentro de la ronda
+
+    @property
+    def key(self) -> int | str:
+        return self.match.id if self.match is not None else f"k{self.performance.id}"
+
+
+def load_kata(db: Session, categories: Iterable[Category]) -> dict[int, list[KataPerformance]]:
+    """Ejecuciones de kata por rondas (sin combate) de las categorías de kata
+    programadas: una consulta, y ninguna si no hay kata."""
+    ids = [c.id for c in categories if c.modality == "kata" and c.tatami_id and c.status in SCHEDULED]
+    if not ids:
+        return {}
+    out: dict[int, list[KataPerformance]] = {}
+    rows = db.scalars(
+        select(KataPerformance).where(KataPerformance.category_id.in_(ids), KataPerformance.match_id.is_(None))
+    ).all()
+    for p in rows:
+        out.setdefault(p.category_id, []).append(p)
+    return out
+
+
+def _kata_slots(tat: Tatami, c: Category, perfs: list[KataPerformance]) -> list[Slot]:
+    """Ejecuciones sin nota de la última ronda armada, en el orden de salida."""
+    if not perfs:
+        return []
+    last = max(p.round_number for p in perfs)
+    ordered = sorted((p for p in perfs if p.round_number == last), key=lambda p: (p.group_number or 0, p.order, p.id))
+    return [
+        Slot(
+            tat,
+            c.id,
+            f"T{tat.number} · ronda {last}, turno {i}",
+            "ready",
+            (p.registration_id,),
+            performance=p,
+            turn=i,
+        )
+        for i, p in enumerate(ordered, start=1)
+        if not p.scores
+    ]
+
+
+def timeline(
     t: Tournament,
     tatamis: Iterable[Tatami],
     categories: Iterable[Category],
     matches: list[Match],
     now: datetime | None = None,
     sched: dict[int, list[dict]] | None = None,
-) -> dict[int, datetime]:
-    """Hora estimada de inicio (UTC sin zona) de cada combate pendiente, por id.
+    kata: dict[int, list[KataPerformance]] | None = None,
+    absent: set[int] | frozenset[int] = frozenset(),
+) -> dict[int, list[Slot]]:
+    """Turnos pendientes de cada tatami, en orden y con su hora estimada (UTC sin zona).
 
     Sin consultas: todo a partir de filas ya cargadas. ``sched`` (el orden de
-    ``schedule_items``) se reutiliza si quien llama ya lo tiene.
+    ``schedule_items``) se reutiliza si quien llama ya lo tiene; ``kata`` son
+    las ejecuciones de kata por rondas (``load_kata``), que no tienen combates;
+    ``absent``, las inscripciones marcadas ausentes en la acreditación: su
+    combate será un walkover (no ocupa tiempo) y su ejecución no se hace.
     """
     now = now or utcnow()
     tatamis = list(tatamis)
     cats = {c.id: c for c in categories}
+    kata = kata or {}
     if sched is None:
         sched = schedule_items(tatamis, queue_order([c for c in cats.values() if c.tatami_id]), matches)
     tz = zone(t.timezone)
@@ -137,9 +217,25 @@ def plan(
             nominal[cid] = nominal_seconds(cats[cid], t) if cid in cats else 180
         return nominal[cid]
 
-    out: dict[int, datetime] = {}
+    out: dict[int, list[Slot]] = {}
     for tat in tatamis:
         items = sched.get(tat.id, [])
+        by_cat: dict[int, list[dict]] = {}
+        for it in items:
+            by_cat.setdefault(it["category_id"], []).append(it)
+        order = queue_order([c for c in cats.values() if c.tatami_id == tat.id and c.status in SCHEDULED])
+        known = {c.id for c in order}
+        order += [cats[cid] for cid in by_cat if cid in cats and cid not in known]
+        slots: list[Slot] = []
+        for c in order:
+            for it in by_cat.get(c.id, []):
+                m = it["match"]
+                if m.status in ("pending", "ready", "in_progress"):
+                    regs = tuple(x for x in (m.aka_registration_id, m.ao_registration_id) if x)
+                    slots.append(Slot(tat, c.id, it["number"], m.status, regs, match=m))
+            if c.id not in by_cat:
+                slots += [s for s in _kata_slots(tat, c, kata.get(c.id, [])) if s.registrations[0] not in absent]
+        out[tat.id] = slots
         closed = sorted(
             (
                 it["match"]
@@ -153,29 +249,53 @@ def plan(
         )
         factor = _factor([((m.finished_at - m.started_at).total_seconds(), nom(m.category_id)) for m in closed])
         planned = local_to_utc(tat.planned_start, tz)
-        started = any(it["match"].started_at for it in items)
+        started = any(it["match"].started_at for it in items) or any(
+            p.scores for c in order for p in kata.get(c.id, [])
+        )
         if planned is None and not started and t.status != "in_progress":
             continue  # sin hora planificada ni actividad: no hay de dónde partir
         cursor = max(x for x in (now, planned) if x is not None)
         last = max((m.finished_at for m in closed), default=None)
         if last is not None:
             cursor = max(cursor, last + overhead)
-        for it in items:
-            m = it["match"]
-            if m.status not in ("pending", "ready", "in_progress"):
-                continue  # cerrado, en revisión o sin combate
-            length = timedelta(seconds=nom(m.category_id) * factor)
-            if m.status == "in_progress" and m.started_at:
-                out[m.id] = _minute(m.started_at)
+        for s in slots:
+            c = cats.get(s.category_id)
+            if s.performance is not None:
+                seconds = kata_seconds(c, t) if c is not None else KATA_SECONDS
+            elif any(r in absent for r in s.registrations):
+                s.eta = _minute(cursor)  # walkover: se da y se pasa al siguiente
+                continue
+            else:
+                seconds = nom(s.category_id)
+            length = timedelta(seconds=seconds * factor)
+            m = s.match
+            if m is not None and m.status == "in_progress" and m.started_at:
+                s.eta = _minute(m.started_at)
                 cursor = max(cursor, max(now, m.started_at + length) + overhead)
                 continue
-            out[m.id] = _minute(cursor)
+            s.eta = _minute(cursor)
             cursor += length + overhead
     return out
 
 
-def estimate(db: Session, tournament_id: int, now: datetime | None = None) -> dict[int, datetime]:
-    """Hora estimada de cada combate pendiente del torneo (tres consultas)."""
+def plan(
+    t: Tournament,
+    tatamis: Iterable[Tatami],
+    categories: Iterable[Category],
+    matches: list[Match],
+    now: datetime | None = None,
+    sched: dict[int, list[dict]] | None = None,
+    kata: dict[int, list[KataPerformance]] | None = None,
+    absent: set[int] | frozenset[int] = frozenset(),
+) -> dict[int | str, datetime]:
+    """Hora estimada de inicio (UTC sin zona) de cada turno pendiente: por id
+    de combate o ``"k<id>"`` de la ejecución de kata. Ver ``timeline``."""
+    lines = timeline(t, tatamis, categories, matches, now, sched, kata, absent)
+    return {s.key: s.eta for slots in lines.values() for s in slots if s.eta is not None}
+
+
+def estimate(db: Session, tournament_id: int, now: datetime | None = None) -> dict[int | str, datetime]:
+    """Hora estimada de cada turno pendiente del torneo (cuatro o cinco consultas)."""
     t = db.get(Tournament, tournament_id)
     if t is None:
         return {}
@@ -197,7 +317,12 @@ def estimate(db: Session, tournament_id: int, now: datetime | None = None) -> di
         if cats
         else []
     )
-    return plan(t, t.tatamis, cats, matches, now)
+    absent = set(
+        db.scalars(
+            select(Registration.id).where(Registration.tournament_id == t.id, Registration.checkin_status == "absent")
+        ).all()
+    )
+    return plan(t, t.tatamis, cats, matches, now, kata=load_kata(db, cats), absent=absent)
 
 
 # ---------------------------------------------------------------------------
@@ -245,12 +370,19 @@ def update_tatami(db: Session, user: User, tatami_id: int, data: TatamiUpdate) -
     return tat
 
 
-def for_tatami(db: Session, tat: Tatami, categories: list[Category], items: list[dict]) -> dict[int, str | None]:
+def for_tatami(
+    db: Session,
+    tat: Tatami,
+    categories: list[Category],
+    items: list[dict],
+    absent: set[int] | frozenset[int] = frozenset(),
+) -> dict[int | str, str | None]:
     """Horas estimadas de la cola de un tatami (ISO con la zona del torneo), a
-    partir de lo que la cola ya cargó: una sola consulta más (el torneo)."""
+    partir de lo que la cola ya cargó: una consulta más (el torneo) y otra si
+    el tatami tiene kata por rondas."""
     t = db.get(Tournament, tat.tournament_id, options=[lazyload(Tournament.tatamis)])
     if t is None:
         return {}
     tz = zone(t.timezone)
-    etas = plan(t, [tat], categories, [], sched={tat.id: items})
-    return {mid: iso_local(v, tz) for mid, v in etas.items()}
+    etas = plan(t, [tat], categories, [], sched={tat.id: items}, kata=load_kata(db, categories), absent=absent)
+    return {key: iso_local(v, tz) for key, v in etas.items()}

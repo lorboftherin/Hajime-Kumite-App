@@ -60,6 +60,11 @@ export function zoneOfIso(iso: string | null | undefined): string {
 export function fightText(n: NextFight, timeZone?: string): string {
   const eta = n.eta ? ` (≈ ${hourText(n.eta, timeZone)})` : '';
   const where = n.tatami_name || `Tatami ${n.tatami}`;
+  if (n.kata_round) {
+    const turn = `ronda ${n.kata_round}${n.turn ? `, turno ${n.turn}` : ''}`;
+    if (n.ahead === 0) return `Es el siguiente en salir en ${where} (${turn})${eta}`;
+    return `Sale en ${where} (${turn}), ${n.ahead === 1 ? 'falta 1 turno' : `faltan ${plural(n.ahead, 'turno', 'turnos')}`}${eta}`;
+  }
   if (n.status === 'in_progress') return `Peleando ahora en ${where}, combate ${n.number}`;
   const rival = n.status === 'pending' ? ', rival por definir' : '';
   if (n.ahead === 0) return `Es el siguiente en ${where}, combate ${n.number}${rival}${eta}`;

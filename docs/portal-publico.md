@@ -26,7 +26,7 @@ cambiar la dirección fija (minúsculas sin tildes, números y guiones, única).
 ## Dirección fija (`tournaments.public_slug`)
 
 - Se genera al activar el público con el nombre y el año: «Copa Lima Kids» en
-  2026 → `copa-lima-kids-2026` (si ya existe, `-2`, `-3`…). La migración 0009
+  2026 → `copa-lima-kids-2026` (si ya existe, `-2`, `-3`…). La migración 0013
   se la da a los torneos que ya tenían el vivo activo.
 - Se edita con `PUT /tournaments/{id}/public` (`slug`); 409 `SLUG_TAKEN` o
   `INVALID_SLUG`. La anterior deja de responder.
@@ -40,7 +40,16 @@ cambiar la dirección fija (minúsculas sin tildes, números y guiones, única).
 Lista compacta de competidores (persona o equipo) con nombre según la regla del
 torneo, dojo y, por categoría, su próximo combate: tatami, número (`T2-014`),
 cuántos combates faltan antes y hora estimada; o su puesto al terminar. El
-buscador corre en el navegador (sin tildes ni mayúsculas) sobre esa lista.
+buscador corre en el navegador (sin tildes ni mayúsculas) sobre esa lista. En
+kata por rondas el «próximo combate» es su turno de salida (`kata_round`,
+`turn`). No aparecen las inscripciones pendientes o rechazadas (autoinscripción),
+retiradas ni las marcadas **ausentes** en la acreditación.
+
+Enlaces al perfil: cada persona trae su `public_id` y la interfaz enlaza su
+nombre a `/competidor/<public_id>` (`personLink()`) en «¿Cuándo pelea?», los
+resultados y la llave pública. Se incluye para todos: el perfil público ya
+abrevia a los menores y no muestra datos sensibles (`services/public_profiles.py`).
+Los equipos no tienen enlace.
 
 Favoritos: cada competidor trae una clave opaca (`key`, hash del torneo y la
 persona; no es el id y no sirve en otro torneo). La estrella la guarda en
@@ -54,7 +63,14 @@ muestra arriba con su estado.
   Tatamis → Horarios), `tournaments.timezone` (defecto `America/Lima`) y
   `tournaments.match_overhead_seconds` (margen entre combates, 60 s).
 - **Duración de un combate** = duración de la categoría (kumite: sus reglas;
-  kata: 120 s) × ritmo real del tatami + margen. El ritmo es duración real /
+  kata por banderas: dos ejecuciones) × ritmo real del tatami + margen. Una
+  ejecución de kata dura `performance_seconds` de las reglas de kata de la
+  categoría (`kata_rules`) o del torneo (`kata_defaults`), 3 minutos si no se
+  configura. **Kata por rondas** no tiene combates: cada ejecución sin nota de
+  la ronda en curso es un turno, en el orden de salida. **Grupos +
+  eliminación**: primero los grupos (el orden de la cola ya lo hace) y luego la
+  llave. Los ausentes (acreditación) no ocupan tiempo: su combate será un
+  walkover y su ejecución no se hace. El ritmo es duración real /
   nominal de los últimos 10 combates cerrados (`started_at`→`finished_at`),
   acotado a 0,5–3 y mezclado con 1 mientras haya menos de 3.
 - **Partida:** lo más tarde entre ahora, la hora planificada y el final
@@ -63,7 +79,7 @@ muestra arriba con su estado.
 - Horas redondeadas al minuto (la instantánea no cambia de ETag en cada
   recálculo). Se calculan al armar la instantánea pública (no en cada visita) y
   en la cola del tatami del organizador y «Mi tatami» con las filas que esa
-  consulta ya cargó (una consulta más: el torneo).
+  consulta ya cargó (una consulta más: el torneo; otra si hay kata por rondas).
 - La API las entrega en ISO con la zona del torneo (`…T11:40:00-05:00`); la
   interfaz las muestra en esa hora aunque el celular esté en otra zona.
 - Sin la base de zonas horarias en la imagen (`tzdata`), `America/Lima` se
@@ -108,20 +124,31 @@ con ETag/304. Techos de consultas por cálculo (`tests/api/`): vivo ≤ 15 (8),
   sale de la misma instantánea y ya adelanta el reloj con su edad.
 - Medición: `docs/pruebas-carga.md` («Actualización en vivo por SSE»).
 
-## Compartir (metadatos)
+## Compartir (metadatos y vista previa)
 
-La página del torneo pone con `Meta`/`Title` de Angular el título, la
-descripción (fechas, sede y ciudad) y `og:image` con el logo de Hajime
-(`icons/icon-512x512.png`). Sin SSR, los navegadores y buscadores que ejecutan
-JavaScript ven los del torneo; las vistas previas de WhatsApp o Facebook leen el
-`index.html`, que trae unas etiquetas genéricas de Hajime.
+- En el navegador, la página del torneo pone con `Meta`/`Title` de Angular el
+  título, la descripción (fechas, sede y ciudad) y `og:image` con el logo de
+  Hajime (`icons/icon-512x512.png`).
+- Los robots de vista previa (WhatsApp, Facebook, Telegram) no ejecutan
+  JavaScript. El backend, que ya sirve el frontend (`main.mount_frontend`),
+  inyecta en el `index.html` `<title>`, `description`, `og:title`,
+  `og:description`, `og:url` y `og:image` (todo escapado) para
+  `/t/<slug>`, `/t/<slug>/categoria/<id>`, `/competidor/<public_id>` (nombre
+  público, abreviado si es menor, y dojo) y `/ranking/<temporada>` (solo si la
+  temporada es pública). Ver `app/services/share_preview.py`.
+- Caché: 60 s por proceso (se vacía al cambiar el público del torneo) y
+  `Cache-Control: public, max-age=60`. Rutas no públicas o inexistentes reciben
+  el `index.html` de siempre (modo SPA). `/index.html`, el que descarga el
+  service worker, no se toca: quien tiene la app instalada navega con su copia
+  y la página pone sus etiquetas al cargar.
+
+## Planes
+
+La pantalla grande por tatami usa el mismo marcador que el overlay: con
+`HAJIME_BILLING_MODE=enforced` requiere el derecho `live_overlay` del plan
+(402 si no lo tiene). El mosaico, el vivo, «¿cuándo pelea?» y las llaves no.
 
 ## Pendiente
 
-- Vistas previas de WhatsApp con el nombre del torneo: servir `index.html` con
-  las etiquetas del torneo desde el backend para `/t/<slug>` (sin SSR).
-- Enlazar cada nombre al perfil público de la persona (`/competidor/:publicId`,
-  de otro módulo) cuando exista: en «¿Cuándo pelea?» la tarjeta ya agrupa por
-  competidor.
 - Logo propio del torneo u organización en `og:image` cuando exista.
 - Repetir la prueba de SSE en Azure.

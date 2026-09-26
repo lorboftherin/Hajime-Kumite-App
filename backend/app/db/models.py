@@ -8,7 +8,9 @@ tests). Se evita ON DELETE CASCADE para no chocar con la restricción de
 
 from __future__ import annotations
 
+import secrets
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -41,6 +43,17 @@ class User(Base, Timestamped):
     """Usuario: cuenta de acceso ligada opcionalmente a una Persona."""
 
     __tablename__ = "users"
+    # Correo único solo entre las cuentas que lo tienen (las antiguas no tienen):
+    # en SQL Server un UNIQUE común admite un solo NULL.
+    __table_args__ = (
+        Index(
+            "uq_users_email",
+            "email",
+            unique=True,
+            mssql_where=text("email IS NOT NULL"),
+            sqlite_where=text("email IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -51,6 +64,9 @@ class User(Base, Timestamped):
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     display_name: Mapped[str] = mapped_column(Unicode(200), default="")
+    # Correo en minúsculas (recuperar la contraseña, avisos). NULL en cuentas antiguas.
+    email: Mapped[str | None] = mapped_column(Unicode(254), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class UserSession(Base):
@@ -75,10 +91,24 @@ class UserSession(Base):
     ip: Mapped[str] = mapped_column(String(45), default="")
 
 
+def new_public_id() -> str:
+    """Identificador público no secuencial del perfil (``/competidor/<id>``)."""
+    return secrets.token_urlsafe(9)  # 12 caracteres, 72 bits
+
+
 class Person(Base, Timestamped, Versioned):
     """Persona."""
 
     __tablename__ = "persons"
+    __table_args__ = (
+        Index(
+            "uq_persons_public_id",
+            "public_id",
+            unique=True,
+            mssql_where=text("public_id IS NOT NULL"),
+            sqlite_where=text("public_id IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     first_names: Mapped[str] = mapped_column(Unicode(120))
     last_names: Mapped[str] = mapped_column(Unicode(120))
@@ -89,6 +119,8 @@ class Person(Base, Timestamped, Versioned):
     merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
     anonymized_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     is_test_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Perfil público básico sin inicio de sesión. La migración 0011_cuentas lo rellena.
+    public_id: Mapped[str | None] = mapped_column(String(24), nullable=True, default=new_public_id)
 
     documents: Mapped[list[IdentityDocument]] = relationship(back_populates="person", lazy="selectin")
     roles: Mapped[list[PersonRole]] = relationship(back_populates="person", lazy="selectin")
@@ -129,7 +161,8 @@ class PersonRole(Base, Timestamped):
     role: Mapped[str] = mapped_column(
         String(30)
     )  # admin | organizer | table_operator | dojo_admin | referee | competitor
-    scope_type: Mapped[str] = mapped_column(String(20), default="global")  # global | tournament | dojo
+    # global | organization | tournament | tatami | dojo
+    scope_type: Mapped[str] = mapped_column(String(20), default="global")
     scope_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     person: Mapped[Person] = relationship(back_populates="roles")
 
@@ -164,6 +197,8 @@ class Dojo(Base, Timestamped, Versioned):
     city: Mapped[str] = mapped_column(Unicode(100), default="")
     is_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
     is_independent: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Liga a la que está afiliado (informativo: todavía no restringe nada).
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
     branches: Mapped[list[Branch]] = relationship(back_populates="dojo", lazy="selectin")
 
 
@@ -201,6 +236,76 @@ class GradeRecord(Base, Timestamped):
 
 
 # ---------------------------------------------------------------------------
+# Organizaciones, planes y suscripciones (ver docs/organizaciones-y-planes.md)
+# ---------------------------------------------------------------------------
+
+
+class Organization(Base, Timestamped, Versioned):
+    """Organización: liga, dojo u organizador dueño de sus torneos y plantillas.
+
+    Las personas y los dojos siguen siendo compartidos entre organizaciones:
+    cada competidor tiene un solo historial en todos los torneos.
+    """
+
+    __tablename__ = "organizations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(200))
+    slug: Mapped[str] = mapped_column(String(80), unique=True)
+    kind: Mapped[str] = mapped_column(String(20), default="organizer")  # league | dojo | organizer
+    country: Mapped[str] = mapped_column(String(2), default="PE", server_default="PE")
+    timezone: Mapped[str] = mapped_column(String(60), default="America/Lima", server_default="America/Lima")
+    currency: Mapped[str] = mapped_column(String(3), default="PEN", server_default="PEN")
+    logo: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)  # ruta o URL
+
+
+class OrganizationMember(Base):
+    """Usuario miembro de una organización. owner y admin administran la
+    organización y todos sus torneos; member solo los lee."""
+
+    __tablename__ = "organization_members"
+    __table_args__ = (UniqueConstraint("organization_id", "user_id", name="uq_organization_member"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(20), default="member")  # owner | admin | member
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class Plan(Base):
+    """Nivel del modelo de negocio. Precios en soles: son configuración (se
+    cambian en la base, no en el código)."""
+
+    __tablename__ = "plans"
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    audience: Mapped[str] = mapped_column(String(20), default="organization")  # organization | person | all
+    price_pen_month: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    price_pen_year: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    features: Mapped[list[str]] = mapped_column(JSON, default=list)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Subscription(Base):
+    """Suscripción de una organización (membresía) o de una persona o cuenta
+    (Competidor Plus) a un plan."""
+
+    __tablename__ = "subscriptions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    plan_code: Mapped[str] = mapped_column(ForeignKey("plans.code"))
+    status: Mapped[str] = mapped_column(String(20), default="active")  # trial | active | past_due | canceled
+    current_period_end: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | payment
+    # Identificador del pago o del checkout en la pasarela (vacío si es manual).
+    reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    notes: Mapped[str] = mapped_column(Unicode(500), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+
+# ---------------------------------------------------------------------------
 # Plantillas, torneos y categorías
 # ---------------------------------------------------------------------------
 
@@ -212,6 +317,11 @@ class CategoryTemplate(Base, Timestamped, Versioned):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Unicode(200))
     description: Mapped[str] = mapped_column(Unicode(1000), default="")
+    # NULL = plantilla global (visible para todas las organizaciones).
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
+    # Archivada: ya no se ofrece para torneos nuevos, pero se conserva porque
+    # algún torneo la usó para generar sus categorías (no se borra).
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     items: Mapped[list[TemplateCategory]] = relationship(
         back_populates="template", lazy="selectin", order_by="TemplateCategory.sort_order"
     )
@@ -237,6 +347,15 @@ class CategoryFieldsMixin:
     kata_structure: Mapped[str | None] = mapped_column(String(20), nullable=True)  # bracket | rounds
     kata_judges: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Cupo sugerido: al superarlo se advierte (y se sugiere dividir).
+    max_entrants: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Rango de peso en kg, además de la etiqueta (el pesaje lo usará después).
+    weight_min_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    weight_max_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    # Overrides de la categoría sobre ``kata_defaults`` y ``competition_rules``
+    # del torneo (None = hereda). Ver docs/reglas-configurables.md.
+    kata_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    competition_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
 class TemplateCategory(Base, Timestamped, CategoryFieldsMixin):
@@ -284,11 +403,27 @@ class Tournament(Base, Timestamped, Versioned):
     default_third_place_rule: Mapped[str] = mapped_column(String(30), default="two_bronzes")
     kumite_rules: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     kata_defaults: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # Llaves, round robin, equipos y separación (ver docs/reglas-configurables.md).
+    competition_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    # Cálculo de la edad: "date" (a la fecha de referencia) o "birth_year".
+    age_mode: Mapped[str] = mapped_column(String(10), default="date", server_default="date")
     template_id: Mapped[int | None] = mapped_column(ForeignKey("category_templates.id"), nullable=True)
     # Seguimiento en vivo público (opcional): enlace secreto sin inicio de sesión.
     # Sin token no hay vista pública. ``public_names``: "short" (Diego R.) o "full".
     public_token: Mapped[str | None] = mapped_column(String(40), nullable=True)
     public_names: Mapped[str] = mapped_column(String(10), default="short", server_default="short")
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    # Autoinscripción por dojo: el sensei inscribe a sus alumnos y el organizador aprueba.
+    self_registration_open: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    self_registration_closes_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Acreditación y pesaje (docs/acreditacion-y-pesaje.md). Sin ``checkin_required``
+    # el check-in es opcional y nada cambia en llaves ni en la verificación previa.
+    checkin_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    weigh_in_tolerance_kg: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("0"), server_default="0")
+    # Diplomas y certificados: textos editables por torneo.
+    certificate_organizer: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
+    certificate_signer_name: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
+    certificate_signer_title: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
     # Portal público (ver docs/portal-publico.md): dirección fija «copa-lima-2026»
     # que se genera al activar el público y el organizador puede editar. Solo
     # responde mientras haya ``public_token`` (público activo).
@@ -298,7 +433,12 @@ class Tournament(Base, Timestamped, Versioned):
     timezone: Mapped[str] = mapped_column(String(40), default="America/Lima", server_default="America/Lima")
     match_overhead_seconds: Mapped[int] = mapped_column(Integer, default=60, server_default="60")
 
+    organization: Mapped[Organization] = relationship(lazy="joined")
     tatamis: Mapped[list[Tatami]] = relationship(back_populates="tournament", lazy="selectin", order_by="Tatami.number")
+
+    @property
+    def organization_name(self) -> str:
+        return self.organization.name if self.organization is not None else ""
 
 
 class Tatami(Base, Timestamped):
@@ -346,6 +486,23 @@ class CategoryMerge(Base):
     undone_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
+class CategorySplit(Base):
+    """DivisionCategoria: reversible como la fusión; guarda qué inscripciones
+    pasaron a la categoría nueva."""
+
+    __tablename__ = "category_splits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    new_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    criterion: Mapped[str] = mapped_column(String(20))  # weight | grade | draw
+    moved_registration_ids: Mapped[list[int]] = mapped_column(JSON)
+    before: Mapped[dict[str, Any]] = mapped_column(JSON)  # nombre y rangos del origen antes de dividir
+    reason: Mapped[str] = mapped_column(Unicode(500), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    undone_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
 # ---------------------------------------------------------------------------
 # Inscripciones e importación
 # ---------------------------------------------------------------------------
@@ -355,7 +512,17 @@ class Registration(Base, Timestamped, Versioned):
     """Inscripcion: guarda la foto del competidor al momento del torneo."""
 
     __tablename__ = "registrations"
-    __table_args__ = (Index("ix_registrations_category", "category_id", "status"),)
+    __table_args__ = (
+        Index("ix_registrations_category", "category_id", "status"),
+        # Código corto de la credencial (QR): único solo entre los que ya lo tienen.
+        Index(
+            "uq_registrations_credential_code",
+            "credential_code",
+            unique=True,
+            mssql_where=text("credential_code IS NOT NULL"),
+            sqlite_where=text("credential_code IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
@@ -369,9 +536,23 @@ class Registration(Base, Timestamped, Versioned):
     grade_ordinal: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weight_class: Mapped[str | None] = mapped_column(String(20), nullable=True)
     age_at_reference: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="active")  # active | withdrawn
+    # active | withdrawn | pending (autoinscripción por aprobar) | rejected.
+    # Solo las activas entran a las llaves y a los conteos.
+    status: Mapped[str] = mapped_column(String(20), default="active")
     withdrawn_reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+    # Autoinscripción: quién la pidió (el sensei) y el motivo si se rechazó.
+    requested_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
     seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Acreditación el día del torneo: pending | present | absent
+    checkin_status: Mapped[str] = mapped_column(String(10), default="pending", server_default="pending")
+    checked_in_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    checked_in_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # Pesaje: peso medido y resultado frente al rango de la categoría (ok | over | under).
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    weighed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    weigh_in_result: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    credential_code: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
     person: Mapped[Person | None] = relationship(lazy="joined")
     dojo: Mapped[Dojo] = relationship(lazy="joined")
@@ -385,6 +566,37 @@ class Registration(Base, Timestamped, Versioned):
         if self.team is not None:
             return self.team.name
         return ""
+
+
+class TournamentInvitation(Base):
+    """Enlace de invitación a la autoinscripción: para un dojo o general (sin dojo)."""
+
+    __tablename__ = "tournament_invitations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    dojo_id: Mapped[int | None] = mapped_column(ForeignKey("dojos.id"), nullable=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    uses: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class DojoAdminRequest(Base):
+    """Pedido de ser administrador de un dojo (llega por una invitación): lo
+    aprueba el organizador del torneo cuando el dojo ya tiene otro admin o el
+    enlace era general."""
+
+    __tablename__ = "dojo_admin_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    invitation_id: Mapped[int | None] = mapped_column(ForeignKey("tournament_invitations.id"), nullable=True)
+    dojo_id: Mapped[int] = mapped_column(ForeignKey("dojos.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    decided_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
 class Team(Base, Timestamped, Versioned):
@@ -547,6 +759,9 @@ class MatchEventRow(Base):
     target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     method: Mapped[str | None] = mapped_column(String(30), nullable=True)
     reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+    # Sanciones: tipo de falta (opcional) y escalera ("c1" | "c2") con el preset de dos categorías.
+    infraction: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    ladder: Mapped[str | None] = mapped_column(String(2), nullable=True)
     device_at: Mapped[datetime] = mapped_column(UtcDateTime)
     received_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
@@ -563,8 +778,11 @@ class KataPerformance(Base, Timestamped, Versioned):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
     kata_name: Mapped[str | None] = mapped_column(Unicode(80), nullable=True)
-    total: Mapped[float | None] = mapped_column(Numeric(6, 1), nullable=True)
+    # Dos decimales: con notas técnico / atléticas el total es ponderado (70/30).
+    total: Mapped[float | None] = mapped_column(Numeric(7, 2), nullable=True)
     scores: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)  # NotaJuez por posición
+    athletic_scores: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)  # nota atlética por juez
+    group_number: Mapped[int | None] = mapped_column(Integer, nullable=True)  # grupo dentro de la ronda
     judge_person_ids: Mapped[list[int | None] | None] = mapped_column(JSON, nullable=True)
     tie_break_place: Mapped[int | None] = mapped_column(Integer, nullable=True)  # decisión manual
 
@@ -662,6 +880,63 @@ class PublicSnapshot(Base):
 
 
 # ---------------------------------------------------------------------------
+# Ranking por temporada (docs/ranking.md)
+# ---------------------------------------------------------------------------
+
+
+class RankingSeason(Base, Timestamped, Versioned):
+    """Temporada o liga: qué torneos cuentan y cuántos puntos da cada lugar.
+
+    ``tournament_ids`` vacío = todos los torneos no-prueba entre ``date_from`` y
+    ``date_to``. ``points``: {"gold", "silver", "bronze", "participation"}.
+    ``multipliers``: {"<tournament_id>": 2.0} (p. ej. un nacional vale doble).
+    Los resultados calculados viven en ``ranking_entries``; ``source_fingerprint``
+    resume los resultados con que se calcularon: si cambia, se recalcula.
+    """
+
+    __tablename__ = "ranking_seasons"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(200))
+    slug: Mapped[str] = mapped_column(String(80), unique=True)
+    year: Mapped[int] = mapped_column(Integer)
+    date_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    tournament_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    points: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    multipliers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    min_entrants_walkover_gold: Mapped[int] = mapped_column(Integer, default=2)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    computed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    source_fingerprint: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class RankingEntry(Base):
+    """Fila materializada del ranking: una persona en su categoría equivalente
+    (``kind="person"``) o un dojo en la tabla «mejor academia» (``kind="dojo"``)."""
+
+    __tablename__ = "ranking_entries"
+    __table_args__ = (
+        Index("ix_ranking_entries_season", "season_id", "kind", "group_key"),
+        Index("ix_ranking_entries_person", "person_id"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("ranking_seasons.id"))
+    kind: Mapped[str] = mapped_column(String(10))  # person | dojo
+    group_key: Mapped[str] = mapped_column(String(200), default="")
+    group_label: Mapped[str] = mapped_column(Unicode(200), default="")
+    modality: Mapped[str] = mapped_column(String(10), default="")
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
+    dojo_id: Mapped[int | None] = mapped_column(ForeignKey("dojos.id"), nullable=True)
+    points: Mapped[Decimal] = mapped_column(Numeric(9, 2), default=Decimal("0"))
+    rank: Mapped[int] = mapped_column(Integer)
+    golds: Mapped[int] = mapped_column(Integer, default=0)
+    silvers: Mapped[int] = mapped_column(Integer, default=0)
+    bronzes: Mapped[int] = mapped_column(Integer, default=0)
+    participations: Mapped[int] = mapped_column(Integer, default=0)
+    tournaments: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# ---------------------------------------------------------------------------
 # Auditoría
 # ---------------------------------------------------------------------------
 
@@ -701,3 +976,96 @@ class LoginAttempt(Base):
     failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     window_start: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Correo y cuentas de competidor (docs/cuentas-y-correo.md)
+# ---------------------------------------------------------------------------
+
+
+class OutboxEmail(Base):
+    """Bandeja de salida: los correos se envían fuera de la petición HTTP.
+
+    ``locked_until`` es la reserva (*lease*) de quien lo está enviando: otro
+    proceso solo lo toma si la reserva venció (ver ``app.services.mail``).
+    """
+
+    __tablename__ = "outbox_emails"
+    __table_args__ = (Index("ix_outbox_emails_pending", "status", "next_attempt_at"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    to_address: Mapped[str] = mapped_column(Unicode(254))
+    subject: Mapped[str] = mapped_column(Unicode(250))
+    html: Mapped[str] = mapped_column(UnicodeText)
+    text: Mapped[str] = mapped_column(UnicodeText)
+    kind: Mapped[str] = mapped_column(String(40), default="")  # plantilla: reset, verify, claim…
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | sending | sent | failed
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Unicode(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    next_attempt_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class PasswordReset(Base):
+    """Enlace de recuperación de contraseña: de un solo uso, vence en 1 h. Solo se guarda el hash."""
+
+    __tablename__ = "password_resets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    ip: Mapped[str] = mapped_column(String(45), default="")
+
+
+class EmailVerification(Base):
+    """Enlace para verificar un correo. Vale para el correo indicado (si cambia, no sirve)."""
+
+    __tablename__ = "email_verifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    email: Mapped[str] = mapped_column(Unicode(254))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class ProfileClaim(Base):
+    """Solicitud de una cuenta para ligarse a un perfil deportivo (Persona).
+
+    ``relationship``: ``self`` (el adulto reclama el suyo), ``parent`` o
+    ``guardian`` (padre, madre o apoderado de un menor). Los últimos dígitos del
+    documento que envía el usuario se comparan en el servidor y no se guardan:
+    solo queda ``document_match``.
+    """
+
+    __tablename__ = "profile_claims"
+    __table_args__ = (Index("ix_profile_claims_status", "status", "person_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    relation: Mapped[str] = mapped_column("relationship", String(20))  # self | parent | guardian
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
+    evidence: Mapped[str] = mapped_column(Unicode(500), default="")
+    document_match: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    consent_id: Mapped[int | None] = mapped_column(ForeignKey("data_consents.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+
+
+class Guardianship(Base):
+    """Padre, madre o apoderado verificado de un menor: ve su historial completo."""
+
+    __tablename__ = "guardianships"
+    __table_args__ = (UniqueConstraint("user_id", "person_id", name="uq_guardianship"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    relation: Mapped[str] = mapped_column("relationship", String(20))  # parent | guardian
+    claim_id: Mapped[int | None] = mapped_column(ForeignKey("profile_claims.id"), nullable=True)
+    verified_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)

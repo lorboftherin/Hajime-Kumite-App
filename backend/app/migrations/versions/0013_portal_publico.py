@@ -7,8 +7,8 @@ en la hora local del torneo). Todo con valor por defecto o nulo: compatible
 con la versión anterior. Los torneos que ya tenían el vivo activo reciben su
 dirección fija aquí mismo.
 
-Revision ID: 0009_portal_publico
-Revises: 0008_mesa_principal
+Revision ID: 0013_portal_publico
+Revises: 0012_checkin_ranking
 Create Date: 2026-09-26 17:22:20
 """
 
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0009_portal_publico"
-down_revision = "0008_mesa_principal"
+revision = "0013_portal_publico"
+down_revision = "0012_checkin_ranking"
 branch_labels = None
 depends_on = None
 

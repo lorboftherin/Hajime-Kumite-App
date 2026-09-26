@@ -122,7 +122,8 @@ def test_team_match_flow_points_and_correction(client):
     assert sb["is_team_match"] and sb["bout"] is None
 
     tm = api.get(f"/matches/{m['id']}/team")
-    assert tm["settings"] == {"bouts": 3, "tie_rule": "points"} and tm["bouts"] == []
+    assert {k: tm["settings"][k] for k in ("bouts", "tie_rule")} == {"bouts": 3, "tie_rule": "points"}
+    assert tm["settings"]["extra_bout_tie"] == "hantei" and tm["bouts"] == []
     aka = {x["person_id"] for x in tm["aka"]["members"]}
     ao = {x["person_id"] for x in tm["ao"]["members"]}
     aka_ids = [x["person_id"] for x in tm["aka"]["members"] if x["role"] == "starter"]

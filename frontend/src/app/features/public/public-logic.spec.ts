@@ -68,6 +68,21 @@ describe('portal público: ¿cuándo pelea?', () => {
     );
   });
 
+  it('en kata por rondas habla de turnos de salida', () => {
+    const kata = next({
+      code: null,
+      number: 'T2 · ronda 1, turno 5',
+      kata_round: 1,
+      turn: 5,
+      ahead: 4,
+      eta: null,
+    });
+    expect(fightText(kata)).toBe('Sale en Tatami 2 (ronda 1, turno 5), faltan 4 turnos');
+    expect(fightText({ ...kata, ahead: 0 })).toBe(
+      'Es el siguiente en salir en Tatami 2 (ronda 1, turno 5)',
+    );
+  });
+
   it('muestra el puesto al terminar', () => {
     const base = { category_id: 1, category: 'Kumite', next: null };
     expect(entryText({ ...base, state: 'placed', place: 1 })).toBe('Oro (1.º puesto)');

@@ -38,9 +38,28 @@ recibir avisos y, por privacidad, ver el detalle completo del propio historial.
 | Índice Hajime con su tendencia, análisis de técnicas en el tiempo, comparación con rivales | Competidor Plus (por construir la mayor parte) |
 | Torneos, inscripciones, Excel, llaves, mesa, equipos, tatamis, árbitros, Shadow Mode, overlay | Dojo (membresía) |
 
+Además, la base de los niveles ya está construida (ver
+[organizaciones-y-planes.md](organizaciones-y-planes.md)):
+
+- **Organizaciones:** cada torneo pertenece a una organización (liga, dojo u
+  organizador) con sus miembros (dueño, administrador, miembro). Las personas
+  y los dojos siguen siendo compartidos. Los torneos anteriores quedaron en la
+  «Organización principal».
+- **Planes y derechos en la API:** los seis niveles (`marcha_blanca`,
+  `publico`, `competidor`, `competidor_plus`, `dojo`, `organizador`) están en
+  la base con precios **provisionales** (Dojo S/ 69 al mes o S/ 690 al año,
+  Organizador S/ 149 o S/ 1 490, Competidor Plus S/ 9,90 al mes o S/ 49 al
+  año). Con `HAJIME_BILLING_MODE=marcha_blanca` (hoy) toda cuenta tiene todo;
+  con `enforced` la API responde 402 `PLAN_REQUIRED` a lo que el plan no cubre.
+- **Suscripciones manuales:** el Admin asigna planes y marca pagos; la pasarela
+  real se conecta después detrás de la interfaz `payments.Provider`.
+- **Autoinscripción por dojo:** el sensei administra a sus competidores e
+  inscribe en torneos con inscripción en línea abierta; el organizador aprueba.
+
 ## Qué falta construir, en orden
 
-1. **Organizaciones y membresías (base de todo).**
+1. **Organizaciones y membresías (base de todo).** *Hecho: organizaciones,
+   planes, derechos y suscripciones manuales (ver arriba); falta el cobro.*
    - Entidad *Organización* (liga, club organizador o dojo) dueña de sus torneos, usuarios y plantillas.
    - Las personas y dojos siguen siendo compartidos: así cada competidor tiene un solo historial en todos los torneos.
    - Planes y derechos (*entitlements*) verificados en la API, no solo en la pantalla.

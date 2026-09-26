@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fmtDate,
   fmtDateTime,
+  limaInputToIso,
   matchScoreText,
   methodText,
   mmss,
@@ -10,9 +11,17 @@ import {
   placeLabel,
   plural,
   scoreText,
+  utcToLimaInput,
 } from './format';
 
 describe('format', () => {
+  it('convierte la fecha de cierre entre UTC (API) y la hora de Lima (formulario)', () => {
+    expect(utcToLimaInput('2026-10-01T23:30:00')).toBe('2026-10-01T18:30');
+    expect(utcToLimaInput(null)).toBe('');
+    expect(limaInputToIso('2026-10-01T18:30')).toBe('2026-10-01T18:30:00-05:00');
+    expect(limaInputToIso('')).toBeNull();
+  });
+
   it('interpreta fechas sin zona como UTC y las muestra en hora de Lima', () => {
     expect(parseUtc('2026-09-24T18:51:04')?.toISOString()).toBe('2026-09-24T18:51:04.000Z');
     expect(fmtDateTime('2026-09-24T18:51:04')).toContain('13:51:04');

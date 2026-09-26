@@ -28,7 +28,7 @@ from app.api.errors import Conflict, NotFound
 from app.db.base import utcnow
 from app.db.models import Category, CategoryResult, Match, Person, Registration, Tatami, Tournament, User
 from app.domain.kumite import compute_scoreboard
-from app.services import reports, schedule
+from app.services import entitlements, reports, schedule
 from app.services import stats as stats_svc
 from app.services.audit import audit, bump
 from app.services.brackets import (
@@ -113,6 +113,9 @@ def set_public(db: Session, user: User, tid: int, data: s.PublicLiveIn) -> Tourn
     db.commit()
     db.refresh(t)
     forget_slugs()
+    from app.services import share_preview
+
+    share_preview.clear()
     return t
 
 
@@ -170,6 +173,11 @@ def _person_name(p: Person | None, style: str) -> str:
     if p is None:
         return ""
     return _styled(p.first_names, p.last_names, style)
+
+
+def _public_id(r: Registration) -> str | None:
+    """Enlace al perfil público de la persona (``/competidor/<public_id>``); los equipos no tienen."""
+    return r.person.public_id if r.team_id is None and r.person is not None else None
 
 
 def _reg_name(r: Registration | None, style: str) -> str:
@@ -282,7 +290,9 @@ def live(db: Session, token: str) -> dict[str, Any]:
     tatamis = []
     scheduled = schedule_items(t.tatamis, queue_order([c for c in cats.values() if c.tatami_id]), matches)
     tz = schedule.zone(t.timezone)
-    etas = schedule.plan(t, t.tatamis, cats.values(), matches, sched=scheduled)
+    absent = {rid for rid, r in regs.items() if r.checkin_status == "absent"}
+    kata = schedule.load_kata(db, cats.values())
+    etas = schedule.plan(t, t.tatamis, cats.values(), matches, sched=scheduled, kata=kata, absent=absent)
     for tat in t.tatamis:
         sched = scheduled[tat.id]
         open_items = [it for it in sched if it["match"].status in ("ready", "in_progress", "needs_review")]
@@ -326,7 +336,9 @@ def live(db: Session, token: str) -> dict[str, Any]:
         places = []
         for cr in by_cat[c.id]:
             r = regs[cr.registration_id]
-            places.append({"place": cr.place, "name": _reg_name(r, style), "dojo": r.dojo.name})
+            places.append(
+                {"place": cr.place, "name": _reg_name(r, style), "dojo": r.dojo.name, "public_id": _public_id(r)}
+            )
             if cr.place in (1, 2, 3):
                 tally[r.dojo_id][cr.place - 1] += 1
                 dojo_names[r.dojo_id] = r.dojo.name
@@ -387,6 +399,7 @@ def live(db: Session, token: str) -> dict[str, Any]:
 def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     """Marcador del tatami para el overlay de la transmisión (OBS, vMix…)."""
     t = by_token(db, token)
+    entitlements.require_for_tournament(db, None, t, "live_overlay")
     tat = db.get(Tatami, tatami_id)
     if tat is None or tat.tournament_id != t.id:
         raise NotFound("Tatami no encontrado")
@@ -488,7 +501,9 @@ def people(db: Session, token: str) -> dict[str, Any]:
     Por competidor (persona o equipo): nombre según la regla del torneo, dojo
     y, por categoría, su próximo combate (tatami, número, cuántos faltan antes
     y hora estimada) o su puesto. Nada de documentos, fechas de nacimiento ni
-    ids de personas. Seis consultas, sin importar el tamaño del torneo.
+    ids internos (solo el ``public_id`` del perfil público). Seis o siete
+    consultas (una más con kata por rondas), sin importar el tamaño del torneo.
+    Excluye inscripciones pendientes, rechazadas o retiradas y ausentes.
     """
     t = by_token(db, token)
     style = t.public_names
@@ -514,6 +529,13 @@ def people(db: Session, token: str) -> dict[str, Any]:
         ).all()
         if r.category_id in cats and cats[r.category_id].status not in ("merged", "cancelled", "empty")
     ]
+    # Ausentes en la acreditación: no aparecen ni ocupan turno.
+    absent = set(
+        db.scalars(
+            select(Registration.id).where(Registration.tournament_id == t.id, Registration.checkin_status == "absent")
+        ).all()
+    )
+    regs = [r for r in regs if r.id not in absent]
     places = {
         (cr.category_id, cr.registration_id): cr.place
         for cr in db.scalars(
@@ -522,31 +544,30 @@ def people(db: Session, token: str) -> dict[str, Any]:
             .where(Category.tournament_id == t.id)
         ).all()
     }
-    scheduled = schedule_items(t.tatamis, queue_order([c for c in cats.values() if c.tatami_id]), matches)
     tz = schedule.zone(t.timezone)
-    etas = schedule.plan(t, t.tatamis, cats.values(), matches, sched=scheduled)
+    lines = schedule.timeline(
+        t, t.tatamis, cats.values(), matches, kata=schedule.load_kata(db, cats.values()), absent=absent
+    )
 
-    # Próximo combate de cada inscripción: el primero de la cola de su tatami.
+    # Próximo turno de cada inscripción: el primero de la cola de su tatami
+    # (combate o, en kata por rondas, su ejecución).
     upcoming: dict[int, dict[str, Any]] = {}
     for tat in t.tatamis:
-        ahead = 0
-        for it in scheduled[tat.id]:
-            m = it["match"]
-            if m.status not in OPEN:
-                continue
+        for ahead, slot in enumerate(lines.get(tat.id, [])):
             info = {
                 "tatami": tat.number,
                 "tatami_name": tat.name,
-                "number": it["number"],
-                "code": m.code,
-                "status": m.status,
+                "number": slot.number,
+                "code": slot.match.code if slot.match is not None else None,
+                "kata_round": slot.performance.round_number if slot.performance is not None else None,
+                "turn": slot.turn,
+                "status": slot.status,
                 "ahead": ahead,
-                "eta": schedule.iso_local(etas.get(m.id), tz),
+                "eta": schedule.iso_local(slot.eta, tz),
             }
-            for rid in (m.aka_registration_id, m.ao_registration_id):
-                if rid and rid not in upcoming:
+            for rid in slot.registrations:
+                if rid not in upcoming:
                     upcoming[rid] = info
-            ahead += 1
 
     groups: dict[tuple[str, int], dict[str, Any]] = {}
     for r in sorted(regs, key=lambda r: (cats[r.category_id].sort_order, r.category_id, r.id)):
@@ -556,6 +577,8 @@ def people(db: Session, token: str) -> dict[str, Any]:
             (kind, ident),
             {
                 "key": public_key(t.id, kind, ident),
+                # Perfil público (/competidor/<public_id>): ya abrevia a los menores y protege sus datos.
+                "public_id": _public_id(r),
                 "name": _reg_name(r, style),
                 "dojo": r.dojo.name,
                 "team": kind == "e",
@@ -627,9 +650,11 @@ def category(db: Session, token: str, category_id: int) -> dict[str, Any]:
             ).all()
         }
 
-    def who(rid: int | None) -> dict[str, str] | None:
+    def who(rid: int | None) -> dict[str, str | None] | None:
         r = regs.get(rid) if rid else None
-        return {"name": _reg_name(r, style), "dojo": r.dojo.name} if r is not None else None
+        if r is None:
+            return None
+        return {"name": _reg_name(r, style), "dojo": r.dojo.name, "public_id": _public_id(r)}
 
     out: dict[str, Any] = {
         "tournament": {"name": t.name, "slug": t.public_slug},

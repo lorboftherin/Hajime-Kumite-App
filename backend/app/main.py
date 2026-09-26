@@ -10,7 +10,23 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.api.errors import install_handlers
-from app.api.routers import competition, core, history, horarios, organizer, public, tournaments
+from app.api.routers import (
+    accounts,
+    certificates,
+    checkin,
+    competition,
+    core,
+    dojo_portal,
+    history,
+    horarios,
+    organizations,
+    organizer,
+    public,
+    public_profiles,
+    ranking,
+    templates,
+    tournaments,
+)
 from app.config import DEFAULT_SECRET, get_settings
 from app.db.base import get_engine
 from app.observability import RequestContextMiddleware, configure_azure_monitor, configure_logging
@@ -38,7 +54,35 @@ async def lifespan(_: FastAPI):
         # con un candado para que varios no choquen. En el contenedor viene en
         # false: el entrypoint ya lo hizo una vez (python -m app.prepare).
         prepare_database(settings, get_engine())
-    yield
+    dispatcher = _start_mail_dispatcher(settings)
+    try:
+        yield
+    finally:
+        if dispatcher is not None:
+            dispatcher.stop()
+
+
+def _start_mail_dispatcher(settings):
+    """Hilo que envía los correos de la bandeja de salida (ver app/services/mail.py).
+
+    No arranca con una base SQLite en memoria (las pruebas): ahí todos los hilos
+    comparten una sola conexión y el despachador chocaría con las peticiones.
+    """
+    if not settings.mail_dispatcher:
+        return None
+    engine = get_engine()
+    if engine.url.get_backend_name() == "sqlite" and engine.url.database in (None, "", ":memory:"):
+        return None
+    if settings.environment == "prod" and settings.mail_provider == "console":
+        logging.getLogger("hajime.mail").warning(
+            "HAJIME_MAIL_PROVIDER=console en producción: los correos solo quedan en el log"
+        )
+    from app.db.base import session_factory
+    from app.services.mail import MailDispatcher
+
+    dispatcher = MailDispatcher(session_factory(), settings)
+    dispatcher.start()
+    return dispatcher
 
 
 def _ping_database() -> None:
@@ -77,8 +121,24 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID", "Retry-After"],
     )
     install_handlers(app)
-    routers = (core, tournaments, competition, organizer, history, horarios, public)
-    for r in (m.router for m in routers):
+    routers = (
+        core.router,
+        accounts.router,
+        templates.router,
+        tournaments.router,
+        competition.router,
+        organizer.router,
+        checkin.router,
+        certificates.router,
+        ranking.router,
+        history.router,
+        horarios.router,
+        organizations.router,
+        dojo_portal.router,
+        public_profiles.router,
+        public.router,
+    )
+    for r in routers:
         app.include_router(r, prefix="/api/v1")
 
     @app.get("/health/live", tags=["meta"])
@@ -123,11 +183,15 @@ def mount_frontend(app: FastAPI, directory: str) -> None:
     Las rutas de Angular (p. ej. /mesa/12) devuelven index.html; /api y /docs
     siguen siendo de la API.
     """
+    from functools import partial
     from pathlib import Path
 
-    from fastapi.responses import FileResponse
+    from fastapi import Request, Response
+    from fastapi.responses import FileResponse, HTMLResponse
     from starlette.exceptions import HTTPException as StarletteHTTPException
     from starlette.staticfiles import StaticFiles
+
+    from app.services import share_preview
 
     root = Path(directory)
     index = root / "index.html"
@@ -141,7 +205,26 @@ def mount_frontend(app: FastAPI, directory: str) -> None:
             except StarletteHTTPException as e:
                 if e.status_code != 404 or path.startswith(("api/", "docs", "openapi")):
                     raise
+                preview = await _share_preview(path, scope)
+                if preview is not None:
+                    return preview
                 return FileResponse(index)
+
+    async def _share_preview(path: str, scope) -> Response | None:
+        """Rutas públicas (/t/<slug>, /competidor/<id>…): index.html con las
+        etiquetas para la vista previa al compartir (app.services.share_preview)."""
+        if not share_preview.is_public_path(path):
+            return None
+        base_url = str(Request(scope).base_url).rstrip("/")
+        render = partial(share_preview.render, index, path, base_url, share_preview.session)
+        try:
+            doc = await anyio.to_thread.run_sync(render)
+        except Exception:  # noqa: BLE001 - sin vista previa, la página igual funciona
+            logging.getLogger("hajime.share").warning("No se pudo armar la vista previa de %s", path, exc_info=True)
+            return None
+        if doc is None:
+            return None
+        return HTMLResponse(doc, headers={"Cache-Control": "public, max-age=60"})
 
     app.mount("/", SPAStaticFiles(directory=root, html=True), name="frontend")
 

@@ -12,6 +12,57 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Correo transaccional** con bandeja de salida en la base (`outbox_emails`),
+  reintentos con espera creciente, reserva entre procesos y proveedores
+  `console`, `smtp` (STARTTLS) y `acs` (Azure Communication Services por REST).
+  Hilo despachador en la API y `python -m app.mail_worker` para un Job.
+- **Correo en las cuentas:** recuperación de contraseña («¿Olvidaste tu
+  contraseña?», enlace de un solo uso por 1 h que cierra todas las sesiones),
+  verificación del correo, correo en «Mi cuenta» y en Usuarios; se entra
+  también con el correo.
+- **Cuentas de competidor** (`HAJIME_OPEN_SIGNUP`): registro abierto, reclamo
+  del propio perfil o del de un hijo o hija, revisión por el dojo u
+  organizador, tutela con consentimiento del apoderado, «Mis perfiles» con
+  historial, estadísticas e insignias.
+- **Perfil público** del competidor en `/competidor/<id>` sin datos sensibles y
+  página de **Privacidad** (texto provisional).
+- **Avisos por correo** al sensei cuando se revisan sus inscripciones (aprobadas
+  y rechazadas con motivo) y al dojo cuando llega una solicitud de perfil. El
+  administrador del dojo ve el historial de sus competidores; la persona y su
+  apoderado ven la hoja de sus combates.
+- **Organizaciones (multi-organizador):** cada torneo pertenece a una liga,
+  dojo u organizador; owner/admin administran todos sus torneos y member los
+  lee. Página «Organización» (datos, miembros, plan) y selector al crear un
+  torneo. Rol con ámbito «organización».
+- **Planes y derechos verificados en la API:** tablas `plans` y
+  `subscriptions`; con `HAJIME_BILLING_MODE=enforced` las funciones de pago
+  responden 402 `PLAN_REQUIRED` (crear torneos, varios tatamis, overlay,
+  Shadow Mode, importar Excel, autoinscripción). En marcha blanca (por
+  defecto) todo está permitido. Suscripciones manuales del Admin, página
+  «Planes» e interfaz `payments.Provider` con el proveedor manual.
+- **Autoinscripción por dojo:** el organizador abre la inscripción en línea y
+  reparte enlaces de invitación; el sensei (admin de dojo) gestiona «Mis
+  competidores» y los inscribe; las inscripciones quedan pendientes hasta que
+  el organizador las aprueba o rechaza en lote (pestaña «Solicitudes»).
+- **Acreditación y pesaje:** pestaña «Acreditación» para la tablet de la
+  entrada (buscador grande, «Presente» de un toque, peso con teclado numérico,
+  filtros por dojo, pendientes y fuera de peso, contadores por categoría).
+  Credenciales imprimibles con QR (`/torneos/:id/credenciales`) y lector QR con
+  la cámara (BarcodeDetector). Tolerancia de peso por torneo; fuera de rango se
+  advierte y se mueve a la categoría sugerida o se acepta con motivo. Ausentes:
+  advertencia y «excluir ausentes» al generar la llave, o walkover si ya existe.
+  Check-in obligatorio opcional por torneo, en la verificación previa.
+- **Plantillas editables:** nombre y descripción, duplicar, borrar (o archivar
+  si un torneo la usó), edición de categorías en tabla e intercambio con Excel;
+  cada organización edita las suyas (owner/admin) y las globales solo el Admin.
+- **Diplomas y certificados** en PDF: podio (oro, plata, bronce) y
+  participación, por categoría, por dojo y por persona (también el apoderado),
+  con firma y organizador editables por torneo. Derecho «certificates» del plan
+  y aviso opcional por correo (`HAJIME_NOTIFY_DIPLOMAS`).
+- **Ranking por temporada y liga:** puntos por lugar, multiplicador por torneo,
+  categorías equivalentes entre torneos, «mejor academia», puesto en el perfil
+  de la persona y vista pública `/ranking/:temporada` (menores abreviados).
+
 - **Portal público** (`docs/portal-publico.md`): dirección fija `/t/<slug>`
   (del nombre y el año, editable; el enlace secreto `/vivo/<token>` sigue
   funcionando), directorio `/torneos-publicos` con buscador, metadatos para
@@ -20,15 +71,31 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   coliseo (`/pantalla/<token>/<tatami>` y mosaico `/pantalla/<token>`).
 - **Horarios estimados:** hora planificada por tatami, zona horaria y margen
   entre combates del torneo; hora estimada de cada combate en el vivo, en
-  «¿Cuándo pelea?», en la cola del tatami y en «Mi tatami».
+  «¿Cuándo pelea?», en la cola del tatami y en «Mi tatami». Cubre grupos +
+  eliminación y kata por rondas (duración por ejecución configurable,
+  `performance_seconds`, 3 min por defecto) y descuenta a los ausentes.
+- **Vista previa al compartir:** el backend sirve el `index.html` con título,
+  descripción, URL e imagen del torneo, la categoría, el competidor o el
+  ranking público en `/t/…`, `/competidor/…` y `/ranking/…`.
+- Los nombres del portal público enlazan al perfil `/competidor/<id>`.
 - **Actualización en vivo por SSE** (`GET /public/{token}/stream`): un sondeo
   compartido por torneo y proceso, latido cada 15 s, límite de conexiones
   (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
   propagación de un punto.
 
+### Seguridad
+
+- De los rivales, quien no es organizador ve solo el nombre abreviado en el
+  historial. Los últimos dígitos del documento de un reclamo no se guardan.
+
 ### Operación
 
-- Migración `0009_portal_publico` (columnas nuevas con valor por defecto o
+- Migración `0009_organizaciones`: crea la «Organización principal» y le
+  asigna todos los torneos existentes antes de volver obligatoria
+  `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.
+- Migración `0012_checkin_ranking` (acreditación, plantillas archivadas, firma
+  de diplomas y tablas `ranking_seasons`/`ranking_entries`; compatible hacia atrás).
+- Migración `0013_portal_publico` (columnas nuevas con valor por defecto o
   nulas; los torneos con vivo activo reciben su dirección fija).
 
 ## [0.2.0] - 2026-09-26

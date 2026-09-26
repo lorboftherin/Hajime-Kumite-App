@@ -1,0 +1,39 @@
+{
+  "description": "Catálogo inicial de katas (lista WKF por estilo, simplificada). Editable como datos: agregar o corregir nombres aquí.",
+  "styles": [
+    {
+      "style": "Shotokan",
+      "katas": [
+        "Heian Shodan", "Heian Nidan", "Heian Sandan", "Heian Yondan", "Heian Godan",
+        "Tekki Shodan", "Tekki Nidan", "Tekki Sandan",
+        "Bassai Dai", "Bassai Sho", "Kanku Dai", "Kanku Sho",
+        "Jion", "Jiin", "Jitte", "Enpi", "Hangetsu", "Gankaku", "Chinte",
+        "Nijushiho", "Sochin", "Meikyo", "Wankan", "Unsu", "Gojushiho Dai", "Gojushiho Sho"
+      ]
+    },
+    {
+      "style": "Goju-ryu",
+      "katas": [
+        "Gekisai Dai Ichi", "Gekisai Dai Ni", "Sanchin", "Tensho",
+        "Saifa", "Seiyunchin", "Shisochin", "Sanseiru", "Sepai", "Kururunfa", "Seisan", "Suparinpei"
+      ]
+    },
+    {
+      "style": "Shito-ryu",
+      "katas": [
+        "Pinan Shodan", "Pinan Nidan", "Pinan Sandan", "Pinan Yondan", "Pinan Godan",
+        "Naihanchi Shodan", "Matsukaze", "Jion", "Jitte", "Bassai Dai", "Matsumura Bassai", "Tomari Bassai",
+        "Kosokun Dai", "Kosokun Sho", "Kosokun Shiho", "Chatanyara Kushanku", "Seienchin", "Seipai",
+        "Nipaipo", "Unshu", "Anan", "Anan Dai", "Papuren", "Paiku", "Heiku", "Gojushiho", "Chintei",
+        "Sochin", "Rohai", "Niseishi", "Saifa", "Sanseiru", "Seisan", "Shisochin", "Kururunfa", "Suparinpei"
+      ]
+    },
+    {
+      "style": "Wado-ryu",
+      "katas": [
+        "Pinan Shodan", "Pinan Nidan", "Pinan Sandan", "Pinan Yondan", "Pinan Godan",
+        "Kushanku", "Naihanchi", "Seishan", "Chinto", "Passai", "Niseishi", "Rohai", "Wanshu", "Jion", "Jitte"
+      ]
+    }
+  ]
+}

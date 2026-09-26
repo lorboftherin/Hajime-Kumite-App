@@ -221,6 +221,12 @@
               </div>
             </div>
 
+            @if (s.sanction_c2; as c2) {
+              <div class="ladder-c2" [attr.aria-label]="'Faltas de categoría 2 de ' + (c === 'aka' ? 'AKA' : 'AO')">
+                <span>Cat. 1: {{ s.sanction[c] ? s.sanction_labels[s.sanction[c] - 1] : '—' }}</span>
+                <span>Cat. 2: {{ c2[c] ? (s.sanction_labels_c2 ?? s.sanction_labels)[c2[c] - 1] : '—' }}</span>
+              </div>
+            }
             <div class="ladder" role="group" [attr.aria-label]="'Sanciones de ' + (c === 'aka' ? 'AKA' : 'AO')">
               @for (label of s.sanction_labels; track $index; let i = $index) {
                 <button
@@ -257,7 +263,12 @@
           <div class="clock {{ clockState() }}" [class.warn]="clockWarn()" [class.flash-warn]="flash() === 'warn'" [class.flash-end]="flash() === 'end'">
             <div class="clock-label">{{ clockLabel() }}</div>
             <div class="digits" role="timer">{{ timeOver() ? '0:00' : timerText() }}</div>
-            <div class="clock-sub">de {{ durationText() }}</div>
+            <div class="clock-sub">
+              @if (s.golden_point) {
+                <span class="golden">Punto de oro</span> ·
+              }
+              de {{ s.golden_point && !s.period_seconds ? 'sin límite' : durationText() }}
+            </div>
           </div>
 
           @if (clock().running) {
@@ -284,6 +295,9 @@
                 <span class="sg-kicker">{{ suggestionTone() === 'win' ? 'Sugerencia' : 'Decisión pendiente' }}</span>
                 <span class="sg-text">{{ suggestionText() }}</span>
                 @if (!finished() && playable()) {
+                  @if (s.suggestion.needs === 'golden_point' && !s.golden_point) {
+                    <button class="sg-go" (click)="startGoldenPoint()">Iniciar punto de oro</button>
+                  }
                   <button class="sg-go" (click)="openFinish()">Revisar y cerrar</button>
                 }
               </div>
@@ -307,6 +321,16 @@
           </div>
         </section>
       </main>
+    } @else if (kataScores()) {
+      <!-- ============ KATA POR PUNTUACIÓN EN LLAVE ============ -->
+      <app-kata-match-scores
+        [sb]="s"
+        [judges]="kataCfg().judges"
+        [split]="kataCfg().split"
+        [discard]="kataCfg().discard"
+        [locked]="locked()"
+        (changed)="reload(true)"
+      />
     } @else {
       <!-- ============ KATA POR BANDERAS ============ -->
       <main class="stage kata">
@@ -530,4 +554,20 @@
       }
     </div>
   </div>
+}
+
+<!-- Reglas configurables: tipo de falta (dos categorías) y hantei con votos opcionales. -->
+@if (infractionFor(); as f) {
+  @if (sb()?.infractions; as inf) {
+    <app-infraction-sheet
+      [color]="f.color"
+      [label]="sb()?.sanction_labels?.[f.level - 1] ?? 'Sanción'"
+      [infractions]="inf"
+      (picked)="onInfraction($event)"
+      (closed)="infractionFor.set(null)"
+    />
+  }
+}
+@if (hanteiFor() !== undefined) {
+  <app-hantei-sheet [initial]="hanteiFor() ?? null" (done)="onHantei($event)" (closed)="hanteiFor.set(undefined)" />
 }

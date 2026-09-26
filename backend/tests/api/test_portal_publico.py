@@ -4,7 +4,7 @@ horarios estimados, pantalla grande y actualización en vivo por SSE."""
 import json
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -351,3 +351,192 @@ def test_sse_limite_de_conexiones_y_enlace_inexistente(sse_client, monkeypatch):
     monkeypatch.setattr(get_settings(), "public_sse_max_connections", 0)
     r = api.c.get(f"/api/v1/public/{token}/stream")
     assert r.status_code == 503 and r.json()["code"] == "TOO_MANY_STREAMS" and r.headers["retry-after"]
+
+
+# ---------------------------------------------------------------------------
+# Formatos nuevos: grupos + eliminación, kata por rondas y ausentes
+# ---------------------------------------------------------------------------
+
+
+def _cargar(db, tid):
+    from sqlalchemy import select
+
+    from app.db.models import Category, Match
+    from app.services.brackets import SCHEDULED
+
+    cats = list(db.scalars(select(Category).where(Category.tournament_id == tid, Category.status.in_(SCHEDULED))))
+    matches = list(
+        db.scalars(
+            select(Match).where(
+                Match.category_id.in_([c.id for c in cats]), Match.is_current, Match.parent_match_id.is_(None)
+            )
+        )
+    )
+    return cats, matches
+
+
+def test_horarios_con_grupos_kata_por_rondas_y_ausentes(client):
+    """Grupos + eliminación y kata por rondas en tatamis distintos; los
+    ausentes no aparecen en «¿cuándo pelea?» y su turno no ocupa tiempo."""
+    from tests.api.test_reglas import fill, kata_cat, kata_people, kumite_cat
+
+    api = client
+    dojos = [api.dojo(n) for n in ("Uno", "Dos", "Tres")]
+    t = setup_tournament(
+        api,
+        is_test=False,
+        tatami_count=2,
+        competition_rules={"groups": 2, "group_qualifiers": 2},
+        kata_defaults={"method": "scores", "structure": "rounds", "judges": 3},
+    )
+    t1, t2 = (x["id"] for x in t["tatamis"])
+    g = kumite_cat(api, t["id"], format="groups_knockout")
+    greg = fill(api, t["id"], g["id"], dojos, 6)
+    k = kata_cat(api, t["id"], kata_rules={"rounds": [3], "performance_seconds": 150})
+    kreg = kata_people(api, t["id"], k["id"], 5, dojos)
+    for cat, tat in ((g, t1), (k, t2)):
+        cur = api.get(f"/categories/{cat['id']}")
+        api.patch(f"/categories/{cat['id']}", {"tatami_id": tat, "version": cur["version"]})
+        api.post(f"/categories/{cat['id']}/bracket", {"seed": 3})
+        api.c.patch(f"/api/v1/tatamis/{tat}", json={"planned_start": "2026-10-17T09:00"})
+    api.c.patch(f"/api/v1/tournaments/{t['id']}/schedule", json={"match_overhead_seconds": 30})
+    ausentes = {kreg[4]["id"], greg[5]["id"]}
+    out = api.c.post(
+        f"/api/v1/tournaments/{t['id']}/checkin", json={"registration_ids": sorted(ausentes), "status": "absent"}
+    )
+    assert out.status_code == 200, out.text
+
+    db = next(base.get_session())
+    try:
+        # Con el reloj fijo antes de la hora planificada (9:00 en Lima = 14:00 UTC).
+        antes = datetime(2026, 10, 17, 13, 0)
+        etas = schedule.estimate(db, t["id"], now=antes)
+        from app.db.models import Tournament
+
+        tour = db.get(Tournament, t["id"])
+        cats, matches = _cargar(db, t["id"])
+        kata_rows = schedule.load_kata(db, cats)
+        lines = schedule.timeline(tour, tour.tatamis, cats, matches, now=antes, absent=ausentes, kata=kata_rows)
+    finally:
+        db.close()
+    grupos = lines[t1]
+    # 6 combates de grupos y 3 de la llave (semifinales y final), los grupos primero.
+    assert len(grupos) == 9 and all(s.match.kind == "group" for s in grupos[:6])
+    assert grupos[0].eta == datetime(2026, 10, 17, 14, 0)
+    # 90 s + 30 s por combate; los del ausente son walkover y no ocupan tiempo.
+    ocupan = [s for s in grupos if not (ausentes & set(s.registrations))]
+    assert grupos[-1].eta == datetime(2026, 10, 17, 14, 0) + (len(ocupan) - 1) * timedelta(minutes=2)
+    kata = lines[t2]
+    # El ausente no sale: 4 turnos de 150 s + 30 s de margen (3 minutos entre turnos).
+    assert all(s.number.startswith("T2 · ronda 1, turno ") for s in kata)
+    assert len(kata) == 4 and ausentes.isdisjoint(s.registrations[0] for s in kata)
+    assert [s.eta.minute for s in kata] == [0, 3, 6, 9]
+    assert {f"k{s.performance.id}" for s in kata} <= set(etas)
+
+    token = enable(api, t["id"])["public_token"]
+    people = anon(api).get(f"/api/v1/public/{token}/people").json()["competitors"]
+    assert len(people) == 9  # 11 inscritos menos 2 ausentes
+    kata_entry = next(e for c in people for e in c["entries"] if e["category_id"] == k["id"])
+    assert kata_entry["next"]["kata_round"] == 1 and kata_entry["next"]["eta"].endswith("-05:00")
+    assert all(c["public_id"] for c in people)
+    grupo = next(e for c in people for e in c["entries"] if e["category_id"] == g["id"])
+    assert grupo["next"]["number"].startswith("T1-")
+    # La llave pública funciona con los dos formatos y enlaza a los perfiles.
+    for cat in (g, k):
+        r = anon(api).get(f"/api/v1/public/{token}/categories/{cat['id']}")
+        assert r.status_code == 200, r.text
+    llave = anon(api).get(f"/api/v1/public/{token}/categories/{g['id']}").json()
+    assert all(m["aka"]["public_id"] for m in llave["matches"] if m["aka"])
+
+
+# ---------------------------------------------------------------------------
+# Vista previa al compartir (index.html con las etiquetas del torneo)
+# ---------------------------------------------------------------------------
+
+
+def test_vista_previa_al_compartir(client, tmp_path, monkeypatch):
+    """Los robots de WhatsApp o Facebook no ejecutan JavaScript: el backend
+    sirve el index.html con el título, la descripción, la URL y la imagen de
+    lo que se comparte, escapados; el resto de rutas sigue igual (modo SPA)."""
+    from pathlib import Path
+
+    from app.config import get_settings
+    from app.main import create_app
+    from app.services import share_preview
+
+    api = client
+    t, c, tat, b = cuatro(api, name='Copa "Lima" <Kids>', venue="Coliseo Dibós", city="Lima")
+    out = enable(api, t["id"])
+    person = api.get(f"/tournaments/{t['id']}/registrations")[0]["person_id"]
+    public_id = next(
+        x["public_id"] for x in anon(api).get(f"/api/v1/public/{out['public_token']}/people").json()["competitors"]
+    )
+    assert person and public_id
+
+    front = Path(__file__).resolve().parents[3] / "frontend" / "src" / "index.html"
+    (tmp_path / "index.html").write_text(front.read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "ngsw.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(get_settings(), "static_dir", str(tmp_path))
+    share_preview.clear()
+    with TestClient(create_app()) as web:
+        r = web.get(f"/t/{out['public_slug']}")
+        assert r.status_code == 200 and r.headers["cache-control"] == "public, max-age=60"
+        doc = r.text
+        assert "<title>Copa &quot;Lima&quot; &lt;Kids&gt; · Hajime</title>" in doc
+        assert '<meta property="og:title" content="Copa &quot;Lima&quot; &lt;Kids&gt;" />' in doc
+        assert "17 de octubre de 2026 · Coliseo Dibós, Lima" in doc
+        assert f'<meta property="og:url" content="http://testserver/t/{out["public_slug"]}" />' in doc
+        assert '<meta property="og:image" content="http://testserver/icons/icon-512x512.png" />' in doc
+        assert doc.count('property="og:title"') == 1 and doc.count('name="description"') == 1
+        assert "<app-root></app-root>" in doc  # la aplicación sigue arrancando igual
+
+        cat = web.get(f"/t/{out['public_slug']}/categoria/{c['id']}").text
+        assert f"<title>{KUMITE['name']} · Copa" in cat
+        perfil = web.get(f"/competidor/{public_id}").text
+        assert '<meta property="og:title" content="' in perfil and "Dojo " in perfil
+        assert "Ramos Quispe" not in perfil  # menores: nombre abreviado, como el perfil público
+
+        # Rutas que no son públicas o que no existen: el index.html de siempre.
+        plain = (tmp_path / "index.html").read_text(encoding="utf-8")
+        assert web.get("/t/no-existe").text == plain
+        assert web.get("/torneos/1").text == plain
+        assert web.get("/competidor/inventado").text == plain
+        # El index que usa el service worker no cambia.
+        assert web.get("/index.html").text == plain
+        # Desactivar el público corta también la vista previa.
+        api.c.put(f"/api/v1/tournaments/{t['id']}/public", json={"enabled": False})
+        assert web.get(f"/t/{out['public_slug']}").text == plain
+
+
+def test_vista_previa_del_ranking_solo_si_es_publico(client):
+    from app.services import share_preview
+    from tests.api.test_ranking import season
+
+    s = season(client, name="Liga <Lima>")
+    db = next(base.get_session())
+    try:
+        assert share_preview.meta_for(db, f"ranking/{s['slug']}") is None
+        client.patch(f"/ranking/seasons/{s['id']}", {"version": s["version"], "is_public": True})
+        db.expire_all()
+        assert share_preview.meta_for(db, f"ranking/{s['slug']}")["title"] == "Ranking Liga <Lima>"
+        assert share_preview.meta_for(db, "torneos/1") is None
+    finally:
+        db.close()
+    doc = share_preview.inject(
+        '<html><head><title>x</title>\n<meta name="description" content="y" />\n</head></html>',
+        {"title": "A <b>", "description": 'd "e"'},
+        "https://h/ranking/x",
+        "https://h/i.png",
+    )
+    assert "<title>A &lt;b&gt; · Hajime</title>" in doc and 'content="d &quot;e&quot;"' in doc
+
+
+def test_duracion_de_kata_configurable_por_categoria():
+    from types import SimpleNamespace
+
+    c = SimpleNamespace(modality="kata", kata_rules=None, kata_method=None, kata_structure=None, kata_judges=None)
+    t = SimpleNamespace(kata_defaults={})
+    assert schedule.kata_seconds(c, t) == 180
+    c.kata_rules = {"performance_seconds": 90}
+    assert schedule.kata_seconds(c, t) == 90
+    assert schedule.nominal_seconds(c, t) == 180  # banderas: dos ejecuciones por combate

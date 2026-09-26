@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { PublicLive, PublicMatch } from '../../core/models';
 import { Enso, HajimeWord } from '../../shared/enso';
+import { personLink } from '../../shared/person-link';
 import { PublicFeed } from './feed';
 import {
   entryText,
@@ -212,7 +213,12 @@ const PEOPLE_REFRESH_MS = 20000;
                 @for (p of r.places; track $index) {
                   <li>
                     <span class="place p{{ p.place }}">{{ p.place }}</span
-                    ><span class="grow">{{ p.name }}</span
+                    ><span class="grow">
+                      @if (link(p.public_id); as l) {
+                        <a class="plink" [routerLink]="l">{{ p.name }}</a>
+                      } @else {
+                        {{ p.name }}
+                      }</span
                     ><span class="muted">{{ p.dojo }}</span>
                   </li>
                 }
@@ -324,7 +330,14 @@ const PEOPLE_REFRESH_MS = 20000;
         </button>
         <div class="grow">
           <div class="who">
-            <strong>{{ c.name }}</strong> <span class="muted">{{ c.dojo }}</span>
+            <strong>
+              @if (link(c.public_id); as l) {
+                <a class="plink" [routerLink]="l">{{ c.name }}</a>
+              } @else {
+                {{ c.name }}
+              }
+            </strong>
+            <span class="muted">{{ c.dojo }}</span>
           </div>
           @for (e of c.entries; track e.category_id) {
             <div class="entry {{ e.state }}">
@@ -427,6 +440,8 @@ export class PublicLivePage {
     });
     this.feed.start();
   }
+
+  readonly link = personLink;
 
   statusLabel(status: string): string {
     return this.catStatus[status] ?? status;

@@ -6,8 +6,11 @@ export interface NextFight {
   tatami: number;
   tatami_name: string;
   number: string; // T2-014
-  code: string;
+  code: string | null;
   status: 'pending' | 'ready' | 'in_progress';
+  /** Kata por rondas: ronda y turno de salida (sin combate). */
+  kata_round?: number | null;
+  turn?: number | null;
   /** Combates del tatami que faltan antes de este. */
   ahead: number;
   /** Hora estimada de inicio, ISO con la zona del torneo (o null si no hay de dónde estimar). */
@@ -27,6 +30,8 @@ export interface PublicEntry {
 export interface PublicCompetitor {
   /** Clave opaca y estable dentro del torneo (favoritos del dispositivo). */
   key: string;
+  /** Perfil público (`/competidor/<public_id>`); null en equipos. */
+  public_id?: string | null;
   name: string;
   dojo: string;
   team: boolean;
@@ -42,6 +47,7 @@ export interface PublicPeople {
 export interface PublicSideLite {
   name: string;
   dojo: string;
+  public_id?: string | null;
 }
 
 export interface PublicBracketMatch {
@@ -62,10 +68,11 @@ export interface PublicCategory {
   category: { id: number; name: string; modality: string; status: string; is_team: boolean };
   format: string | null;
   matches: PublicBracketMatch[];
-  podium: Array<{ place: number; name?: string; dojo?: string }>;
+  podium: Array<{ place: number; name?: string; dojo?: string; public_id?: string | null }>;
   standings: Array<{
     name?: string;
     dojo?: string;
+    public_id?: string | null;
     rank: number | null;
     wins: number | null;
     played: number | null;

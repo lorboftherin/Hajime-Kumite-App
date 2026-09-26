@@ -500,6 +500,16 @@ section[id] {
   color: var(--nezumi-ink);
   text-align: center;
 }
+/* Nombre con enlace al perfil público del competidor. */
+.plink {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .pulse i,
   .kicker .dot {

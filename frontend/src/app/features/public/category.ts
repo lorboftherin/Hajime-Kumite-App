@@ -16,6 +16,7 @@ import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { methodText } from '../../core/format';
 import { Enso, HajimeWord } from '../../shared/enso';
+import { personLink } from '../../shared/person-link';
 import { KIND_LABEL, bracketRounds } from './public-logic';
 import { PublicBracketMatch, PublicCategory } from './public-models';
 
@@ -61,7 +62,12 @@ const STATUS: Record<string, string> = {
               @for (p of d.podium; track $index) {
                 <li>
                   <span class="place p{{ p.place }}">{{ p.place }}</span
-                  ><span class="grow">{{ p.name }}</span
+                  ><span class="grow">
+                    @if (link(p.public_id); as l) {
+                      <a class="plink" [routerLink]="l">{{ p.name }}</a>
+                    } @else {
+                      {{ p.name }}
+                    }</span
                   ><span class="muted">{{ p.dojo }}</span>
                 </li>
               }
@@ -91,7 +97,12 @@ const STATUS: Record<string, string> = {
                 <tr>
                   <td>{{ s.rank ?? '—' }}</td>
                   <td>
-                    {{ s.name }} <span class="muted">{{ s.dojo }}</span>
+                    @if (link(s.public_id); as l) {
+                      <a class="plink" [routerLink]="l">{{ s.name }}</a>
+                    } @else {
+                      {{ s.name }}
+                    }
+                    <span class="muted">{{ s.dojo }}</span>
                   </td>
                   @if (d.format === 'kata_rounds') {
                     <td>{{ s.kata_name ?? '—' }}</td>
@@ -178,14 +189,26 @@ const STATUS: Record<string, string> = {
           }
         </div>
         <div class="side aka" [class.won]="m.winner === 'aka'" [class.lost]="m.winner === 'ao'">
-          <span class="nm">{{ m.aka?.name ?? 'Por definir' }}</span>
+          <span class="nm">
+            @if (link(m.aka?.public_id); as l) {
+              <a class="plink" [routerLink]="l">{{ m.aka?.name }}</a>
+            } @else {
+              {{ m.aka?.name ?? 'Por definir' }}
+            }
+          </span>
           <span class="dj">{{ m.aka?.dojo }}</span>
           @if (showScore(m)) {
             <span class="pts">{{ m.score[0] }}</span>
           }
         </div>
         <div class="side ao" [class.won]="m.winner === 'ao'" [class.lost]="m.winner === 'aka'">
-          <span class="nm">{{ m.ao?.name ?? 'Por definir' }}</span>
+          <span class="nm">
+            @if (link(m.ao?.public_id); as l) {
+              <a class="plink" [routerLink]="l">{{ m.ao?.name }}</a>
+            } @else {
+              {{ m.ao?.name ?? 'Por definir' }}
+            }
+          </span>
           <span class="dj">{{ m.ao?.dojo }}</span>
           @if (showScore(m)) {
             <span class="pts">{{ m.score[1] }}</span>
@@ -206,6 +229,7 @@ export class PublicCategoryPage {
   readonly data = signal<PublicCategory | null>(null);
   readonly error = signal('');
   readonly kindLabel = KIND_LABEL;
+  readonly link = personLink;
 
   readonly back = computed(() => (this.slug() ? `/t/${this.slug()}` : `/vivo/${this.token()}`));
   private readonly apiPath = computed(() => {
