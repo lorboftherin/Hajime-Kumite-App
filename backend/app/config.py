@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     load_base_template: bool = True
     # SQL Server: crear tablas al arrancar (SQLite siempre las crea).
     auto_create_schema: bool = False
+    # Hilos que atienden peticiones a la vez en cada proceso. Pocos hilos rinden más:
+    # con 40 (el valor por defecto de FastAPI) el intérprete pierde el tiempo pasando
+    # de uno a otro (medido: 3 veces menos peticiones por segundo). Para usar más de
+    # un núcleo se levantan varios procesos (HAJIME_WORKERS en el contenedor).
+    worker_threads: int = 4
     # Segundos que se comparte la respuesta del vivo público entre espectadores (0 = sin caché).
     public_cache_seconds: float = 2.0
     # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.

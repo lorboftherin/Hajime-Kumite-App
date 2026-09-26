@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import anyio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,6 +15,8 @@ from app.db.base import get_engine, wait_for_database
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
+    # Las rutas son síncronas y corren en un grupo de hilos; se limita su tamaño (ver config).
+    anyio.to_thread.current_default_thread_limiter().total_tokens = settings.worker_threads
     if settings.environment not in ("dev", "test") and (
         settings.jwt_secret == DEFAULT_SECRET or len(settings.jwt_secret) < 32
     ):
