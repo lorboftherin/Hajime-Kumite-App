@@ -23,11 +23,15 @@ RUN if [ "$WITH_MSSQL" = "true" ]; then \
       && rm -rf /var/lib/apt/lists/*; \
     fi
 WORKDIR /app
-COPY backend/pyproject.toml ./
+# Dependencias exactas del lockfile (con hashes) en su propia capa: cambiar el
+# código no las reinstala. Se regeneran con scripts/bloquear-dependencias.sh.
+COPY backend/pyproject.toml backend/requirements.txt backend/requirements-mssql.txt ./
+RUN LOCK=requirements.txt && if [ "$WITH_MSSQL" = "true" ]; then LOCK=requirements-mssql.txt; fi \
+    && pip install --no-cache-dir --require-hashes -r "$LOCK"
 COPY backend/app ./app
 COPY backend/scripts ./scripts
 COPY backend/alembic.ini ./
-RUN pip install --no-cache-dir . && if [ "$WITH_MSSQL" = "true" ]; then pip install --no-cache-dir ".[mssql]"; fi
+RUN pip install --no-cache-dir --no-deps .
 COPY --from=frontend /src/dist/hajime/browser ./static
 
 RUN useradd --create-home --uid 1000 hajime && mkdir -p /data && chown hajime /data
