@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
+import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
@@ -85,7 +86,11 @@ import { DatePipe } from '../../shared/pipes';
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="empty"><p><strong>Sin resultados.</strong></p>Prueba con otro nombre o crea una persona nueva.</td></tr>
+              @if (forbidden()) {
+                <tr><td colspan="7" class="empty"><p><strong>Sin acceso.</strong></p>{{ forbidden() }}</td></tr>
+              } @else {
+                <tr><td colspan="7" class="empty"><p><strong>Sin resultados.</strong></p>Prueba con otro nombre o crea una persona nueva.</td></tr>
+              }
             }
           </tbody>
         </table>
@@ -118,6 +123,8 @@ export class PersonListPage {
   readonly auth = inject(AuthService);
 
   readonly persons = signal<Person[]>([]);
+  /** Mensaje si la cuenta no puede listar personas (solo Admin y organizadores). */
+  readonly forbidden = signal('');
   readonly dojos = signal<Dojo[]>([]);
   readonly q = signal('');
   readonly dojo = signal<number | null>(null);
@@ -141,8 +148,17 @@ export class PersonListPage {
 
   load(): void {
     this.api.get<Person[]>('/persons', { q: this.q().trim() || null, dojo_id: this.dojo(), limit: 100 }).subscribe({
-      next: (p) => this.persons.set(p),
-      error: () => {},
+      next: (p) => {
+        this.forbidden.set('');
+        this.persons.set(p);
+      },
+      error: (e) => {
+        const err = ApiError.from(e);
+        if (err.status === 403) {
+          this.persons.set([]);
+          this.forbidden.set('Solo el Admin y los organizadores pueden buscar personas.');
+        }
+      },
     });
   }
 
