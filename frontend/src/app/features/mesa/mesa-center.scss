@@ -102,7 +102,8 @@
     font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    opacity: 0.75;
+    // 0,9 y no menos: con 0,75 el kanji de HAJIME quedaba en 4:1 sobre el verde (axe).
+    opacity: 0.9;
   }
   &:active:not(:disabled) {
     transform: scale(0.985);
@@ -302,4 +303,3 @@
     cursor: not-allowed;
   }
 }
-

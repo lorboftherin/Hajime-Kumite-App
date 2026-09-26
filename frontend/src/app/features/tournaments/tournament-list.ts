@@ -31,11 +31,19 @@ function readIncludeTest(): boolean {
       <app-page-head kanji="大会" title="Torneos">
         <div meta class="meta-line">
           @if (!loading()) {
-            <span>{{ tournaments().length }} {{ tournaments().length === 1 ? 'torneo' : 'torneos' }}</span>
+            <span
+              >{{ tournaments().length }}
+              {{ tournaments().length === 1 ? 'torneo' : 'torneos' }}</span
+            >
           }
         </div>
-        <label class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="onIncludeTest()" /> Incluir torneos de prueba</label>
-        <button class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo torneo</button>
+        <label class="field inline small"
+          ><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="onIncludeTest()" />
+          Incluir torneos de prueba</label
+        >
+        <button class="btn primary" (click)="openNew()">
+          <app-icon name="plus" /> Nuevo torneo
+        </button>
       </app-page-head>
       @if (loading()) {
         <div class="empty"><span class="spinner"></span></div>
@@ -45,18 +53,33 @@ function readIncludeTest(): boolean {
           <div class="start-body">
             <h2>Primeros pasos</h2>
             <p class="muted">
-              Aún no hay torneos@if (!includeTest) { (los de prueba están ocultos)}. Para probar Hajime de punta a punta:
+              Aún no hay torneos
+              @if (!includeTest) {
+                (los de prueba están ocultos)
+              }
+              . Para probar Hajime de punta a punta:
             </p>
             <ol class="steps">
               <li>
-                <strong>Crear torneo</strong>: elige la plantilla <em>"Plantilla base (borrador)"</em> y marca
-                <em>"Torneo de prueba"</em> para que no cuente en historial ni medallero.
+                <strong>Crear torneo</strong>: elige la plantilla
+                <em>"Plantilla base (borrador)"</em> y marca <em>"Torneo de prueba"</em> para que no
+                cuente en historial ni medallero.
               </li>
-              <li><strong>Importar Excel o inscribir</strong> competidores (pestañas <em>Importar Excel</em> o <em>Inscripciones</em>).</li>
+              <li>
+                <strong>Importar Excel o inscribir</strong> competidores (pestañas
+                <em>Importar Excel</em> o <em>Inscripciones</em>).
+              </li>
               <li><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li>
-              <li><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el combate.</li>
+              <li>
+                <strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el
+                combate.
+              </li>
             </ol>
-            <div><button class="btn primary" (click)="openNew(true)"><app-icon name="plus" /> Crear torneo de prueba</button></div>
+            <div>
+              <button class="btn primary" (click)="openNew(true)">
+                <app-icon name="plus" /> Crear torneo de prueba
+              </button>
+            </div>
           </div>
         </div>
       } @else {
@@ -73,7 +96,13 @@ function readIncludeTest(): boolean {
                 @if (t.end_date && t.end_date !== t.start_date) {
                   <div class="when small">{{ dateRange(t.start_date, t.end_date) }}</div>
                 }
-                <div class="where small">{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</div>
+                <div class="where small">
+                  {{ t.venue }}
+                  @if (t.venue && t.city) {
+                    ,
+                  }
+                  {{ t.city }}
+                </div>
                 @if (t.organization_name && multiOrg()) {
                   <div class="org small">{{ t.organization_name }}</div>
                 }
@@ -82,7 +111,10 @@ function readIncludeTest(): boolean {
                   @if (t.is_test) {
                     <span class="badge yamabuki hollow">Prueba</span>
                   }
-                  <span class="tatamis small">{{ t.tatamis.length }} {{ t.tatamis.length === 1 ? 'tatami' : 'tatamis' }}</span>
+                  <span class="tatamis small"
+                    >{{ t.tatamis.length }}
+                    {{ t.tatamis.length === 1 ? 'tatami' : 'tatamis' }}</span
+                  >
                 </div>
               </div>
             </a>
@@ -104,24 +136,44 @@ function readIncludeTest(): boolean {
               </select>
             </label>
           } @else if (orgs().length === 1) {
-            <p class="small muted">Organización: <strong>{{ orgs()[0].name }}</strong></p>
+            <p class="small muted">
+              Organización: <strong>{{ orgs()[0].name }}</strong>
+            </p>
           }
-          <label class="field"><span>Nombre *</span><input name="name" [(ngModel)]="form.name" required minlength="3" /></label>
+          <label class="field"
+            ><span>Nombre *</span><input name="name" [(ngModel)]="form.name" required minlength="3"
+          /></label>
           <div class="grid-2">
-            <label class="field"><span>Fecha de inicio *</span><input type="date" name="sd" [(ngModel)]="form.start_date" required /></label>
-            <label class="field"><span>Fecha de fin</span><input type="date" name="ed" [(ngModel)]="form.end_date" /></label>
-            <label class="field"><span>Local / sede</span><input name="venue" [(ngModel)]="form.venue" /></label>
-            <label class="field"><span>Ciudad</span><input name="city" [(ngModel)]="form.city" /></label>
+            <label class="field"
+              ><span>Fecha de inicio *</span
+              ><input type="date" name="sd" [(ngModel)]="form.start_date" required
+            /></label>
+            <label class="field"
+              ><span>Fecha de fin</span><input type="date" name="ed" [(ngModel)]="form.end_date"
+            /></label>
+            <label class="field"
+              ><span>Local / sede</span><input name="venue" [(ngModel)]="form.venue"
+            /></label>
+            <label class="field"
+              ><span>Ciudad</span><input name="city" [(ngModel)]="form.city"
+            /></label>
             <label class="field">
               <span>Plantilla de categorías</span>
-              <select name="tpl" [(ngModel)]="form.template_id">
+              <select
+                name="tpl"
+                [(ngModel)]="form.template_id"
+                (ngModelChange)="templatePicked = true"
+              >
                 <option [ngValue]="null">— Sin plantilla —</option>
                 @for (tp of templates(); track tp.id) {
                   <option [ngValue]="tp.id">{{ tp.name }} ({{ tp.items.length }})</option>
                 }
               </select>
             </label>
-            <label class="field"><span>Número de tatamis</span><input type="number" min="1" max="12" name="tc" [(ngModel)]="form.tatami_count" /></label>
+            <label class="field"
+              ><span>Número de tatamis</span
+              ><input type="number" min="1" max="12" name="tc" [(ngModel)]="form.tatami_count"
+            /></label>
             <label class="field">
               <span>Formato por defecto</span>
               <select name="fmt" [(ngModel)]="form.default_format">
@@ -139,10 +191,18 @@ function readIncludeTest(): boolean {
               </select>
             </label>
           </div>
-          <label class="field inline"><input type="checkbox" name="test" [(ngModel)]="form.is_test" /> Torneo de prueba (no cuenta en historial ni medallero)</label>
+          <label class="field inline"
+            ><input type="checkbox" name="test" [(ngModel)]="form.is_test" /> Torneo de prueba (no
+            cuenta en historial ni medallero)</label
+          >
           <div class="form-actions">
             <button type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
-            <button class="btn primary" [disabled]="form.name.trim().length < 3 || !form.start_date || busy()">Crear torneo</button>
+            <button
+              class="btn primary"
+              [disabled]="form.name.trim().length < 3 || !form.start_date || busy()"
+            >
+              Crear torneo
+            </button>
           </div>
         </form>
       </app-modal>
@@ -280,6 +340,8 @@ export class TournamentListPage {
   /** Los torneos de prueba se ocultan por defecto; la elección se recuerda en el dispositivo. */
   includeTest = readIncludeTest();
   form = this.blank();
+  /** El usuario ya eligió plantilla (también «Sin plantilla»): la carga no la reemplaza. */
+  templatePicked = false;
 
   constructor() {
     this.load();
@@ -289,7 +351,7 @@ export class TournamentListPage {
     return d ? String(Number(d.slice(8, 10))) : '';
   }
   month(d: string): string {
-    return d ? MONTHS[Number(d.slice(5, 7)) - 1] ?? '' : '';
+    return d ? (MONTHS[Number(d.slice(5, 7)) - 1] ?? '') : '';
   }
   year(d: string): string {
     return d ? d.slice(0, 4) : '';
@@ -338,6 +400,7 @@ export class TournamentListPage {
   /** asTest: desde "Primeros pasos" se propone un torneo de prueba con la plantilla base. */
   openNew(asTest = false): void {
     this.form = this.blank();
+    this.templatePicked = false;
     if (asTest) {
       this.form.is_test = true;
       this.form.name = 'Torneo de prueba';
@@ -347,15 +410,19 @@ export class TournamentListPage {
       next: (list) => {
         const mine = list.filter((o) => o.can_manage);
         this.orgs.set(mine);
-        if (mine.length && this.form.organization_id === null) this.form.organization_id = mine[0].id;
+        if (mine.length && this.form.organization_id === null)
+          this.form.organization_id = mine[0].id;
       },
       error: () => {},
     });
     this.api.get<Template[]>('/templates').subscribe({
       next: (t) => {
         this.templates.set(t);
-        if (t.length && this.form.template_id === null) {
-          this.form.template_id = (t.find((x) => x.name === 'Plantilla base (borrador)') ?? t[0]).id;
+        // Sin esta marca, elegir «Sin plantilla» antes de que llegue la lista se perdía.
+        if (t.length && this.form.template_id === null && !this.templatePicked) {
+          this.form.template_id = (
+            t.find((x) => x.name === 'Plantilla base (borrador)') ?? t[0]
+          ).id;
         }
       },
       error: () => {},
@@ -364,7 +431,11 @@ export class TournamentListPage {
 
   async create(): Promise<void> {
     this.busy.set(true);
-    const body = { ...this.form, end_date: this.form.end_date || null, tatami_count: Number(this.form.tatami_count) || 1 };
+    const body = {
+      ...this.form,
+      end_date: this.form.end_date || null,
+      tatami_count: Number(this.form.tatami_count) || 1,
+    };
     const t = await this.mut.post<Tournament>('/tournaments', body, { success: 'Torneo creado' });
     this.busy.set(false);
     if (t) {
