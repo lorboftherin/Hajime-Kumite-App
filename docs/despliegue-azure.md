@@ -109,4 +109,4 @@ muestra cuatro variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
 `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_SECRET`) para pegar en el entorno de
 Claude Code (claude.ai/code → botón de la nube → engranaje → *Environment
 variables*), junto con los dominios que hay que permitir en *Network access*.
-El secreto vence a los 6 meses; se revoca con `az ad app delete`.
+El secreto vence al año; se revoca con `az ad app delete`.

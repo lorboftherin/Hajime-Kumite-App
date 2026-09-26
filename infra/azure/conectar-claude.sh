@@ -7,7 +7,7 @@
 #   bash conectar-claude.sh
 #
 # Imprime las variables para pegar en el entorno de Claude (Environment
-# variables). El secreto se muestra una sola vez y vale 6 meses; para renovarlo,
+# variables). El secreto se muestra una sola vez y vale 1 año; para renovarlo,
 # vuelve a correr el script. Para revocarlo: az ad app delete --id <AZURE_CLIENT_ID>
 set -euo pipefail
 NOMBRE="hajime-claude-code"
@@ -32,7 +32,7 @@ for RG in hajime-test hajime-prod; do
   fi
 done
 
-SECRET="$(az ad app credential reset --id "$APP_ID" --append --years 0.5 --display-name "claude-$(date +%Y%m)" --query password -o tsv)"
+SECRET="$(az ad app credential reset --id "$APP_ID" --append --years 1 --display-name "claude-$(date +%Y%m)" --query password -o tsv)"
 
 cat <<FIN
 
@@ -52,6 +52,6 @@ management.azure.com
 *.azurecontainerapps.io
 hajime.lorboftherin.com
 
- El secreto vence en 6 meses. Para revocarlo: az ad app delete --id $APP_ID
+ El secreto vence en 1 año. Para revocarlo: az ad app delete --id $APP_ID
 ================================================================
 FIN
