@@ -1,4 +1,5 @@
 import { Pipe, PipeTransform } from '@angular/core';
+import { localeActual } from '../core/i18n/idioma';
 
 /** Número con la palabra en singular o plural: «1 inscripción», «3 inscripciones», «0 inscripciones». */
 export function plural(n: number, one: string, many: string): string {
@@ -10,10 +11,10 @@ export function pluralWord(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
-/** Une una lista en español: «a», «a y b», «a, b y c». */
+/** Une una lista en el idioma de la interfaz: «a», «a y b», «a, b y c» («a, b, and c» en inglés). */
 export function joinList(items: string[]): string {
   if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
+  return new Intl.ListFormat(localeActual(), { type: 'conjunction' }).format(items);
 }
 
 /** {{ n | plural: 'inscripción' : 'inscripciones' }} → «3 inscripciones». */

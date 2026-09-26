@@ -19,6 +19,7 @@ import { ToastService } from '../../core/toast.service';
 import { PublicLive, PublicMatch } from '../../core/models';
 import { Enso, HajimeWord } from '../../shared/enso';
 import { personLink } from '../../shared/person-link';
+import { LanguageSelect } from '../../shared/language-select';
 import { PushButton, PushHint } from '../../shared/push-button';
 import { PublicFeed } from './feed';
 import {
@@ -55,6 +56,7 @@ const PEOPLE_REFRESH_MS = 20000;
     RouterLink,
     PushButton,
     PushHint,
+    LanguageSelect,
   ],
   template: `
     <div class="page">
@@ -306,6 +308,7 @@ const PEOPLE_REFRESH_MS = 20000;
         <footer class="foot">
           Datos publicados por la organización del torneo.
           <a routerLink="/torneos-publicos">Más torneos</a> · Hajime · Torneos de karate.
+          <div class="foot-lang"><app-language-select /></div>
         </footer>
       } @else if (error()) {
         <section class="hero">

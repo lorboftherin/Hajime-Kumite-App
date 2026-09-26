@@ -5,23 +5,21 @@ import {
   provideBrowserGlobalErrorListeners,
   isDevMode,
 } from '@angular/core';
-import { registerLocaleData } from '@angular/common';
-import localeEsPe from '@angular/common/locales/es-PE';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { routes } from './app.routes';
 import { authInterceptor, errorInterceptor } from './core/interceptors';
 import { provideServiceWorker } from '@angular/service-worker';
 import { environment } from '../environments/environment';
-
-registerLocaleData(localeEsPe);
+import { localeActual } from './core/i18n/idioma';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
-    { provide: LOCALE_ID, useValue: 'es-PE' },
+    // es-PE, en-US o pt-BR según el idioma elegido antes del arranque (main.ts).
+    { provide: LOCALE_ID, useFactory: localeActual },
     provideServiceWorker('ngsw-worker.js', {
       // En la app del celular la interfaz ya viene dentro de la app: no hace falta.
       enabled: !isDevMode() && !environment.mobile,

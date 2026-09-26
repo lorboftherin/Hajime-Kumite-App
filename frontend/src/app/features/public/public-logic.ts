@@ -1,5 +1,6 @@
 // Lógica pura del portal público (buscador, favoritos, textos): probada en public-logic.spec.ts.
 import { plural } from '../../shared/plural';
+import { localeActual } from '../../core/i18n/idioma';
 import { NextFight, PublicBracketMatch, PublicCompetitor, PublicEntry } from './public-models';
 
 /** Minúsculas y sin tildes: «Huamán» se encuentra escribiendo «huaman». */
@@ -30,14 +31,14 @@ export function hourText(iso: string | null | undefined, timeZone = 'America/Lim
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat('es-PE', {
+    return new Intl.DateTimeFormat(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
       timeZone,
     }).format(d);
   } catch {
-    return new Intl.DateTimeFormat('es-PE', {
+    return new Intl.DateTimeFormat(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,

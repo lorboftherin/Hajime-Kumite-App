@@ -12,6 +12,7 @@ import { ApiService } from '../../core/api.service';
 import { mmss } from '../../core/format';
 import { OverlayData, PublicLive } from '../../core/models';
 import { PublicFeed } from './feed';
+import { localeActual } from '../../core/i18n/idioma';
 
 /** Pantalla encendida mientras la página está abierta (si el navegador lo permite). */
 function keepAwake(destroy: DestroyRef): void {
@@ -244,7 +245,7 @@ export class ScreenMosaicPage {
     return n <= 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4;
   });
   readonly clock = computed(() =>
-    new Intl.DateTimeFormat('es-PE', {
+    new Intl.DateTimeFormat(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,

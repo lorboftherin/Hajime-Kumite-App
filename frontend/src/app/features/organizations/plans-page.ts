@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { INVOICE_STATUS, invoiceNumber, PAYMENT_STATUS, penFromCents } from '../../core/billing';
 import { DialogService } from '../../core/dialog.service';
-import { fmtDate, SUBSCRIPTION_STATUS } from '../../core/format';
+import { fmtDate, fmtSoles, SUBSCRIPTION_STATUS } from '../../core/format';
 import { BillingConfig, PaymentOut, Plan, PlansOut, Subscription } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { PageHead } from '../../shared/page-head';
@@ -279,10 +279,7 @@ export class PlansPage {
   price(v: number | null): string {
     if (v === null || v === undefined) return '—';
     if (!v) return 'Gratis';
-    return (
-      'S/ ' +
-      v.toLocaleString('es-PE', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })
-    );
+    return fmtSoles(v);
   }
   featureName(d: PlansOut, f: string): string {
     return d.features[f] || f;

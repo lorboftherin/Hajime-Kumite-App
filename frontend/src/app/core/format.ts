@@ -1,4 +1,5 @@
-// Formato de fechas y etiquetas en español (Perú). Todas las horas en America/Lima.
+// Formato de fechas y etiquetas según el idioma elegido (es-PE por defecto). Todas las horas en America/Lima.
+import { localeActual } from './i18n/idioma';
 
 export const TZ = 'America/Lima';
 
@@ -11,40 +12,42 @@ export function parseUtc(v: string | Date | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-const dtFmt = new Intl.DateTimeFormat('es-PE', {
-  timeZone: TZ,
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-const tFmt = new Intl.DateTimeFormat('es-PE', {
-  timeZone: TZ,
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-const dFmt = new Intl.DateTimeFormat('es-PE', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
+// Formateadores por locale (el idioma se elige al arrancar; ver core/i18n/idioma.ts).
+// La zona horaria sigue siendo la de Lima para todos los idiomas: la zona por
+// organización es un paso siguiente (docs/idiomas.md).
+const formatos = new Map<string, Intl.DateTimeFormat>();
+function formato(tipo: 'dt' | 't' | 'd'): Intl.DateTimeFormat {
+  const locale = localeActual();
+  const clave = `${tipo}|${locale}`;
+  let f = formatos.get(clave);
+  if (!f) {
+    const hora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false } as const;
+    f =
+      tipo === 'dt'
+        ? new Intl.DateTimeFormat(locale, { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric', ...hora })
+        : tipo === 't'
+          ? new Intl.DateTimeFormat(locale, { timeZone: TZ, ...hora })
+          : new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
+    formatos.set(clave, f);
+  }
+  return f;
+}
 
 export function fmtDateTime(v: string | null | undefined): string {
   const d = parseUtc(v);
-  return d ? dtFmt.format(d) : '';
+  return d ? formato('dt').format(d) : '';
 }
 
 export function fmtTime(v: string | null | undefined): string {
   const d = parseUtc(v);
-  return d ? tFmt.format(d) : '';
+  return d ? formato('t').format(d) : '';
 }
 
 /** Fechas de calendario (YYYY-MM-DD): no se desplazan por zona horaria. */
 export function fmtDate(v: string | null | undefined): string {
   if (!v) return '';
   const d = new Date(v.length === 10 ? v + 'T00:00:00Z' : v);
-  return isNaN(d.getTime()) ? v : dFmt.format(d);
+  return isNaN(d.getTime()) ? v : formato('d').format(d);
 }
 
 /** Fecha de hoy en Lima como YYYY-MM-DD. */
@@ -66,6 +69,18 @@ export function limaInputToIso(v: string): string | null {
 
 export function todayLima(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+/**
+ * Monto en soles: «S/ 69» o «S/ 34.50» en español (formato de es-PE); en otros
+ * idiomas con el formato de moneda del locale («PEN 34.50», «PEN 34,50»). La
+ * moneda por organización es un paso siguiente (docs/idiomas.md).
+ */
+export function fmtSoles(v: number): string {
+  const frac = { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 };
+  const locale = localeActual();
+  if (locale === 'es-PE') return 'S/ ' + v.toLocaleString('es-PE', frac);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'PEN', ...frac }).format(v);
 }
 
 export function mmss(totalSeconds: number): string {

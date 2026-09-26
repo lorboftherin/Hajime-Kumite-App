@@ -1,4 +1,5 @@
 import { Meta, Title } from '@angular/platform-browser';
+import { localeActual } from '../../core/i18n/idioma';
 
 /** Imagen para compartir: el logo de Hajime (512×512, en `public/icons`). */
 export const SHARE_IMAGE = 'icons/icon-512x512.png';
@@ -13,7 +14,7 @@ interface ShareTournament {
 function fmtDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   if (isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat('es-PE', {
+  return new Intl.DateTimeFormat(localeActual(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

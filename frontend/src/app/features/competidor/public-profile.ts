@@ -7,6 +7,7 @@ import { PublicProfile } from '../../core/cuentas';
 import { fmtDate } from '../../core/format';
 import { Enso, HajimeWord } from '../../shared/enso';
 import { Hanko } from '../../shared/hanko';
+import { LanguageSelect } from '../../shared/language-select';
 import { shareProfileCard } from '../../shared/profile-share-card';
 
 /**
@@ -16,7 +17,7 @@ import { shareProfileCard } from '../../shared/profile-share-card';
  */
 @Component({
   selector: 'app-public-profile',
-  imports: [Enso, HajimeWord, Hanko, RouterLink],
+  imports: [Enso, HajimeWord, Hanko, RouterLink, LanguageSelect],
   template: `
     <div class="page">
       <header class="top">
@@ -92,6 +93,7 @@ import { shareProfileCard } from '../../shared/profile-share-card';
           Perfil básico público. El historial completo lo ven la propia persona, su padre, madre o
           apoderado y su dojo.
           <a routerLink="/privacidad">Privacidad</a>
+          <div class="foot-lang"><app-language-select /></div>
         </footer>
       } @else if (error()) {
         <div class="card empty">
@@ -171,6 +173,9 @@ import { shareProfileCard } from '../../shared/profile-share-card';
     .foot {
       margin-top: 2rem;
       text-align: center;
+    }
+    .foot-lang {
+      margin-top: 0.75rem;
     }
   `,
 })

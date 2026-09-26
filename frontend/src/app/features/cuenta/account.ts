@@ -6,12 +6,13 @@ import { AuthService } from '../../core/auth.service';
 import { User } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { Icon } from '../../shared/icon';
+import { LanguageSelect } from '../../shared/language-select';
 import { PageHead } from '../../shared/page-head';
 
 /** Mi cuenta: nombre visible y correo (con su verificación). */
 @Component({
   selector: 'app-account',
-  imports: [FormsModule, RouterLink, PageHead, Icon],
+  imports: [FormsModule, RouterLink, PageHead, Icon, LanguageSelect],
   template: `
     <div class="container narrow">
       <app-page-head kanji="私" title="Mi cuenta">
@@ -87,6 +88,14 @@ import { PageHead } from '../../shared/page-head';
           />
           <button class="btn" [disabled]="busy() || !name().trim()">Guardar</button>
         </form>
+      </section>
+
+      <section class="card stack">
+        <h2 class="h3">Idioma</h2>
+        <p class="muted small">
+          El idioma de Hajime en este dispositivo. Al cambiarlo, la aplicación se vuelve a cargar.
+        </p>
+        <div><app-language-select /></div>
       </section>
 
       <section class="card links">

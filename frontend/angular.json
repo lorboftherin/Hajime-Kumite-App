@@ -17,11 +17,15 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
+      "i18n": {
+        "sourceLocale": "es-PE"
+      },
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
+            "polyfills": ["@angular/localize/init"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -32,6 +36,12 @@
               {
                 "glob": "favicon.svg",
                 "input": "src"
+              },
+              {
+                "glob": "*.json",
+                "input": "src/locale",
+                "output": "i18n",
+                "ignore": ["messages.json"]
               }
             ],
             "styles": ["src/styles.scss"]
@@ -100,6 +110,15 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        },
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n",
+          "options": {
+            "buildTarget": "hajime:build:development",
+            "format": "json",
+            "outputPath": "src/locale",
+            "outFile": "messages.json"
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

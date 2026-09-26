@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Enso, HajimeWord } from '../../shared/enso';
+import { LanguageSelect } from '../../shared/language-select';
 import { matchesQuery } from './public-logic';
 import { DirectoryTournament, PublicDirectory } from './public-models';
 import { SHARE_IMAGE } from './share-meta';
@@ -29,7 +30,7 @@ const GROUPS: Group[] = [
  */
 @Component({
   selector: 'app-public-directory',
-  imports: [RouterLink, FormsModule, DatePipe, Enso, HajimeWord],
+  imports: [RouterLink, FormsModule, DatePipe, Enso, HajimeWord, LanguageSelect],
   template: `
     <div class="page">
       <header class="top">
@@ -103,6 +104,7 @@ const GROUPS: Group[] = [
       }
       <footer class="foot">
         Hajime · Torneos de karate. Solo se publican nombres, dojos y resultados.
+        <div class="foot-lang"><app-language-select /></div>
       </footer>
     </div>
   `,

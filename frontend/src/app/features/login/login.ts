@@ -7,10 +7,11 @@ import { AuthService } from '../../core/auth.service';
 import { isMobileApp, serverUrl, setServerUrl } from '../../core/server';
 import { AuthFrame } from '../../shared/auth-frame';
 import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
+import { LanguageSelect } from '../../shared/language-select';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, RouterLink, AuthFrame, Enso, HajimeWord, HajimeTagline],
+  imports: [FormsModule, RouterLink, AuthFrame, Enso, HajimeWord, HajimeTagline, LanguageSelect],
   template: `
     <app-auth-frame>
       <div class="login">
@@ -103,6 +104,7 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
           }
         </form>
       </div>
+      <footer class="login-foot"><app-language-select /></footer>
     </app-auth-frame>
   `,
   styles: `
@@ -113,6 +115,11 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
     .signup {
       margin: 0;
       text-align: center;
+    }
+    .login-foot {
+      margin-top: 1.5rem;
+      text-align: center;
+      color: var(--nezumi-ink);
     }
     .server {
       margin-top: 0.25rem;

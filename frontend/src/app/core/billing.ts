@@ -1,3 +1,4 @@
+import { fmtSoles } from './format';
 import { BillingAlert, PaymentOut } from './models';
 
 /** Culqi Checkout v4: se carga desde su CDN oficial SOLO en la página de pago. */
@@ -24,13 +25,9 @@ export const PROVIDER_LABEL: Record<string, string> = {
   coupon: 'Cupón',
 };
 
-/** Céntimos de sol → «S/ 69» o «S/ 34.50» (formato de es-PE). */
+/** Céntimos de sol → «S/ 69» o «S/ 34.50» (formato del idioma: ver fmtSoles). */
 export function penFromCents(cents: number | null | undefined): string {
-  const v = (cents ?? 0) / 100;
-  return (
-    'S/ ' +
-    v.toLocaleString('es-PE', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })
-  );
+  return fmtSoles((cents ?? 0) / 100);
 }
 
 /** Texto del aviso del encabezado («tu plan vence en N días»). */
