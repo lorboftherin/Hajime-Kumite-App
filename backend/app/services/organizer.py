@@ -265,6 +265,9 @@ def readiness(db: Session, tid: int) -> dict[str, Any]:
                     registration_ids=[r.id for r in missing.values()],
                 )
             )
+    from app.services.checkin import readiness_issues  # acreditación y pesaje
+
+    issues.extend(readiness_issues(db, t))
     issues.sort(key=lambda i: SEVERITY_ORDER[i["severity"]])
     return {
         "tournament_id": tid,

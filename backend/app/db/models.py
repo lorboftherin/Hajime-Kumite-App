@@ -317,6 +317,9 @@ class CategoryTemplate(Base, Timestamped, Versioned):
     description: Mapped[str] = mapped_column(Unicode(1000), default="")
     # NULL = plantilla global (visible para todas las organizaciones).
     organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), nullable=True, index=True)
+    # Archivada: ya no se ofrece para torneos nuevos, pero se conserva porque
+    # algún torneo la usó para generar sus categorías (no se borra).
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     items: Mapped[list[TemplateCategory]] = relationship(
         back_populates="template", lazy="selectin", order_by="TemplateCategory.sort_order"
     )
@@ -403,6 +406,14 @@ class Tournament(Base, Timestamped, Versioned):
     # Autoinscripción por dojo: el sensei inscribe a sus alumnos y el organizador aprueba.
     self_registration_open: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     self_registration_closes_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Acreditación y pesaje (docs/acreditacion-y-pesaje.md). Sin ``checkin_required``
+    # el check-in es opcional y nada cambia en llaves ni en la verificación previa.
+    checkin_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    weigh_in_tolerance_kg: Mapped[Decimal] = mapped_column(Numeric(4, 2), default=Decimal("0"), server_default="0")
+    # Diplomas y certificados: textos editables por torneo.
+    certificate_organizer: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
+    certificate_signer_name: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
+    certificate_signer_title: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
 
     organization: Mapped[Organization] = relationship(lazy="joined")
     tatamis: Mapped[list[Tatami]] = relationship(back_populates="tournament", lazy="selectin", order_by="Tatami.number")
@@ -480,7 +491,17 @@ class Registration(Base, Timestamped, Versioned):
     """Inscripcion: guarda la foto del competidor al momento del torneo."""
 
     __tablename__ = "registrations"
-    __table_args__ = (Index("ix_registrations_category", "category_id", "status"),)
+    __table_args__ = (
+        Index("ix_registrations_category", "category_id", "status"),
+        # Código corto de la credencial (QR): único solo entre los que ya lo tienen.
+        Index(
+            "uq_registrations_credential_code",
+            "credential_code",
+            unique=True,
+            mssql_where=text("credential_code IS NOT NULL"),
+            sqlite_where=text("credential_code IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
@@ -502,6 +523,15 @@ class Registration(Base, Timestamped, Versioned):
     requested_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
     seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Acreditación el día del torneo: pending | present | absent
+    checkin_status: Mapped[str] = mapped_column(String(10), default="pending", server_default="pending")
+    checked_in_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    checked_in_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # Pesaje: peso medido y resultado frente al rango de la categoría (ok | over | under).
+    weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    weighed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    weigh_in_result: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    credential_code: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
     person: Mapped[Person | None] = relationship(lazy="joined")
     dojo: Mapped[Dojo] = relationship(lazy="joined")
@@ -826,6 +856,63 @@ class PublicSnapshot(Base):
     computed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     dirty: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     lease_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Ranking por temporada (docs/ranking.md)
+# ---------------------------------------------------------------------------
+
+
+class RankingSeason(Base, Timestamped, Versioned):
+    """Temporada o liga: qué torneos cuentan y cuántos puntos da cada lugar.
+
+    ``tournament_ids`` vacío = todos los torneos no-prueba entre ``date_from`` y
+    ``date_to``. ``points``: {"gold", "silver", "bronze", "participation"}.
+    ``multipliers``: {"<tournament_id>": 2.0} (p. ej. un nacional vale doble).
+    Los resultados calculados viven en ``ranking_entries``; ``source_fingerprint``
+    resume los resultados con que se calcularon: si cambia, se recalcula.
+    """
+
+    __tablename__ = "ranking_seasons"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(200))
+    slug: Mapped[str] = mapped_column(String(80), unique=True)
+    year: Mapped[int] = mapped_column(Integer)
+    date_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    tournament_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    points: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    multipliers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    min_entrants_walkover_gold: Mapped[int] = mapped_column(Integer, default=2)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    computed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    source_fingerprint: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class RankingEntry(Base):
+    """Fila materializada del ranking: una persona en su categoría equivalente
+    (``kind="person"``) o un dojo en la tabla «mejor academia» (``kind="dojo"``)."""
+
+    __tablename__ = "ranking_entries"
+    __table_args__ = (
+        Index("ix_ranking_entries_season", "season_id", "kind", "group_key"),
+        Index("ix_ranking_entries_person", "person_id"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("ranking_seasons.id"))
+    kind: Mapped[str] = mapped_column(String(10))  # person | dojo
+    group_key: Mapped[str] = mapped_column(String(200), default="")
+    group_label: Mapped[str] = mapped_column(Unicode(200), default="")
+    modality: Mapped[str] = mapped_column(String(10), default="")
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
+    dojo_id: Mapped[int | None] = mapped_column(ForeignKey("dojos.id"), nullable=True)
+    points: Mapped[Decimal] = mapped_column(Numeric(9, 2), default=Decimal("0"))
+    rank: Mapped[int] = mapped_column(Integer)
+    golds: Mapped[int] = mapped_column(Integer, default=0)
+    silvers: Mapped[int] = mapped_column(Integer, default=0)
+    bronzes: Mapped[int] = mapped_column(Integer, default=0)
+    participations: Mapped[int] = mapped_column(Integer, default=0)
+    tournaments: Mapped[int] = mapped_column(Integer, default=0)
 
 
 # ---------------------------------------------------------------------------

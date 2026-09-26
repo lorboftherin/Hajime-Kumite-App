@@ -15,6 +15,7 @@ import { Modal } from '../../shared/modal';
 import { MoreMenu } from '../../shared/more-menu';
 import { PageHead } from '../../shared/page-head';
 import { DatePipe } from '../../shared/pipes';
+import { PersonAwards } from './person-awards';
 import { PersonHistoryView } from './person-history';
 
 interface MergeResult {
@@ -26,7 +27,7 @@ interface MergeResult {
 
 @Component({
   selector: 'app-person-detail',
-  imports: [FormsModule, RouterLink, Modal, DatePipe, PersonHistoryView, PageHead, Icon, MoreMenu, InkTabs],
+  imports: [FormsModule, RouterLink, Modal, DatePipe, PersonHistoryView, PersonAwards, PageHead, Icon, MoreMenu, InkTabs],
   template: `
     <div class="container">
       @if (person(); as p) {
@@ -72,12 +73,15 @@ interface MergeResult {
         }
 
         <nav class="tabs" inkTabs aria-label="Secciones de la persona">
-          <a [routerLink]="[]" [queryParams]="{ tab: null }" [class.active]="tab() !== 'historial'">Ficha</a>
+          <a [routerLink]="[]" [queryParams]="{ tab: null }" [class.active]="tab() !== 'historial' && tab() !== 'diplomas'">Ficha</a>
           <a [routerLink]="[]" [queryParams]="{ tab: 'historial' }" [class.active]="tab() === 'historial'">Historial deportivo</a>
+          <a [routerLink]="[]" [queryParams]="{ tab: 'diplomas' }" [class.active]="tab() === 'diplomas'">Diplomas y ranking</a>
         </nav>
 
         @if (tab() === 'historial') {
           <app-person-history [personId]="p.id" />
+        } @else if (tab() === 'diplomas') {
+          <app-person-awards [personId]="p.id" />
         } @else {
         <div class="ficha">
           <div class="card">

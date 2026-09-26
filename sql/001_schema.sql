@@ -146,6 +146,29 @@ CREATE TABLE persons (
 
 CREATE INDEX ix_persons_normalized_name ON persons (normalized_name);
 CREATE UNIQUE INDEX uq_persons_public_id ON persons (public_id) WHERE public_id IS NOT NULL;
+CREATE TABLE ranking_seasons (
+	id INTEGER NOT NULL IDENTITY, 
+	name NVARCHAR(200) NOT NULL, 
+	slug VARCHAR(80) NOT NULL, 
+	year INTEGER NOT NULL, 
+	date_from DATE NULL, 
+	date_to DATE NULL, 
+	tournament_ids NVARCHAR(max) NOT NULL, 
+	points NVARCHAR(max) NOT NULL, 
+	multipliers NVARCHAR(max) NOT NULL, 
+	min_entrants_walkover_gold INTEGER NOT NULL, 
+	is_public BIT NOT NULL DEFAULT 0, 
+	computed_at DATETIME2 NULL, 
+	source_fingerprint VARCHAR(120) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	updated_by_id INTEGER NULL, 
+	version INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	UNIQUE (slug), 
+	FOREIGN KEY(updated_by_id) REFERENCES users (id)
+);
+
 CREATE TABLE rule_overrides (
 	id INTEGER NOT NULL IDENTITY, 
 	entity VARCHAR(40) NOT NULL, 
@@ -184,6 +207,7 @@ CREATE TABLE category_templates (
 	name NVARCHAR(200) NOT NULL, 
 	description NVARCHAR(1000) NOT NULL, 
 	organization_id INTEGER NULL, 
+	is_archived BIT NOT NULL DEFAULT 0, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -364,6 +388,30 @@ CREATE TABLE profile_claims (
 CREATE INDEX ix_profile_claims_person_id ON profile_claims (person_id);
 CREATE INDEX ix_profile_claims_status ON profile_claims (status, person_id);
 CREATE INDEX ix_profile_claims_user_id ON profile_claims (user_id);
+CREATE TABLE ranking_entries (
+	id INTEGER NOT NULL IDENTITY, 
+	season_id INTEGER NOT NULL, 
+	kind VARCHAR(10) NOT NULL, 
+	group_key VARCHAR(200) NOT NULL, 
+	group_label NVARCHAR(200) NOT NULL, 
+	modality VARCHAR(10) NOT NULL, 
+	person_id INTEGER NULL, 
+	dojo_id INTEGER NULL, 
+	points NUMERIC(9, 2) NOT NULL, 
+	rank INTEGER NOT NULL, 
+	golds INTEGER NOT NULL, 
+	silvers INTEGER NOT NULL, 
+	bronzes INTEGER NOT NULL, 
+	participations INTEGER NOT NULL, 
+	tournaments INTEGER NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(season_id) REFERENCES ranking_seasons (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id)
+);
+
+CREATE INDEX ix_ranking_entries_person ON ranking_entries (person_id);
+CREATE INDEX ix_ranking_entries_season ON ranking_entries (season_id, kind, group_key);
 CREATE TABLE template_categories (
 	id INTEGER NOT NULL IDENTITY, 
 	template_id INTEGER NOT NULL, 
@@ -421,6 +469,11 @@ CREATE TABLE tournaments (
 	organization_id INTEGER NOT NULL, 
 	self_registration_open BIT NOT NULL DEFAULT 0, 
 	self_registration_closes_at DATETIME2 NULL, 
+	checkin_required BIT NOT NULL DEFAULT 0, 
+	weigh_in_tolerance_kg NUMERIC(4, 2) NOT NULL DEFAULT '0', 
+	certificate_organizer NVARCHAR(200) NOT NULL DEFAULT '', 
+	certificate_signer_name NVARCHAR(200) NOT NULL DEFAULT '', 
+	certificate_signer_title NVARCHAR(200) NOT NULL DEFAULT '', 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -715,6 +768,13 @@ CREATE TABLE registrations (
 	requested_by_id INTEGER NULL, 
 	rejection_reason NVARCHAR(500) NULL, 
 	seed INTEGER NULL, 
+	checkin_status VARCHAR(10) NOT NULL DEFAULT 'pending', 
+	checked_in_at DATETIME2 NULL, 
+	checked_in_by_id INTEGER NULL, 
+	weight_kg NUMERIC(5, 2) NULL, 
+	weighed_at DATETIME2 NULL, 
+	weigh_in_result VARCHAR(10) NULL, 
+	credential_code VARCHAR(12) NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -728,6 +788,7 @@ CREATE TABLE registrations (
 	FOREIGN KEY(dojo_id) REFERENCES dojos (id), 
 	FOREIGN KEY(branch_id) REFERENCES branches (id), 
 	FOREIGN KEY(requested_by_id) REFERENCES users (id), 
+	FOREIGN KEY(checked_in_by_id) REFERENCES users (id), 
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
@@ -736,6 +797,7 @@ CREATE INDEX ix_registrations_dojo_id ON registrations (dojo_id);
 CREATE INDEX ix_registrations_person_id ON registrations (person_id);
 CREATE INDEX ix_registrations_team_id ON registrations (team_id);
 CREATE INDEX ix_registrations_tournament_id ON registrations (tournament_id);
+CREATE UNIQUE INDEX uq_registrations_credential_code ON registrations (credential_code) WHERE credential_code IS NOT NULL;
 CREATE TABLE bracket_versions (
 	id INTEGER NOT NULL IDENTITY, 
 	bracket_id INTEGER NOT NULL, 

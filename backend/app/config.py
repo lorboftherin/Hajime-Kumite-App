@@ -116,6 +116,9 @@ class Settings(BaseSettings):
     # Reclamo de un adulto sobre su propio perfil con los 4 últimos dígitos del
     # documento que coinciden: se aprueba solo. Los menores siempre los revisa una persona.
     auto_approve_self_claim: bool = False
+    # Aviso «Tus diplomas están listos» a la persona y a su apoderado (con correo)
+    # al finalizar una categoría con podio. Apagado por defecto.
+    notify_diplomas: bool = False
     # --- Planes y cobros (ver docs/organizaciones-y-planes.md) ---
     # marcha_blanca: toda cuenta tiene acceso completo (pruebas y marcha blanca).
     # enforced: cada función de pago exige una suscripción vigente de la

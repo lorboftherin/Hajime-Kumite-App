@@ -12,6 +12,8 @@ from app import __version__
 from app.api.errors import install_handlers
 from app.api.routers import (
     accounts,
+    certificates,
+    checkin,
     competition,
     core,
     dojo_portal,
@@ -20,6 +22,8 @@ from app.api.routers import (
     organizer,
     public,
     public_profiles,
+    ranking,
+    templates,
     tournaments,
 )
 from app.config import DEFAULT_SECRET, get_settings
@@ -119,9 +123,13 @@ def create_app() -> FastAPI:
     routers = (
         core.router,
         accounts.router,
+        templates.router,
         tournaments.router,
         competition.router,
         organizer.router,
+        checkin.router,
+        certificates.router,
+        ranking.router,
         history.router,
         organizations.router,
         dojo_portal.router,

@@ -17,6 +17,7 @@ import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
 import { personLink } from '../../shared/person-link';
 import { shareProfileCard } from '../../shared/profile-share-card';
+import { PersonAwards } from '../persons/person-awards';
 import { PersonHistoryView } from '../persons/person-history';
 import { ClaimForm } from './claim-form';
 
@@ -27,7 +28,7 @@ import { ClaimForm } from './claim-form';
  */
 @Component({
   selector: 'app-my-profiles',
-  imports: [RouterLink, PageHead, Icon, PersonHistoryView, ClaimForm],
+  imports: [RouterLink, PageHead, Icon, PersonHistoryView, PersonAwards, ClaimForm],
   template: `
     <div class="container">
       <app-page-head kanji="選手" title="Mis perfiles">
@@ -130,6 +131,7 @@ import { ClaimForm } from './claim-form';
               }
             </div>
             <app-person-history [personId]="p.person_id" [links]="false" />
+            <app-person-awards [personId]="p.person_id" [links]="false" />
           }
         } @else if (!claiming()) {
           <div class="card empty">

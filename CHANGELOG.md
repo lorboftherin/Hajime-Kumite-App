@@ -44,6 +44,24 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   reparte enlaces de invitación; el sensei (admin de dojo) gestiona «Mis
   competidores» y los inscribe; las inscripciones quedan pendientes hasta que
   el organizador las aprueba o rechaza en lote (pestaña «Solicitudes»).
+- **Acreditación y pesaje:** pestaña «Acreditación» para la tablet de la
+  entrada (buscador grande, «Presente» de un toque, peso con teclado numérico,
+  filtros por dojo, pendientes y fuera de peso, contadores por categoría).
+  Credenciales imprimibles con QR (`/torneos/:id/credenciales`) y lector QR con
+  la cámara (BarcodeDetector). Tolerancia de peso por torneo; fuera de rango se
+  advierte y se mueve a la categoría sugerida o se acepta con motivo. Ausentes:
+  advertencia y «excluir ausentes» al generar la llave, o walkover si ya existe.
+  Check-in obligatorio opcional por torneo, en la verificación previa.
+- **Plantillas editables:** nombre y descripción, duplicar, borrar (o archivar
+  si un torneo la usó), edición de categorías en tabla e intercambio con Excel;
+  cada organización edita las suyas (owner/admin) y las globales solo el Admin.
+- **Diplomas y certificados** en PDF: podio (oro, plata, bronce) y
+  participación, por categoría, por dojo y por persona (también el apoderado),
+  con firma y organizador editables por torneo. Derecho «certificates» del plan
+  y aviso opcional por correo (`HAJIME_NOTIFY_DIPLOMAS`).
+- **Ranking por temporada y liga:** puntos por lugar, multiplicador por torneo,
+  categorías equivalentes entre torneos, «mejor academia», puesto en el perfil
+  de la persona y vista pública `/ranking/:temporada` (menores abreviados).
 
 ### Seguridad
 
@@ -55,6 +73,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 - Migración `0009_organizaciones`: crea la «Organización principal» y le
   asigna todos los torneos existentes antes de volver obligatoria
   `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.
+- Migración `0012_checkin_ranking` (acreditación, plantillas archivadas, firma
+  de diplomas y tablas `ranking_seasons`/`ranking_entries`; compatible hacia atrás).
 
 ## [0.2.0] - 2026-09-26
 

@@ -22,9 +22,14 @@ LEGACY_MARKERS = (
     ("organizations", "0009_organizaciones"),
     ("category_splits", "0010_reglas_deportivas"),
     ("outbox_emails", "0011_cuentas"),
+    ("ranking_seasons", "0012_checkin_ranking"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
-LEGACY_COLUMNS = (("tournaments", "public_token", "0003"), ("match_presence", "is_primary", "0008_mesa_principal"))
+LEGACY_COLUMNS = (
+    ("tournaments", "public_token", "0003"),
+    ("match_presence", "is_primary", "0008_mesa_principal"),
+    ("registrations", "checkin_status", "0012_checkin_ranking"),
+)
 
 
 def alembic_config() -> Config:

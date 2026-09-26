@@ -71,7 +71,9 @@ def parse_weight_range(label: str | None) -> tuple[Decimal | None, Decimal | Non
     etiqueta que no se entiende (p. ej. "Libre") devuelve (None, None)."""
     if not label:
         return None, None
-    txt = re.sub(r"\s*kg\s*$", "", label.strip().lower())
+    # Signos tipográficos («−45», «45–50») como el guion común.
+    txt = label.strip().lower().replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
+    txt = re.sub(r"\s*kg\s*$", "", txt)
 
     def num(x: str) -> Decimal:
         return Decimal(x.replace(",", "."))
