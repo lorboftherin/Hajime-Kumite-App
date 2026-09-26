@@ -112,10 +112,8 @@ export const DUPLICATE_REASON: Record<string, string> = {
   same_file: 'Repetido en el archivo',
 };
 
-/** "1 posible duplicado", "2 posibles duplicados". */
-export function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
-}
+/** "1 posible duplicado", "2 posibles duplicados" (la función vive en shared/plural). */
+export { plural } from '../shared/plural';
 
 export const FORMAT_LABEL: Record<string, string> = {
   single_elimination: 'Eliminación directa',
@@ -294,6 +292,7 @@ export const AUDIT_ACTION: Record<string, string> = {
   lineup: 'Alineación del enfrentamiento',
   lineup_extra: 'Combate extra agregado',
   undecide: 'Enfrentamiento sin decidir (corrección)',
+  take_table: 'Tablet tomó la mesa',
 };
 
 export const AUDIT_ENTITY: Record<string, string> = {

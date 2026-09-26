@@ -595,6 +595,7 @@ CREATE TABLE match_presence (
 	user_id INTEGER NULL, 
 	first_seen DATETIME2 NOT NULL, 
 	last_seen DATETIME2 NOT NULL, 
+	is_primary BIT NOT NULL, 
 	PRIMARY KEY (id), 
 	UNIQUE (match_id, device_id), 
 	FOREIGN KEY(match_id) REFERENCES matches (id), 

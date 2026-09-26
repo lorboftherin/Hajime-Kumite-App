@@ -526,8 +526,10 @@ class CategoryResult(Base):
 class MatchPresence(Base):
     """Tablet con la mesa de un combate abierta (latido cada pocos segundos).
 
-    Sirve para avisar cuando dos dispositivos operan el mismo combate; no
-    bloquea nada (los eventos ya son idempotentes y versionados).
+    Una sola tablet «lleva la mesa» (``is_primary``): la primera que la abre o
+    la que pulsa «Tomar la mesa». Las demás quedan en solo lectura y el
+    servidor rechaza sus eventos con 409 CONFLICT_DEVICE. Si la dueña deja de
+    latir, la siguiente tablet activa la toma sola.
     """
 
     __tablename__ = "match_presence"
@@ -538,6 +540,7 @@ class MatchPresence(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     first_seen: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     last_seen: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, index=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class RefereeAssignment(Base):

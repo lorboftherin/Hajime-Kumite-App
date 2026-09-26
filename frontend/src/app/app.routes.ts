@@ -1,5 +1,8 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { adminGuard, authGuard } from './core/auth.guard';
+import { AuthService } from './core/auth.service';
+import { homePath } from './core/roles';
 import { mesaPendingGuard } from './features/mesa/mesa-pending.guard';
 import { Shell } from './layout/shell';
 
@@ -43,7 +46,13 @@ export const routes: Routes = [
     component: Shell,
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'torneos' },
+      // El operador de un tatami entra a «Mi tatami»; los demás, a la lista de torneos.
+      { path: '', pathMatch: 'full', redirectTo: () => homePath(inject(AuthService).user()) },
+      {
+        path: 'mi-tatami',
+        loadComponent: () => import('./features/mesa/my-tatami').then((m) => m.MyTatamiPage),
+        title: 'Mi tatami · Hajime',
+      },
       {
         path: 'torneos',
         loadComponent: () => import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),

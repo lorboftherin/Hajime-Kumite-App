@@ -14,7 +14,7 @@ BASELINE = "0001"
 # qué tablas ya existen. La última que coincide manda.
 LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"), ("match_presence", "0004"))
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
-LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)
+LEGACY_COLUMNS = (("tournaments", "public_token", "0003"), ("match_presence", "is_primary", "0005_mesa_principal"))
 
 
 def alembic_config() -> Config:

@@ -472,6 +472,10 @@ export interface SuggestedJudges {
 
 export interface PresenceOut {
   others: Array<{ user: string; same_user: boolean; since: string }>;
+  /** Esta tablet lleva la mesa (las demás quedan en solo lectura). */
+  primary?: boolean;
+  /** Quién lleva la mesa cuando no es esta tablet. */
+  owner?: { user: string; same_user: boolean } | null;
 }
 
 // --- Resultados ---
