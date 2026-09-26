@@ -46,8 +46,18 @@ Peticiones por segundo y latencia mediana con 1, 16 y 64 clientes pidiendo sin p
 
 ## Torneo completo: 8 tatamis y 300 espectadores a la vez
 
-`prueba_carga.py --tatamis 8 --espectadores 300`, servidor configurado como el
-contenedor (2 procesos × 4 hilos): PENDIENTE.
+`prueba_carga.py --tatamis 8 --espectadores 300`: 8 mesas operan 56 combates
+punto por punto (con reenvíos por «red inestable») mientras 300 personas
+refrescan el vivo cada 5 s.
+
+| Servidor | Duración | Peticiones/s | Mesa: mediana · p95 | Vivo: mediana · p95 | Errores |
+| --- | --- | --- | --- | --- | --- |
+| Antes (1 proceso, 40 hilos, sin caché del vivo) | 191 s | 8 | 816 ms · 4,7 s | 6,8 s · 8,9 s | 0 |
+| **Ahora (2 procesos × 4 hilos, vivo compartido)** | **52 s** | **71** | **14 ms · 651 ms** | **3 ms · 686 ms** | **0** |
+
+El p95 de la mesa (651 ms) viene de que con SQLite las 8 mesas se turnan para
+escribir; con Azure SQL cada escritura va por su lado. Los 56 combates
+quedaron cerrados con su marcador igual a sus eventos.
 
 ## Memoria bajo carga sostenida
 
