@@ -1,0 +1,159 @@
+.btn-back {
+  font-size: 0.9rem;
+  color: var(--sumi-2);
+  text-decoration: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.res {
+  margin-top: 8px;
+  summary {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+  }
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--kinu);
+  border-radius: 12px;
+  overflow: hidden;
+  th,
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--kasumi);
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    font-size: 0.75rem;
+    color: var(--nezumi-ink);
+    font-weight: 600;
+  }
+  .muted {
+    font-size: 0.8rem;
+    margin-left: 4px;
+  }
+}
+.table-wrap {
+  overflow-x: auto;
+}
+
+/* Llave por rondas: columnas que se desplazan en el celular. */
+.bracket {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.round {
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  .ms {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    gap: 10px;
+  }
+  h3 {
+    margin: 0 0 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nezumi-ink);
+  }
+}
+.extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.m {
+  border: 1px solid var(--kasumi);
+  border-radius: 10px;
+  background: var(--kinu);
+  padding: 6px 8px;
+  &.live {
+    border-color: color-mix(in srgb, var(--shu) 55%, var(--kasumi));
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    font-size: 0.72rem;
+    color: var(--nezumi-ink);
+    margin-bottom: 2px;
+    .code {
+      font-family: ui-monospace, monospace;
+    }
+    .now {
+      color: var(--shu-ink, var(--shu));
+      font-weight: 700;
+    }
+  }
+}
+.side {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  padding: 3px 0 3px 8px;
+  border-left: 3px solid transparent;
+  &.aka {
+    border-left-color: var(--chart-aka);
+  }
+  &.ao {
+    border-left-color: var(--chart-ao);
+  }
+  .nm {
+    grid-column: 1;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dj {
+    grid-column: 1;
+    font-size: 0.72rem;
+    color: var(--nezumi-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pts {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  &.won .nm::after {
+    content: ' 勝';
+    font-family: var(--font-display);
+    color: var(--shu-ink, var(--shu));
+  }
+  &.lost {
+    opacity: 0.6;
+  }
+}
+.list {
+  list-style: none;
+  padding: 0;
+  columns: 2 240px;
+  li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--kasumi);
+    break-inside: avoid;
+  }
+  .muted {
+    font-size: 0.85rem;
+    margin-left: 4px;
+  }
+}

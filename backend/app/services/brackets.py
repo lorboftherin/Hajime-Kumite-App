@@ -158,7 +158,10 @@ def generate(db: Session, user: User, cid: int, data: s.BracketGenerateIn) -> Br
             "usa «Añadir a la llave» (ocupa un bye libre) o «Quitar de la llave» (bye o walkover)",
             code="BRACKET_STARTED",
         )
-    regs = _active_regs(db, cid)
+    from app.services.checkin import bracket_absent_check  # evitar ciclo
+
+    # Acreditación: advierte de ausentes o los retira («excluir ausentes»).
+    regs, warnings = bracket_absent_check(db, user, t, _active_regs(db, cid), data.exclude_absent)
     if not regs:
         raise InvalidState("La categoría no tiene inscritos")
     fmt = data.format or effective_format(c, t)
@@ -167,7 +170,6 @@ def generate(db: Session, user: User, cid: int, data: s.BracketGenerateIn) -> Br
     rule = bd.ThirdPlaceRule(data.third_place_rule) if data.third_place_rule else effective_third_place(c, t)
     comp = effective_competition(c, t)
 
-    warnings: list[dict[str, str]] = []
     if fmt == "round_robin" and len(regs) > 6:
         warnings.append(
             {"code": "ROUND_ROBIN_LARGE", "message": f"Round robin con {len(regs)} inscritos: muchos combates"}
@@ -634,6 +636,10 @@ def sync(db: Session, c: Category) -> dict[str, Any]:
         db.flush()
     _store_results(db, c, plan.places)
     if c.status != plan.status:
+        if plan.status == "finished" and plan.places:
+            from app.services.certificates import notify_diplomas_ready  # evitar ciclo
+
+            notify_diplomas_ready(db, c)
         c.status = plan.status
     invalidate(db, c.tournament_id)
     return plan.info
@@ -2025,7 +2031,7 @@ def tatami_schedule(db: Session, tatami_id: int) -> dict[str, Any]:
     items = schedule_items([tat], cats, list(matches))[tat.id]
     for it in items:
         it["match"] = s.MatchOut.model_validate(it["match"])
-    return {"tatami": tat, "items": items}
+    return {"tatami": tat, "items": items, "categories": cats}
 
 
 def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
@@ -2065,10 +2071,15 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
         if r.person_id and r.person_id in busy
     ]
     current = next((q for q in queue if q["match"].status == "in_progress"), None)
-    from app.services import operation, referees
+    from app.services import operation, referees, schedule
 
+    # Hora estimada de cada combate en espera (app.services.schedule): sin más consultas que el torneo.
+    absent = {rid for rid, r in regs.items() if r.checkin_status == "absent"}
+    etas = schedule.for_tatami(db, tat, sched["categories"], sched["items"], absent)
+    for q in queue:
+        q["eta"] = etas.get(q["match"].id)
     return {
-        "tatami": {"id": tat.id, "name": tat.name, "number": tat.number},
+        "tatami": {"id": tat.id, "name": tat.name, "number": tat.number, "planned_start": tat.planned_start},
         "current": current,
         "queue": queue,
         "participants": {k: v.model_dump() for k, v in parts.items()},

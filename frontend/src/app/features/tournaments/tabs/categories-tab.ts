@@ -14,6 +14,7 @@ import { LabelPipe } from '../../../shared/pipes';
 import { RulesForm, cleanRules, editableKata, kataPayload } from '../../../shared/rules-form';
 import { CategorySplitDialog } from '../category-split';
 import { PluralPipe, plural, pluralWord } from '../../../shared/plural';
+import { BracketGenerator } from '../../checkin/bracket-absent';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
@@ -470,6 +471,7 @@ import { TournamentContext } from '../tournament-context';
   `,
 })
 export class CategoriesTab {
+  private brackets = inject(BracketGenerator);
   readonly ctx = inject(TournamentContext);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -639,7 +641,8 @@ export class CategoriesTab {
   }
 
   async generate(c: Category): Promise<void> {
-    const res = await this.mut.post<Bracket>(`/categories/${c.id}/bracket`, {}, { success: 'Llave generada' });
+    // Con acreditación: ofrece excluir a los ausentes antes de sortear.
+    const res = await this.brackets.generate(c.id, {}, { success: 'Llave generada' });
     if (res) this.router.navigate(['/categorias', c.id, 'llave']);
   }
 

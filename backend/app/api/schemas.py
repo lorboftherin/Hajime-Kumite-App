@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -58,6 +59,8 @@ class UserOut(ORM):
     person_id: int | None
     roles: list[RoleOut] = []
     can_view_documents: bool = False
+    email: str | None = None
+    email_verified_at: datetime | None = None
     # Organizaciones de las que es miembro (con su rol) y dojos que administra.
     organizations: list[UserOrganizationOut] = []
     dojo_admin_of: list[int] = []
@@ -109,6 +112,8 @@ class UserAdminUpdate(BaseModel):
     display_name: str | None = None
     person_id: int | None = None
     reset_password: str | None = Field(default=None, min_length=8, max_length=200)
+    # Correo de la cuenta ("" lo quita). Queda sin verificar y se envía el enlace.
+    email: str | None = Field(default=None, max_length=254)
 
 
 class UserCreate(BaseModel):
@@ -117,6 +122,7 @@ class UserCreate(BaseModel):
     display_name: str = ""
     is_admin: bool = False
     person_id: int | None = None
+    email: str | None = Field(default=None, max_length=254)
 
 
 # --- Personas -----------------------------------------------------------
@@ -289,6 +295,8 @@ class CategoryFields(BaseModel):
 class TemplateCreate(BaseModel):
     name: str
     description: str = ""
+    # Organización dueña (owner/admin de ella la editan); None = global (solo el Admin).
+    organization_id: int | None = None
     items: list[CategoryFields] = []
 
 
@@ -302,7 +310,59 @@ class TemplateOut(ORM):
     description: str
     version: int
     organization_id: int | None = None  # None = plantilla global
+    is_archived: bool = False
     items: list[TemplateItemOut] = []
+    in_use: bool = False  # algún torneo la usó para generar categorías
+    can_edit: bool = False
+
+
+class TemplateUpdate(BaseModel):
+    version: int
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+    is_archived: bool | None = None
+
+
+class TemplateDuplicateIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    # Organización de la copia (por defecto, la de la original o la del usuario).
+    organization_id: int | None = None
+
+
+class TemplateItemUpdate(BaseModel):
+    """Cambios parciales de una categoría de plantilla (mismos campos que CategoryFields)."""
+
+    code: str | None = Field(default=None, max_length=40)
+    name: str | None = None
+    modality: Literal["kumite", "kata"] | None = None
+    is_team: bool | None = None
+    sex: CategorySex | None = None
+    age_min: int | None = None
+    age_max: int | None = None
+    grade_min: int | None = None
+    grade_max: int | None = None
+    weight_class: str | None = None
+    format: Literal["single_elimination", "round_robin", "kata_rounds"] | None = None
+    third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
+    duration_seconds: int | None = None
+    kumite_rules: dict[str, Any] | None = None
+    kata_method: Literal["flags", "scores"] | None = None
+    kata_structure: Literal["bracket", "rounds"] | None = None
+    kata_judges: int | None = None
+    sort_order: int | None = None
+
+
+class TemplateItemRow(CategoryFields):
+    """Fila de la edición en tabla: con ``id`` se actualiza, sin ``id`` se crea."""
+
+    id: int | None = None
+
+
+class TemplateItemsReplace(BaseModel):
+    """Reemplaza todas las categorías de la plantilla: las filas que no vienen se borran."""
+
+    version: int
+    items: list[TemplateItemRow] = Field(max_length=500)
 
 
 class CategoryCreate(CategoryFields):
@@ -413,12 +473,20 @@ class TournamentUpdate(BaseModel):
     kata_defaults: dict[str, Any] | None = None
     competition_rules: dict[str, Any] | None = None
     age_mode: Literal["date", "birth_year"] | None = None
+    # Acreditación y pesaje
+    checkin_required: bool | None = None
+    weigh_in_tolerance_kg: Decimal | None = Field(default=None, ge=0, le=10, decimal_places=2)
+    # Diplomas: organizador y quien firma
+    certificate_organizer: str | None = Field(default=None, max_length=200)
+    certificate_signer_name: str | None = Field(default=None, max_length=200)
+    certificate_signer_title: str | None = Field(default=None, max_length=200)
 
 
 class TatamiOut(ORM):
     id: int
     number: int
     name: str
+    planned_start: datetime | None = None  # hora local del torneo, sin zona
 
 
 class TournamentOut(ORM):
@@ -446,6 +514,14 @@ class TournamentOut(ORM):
     organization_name: str = ""
     self_registration_open: bool = False
     self_registration_closes_at: datetime | None = None
+    checkin_required: bool = False
+    weigh_in_tolerance_kg: float = 0
+    certificate_organizer: str = ""
+    certificate_signer_name: str = ""
+    certificate_signer_title: str = ""
+    public_slug: str | None = None
+    timezone: str = "America/Lima"
+    match_overhead_seconds: int = 60
 
 
 class PublicLiveIn(BaseModel):
@@ -454,6 +530,21 @@ class PublicLiveIn(BaseModel):
     enabled: bool
     names: Literal["short", "full"] = "short"
     regenerate: bool = False  # nuevo enlace: el anterior deja de funcionar
+    # Dirección fija /t/<slug>. None = la actual (o una nueva a partir del nombre y el año).
+    slug: str | None = Field(default=None, max_length=80)
+
+
+class ScheduleSettingsIn(BaseModel):
+    """Parámetros de los horarios estimados del torneo."""
+
+    timezone: str | None = Field(default=None, max_length=40)
+    match_overhead_seconds: int | None = Field(default=None, ge=0, le=1800)
+
+
+class TatamiUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    # Hora local del torneo («2026-10-17T09:00»); null la quita.
+    planned_start: datetime | None = None
 
 
 class StatusChange(BaseModel):
@@ -516,6 +607,11 @@ class RegistrationOut(ORM):
     requested_by_id: int | None = None
     seed: int | None
     version: int
+    checkin_status: str = "pending"
+    checked_in_at: datetime | None = None
+    weight_kg: float | None = None
+    weighed_at: datetime | None = None
+    weigh_in_result: str | None = None
     person_name: str = ""  # en categorías por equipos, el nombre del equipo
     dojo_name: str = ""
     team_id: int | None = None
@@ -624,6 +720,8 @@ class BracketGenerateIn(BaseModel):
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     seed: int | None = None
     reason: str = ""
+    # Acreditación: retira antes de sortear a los marcados ausentes («No se presentó»).
+    exclude_absent: bool = False
     override: Override | None = None
 
 

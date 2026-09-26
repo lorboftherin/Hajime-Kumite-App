@@ -13,6 +13,15 @@ Cloud Shell sin instalar nada.
     python3 scripts/prueba_carga.py --url https://hajime.lorboftherin.com \\
         --tatamis 8 --espectadores 200
 
+Con ``--sse N`` además abre N conexiones de actualización en vivo (SSE,
+``/public/{token}/stream``), deja el tatami 1 para un marcador que anota
+``--puntos`` puntos y mide cuánto tarda cada uno desde el POST hasta llegar por
+cada conexión (mediana, p95 y máximo), y cuántas conexiones rechazó el límite
+(503):
+
+    python3 scripts/prueba_carga.py --url http://localhost:8000 --tatamis 8 \\
+        --espectadores 300 --sse 500
+
 Pide la contraseña del admin (no se muestra). El torneo queda marcado como de
 prueba, con nombre «[CARGA] …», y no afecta historiales.
 """
@@ -196,6 +205,117 @@ def spectate(base: str, token: str, i: int, personas: int, results: dict, stop: 
     results[f"vivo-{i}"] = {"matches": 0, "lat": cli.lat, "errors": cli.errors}
 
 
+# ---------------------------------------------------------------------------
+# --sse N: conexiones SSE y latencia de propagación de un punto
+# ---------------------------------------------------------------------------
+
+
+class Oyente(threading.Thread):
+    """Un espectador con la página abierta por SSE (GET /public/{token}/stream).
+
+    Anota cuándo recibe, por primera vez, el vivo con el marcador AKA del
+    tatami marcado en cada valor (``llegadas[puntos] = instante``)."""
+
+    def __init__(self, base: str, token: str, tatami_idx: int, stop: threading.Event):
+        super().__init__(daemon=True)
+        self.url = base.rstrip("/") + f"/api/v1/public/{token}/stream"
+        self.tatami_idx = tatami_idx
+        self.stop = stop
+        self.llegadas: dict[int, float] = {}
+        self.eventos = 0
+        self.conectado = threading.Event()
+        self.error: str | None = None
+        self.status: int | None = None
+
+    def run(self) -> None:
+        req = urllib.request.Request(self.url, headers={"Accept": "text/event-stream"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                self.status = r.status
+                evento, datos = None, []
+                for raw in r:
+                    if self.stop.is_set():
+                        return
+                    line = raw.decode("utf-8").rstrip("\n").rstrip("\r")
+                    if line.startswith("event: "):
+                        evento = line[7:]
+                    elif line.startswith("data: "):
+                        datos.append(line[6:])
+                    elif line == "":
+                        if evento == "live" and datos:
+                            self._vivo(json.loads("\n".join(datos)))
+                        evento, datos = None, []
+        except urllib.error.HTTPError as e:
+            self.status, self.error = e.code, f"HTTP {e.code}"
+        except Exception as e:  # noqa: BLE001 - se cuenta como error de la conexión
+            if not self.stop.is_set():
+                self.error = f"{type(e).__name__}: {e}"
+        finally:
+            self.conectado.set()
+
+    def _vivo(self, data: dict) -> None:
+        ahora = time.perf_counter()
+        self.eventos += 1
+        self.conectado.set()
+        cur = data["tatamis"][self.tatami_idx].get("current")
+        if cur:
+            self.llegadas.setdefault(int(cur["score"][0]), ahora)
+
+
+def prueba_sse(a, admin: Client, t: dict, ops: list[dict], stop: threading.Event) -> dict:
+    """Abre ``a.sse`` conexiones SSE y marca ``a.puntos`` puntos en el tatami 1:
+    mide desde el POST del evento hasta que cada conexión lo recibe."""
+    op = ops[0]
+    mesa = Client(a.url, login(a.url, op["username"], op["password"]), "marcador")
+    q = mesa.get(f"/tatamis/{op['tatami']['id']}/queue")
+    m = q["queue"][0]["match"]
+    at = datetime(2026, 10, 17, 9, tzinfo=UTC)
+
+    def ev(type_: str, **kw):
+        nonlocal at
+        at += timedelta(seconds=2)
+        body = {"id": str(uuid.uuid4()), "type": type_, "at": at.isoformat(), **kw}
+        return mesa.post(f"/matches/{m['id']}/events", body)
+
+    ev("start")
+    oyentes = [Oyente(a.url, t["public_token"], 0, stop) for _ in range(a.sse)]
+    t0 = time.perf_counter()
+    for i, o in enumerate(oyentes):
+        o.start()
+        if i % 50 == 49:
+            time.sleep(0.2)  # no abrir todas en el mismo milisegundo
+    for o in oyentes:
+        o.conectado.wait(30)
+    abiertas = [o for o in oyentes if o.eventos and not o.error]
+    print(f"   {len(abiertas)} de {a.sse} conexiones SSE abiertas en {time.perf_counter() - t0:.1f} s")
+    time.sleep(2)
+    enviados: dict[int, float] = {}
+    for p in range(1, a.puntos + 1):
+        enviados[p] = time.perf_counter()
+        ev("point", color="aka", value=1)
+        time.sleep(a.pausa_puntos)
+    time.sleep(5)  # los últimos en llegar
+    lat, perdidos = [], 0
+    for o in abiertas:
+        for p, t_post in enviados.items():
+            # Si dos puntos llegan juntos, el anterior se ve con el siguiente marcador.
+            llegada = min((v for k, v in o.llegadas.items() if k >= p), default=None)
+            if llegada is None:
+                perdidos += 1
+            else:
+                lat.append(max(0.0, llegada - t_post))
+    rechazadas = [o for o in oyentes if o.status == 503]
+    otros = [o.error for o in oyentes if o.error and o.status != 503]
+    return {
+        "lat": lat,
+        "perdidos": perdidos,
+        "abiertas": len(abiertas),
+        "rechazadas": len(rechazadas),
+        "errores": otros,
+        "mesa": mesa,
+    }
+
+
 def resumen(nombre: str, lat: list[float], errors: list[str], segundos: float) -> str:
     if not lat:
         return f"  {nombre}: sin peticiones"
@@ -216,6 +336,9 @@ def main() -> int:
     ap.add_argument("--categorias", type=int, default=1, help="categorías por tatami")
     ap.add_argument("--por-categoria", type=int, default=8, help="competidores por categoría")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--sse", type=int, default=0, help="conexiones SSE abiertas (mide la propagación de un punto)")
+    ap.add_argument("--puntos", type=int, default=10, help="--sse: puntos marcados en el tatami 1")
+    ap.add_argument("--pausa-puntos", type=float, default=1.5, help="--sse: segundos entre puntos")
     a = ap.parse_args()
 
     password = os.environ.get("HAJIME_CARGA_ADMIN_PASSWORD") or getpass.getpass(f"Contraseña de {a.user}: ")
@@ -231,9 +354,11 @@ def main() -> int:
 
     stop = threading.Event()
     results: dict = {}
+    # Con --sse el tatami 1 queda para marcar los puntos que se miden; los demás operan como siempre.
+    operan = ops[1:] if a.sse else ops
     threads = [
         threading.Thread(target=operate_tatami, args=(a.url, op, random.Random(a.seed + i), results, stop), daemon=True)
-        for i, op in enumerate(ops)
+        for i, op in enumerate(operan)
     ]
     hilos = min(HILOS_VIVO, a.espectadores)
     reparto = [a.espectadores // hilos + (1 if i < a.espectadores % hilos else 0) for i in range(hilos)]
@@ -241,11 +366,16 @@ def main() -> int:
         threading.Thread(target=spectate, args=(a.url, t["public_token"], i, n, results, stop), daemon=True)
         for i, n in enumerate(reparto)
     ]
-    print(f"-> {a.tatamis} mesas operando y {a.espectadores} espectadores mirando el vivo, a la vez…")
+    print(
+        f"-> {len(operan)} mesas operando, {a.espectadores} espectadores sondeando"
+        + (f" y {a.sse} conexiones SSE" if a.sse else "")
+        + " a la vez…"
+    )
     t1 = time.perf_counter()
     for th in threads:
         th.start()
-    for th in threads[: len(ops)]:
+    sse = prueba_sse(a, admin, t, ops, stop) if a.sse else None
+    for th in threads[: len(operan)]:
         th.join()
     stop.set()  # las mesas terminaron: los espectadores paran
     for th in threads[len(ops) :]:
@@ -263,6 +393,19 @@ def main() -> int:
     print(f"En total: {(len(lat_m) + len(lat_v)) / segundos:.1f} peticiones por segundo al servidor")
     print(resumen("Mesas (puntos, pausas, cierres)", lat_m, err_m, segundos))
     print(resumen(f"Vivo ({a.espectadores} espectadores)", lat_v, err_v, segundos))
+    if sse is not None:
+        lat_s = sse["lat"]
+        print(
+            f"  SSE: {sse['abiertas']} conexiones abiertas, {sse['rechazadas']} rechazadas (503),"
+            f" {len(sse['errores'])} con error; {len(lat_s)} llegadas, {sse['perdidos']} sin llegar"
+        )
+        if lat_s:
+            p95 = statistics.quantiles(lat_s, n=20)[-1] if len(lat_s) >= 20 else max(lat_s)
+            print(
+                f"     del POST a la llegada: mediana {statistics.median(lat_s) * 1000:.0f} ms"
+                f" · p95 {p95 * 1000:.0f} ms · máx {max(lat_s) * 1000:.0f} ms"
+            )
+        err_m += [f"SSE: {e}" for e in sse["errores"][:5]] + sse["mesa"].errors
     for e in (err_m + err_v)[:8]:
         print("  error:", e)
     peor = max([statistics.quantiles(lat_m, n=20)[-1] if len(lat_m) >= 20 else 0.0] + [0.0])

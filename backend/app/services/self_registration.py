@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.api import schemas as s
 from app.api.deps import dojo_admin_ids, forget_roles
 from app.api.errors import Conflict, Forbidden, InvalidState, NotFound, WarningsRequireOverride
+from app.config import get_settings
 from app.db.base import utcnow
 from app.db.models import (
     Category,
@@ -34,7 +35,7 @@ from app.db.models import (
     User,
 )
 from app.domain.categories import age_at, grade_to_ordinal
-from app.services import entitlements, people
+from app.services import entitlements, mail, people
 from app.services.audit import apply_warnings, audit, bump, snapshot
 from app.services.registrations import _warnings, registration_out
 from app.services.tournaments import get_category, get_tournament, refresh_category_status
@@ -560,23 +561,69 @@ def decide(db: Session, user: User, tid: int, data: s.RegistrationDecisionIn) ->
     db.flush()
     for c in touched.values():
         refresh_category_status(db, c)
+    # Los avisos van en la misma transacción (bandeja de salida): si algo falla, no sale ninguno.
+    notify_registration_decisions(db, decided)
     db.commit()
-    for r in decided:
-        notify_registration_decision(db, r, "approved" if r.status == "active" else "rejected", r.rejection_reason)
     return out
 
 
 def notify_registration_decision(db: Session, r: Registration, decision: str, reason: str | None = None) -> None:
-    """Punto de aviso al sensei que pidió la inscripción.
+    """Aviso al sensei que pidió una inscripción (correo en la bandeja de salida, sin confirmar)."""
+    notify_registration_decisions(db, [r])
 
-    Hoy solo deja constancia en el log; el servicio de correo lo reemplazará
-    por un correo al solicitante (``r.requested_by_id``).
+
+def notify_registration_decisions(db: Session, regs: list[Registration]) -> None:
+    """Un correo por sensei que pidió inscripciones, con las aprobadas y las rechazadas (y su motivo).
+
+    Se encola en ``outbox_emails`` (ver ``app.services.mail``) sin confirmar la
+    transacción. Sin correo en la cuenta, solo queda la constancia en el log.
     """
-    log.info(
-        "Inscripción %s %s (torneo %s, pedida por el usuario %s)%s",
-        r.id,
-        "aprobada" if decision == "approved" else "rechazada",
-        r.tournament_id,
-        r.requested_by_id,
-        f": {reason}" if reason else "",
-    )
+    by_user: dict[int, list[Registration]] = {}
+    for r in regs:
+        log.info(
+            "Inscripción %s %s (torneo %s, pedida por el usuario %s)%s",
+            r.id,
+            "aprobada" if r.status == "active" else "rechazada",
+            r.tournament_id,
+            r.requested_by_id,
+            f": {r.rejection_reason}" if r.rejection_reason else "",
+        )
+        if r.requested_by_id is not None:
+            by_user.setdefault(r.requested_by_id, []).append(r)
+    for user_id, mine in by_user.items():
+        u = db.get(User, user_id)
+        if u is None or not u.is_active or not u.email:
+            continue
+        t = get_tournament(db, mine[0].tournament_id)
+        names = {r.id: _decision_line(db, r) for r in mine}
+        approved = [names[r.id] for r in mine if r.status == "active"]
+        rejected = [
+            f"{names[r.id]} — motivo: {r.rejection_reason or 'sin motivo'}" for r in mine if r.status != "active"
+        ]
+        paragraphs = [
+            f"Hola, {u.display_name or u.username}.",
+            f"La organización de {t.name} revisó tus inscripciones.",
+        ]
+        if approved:
+            paragraphs.append("Aprobadas: " + "; ".join(approved) + ".")
+        if rejected:
+            paragraphs.append("No aprobadas: " + "; ".join(rejected) + ".")
+        paragraphs.append("Puedes ver el detalle en «Mis competidores».")
+        mail.enqueue(
+            db,
+            u.email,
+            mail.render(
+                f"Inscripciones revisadas · {t.name}",
+                "Inscripciones revisadas",
+                paragraphs,
+                ("Ver mis competidores", f"{get_settings().frontend_url()}/mis-competidores"),
+            ),
+            kind="registration_decision",
+        )
+
+
+def _decision_line(db: Session, r: Registration) -> str:
+    """«Diego Ramírez (Kumite 12-13 M -45)»."""
+    who = r.display_name
+    c = db.get(Category, r.category_id)
+    return f"{who} ({c.name})" if c is not None else who

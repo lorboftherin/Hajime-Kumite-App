@@ -55,14 +55,23 @@ def get_category(db: Session, cid: int) -> Category:
 
 
 def create_template(db: Session, user: User, data: s.TemplateCreate) -> CategoryTemplate:
-    t = CategoryTemplate(name=data.name, description=data.description, updated_by_id=user.id)
+    t = CategoryTemplate(
+        name=data.name, description=data.description, organization_id=data.organization_id, updated_by_id=user.id
+    )
     db.add(t)
     db.flush()
     for i, item in enumerate(data.items):
         fields = item.model_dump()
         fields["sort_order"] = fields.get("sort_order") or i
         db.add(TemplateCategory(template_id=t.id, **fields))
-    audit(db, user, "template", t.id, "create", after={"name": t.name, "items": len(data.items)})
+    audit(
+        db,
+        user,
+        "template",
+        t.id,
+        "create",
+        after={"name": t.name, "items": len(data.items), "organization_id": t.organization_id},
+    )
     db.commit()
     db.refresh(t)
     return t

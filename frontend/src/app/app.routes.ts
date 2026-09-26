@@ -21,11 +21,83 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/delete-account').then((m) => m.DeleteAccountPage),
     title: 'Borrar mi cuenta · Hajime',
   },
+  // --- Cuentas sin sesión (docs/cuentas-y-correo.md) ---
   {
-    // Seguimiento en vivo público (sin inicio de sesión; solo con enlace activo).
+    path: 'recuperar-clave',
+    loadComponent: () => import('./features/cuenta/forgot-password').then((m) => m.ForgotPasswordPage),
+    title: 'Recuperar contraseña · Hajime',
+  },
+  {
+    // El enlace del correo lleva el token en el fragmento: /restablecer-clave#<token>.
+    path: 'restablecer-clave',
+    loadComponent: () => import('./features/cuenta/reset-password').then((m) => m.ResetPasswordPage),
+    title: 'Contraseña nueva · Hajime',
+  },
+  {
+    path: 'verificar-correo',
+    loadComponent: () => import('./features/cuenta/verify-email').then((m) => m.VerifyEmailPage),
+    title: 'Confirmar correo · Hajime',
+  },
+  {
+    path: 'crear-cuenta',
+    loadComponent: () => import('./features/cuenta/signup').then((m) => m.SignupPage),
+    title: 'Crear cuenta · Hajime',
+  },
+  {
+    path: 'privacidad',
+    loadComponent: () => import('./features/cuenta/privacy').then((m) => m.PrivacyPage),
+    title: 'Privacidad · Hajime',
+  },
+  {
+    // Perfil público básico del competidor (sin inicio de sesión).
+    path: 'competidor/:publicId',
+    loadComponent: () => import('./features/competidor/public-profile').then((m) => m.PublicProfilePage),
+    title: 'Competidor · Hajime',
+  },
+  // --- Portal público (sin inicio de sesión; solo con el público activo). Ver docs/portal-publico.md ---
+  {
+    // Seguimiento en vivo por el enlace secreto.
     path: 'vivo/:token',
     loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),
     title: 'En vivo · Hajime',
+  },
+  {
+    path: 'vivo/:token/categoria/:id',
+    loadComponent: () => import('./features/public/category').then((m) => m.PublicCategoryPage),
+    title: 'Llave · Hajime en vivo',
+  },
+  {
+    // Página pública por la dirección fija del torneo: lo mismo que /vivo/:token.
+    path: 't/:slug',
+    loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),
+    title: 'En vivo · Hajime',
+  },
+  {
+    path: 't/:slug/categoria/:id',
+    loadComponent: () => import('./features/public/category').then((m) => m.PublicCategoryPage),
+    title: 'Llave · Hajime en vivo',
+  },
+  {
+    path: 'torneos-publicos',
+    loadComponent: () => import('./features/public/directory').then((m) => m.PublicDirectoryPage),
+    title: 'Torneos de karate en vivo · Hajime',
+  },
+  {
+    // Pantalla grande del coliseo: todos los tatamis en mosaico o uno a pantalla completa.
+    path: 'pantalla/:token',
+    loadComponent: () => import('./features/public/screen').then((m) => m.ScreenMosaicPage),
+    title: 'Pantalla · Hajime',
+  },
+  {
+    path: 'pantalla/:token/:tatami',
+    loadComponent: () => import('./features/public/screen').then((m) => m.ScreenPage),
+    title: 'Pantalla · Hajime',
+  },
+  {
+    // Ranking público de una temporada marcada pública (sin inicio de sesión).
+    path: 'ranking/:temporada',
+    loadComponent: () => import('./features/ranking/public-ranking').then((m) => m.PublicRankingPage),
+    title: 'Ranking · Hajime',
   },
   {
     // Overlay para transmisiones (OBS/vMix): fondo transparente.
@@ -49,6 +121,21 @@ export const routes: Routes = [
       // El operador de un tatami entra a «Mi tatami»; los demás, a la lista de torneos.
       { path: '', pathMatch: 'full', redirectTo: () => homePath(inject(AuthService).user()) },
       {
+        path: 'mis-perfiles',
+        loadComponent: () => import('./features/cuenta/my-profiles').then((m) => m.MyProfilesPage),
+        title: 'Mis perfiles · Hajime',
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./features/cuenta/account').then((m) => m.AccountPage),
+        title: 'Mi cuenta · Hajime',
+      },
+      {
+        path: 'solicitudes',
+        loadComponent: () => import('./features/cuenta/claims-review').then((m) => m.ClaimsReviewPage),
+        title: 'Solicitudes de perfil · Hajime',
+      },
+      {
         path: 'mi-tatami',
         loadComponent: () => import('./features/mesa/my-tatami').then((m) => m.MyTatamiPage),
         title: 'Mi tatami · Hajime',
@@ -57,6 +144,17 @@ export const routes: Routes = [
         path: 'torneos',
         loadComponent: () => import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),
         title: 'Torneos · Hajime',
+      },
+      {
+        // Credenciales imprimibles con QR (antes de 'torneos/:id', que tiene pestañas hijas).
+        path: 'torneos/:id/credenciales',
+        loadComponent: () => import('./features/checkin/credentials-page').then((m) => m.CredentialsPage),
+        title: 'Credenciales · Hajime',
+      },
+      {
+        path: 'ranking',
+        loadComponent: () => import('./features/ranking/ranking-page').then((m) => m.RankingPage),
+        title: 'Ranking · Hajime',
       },
       {
         path: 'torneos/:id',

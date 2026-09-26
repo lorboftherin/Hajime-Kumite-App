@@ -27,6 +27,7 @@ import { Modal } from '../../shared/modal';
 import { MoreMenu } from '../../shared/more-menu';
 import { PageHead } from '../../shared/page-head';
 import { LabelPipe, LimaPipe } from '../../shared/pipes';
+import { BracketGenerator } from '../checkin/bracket-absent';
 
 function fmtScore(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -56,6 +57,7 @@ const CHANGE_TEXT: Record<string, string> = {
   styleUrl: './bracket-page.scss',
 })
 export class BracketPage {
+  private brackets = inject(BracketGenerator);
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -376,7 +378,7 @@ export class BracketPage {
     if (this.regen.seed !== '' && this.regen.seed !== null) body['seed'] = Number(this.regen.seed);
     if (this.regen.format) body['format'] = this.regen.format;
     if (this.regen.third_place_rule) body['third_place_rule'] = this.regen.third_place_rule;
-    const res = await this.mut.post<Bracket>(`/categories/${this.catId()}/bracket`, body, { success: 'Llave generada' });
+    const res = await this.brackets.generate(this.catId(), body, { success: 'Llave generada' });
     if (res) {
       this.regenOpen.set(false);
       this.bracket.set(res);

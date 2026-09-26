@@ -7,6 +7,7 @@ export const TOURNAMENT_TABS: Routes = [
   { path: 'inscripciones', loadComponent: () => import('./tabs/registrations-tab').then((m) => m.RegistrationsTab), title: 'Inscripciones · Hajime' },
   { path: 'solicitudes', loadComponent: () => import('./tabs/requests-tab').then((m) => m.RequestsTab), title: 'Solicitudes · Hajime' },
   { path: 'importar', loadComponent: () => import('./tabs/import-tab').then((m) => m.ImportTab), title: 'Importar Excel · Hajime' },
+  { path: 'acreditacion', loadComponent: () => import('./tabs/checkin-tab').then((m) => m.CheckinTab), title: 'Acreditación · Hajime' },
   { path: 'tatamis', loadComponent: () => import('./tabs/tatamis-tab').then((m) => m.TatamisTab), title: 'Tatamis · Hajime' },
   { path: 'arbitros', loadComponent: () => import('./tabs/referees-tab').then((m) => m.RefereesTab), title: 'Árbitros · Hajime' },
   { path: 'resultados', loadComponent: () => import('./tabs/results-tab').then((m) => m.ResultsTab), title: 'Resultados · Hajime' },

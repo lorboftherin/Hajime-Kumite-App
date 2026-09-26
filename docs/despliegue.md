@@ -49,6 +49,16 @@
 | `HAJIME_PAYMENT_HTTP_TIMEOUT` | `15` | Segundos por llamada a la pasarela o a Nubefact |
 | `HAJIME_WEBHOOK_MAX_BYTES` | `65536` | Tamaño máximo del aviso de la pasarela (413 si se pasa) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | — | Activa Azure Monitor (trazas, errores y métricas). La imagen `-azure` ya trae el paquete; en otra instalación: `pip install '.[azure]'` |
+| `HAJIME_PUBLIC_URL` | `https://hajime.example.pe` | URL pública de la interfaz: enlaces y logo de los correos |
+| `HAJIME_MAIL_PROVIDER` | `acs` | `console` (por defecto; en `prod` no envía nada), `smtp` o `acs`. Ver [`cuentas-y-correo.md`](cuentas-y-correo.md) |
+| `HAJIME_MAIL_FROM` | `Hajime <no-responder@hajime.example.pe>` | Remitente por defecto |
+| `HAJIME_SMTP_HOST`, `HAJIME_SMTP_PORT`, `HAJIME_SMTP_USER`, `HAJIME_SMTP_PASSWORD`, `HAJIME_SMTP_FROM`, `HAJIME_SMTP_STARTTLS` | `smtp.example.pe`, `587`, …, `true` | Proveedor `smtp` (la clave, como secreto) |
+| `HAJIME_ACS_ENDPOINT`, `HAJIME_ACS_ACCESS_KEY`, `HAJIME_ACS_SENDER` | `https://<recurso>.communication.azure.com`, secreto, `DoNotReply@<dominio>` | Proveedor `acs` (Azure Communication Services Email) |
+| `HAJIME_MAIL_DISPATCHER` | `true` | Hilo que envía la bandeja de salida en cada proceso. En `false` si lo hace un Container Apps Job con `python -m app.mail_worker` |
+| `HAJIME_MAIL_POLL_SECONDS`, `HAJIME_MAIL_MAX_ATTEMPTS`, `HAJIME_MAIL_LEASE_SECONDS` | `5`, `6`, `120` | Frecuencia de revisión, intentos y reserva de cada correo |
+| `HAJIME_OPEN_SIGNUP` | `true` | Registro abierto de cuentas de competidor (por defecto `false`) |
+| `HAJIME_AUTO_APPROVE_SELF_CLAIM` | `false` | Aprueba solo el reclamo de un adulto con los 4 últimos dígitos del documento correctos. Los menores siempre los revisa una persona |
+| `HAJIME_NOTIFY_DIPLOMAS` | `true` | Correo «Tus diplomas están listos» a la persona y a su apoderado (con correo) al finalizar una categoría con podio (por defecto `false`) |
 
 Con 3 copias × 2 procesos × (6 + 4) conexiones, la app abre como máximo 60
 sesiones en Azure SQL, dentro del límite del tier serverless más chico.
@@ -195,6 +205,11 @@ El día anterior:
 - [ ] Respaldo exportado: `bash infra/azure/respaldar.sh prod` (queda en la lista).
 - [ ] Torneo con la marca `es_prueba` desactivada, y datos con consentimiento registrado.
 - [ ] Llaves impresas desde la app como respaldo en papel.
+- [ ] Credenciales impresas (Torneo → Acreditación → Credenciales, 8 por hoja
+      A4, con QR) y ensobradas por dojo. Ver `docs/acreditacion-y-pesaje.md`.
+- [ ] Decidido si el check-in es obligatorio y la tolerancia de peso (Acreditación
+      → Ajustes), y avisado a los senseis.
+- [ ] Firma de los diplomas cargada (Resultados → Diplomas → Firma y organizador).
 
 El día del torneo:
 
@@ -202,8 +217,16 @@ El día del torneo:
 - [ ] Tablets cargadas y probadas en la red del local, con la app instalada
       (PWA o APK) y la sesión del operador abierta; probar cortar el wifi en la
       mesa y ver que los eventos quedan en cola y se envían al volver.
+- [ ] Tablet de acreditación en la entrada, con la pestaña **Acreditación**
+      abierta, cámara con permiso (para leer el QR) o lector USB, y balanza
+      cerca. Acreditar y pesar antes de generar las llaves: los ausentes se
+      excluyen al sortear.
+- [ ] «Listo para iniciar» sin inscritos sin acreditar (si es obligatorio) ni
+      pesos fuera de rango sin resolver.
 - [ ] Plan B: la mesa sigue en papel (principio "la app nunca detiene un torneo").
 
 Después:
 
 - [ ] Respaldo exportado otra vez (`respaldar.sh prod`) con los resultados finales.
+- [ ] Diplomas por categoría o por dojo (Resultados → Diplomas) y ranking de la
+      temporada revisado (se recalcula solo al cerrar categorías; ver `docs/ranking.md`).

@@ -47,6 +47,18 @@ class Settings(BaseSettings):
     public_snapshot_max_age: float = 30.0
     # Hilos propios para /public: el vivo nunca ocupa los hilos de las mesas.
     public_threads: int = 2
+    # Actualización en vivo por SSE (GET /public/{token}/stream, ver
+    # app.services.public_stream). Conexiones abiertas por proceso: pasado el
+    # límite se responde 503 y el navegador sigue con el sondeo de siempre.
+    public_sse_max_connections: int = 500
+    # Cada cuánto el sondeo compartido del proceso mira la versión de la instantánea.
+    public_sse_poll_seconds: float = 1.0
+    # Mínimo entre dos vueltas del sondeo aunque una escritura lo despierte antes.
+    public_sse_min_interval: float = 0.5
+    # Comentario de latido: mantiene viva la conexión a través de proxies.
+    public_sse_heartbeat_seconds: float = 15.0
+    # Duración máxima de una conexión: el navegador se reconecta solo (EventSource).
+    public_sse_max_seconds: float = 900.0
     # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.
     secret_file: str | None = None
 
@@ -83,6 +95,43 @@ class Settings(BaseSettings):
     # json (una línea por evento, para Azure / Log Analytics) o text (lectura en consola).
     log_format: str = "json"
 
+    # --- Correo transaccional (ver app/services/mail.py y docs/cuentas-y-correo.md) ---
+    # console (registra en el log y guarda en memoria; dev y pruebas) | smtp | acs
+    mail_provider: str = "console"
+    # Remitente por defecto (SMTP y ACS). Con ACS debe ser un remitente verificado del dominio.
+    mail_from: str = "Hajime <no-responder@localhost>"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    # Remitente propio de SMTP; sin configurar se usa mail_from.
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    smtp_timeout: float = 20.0
+    # Azure Communication Services Email: https://<recurso>.communication.azure.com y su clave de acceso.
+    acs_endpoint: str | None = None
+    acs_access_key: str | None = None
+    acs_sender: str | None = None  # p. ej. DoNotReply@<dominio verificado>
+    # Despachador de la bandeja de salida (outbox_emails): hilo de fondo en cada proceso.
+    # Con un Container Apps Job (python -m app.mail_worker) se puede apagar aquí.
+    mail_dispatcher: bool = True
+    mail_poll_seconds: float = 5.0
+    mail_max_attempts: int = 6
+    # Segundos que un proceso «reserva» un correo mientras lo envía (lease).
+    mail_lease_seconds: int = 120
+    # URL pública de la interfaz para los enlaces de los correos y el logo
+    # (p. ej. https://hajime.example.com). Sin configurar: http://localhost:4200.
+    public_url: str | None = None
+
+    # --- Cuentas de competidor (docs/modelo-negocio.md, «Cuentas de competidor») ---
+    # Registro abierto con correo. Apagado por defecto: se enciende a propósito.
+    open_signup: bool = False
+    # Reclamo de un adulto sobre su propio perfil con los 4 últimos dígitos del
+    # documento que coinciden: se aprueba solo. Los menores siempre los revisa una persona.
+    auto_approve_self_claim: bool = False
+    # Aviso «Tus diplomas están listos» a la persona y a su apoderado (con correo)
+    # al finalizar una categoría con podio. Apagado por defecto.
+    notify_diplomas: bool = False
     # --- Planes y cobros (ver docs/organizaciones-y-planes.md) ---
     # marcha_blanca: toda cuenta tiene acceso completo (pruebas y marcha blanca).
     # enforced: cada función de pago exige una suscripción vigente de la
@@ -129,6 +178,10 @@ class Settings(BaseSettings):
 
     def docs_enabled(self) -> bool:
         return self.expose_docs if self.expose_docs is not None else self.environment != "prod"
+
+    def frontend_url(self) -> str:
+        """Base de los enlaces que van en los correos (sin barra final)."""
+        return (self.public_url or "http://localhost:4200").rstrip("/")
 
 
 DEFAULT_SECRET = "cambiar-en-produccion"

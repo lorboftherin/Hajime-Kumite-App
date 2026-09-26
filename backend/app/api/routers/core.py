@@ -7,7 +7,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 
 from app.api import schemas as s
 from app.api.deps import (
@@ -30,8 +30,8 @@ from app.db.models import (
     AuditEntry,
     Bracket,
     Category,
-    CategoryTemplate,
     Dojo,
+    Guardianship,
     IdentityDocument,
     Match,
     Organization,
@@ -46,10 +46,9 @@ from app.db.models import (
 )
 from app.domain.identity import normalize_document, normalize_name
 from app.security import burn_password_check, decode_token, hash_password, password_needs_rehash, verify_password
-from app.services import people, sessions
+from app.services import accounts, people, sessions
 from app.services.audit import audit, bump, check_version, snapshot
 from app.services.login_guard import clear_login_failures, login_locked_for, register_login_failure
-from app.services.tournaments import create_template
 
 router = APIRouter()
 
@@ -66,6 +65,9 @@ def login(data: s.LoginIn, db: DB, request: Request):
     if wait:
         raise TooManyRequests(f"Demasiados intentos fallidos. Intenta de nuevo en {wait // 60 + 1} min.")
     u = db.scalar(select(User).where(User.username == username))
+    if u is None and "@" in username:
+        # Las cuentas de competidor entran con su correo.
+        u = db.scalar(select(User).where(User.email == username))
     if u is None:
         burn_password_check(data.password)  # mismo tiempo de respuesta que con un usuario real
     if u is None or not u.is_active or not verify_password(data.password, u.password_hash):
@@ -194,6 +196,10 @@ def delete_account(data: s.AccountDelete, db: DB, user: CurrentUser):
     user.display_name = ""
     user.password_hash = hash_password(secrets.token_urlsafe(32))
     user.person_id = None
+    user.email = None
+    user.email_verified_at = None
+    # Deja de ser padre, madre o apoderado verificado de cualquier menor.
+    db.execute(delete(Guardianship).where(Guardianship.user_id == user.id))
     user.is_active = False
     user.token_version = (user.token_version or 0) + 1
     sessions.revoke_all(db, user.id)
@@ -278,6 +284,8 @@ def create_user(data: s.UserCreate, db: DB, admin: AdminUser):
     db.add(u)
     db.flush()
     audit(db, admin, "user", u.id, "create", after={"username": username, "is_admin": data.is_admin})
+    if data.email:
+        accounts.set_email(db, admin, u, data.email)
     db.commit()
     return user_out(db, u)
 
@@ -294,6 +302,8 @@ def update_user(user_id: int, data: s.UserAdminUpdate, db: DB, admin: AdminUser)
     for k in ("is_active", "is_admin", "display_name", "person_id"):
         if k in changes:
             setattr(u, k, changes[k])
+    if "email" in changes:
+        accounts.set_email(db, admin, u, changes["email"] or None)
     if data.reset_password:
         u.password_hash = hash_password(data.reset_password)
         u.must_change_password = True
@@ -474,34 +484,6 @@ def merge_persons(data: s.PersonMergeIn, db: DB, admin: AdminUser):
 def revert_merge(merge_id: int, db: DB, admin: AdminUser):
     pm = people.revert_merge(db, admin, merge_id)
     return {"id": pm.id, "reverted_at": pm.reverted_at}
-
-
-# --- Plantillas -----------------------------------------------------------------
-
-
-@router.get("/templates", response_model=list[s.TemplateOut], tags=["templates"])
-def list_templates(db: DB, user: CurrentUser):
-    """Plantillas globales y las de las organizaciones del usuario (todas para el Admin)."""
-    stmt = select(CategoryTemplate).order_by(CategoryTemplate.name)
-    if not user.is_admin:
-        orgs = list(memberships_of(db, user))
-        stmt = stmt.where(
-            or_(CategoryTemplate.organization_id.is_(None), CategoryTemplate.organization_id.in_(orgs or [0]))
-        )
-    return db.scalars(stmt).all()
-
-
-@router.post("/templates", response_model=s.TemplateOut, status_code=201, tags=["templates"])
-def new_template(data: s.TemplateCreate, db: DB, admin: AdminUser):
-    return create_template(db, admin, data)
-
-
-@router.get("/templates/{template_id}", response_model=s.TemplateOut, tags=["templates"])
-def get_template(template_id: int, db: DB, _: CurrentUser):
-    t = db.get(CategoryTemplate, template_id)
-    if t is None:
-        raise NotFound("Plantilla no encontrada")
-    return t
 
 
 # --- Auditoría ------------------------------------------------------------------

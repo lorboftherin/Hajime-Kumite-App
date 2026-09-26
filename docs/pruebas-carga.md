@@ -220,6 +220,52 @@ cuánta gente mira el vivo; el torneo termina en 42 s (el ritmo de las mesas)
 en lugar de 69–75 s. Falta repetir la prueba en Azure (Azure SQL y 0,5 CPU
 por copia) para confirmar la meta de la mesa por debajo de 0,5 s de servidor.
 
+## Actualización en vivo por SSE (26/09/2026)
+
+`GET /public/{token}/stream` empuja la instantánea del vivo cuando cambia en
+lugar de que cada espectador pregunte cada 5 s (ver `docs/portal-publico.md`).
+En cada proceso, **un solo hilo por torneo** consulta la versión de las
+instantáneas (una consulta por vuelta, cada 1 s o antes si una escritura del
+mismo proceso lo despierta, pero no más de una vuelta cada 0,5 s) y difunde a
+todas las conexiones de ese proceso. Límite: 500 conexiones por proceso
+(`HAJIME_PUBLIC_SSE_MAX_CONNECTIONS`); pasado el límite, 503 y el navegador
+sigue con el sondeo.
+
+`prueba_carga.py --sse N`, local (4 núcleos, SQLite, 2 procesos × 4 hilos, el
+mismo equipo corre también el cliente de carga con sus 500 hilos): el tatami 1
+queda para un marcador que anota un punto por segundo y se mide, en cada
+conexión, desde el POST del punto hasta que lo recibe.
+
+| Corrida | Mesa: mediana · p95 · máx | Vivo por sondeo: mediana · p95 | SSE: del POST a la llegada (mediana · p95 · máx) | Llegadas | Rechazadas |
+| --- | --- | --- | --- | --- | --- |
+| 7 mesas + 300 espectadores por sondeo, sin SSE (referencia) | 16 ms · 45 ms · 365 ms | 3 ms · 34 ms | — | — | — |
+| 7 mesas + 500 SSE, sin intervalo mínimo (primera versión) | 62 ms · 305 ms · 612 ms | — | 255 ms · 686 ms · 1 382 ms | 10 000 / 10 000 | 0 |
+| **7 mesas + 500 SSE** | **18 ms · 137 ms · 301 ms** | — | **402 ms · 913 ms · 1 046 ms** | 10 000 / 10 000 | 0 |
+| **7 mesas + 300 por sondeo + 500 SSE** | **29 ms · 194 ms · 436 ms** | 30 ms · 203 ms | **327 ms · 725 ms · 900 ms** | 10 000 / 10 000 | 0 |
+| 1 mesa + 1 100 SSE (límite 2 × 500) | 13 ms · 72 ms · 329 ms | — | 247 ms · 730 ms · 808 ms | 5 000 / 5 000 | **100 (503)** |
+
+- Un punto llega a 500 pantallas en menos de un segundo (p95 0,7–0,9 s),
+  contra 3–5 s del sondeo (caché del navegador más el refresco de 5 s).
+- La primera versión despertaba al hilo en cada punto de cada mesa y
+  recalculaba el vivo hasta ~15 veces por segundo: la mesa pasó de 16 a 62 ms
+  de mediana. Con el intervalo mínimo de 0,5 s
+  (`HAJIME_PUBLIC_SSE_MIN_INTERVAL`) se recalcula a lo sumo dos veces por
+  segundo y proceso y la mesa vuelve a 18 ms de mediana. El p95 de la mesa
+  (137–194 ms) sigue por encima de la referencia en parte porque en esta
+  máquina el cliente de carga (500 hilos que leen y decodifican cada evento)
+  compite por la misma CPU que el servidor.
+- 1 100 conexiones contra 2 procesos: exactamente 100 rechazadas con 503; en
+  el navegador esas páginas siguen con el sondeo y reintentan SSE al minuto.
+- Memoria: cada conexión es una tarea del bucle de eventos con un diccionario
+  de mensajes pendientes (solo el último por vista), sin copias por espectador.
+- Detrás de un proxy: la respuesta lleva `Cache-Control: no-cache,
+  no-transform` y `X-Accel-Buffering: no`, y un comentario de latido cada 15 s
+  (Azure Container Apps corta conexiones inactivas a los 240 s). Cada conexión
+  dura como máximo 15 minutos (`HAJIME_PUBLIC_SSE_MAX_SECONDS`); el navegador
+  se reconecta solo y con `Last-Event-ID` no vuelve a descargar lo que tiene.
+- Falta repetir en Azure: `prueba_carga.py --url https://… --tatamis 8
+  --espectadores 200 --sse 500`.
+
 ## Cómo repetir la prueba contra Azure
 
 Desde Azure Cloud Shell (pide la contraseña del admin, no se muestra; con

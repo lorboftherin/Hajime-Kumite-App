@@ -8,7 +8,7 @@ opcionales o con valor por defecto: datos fiscales en ``organizations``,
 en ``subscriptions`` (periodo, pasarela, gracia, cupón, titular de la boleta).
 
 Revision ID: 0014_pagos
-Revises: 0010_reglas_deportivas
+Revises: 0013_portal_publico
 Create Date: 2026-09-26 18:10:00
 """
 
@@ -19,7 +19,7 @@ from alembic import op
 from sqlalchemy.dialects import mssql
 
 revision = "0014_pagos"
-down_revision = "0010_reglas_deportivas"
+down_revision = "0013_portal_publico"
 branch_labels = None
 depends_on = None
 
