@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
-import { isStaff, tatamiScopes } from '../core/roles';
+import { canReviewClaims, isCompetitorOnly, isStaff, tatamiScopes } from '../core/roles';
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
@@ -24,6 +24,10 @@ const NAV: NavItem[] = [
   { path: '/plantillas', kanji: '型', label: 'Plantillas', staff: true },
 ];
 const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
+/** Cuenta de competidor o de padre, madre o apoderado: sus perfiles deportivos. */
+const MY_PROFILES: NavItem = { path: '/mis-perfiles', kanji: '選手', label: 'Mis perfiles' };
+/** Dojo, organizadores y Admin: solicitudes para reclamar perfiles. */
+const CLAIMS: NavItem = { path: '/solicitudes', kanji: '申請', label: 'Solicitudes' };
 /** Operador de mesa de un tatami: acceso directo a su cola. */
 const MY_TATAMI: NavItem = { path: '/mi-tatami', kanji: '畳', label: 'Mi tatami' };
 
@@ -49,7 +53,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   template: `
     <aside class="sidebar no-print" aria-label="Navegación principal">
       <div class="sidebar-inner">
-      <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
+      <a class="brand" routerLink="/" aria-label="Hajime, inicio">
         <app-enso class="mark" />
         <app-hajime-word class="word" />
       </a>
@@ -68,7 +72,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     </aside>
 
     <header class="topbar no-print">
-      <a class="brand" routerLink="/torneos" aria-label="Hajime, inicio">
+      <a class="brand" routerLink="/" aria-label="Hajime, inicio">
         <app-enso class="mark" />
         <app-hajime-word class="word" />
       </a>
@@ -110,6 +114,10 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
             }
           </div>
           <hr />
+          <a class="menu-item" routerLink="/perfil" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Mi cuenta</a>
+          @if (!competitorOnly()) {
+            <a class="menu-item" routerLink="/mis-perfiles" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="history" /> Mis perfiles</a>
+          }
           <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
           <a class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
           <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
@@ -468,11 +476,14 @@ export class Shell {
   readonly menuOpen = signal<'side' | 'top' | null>(null);
   readonly items = computed(() => {
     const u = this.auth.user();
+    if (isCompetitorOnly(u)) return [MY_PROFILES];
     const staff = isStaff(u);
     const base = NAV.filter((it) => staff || !it.staff);
     const mine = tatamiScopes(u).length ? [MY_TATAMI] : [];
-    return [...mine, ...base, ...(this.auth.isAdmin() ? [ADMIN] : [])];
+    const claims = canReviewClaims(u) ? [CLAIMS] : [];
+    return [...mine, ...base, ...claims, ...(this.auth.isAdmin() ? [ADMIN] : [])];
   });
+  readonly competitorOnly = computed(() => isCompetitorOnly(this.auth.user()));
   readonly name = computed(() => {
     const u = this.auth.user();
     return u?.display_name || u?.username || '';
@@ -482,6 +493,7 @@ export class Shell {
     const u = this.auth.user();
     if (u?.is_admin) return 'Administrador';
     if (isStaff(u)) return 'Organizador';
+    if (isCompetitorOnly(u)) return 'Competidor';
     return tatamiScopes(u).length ? 'Operador de mesa' : 'Operador';
   });
 

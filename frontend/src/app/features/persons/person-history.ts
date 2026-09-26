@@ -51,9 +51,9 @@ import { PersonStatsView } from '../../shared/person-stats';
           <div class="tour-head">
             <div class="grow">
               <div class="eyebrow num">{{ fdate(t.date) }}</div>
-              <h3><a [routerLink]="['/torneos', t.tournament_id]">{{ t.tournament_name }}</a></h3>
+              <h3><a [routerLink]="links() ? ['/torneos', t.tournament_id] : null">{{ t.tournament_name }}</a></h3>
               <div class="small cat">
-                <a [routerLink]="['/categorias', t.category_id, 'llave']">{{ t.category_name }}</a>
+                <a [routerLink]="links() ? ['/categorias', t.category_id, 'llave'] : null">{{ t.category_name }}</a>
                 @if (t.merged) {
                   <span class="badge nezumi" title="La categoría original se fusionó con otra">Categoría fusionada</span>
                 }
@@ -84,7 +84,7 @@ import { PersonStatsView } from '../../shared/person-stats';
                 @for (m of t.matches; track m.match_id) {
                   <tr>
                     <td class="color"><span class="strip" [class.aka]="m.color === 'aka'" [class.ao]="m.color === 'ao'" [title]="m.color === 'aka' ? 'Aka' : 'Ao'"></span><span class="sr-only">{{ m.color === 'aka' ? 'Aka' : 'Ao' }}</span></td>
-                    <td><a class="code" [routerLink]="['/combates', m.match_id]" title="Hoja del combate">{{ m.code }}</a></td>
+                    <td><a class="code" [routerLink]="links() ? ['/combates', m.match_id] : null" [attr.title]="links() ? 'Hoja del combate' : null">{{ m.code }}</a></td>
                     <td>
                       @if (m.method === 'draw') {
                         <span class="badge plain">Empate</span>
@@ -290,6 +290,8 @@ import { PersonStatsView } from '../../shared/person-stats';
 export class PersonHistoryView {
   private api = inject(ApiService);
   readonly personId = input.required<number>();
+  /** Enlaces al torneo, la llave y la hoja del combate (solo para quien lee el torneo). */
+  readonly links = input(true);
 
   readonly history = signal<PersonHistory | null>(null);
   readonly error = signal('');

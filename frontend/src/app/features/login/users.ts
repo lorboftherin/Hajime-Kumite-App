@@ -34,7 +34,7 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr><th>Usuario</th><th>Nombre</th><th>Persona</th><th>Rol</th><th>Estado</th><th class="right"><span class="sr-only">Acciones</span></th></tr>
+            <tr><th>Usuario</th><th>Nombre</th><th>Correo</th><th>Persona</th><th>Rol</th><th>Estado</th><th class="right"><span class="sr-only">Acciones</span></th></tr>
           </thead>
           <tbody>
             @for (u of users(); track u.id) {
@@ -49,6 +49,16 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                   </div>
                 </td>
                 <td>{{ u.display_name }}</td>
+                <td class="small">
+                  @if (u.email) {
+                    <span class="mono">{{ u.email }}</span>
+                    @if (!u.email_verified_at) {
+                      <span class="badge yamabuki" title="Aún no confirmó el enlace que le enviamos">Sin verificar</span>
+                    }
+                  } @else {
+                    <span class="muted">—</span>
+                  }
+                </td>
                 <td class="small">
                   @if (u.person_id) {
                     <a [routerLink]="['/personas', u.person_id]">#{{ u.person_id }}</a>
@@ -84,6 +94,7 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                 <td class="right actions">
                   <button class="btn sm" (click)="openReset(u)"><app-icon name="key" /> Resetear contraseña</button>
                   <app-more [label]="'Más acciones · ' + u.username">
+                    <button class="menu-item" (click)="openEmail(u)">{{ u.email ? 'Cambiar correo' : 'Asignar correo' }}</button>
                     <button class="menu-item" (click)="openLink(u)">{{ u.person_id ? 'Cambiar persona vinculada' : 'Vincular persona' }}</button>
                     <button class="menu-item" (click)="toggleAdmin(u)">{{ u.is_admin ? 'Quitar rol de administrador' : 'Hacer administrador' }}</button>
                     <hr />
@@ -96,7 +107,7 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="empty"><p><strong>No hay usuarios.</strong></p></td></tr>
+              <tr><td colspan="7" class="empty"><p><strong>No hay usuarios.</strong></p></td></tr>
             }
           </tbody>
         </table>
@@ -108,6 +119,10 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
         <form (ngSubmit)="create()" class="stack">
           <label class="field"><span>Usuario</span><input name="u" [(ngModel)]="form.username" required minlength="3" /></label>
           <label class="field"><span>Nombre visible</span><input name="d" [(ngModel)]="form.display_name" /></label>
+          <label class="field">
+            <span>Correo (opcional)</span>
+            <input name="e" type="email" [(ngModel)]="form.email" autocomplete="off" />
+          </label>
           <label class="field">
             <span>Contraseña temporal (mín. {{ min }})</span>
             <div class="row">
@@ -157,6 +172,28 @@ import { MIN_PASSWORD, randomPassword } from '../../core/passwords';
             <button type="button" class="btn primary" (click)="handover.set(null)">Listo, ya la entregué</button>
           </div>
         </div>
+      </app-modal>
+    }
+
+    @if (emailFor(); as u) {
+      <app-modal [title]="'Correo · ' + u.username" (closed)="emailFor.set(null)">
+        <form (ngSubmit)="saveEmail(u)" class="stack">
+          <p class="hint">
+            Sirve para recuperar la contraseña. Le enviaremos un enlace para confirmarlo; hasta entonces
+            queda «sin verificar».
+          </p>
+          <label class="field">
+            <span>Correo</span>
+            <input name="em" type="email" [(ngModel)]="emailValue" autocomplete="off" autofocus />
+          </label>
+          <div class="form-actions">
+            @if (u.email) {
+              <button type="button" class="btn danger" (click)="emailValue = ''; saveEmail(u)">Quitar correo</button>
+            }
+            <button type="button" class="btn" (click)="emailFor.set(null)">Cancelar</button>
+            <button class="btn primary" [disabled]="!emailValue.includes('@')">Guardar</button>
+          </div>
+        </form>
       </app-modal>
     }
 
@@ -262,7 +299,9 @@ export class UsersPage {
   readonly linkFor = signal<User | null>(null);
   readonly personResults = signal<Person[]>([]);
   readonly searched = signal(false);
-  form = { username: '', display_name: '', password: '', is_admin: false };
+  readonly emailFor = signal<User | null>(null);
+  emailValue = '';
+  form = { username: '', display_name: '', email: '', password: '', is_admin: false };
   resetPassword = '';
   personQ = '';
 
@@ -303,13 +342,14 @@ export class UsersPage {
   }
 
   openNew(): void {
-    this.form = { username: '', display_name: '', password: randomPassword(), is_admin: false };
+    this.form = { username: '', display_name: '', email: '', password: randomPassword(), is_admin: false };
     this.showNew.set(true);
   }
 
   async create(): Promise<void> {
     const password = this.form.password;
-    const r = await this.mut.post<User>('/users', { ...this.form, username: this.form.username.trim() }, { success: 'Usuario creado' });
+    const body = { ...this.form, username: this.form.username.trim(), email: this.form.email.trim() || null };
+    const r = await this.mut.post<User>('/users', body, { success: 'Usuario creado' });
     if (r) {
       this.showNew.set(false);
       this.showHandover(r.username, password);
@@ -385,6 +425,17 @@ export class UsersPage {
     } catch {
       /* sin portapapeles: el texto se puede seleccionar a mano */
     }
+  }
+
+  openEmail(u: User): void {
+    this.emailValue = u.email ?? '';
+    this.emailFor.set(u);
+  }
+
+  async saveEmail(u: User): Promise<void> {
+    const email = this.emailValue.trim();
+    const r = await this.update(u, { email }, email ? 'Correo guardado; enviamos el enlace para confirmarlo' : 'Correo quitado');
+    if (r) this.emailFor.set(null);
   }
 
   openLink(u: User): void {

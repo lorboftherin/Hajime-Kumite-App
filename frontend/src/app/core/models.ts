@@ -40,6 +40,10 @@ export interface User {
   roles?: RoleOut[];
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento. */
   can_view_documents?: boolean;
+  /** Correo de la cuenta (recuperar la contraseña, avisos). */
+  email?: string | null;
+  /** null = el correo aún no se confirmó con el enlace. */
+  email_verified_at?: string | null;
 }
 
 export interface TokenOut {
