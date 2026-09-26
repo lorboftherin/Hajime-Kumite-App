@@ -236,10 +236,17 @@ def withdraw(rid: int, data: s.WithdrawIn, db: DB, user: CurrentUser):
 
 
 @router.get("/tournaments/{tid}/suggestions", response_model=list[s.SuggestionOut], tags=["registrations"])
-def suggest(tid: int, person_id: int, db: DB, _: TournamentReader, modality: str | None = Query(None)):
+def suggest(
+    tid: int,
+    person_id: int,
+    db: DB,
+    _: TournamentReader,
+    modality: str | None = Query(None),
+    weight_class: str | None = Query(None),
+):
     return [
         s.SuggestionOut(category_id=c.id, name=c.name, modality=c.modality)
-        for c in regs.suggestions(db, tid, person_id, modality)
+        for c in regs.suggestions(db, tid, person_id, modality, weight_class)
     ]
 
 

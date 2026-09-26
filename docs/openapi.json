@@ -3225,6 +3225,22 @@
        ],
        "title": "Modality"
       }
+     },
+     {
+      "name": "weight_class",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Weight Class"
+      }
      }
     ],
     "responses": {
@@ -3782,6 +3798,443 @@
       }
      }
     }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Add Entrant",
+    "description": "Inscripción tardía: ocupa un bye de primera ronda aún no disputado (el\nque mejor separa dojos); en round robin agrega sus combates.",
+    "operationId": "add_entrant_api_v1_categories__cid__bracket_entrants_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants/remove": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Remove Entrant",
+    "description": "Quita a un competidor de la llave (bye si su combate no empezó; si no,\nwalkover en el pendiente) y retira su inscripción.",
+    "operationId": "remove_entrant_api_v1_categories__cid__bracket_entrants_remove_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/disqualify": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Disqualify",
+    "description": "Shikkaku con alcance de torneo: retira todas sus inscripciones (con confirmación).",
+    "operationId": "disqualify_api_v1_registrations__rid__disqualify_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DisqualifyIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/split": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Split Category",
+    "description": "Divide la categoría en dos (por peso, grado o sorteo). Devuelve la nueva.",
+    "operationId": "split_category_api_v1_categories__cid__split_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategorySplitIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/unsplit": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Undo Split",
+    "operationId": "undo_split_api_v1_categories__cid__unsplit_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/kata-order": {
+   "put": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Order",
+    "description": "Orden de salida de la ronda de kata (lista completa).",
+    "operationId": "kata_order_api_v1_categories__cid__kata_order_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataOrderIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/kata-scores": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Match Scores",
+    "description": "Kata por puntuación en llave: nota del panel para aka y ao; gana la mayor.",
+    "operationId": "kata_match_scores_api_v1_matches__mid__kata_scores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataMatchScoreIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/kata-catalog": {
+   "get": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Catalog",
+    "description": "Catálogo de katas de los cuatro estilos principales (para autocompletar).",
+    "operationId": "kata_catalog_api_v1_kata_catalog_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/rules/defaults": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Rules Defaults",
+    "description": "Valores por defecto de cada opción configurable (para los formularios).",
+    "operationId": "rules_defaults_api_v1_rules_defaults_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
    }
   },
   "/api/v1/categories/{cid}/bracket": {
@@ -7875,6 +8328,46 @@
     ],
     "title": "Body_upload_import_api_v1_tournaments__tid__imports_post"
    },
+   "BracketEntrantIn": {
+    "properties": {
+     "registration_id": {
+      "type": "integer",
+      "title": "Registration Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_id"
+    ],
+    "title": "BracketEntrantIn",
+    "description": "Inscripción tardía o retiro con la llave ya generada."
+   },
    "BracketGenerateIn": {
     "properties": {
      "format": {
@@ -7883,7 +8376,8 @@
         "type": "string",
         "enum": [
          "single_elimination",
-         "round_robin"
+         "round_robin",
+         "groups_knockout"
         ]
        },
        {
@@ -8023,6 +8517,33 @@
        }
       ],
       "title": "Standings"
+     },
+     "groups": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Groups"
+     },
+     "kata_rounds": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rounds"
      }
     },
     "type": "object",
@@ -8194,7 +8715,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -8287,6 +8809,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -8393,7 +8972,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -8486,6 +9066,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -8646,7 +9283,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -8740,6 +9378,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -8816,6 +9511,22 @@
       "type": "array",
       "title": "Advice",
       "default": []
+     },
+     "split_from_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Split From Id"
+     },
+     "has_split": {
+      "type": "boolean",
+      "title": "Has Split",
+      "default": false
      }
     },
     "type": "object",
@@ -8835,6 +9546,65 @@
      "version"
     ],
     "title": "CategoryOut"
+   },
+   "CategorySplitIn": {
+    "properties": {
+     "criterion": {
+      "type": "string",
+      "enum": [
+       "weight",
+       "grade",
+       "draw"
+      ],
+      "title": "Criterion",
+      "default": "draw"
+     },
+     "names": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array",
+        "maxItems": 2,
+        "minItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Names"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "CategorySplitIn",
+    "description": "Dividir una categoría en dos (reversible como la fusión)."
    },
    "CategoryUpdate": {
     "properties": {
@@ -8931,7 +9701,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -9041,6 +9812,63 @@
        }
       ],
       "title": "Queue Position"
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -9191,6 +10019,31 @@
      "approve"
     ],
     "title": "DecisionIn"
+   },
+   "DisqualifyIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "DisqualifyIn",
+    "description": "Shikkaku con alcance de torneo: retira todas las inscripciones de la persona."
    },
    "DocumentIn": {
     "properties": {
@@ -9758,7 +10611,8 @@
        "hantei",
        "kiken",
        "shikkaku",
-       "walkover"
+       "walkover",
+       "golden_point"
       ],
       "title": "Type"
      },
@@ -9814,6 +10668,79 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 30
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "c1",
+         "c2"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
+     },
+     "votes": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "string",
+           "enum": [
+            "aka",
+            "ao"
+           ]
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Votes"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
      },
      "override": {
       "anyOf": [
@@ -9898,6 +10825,28 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
      },
      "device_at": {
       "type": "string",
@@ -10509,6 +11458,172 @@
     ],
     "title": "InvitationOut"
    },
+   "KataMatchScoreIn": {
+    "properties": {
+     "aka_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Aka Scores"
+     },
+     "ao_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Ao Scores"
+     },
+     "aka_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Athletic"
+     },
+     "ao_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Athletic"
+     },
+     "aka_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Kata Name"
+     },
+     "ao_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Kata Name"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
+     },
+     "head_judge_vote": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "aka",
+         "ao"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Head Judge Vote"
+     },
+     "event_id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Event Id"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "aka_scores",
+     "ao_scores",
+     "event_id",
+     "at"
+    ],
+    "title": "KataMatchScoreIn",
+    "description": "Kata por puntuación en llave: nota del panel para aka y para ao."
+   },
+   "KataOrderIn": {
+    "properties": {
+     "registration_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Registration Ids"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_ids"
+    ],
+    "title": "KataOrderIn"
+   },
    "KataScoreIn": {
     "properties": {
      "registration_id": {
@@ -10521,6 +11636,20 @@
       },
       "type": "array",
       "title": "Scores"
+     },
+     "athletic_scores": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Athletic Scores"
      },
      "judge_person_ids": {
       "anyOf": [
@@ -10554,6 +11683,17 @@
       ],
       "title": "Kata Name"
      },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
      "version": {
       "anyOf": [
        {
@@ -10564,6 +11704,16 @@
        }
       ],
       "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -12605,6 +13755,49 @@
       "type": "array",
       "title": "Sanction Labels"
      },
+     "sanction_c2": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "integer"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction C2"
+     },
+     "sanction_labels_c2": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction Labels C2"
+     },
+     "infractions": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infractions"
+     },
      "senshu": {
       "anyOf": [
        {
@@ -12615,6 +13808,39 @@
        }
       ],
       "title": "Senshu"
+     },
+     "senshu_lost": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Senshu Lost",
+      "default": []
+     },
+     "golden_point": {
+      "type": "boolean",
+      "title": "Golden Point",
+      "default": false
+     },
+     "period_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Period Seconds"
+     },
+     "hantei_votes": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Hantei Votes",
+      "default": []
      },
      "elapsed_seconds": {
       "type": "number",
@@ -13465,7 +14691,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -13559,6 +14786,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -13634,6 +14918,17 @@
       "type": "string",
       "minLength": 3,
       "title": "Reason"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
      }
     },
     "type": "object",
@@ -13743,7 +15038,8 @@
       "type": "string",
       "enum": [
        "single_elimination",
-       "round_robin"
+       "round_robin",
+       "groups_knockout"
       ],
       "title": "Default Format",
       "default": "single_elimination"
@@ -13769,6 +15065,21 @@
       "type": "object",
       "title": "Kata Defaults",
       "default": {}
+     },
+     "competition_rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Competition Rules",
+      "default": {}
+     },
+     "age_mode": {
+      "type": "string",
+      "enum": [
+       "date",
+       "birth_year"
+      ],
+      "title": "Age Mode",
+      "default": "date"
      },
      "template_id": {
       "anyOf": [
@@ -13872,6 +15183,23 @@
       "additionalProperties": true,
       "type": "object",
       "title": "Kata Defaults"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "type": "string",
+      "title": "Age Mode",
+      "default": "date"
      },
      "template_id": {
       "anyOf": [
@@ -14046,6 +15374,22 @@
       ],
       "title": "Age Reference Date"
      },
+     "default_format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "groups_knockout"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Default Format"
+     },
      "default_third_place_rule": {
       "anyOf": [
        {
@@ -14085,6 +15429,33 @@
        }
       ],
       "title": "Kata Defaults"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "date",
+         "birth_year"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Mode"
      }
     },
     "type": "object",

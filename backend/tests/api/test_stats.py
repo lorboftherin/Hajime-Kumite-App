@@ -41,7 +41,9 @@ def test_individual_stats_leaders_awards_and_summary(client):
 
     lb = api.get(f"/tournaments/{t['id']}/leaders")
     assert lb["leaders"]["mvp"][0]["person_id"] == champion["id"]
-    assert {a["code"] for a in lb["awards"]} >= {"mvp", "ippon", "fastest", "senshu"}
+    awards = {a["code"] for a in lb["awards"]}
+    # Todas las victorias fueron por puntos a tiempo cumplido: no hay «victoria más rápida».
+    assert awards >= {"mvp", "ippon", "senshu"} and "fastest" not in awards
     assert lb["leaders"]["ippon"][0]["ippon"] == 2
     assert api.get("/leaders")["leaders"]["wins"][0]["person_id"] == champion["id"]
 

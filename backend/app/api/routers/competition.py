@@ -23,7 +23,12 @@ from app.services import brackets as svc
 from app.services import entitlements, operation, referees, reports, teams
 from app.services.tournaments import get_category, get_tournament
 
+from . import sports
+
 router = APIRouter()
+# Reglas deportivas (llave generada, divisiones, kata): router aparte para no
+# tocar el registro de routers de la app.
+router.include_router(sports.router)
 
 # Tablet que envía el evento: si otra lleva la mesa del combate, se responde 409 CONFLICT_DEVICE.
 DeviceId = Annotated[str | None, Header(alias="X-Device-Id", max_length=40)]

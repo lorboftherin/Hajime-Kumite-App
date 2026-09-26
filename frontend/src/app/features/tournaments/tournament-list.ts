@@ -127,6 +127,7 @@ function readIncludeTest(): boolean {
               <select name="fmt" [(ngModel)]="form.default_format">
                 <option value="single_elimination">Eliminación directa</option>
                 <option value="round_robin">Round robin</option>
+                <option value="groups_knockout">Grupos + eliminación</option>
               </select>
             </label>
             <label class="field">

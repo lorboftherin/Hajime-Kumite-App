@@ -146,6 +146,7 @@ export const FORMAT_LABEL: Record<string, string> = {
   single_elimination: 'Eliminación directa',
   round_robin: 'Round robin',
   kata_rounds: 'Rondas de kata',
+  groups_knockout: 'Grupos + eliminación',
 };
 
 export const THIRD_PLACE_LABEL: Record<string, string> = {
@@ -170,6 +171,19 @@ export const METHOD_LABEL: Record<string, string> = {
   draw: 'Hikiwake (empate)',
   victories: 'Victorias',
   extra_bout: 'Combate extra',
+  scores: 'Puntuación',
+  incomplete_team: 'Alineación incompleta',
+  not_disputed: 'No disputado',
+};
+
+/** Criterios de desempate de round robin (competition_rules.round_robin_criteria). */
+export const RR_CRITERIA_LABEL: Record<string, string> = {
+  wins: 'Victorias',
+  head_to_head: 'Enfrentamiento directo',
+  diff: 'Diferencia de puntos',
+  points_for: 'Puntos a favor',
+  fewer_sanctions: 'Menos sanciones',
+  draw: 'Sorteo',
 };
 
 export const ROLE_LABEL: Record<string, string> = {
@@ -258,6 +272,7 @@ export const ADVICE_LABEL: Record<string, string> = {
   keep: 'Mantener',
   direct_final: 'Final directa',
   round_robin: 'Round robin',
+  split: 'Dividir (supera el cupo)',
 };
 
 /** Ícono de medalla por puesto (1-3); '' si no hay medalla. */
