@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { AuthService } from '../../core/auth.service';
+import { isMobileApp, serverUrl, setServerUrl } from '../../core/server';
 import { AuthFrame } from '../../shared/auth-frame';
 import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
 
@@ -21,7 +22,9 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
             </div>
           </div>
           <p class="tagline">Organiza torneos con calma.<br />Registra cada combate con respeto.</p>
-          <p class="sub"><span class="kanji" aria-hidden="true">始め</span> Gestión de torneos de karate · Perú</p>
+          <p class="sub">
+            <span class="kanji" aria-hidden="true">始め</span> Gestión de torneos de karate · Perú
+          </p>
         </section>
 
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="login-title">
@@ -31,34 +34,80 @@ import { Enso, HajimeTagline, HajimeWord } from '../../shared/enso';
           </div>
           <label class="field">
             <span>Usuario</span>
-            <input name="username" [(ngModel)]="username" autocomplete="username" required autofocus />
+            <input
+              name="username"
+              [(ngModel)]="username"
+              autocomplete="username"
+              required
+              autofocus
+            />
           </label>
           <label class="field">
             <span>Contraseña</span>
-            <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required />
+            <input
+              name="password"
+              type="password"
+              [(ngModel)]="password"
+              autocomplete="current-password"
+              required
+            />
           </label>
           @if (error()) {
             <div class="alert" [class.danger]="!locked()" [class.warn]="locked()" role="alert">
               @if (locked()) {
                 <strong>Una pausa breve.</strong>
                 <div>{{ error() }}</div>
-                <div class="small muted-ink">Por seguridad, los intentos se detienen unos minutos. Respira; tus datos están a salvo.</div>
+                <div class="small muted-ink">
+                  Por seguridad, los intentos se detienen unos minutos. Respira; tus datos están a
+                  salvo.
+                </div>
               } @else {
                 {{ error() }}
               }
             </div>
           }
-          <button class="btn primary lg block" type="submit" [disabled]="busy() || !username() || !password()">
+          <button
+            class="btn primary lg block"
+            type="submit"
+            [disabled]="busy() || !username() || !password()"
+          >
             @if (busy()) {
               <span class="spinner"></span>
             }
             Ingresar
           </button>
+          @if (mobile) {
+            <details class="server">
+              <summary class="small muted">Servidor: {{ server() }}</summary>
+              <label class="field">
+                <span>Dirección del servidor</span>
+                <input
+                  name="server"
+                  [ngModel]="server()"
+                  (ngModelChange)="changeServer($event)"
+                  inputmode="url"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="https://hajime.lorboftherin.com"
+                />
+              </label>
+              <p class="small muted">Solo cámbiala si la organización te dio otra dirección.</p>
+            </details>
+          }
         </form>
       </div>
     </app-auth-frame>
   `,
   styles: `
+    .server {
+      margin-top: 0.25rem;
+      summary {
+        cursor: pointer;
+      }
+      .field {
+        margin-top: 0.75rem;
+      }
+    }
     .login {
       width: 100%;
       max-width: 1040px;
@@ -191,6 +240,14 @@ export class LoginPage {
   readonly error = signal('');
   /** 429 TOO_MANY_ATTEMPTS: el servidor bloqueó temporalmente los intentos. */
   readonly locked = signal(false);
+  /** App del celular: se puede apuntar a otro servidor (p. ej. pruebas vs. producción). */
+  readonly mobile = isMobileApp;
+  readonly server = signal(serverUrl());
+
+  changeServer(url: string): void {
+    setServerUrl(url);
+    this.server.set(serverUrl());
+  }
 
   async submit(): Promise<void> {
     this.busy.set(true);

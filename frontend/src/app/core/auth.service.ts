@@ -118,6 +118,12 @@ export class AuthService {
     this.reloginOpen.set(true);
   }
 
+  /** Borra la propia cuenta (confirmando con la contraseña) y cierra la sesión. */
+  async deleteAccount(password: string): Promise<void> {
+    await firstValueFrom(this.api.post<void>('/auth/delete-account', { password }));
+    this.logout(false);
+  }
+
   logout(redirect = true): void {
     remove(TOKEN_KEY);
     remove(USER_KEY);

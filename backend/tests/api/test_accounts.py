@@ -74,3 +74,29 @@ def test_changing_age_reference_recomputes_ages(client):
     api.patch(f"/tournaments/{t['id']}", {"version": t["version"], "age_reference_date": "2026-12-31"})
     regs = api.get(f"/tournaments/{t['id']}/registrations")
     assert regs[0]["age_at_reference"] == 13
+
+
+def test_delete_own_account(client):
+    api = client
+    api.post("/users", {"username": "dora", "password": "inicial123"}, expect=201)
+    tok = login(api, "dora", "inicial123").json()["access_token"]
+    hdr = {"Authorization": f"Bearer {tok}"}
+    r = api.raw("POST", "/auth/delete-account", json={"password": "otra"}, headers=hdr)
+    assert r.status_code == 401
+    r = api.raw("POST", "/auth/delete-account", json={"password": "inicial123"}, headers=hdr)
+    assert r.status_code == 204
+    assert api.raw("GET", "/auth/me", headers=hdr).status_code == 401
+    assert login(api, "dora", "inicial123").status_code == 401
+    # El nombre de usuario queda libre y la cuenta vieja no lo conserva.
+    api.post("/users", {"username": "dora", "password": "inicial123"}, expect=201)
+    borradas = [u for u in api.get("/users") if u["username"].startswith("cuenta-borrada-")]
+    assert len(borradas) == 1 and borradas[0]["is_active"] is False
+    assert any(e["action"] == "delete_account" for e in api.get("/audit?entity=user"))
+
+
+def test_last_admin_cannot_delete_account(client):
+    api = client
+    r = api.raw("POST", "/auth/delete-account", json={"password": "secret123"})
+    assert r.status_code == 409
+    api.post("/users", {"username": "otro", "password": "inicial123", "is_admin": True}, expect=201)
+    assert api.raw("POST", "/auth/delete-account", json={"password": "secret123"}).status_code == 204

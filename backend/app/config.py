@@ -11,7 +11,14 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./hajime.db"
     jwt_secret: str = "cambiar-en-produccion"
     jwt_minutes: int = 12 * 60
-    cors_origins: list[str] = ["http://localhost:4200"]
+    # Orígenes permitidos: el servidor de desarrollo de Angular y la app del
+    # celular (Capacitor sirve la interfaz desde localhost con su propio esquema).
+    cors_origins: list[str] = [
+        "http://localhost:4200",
+        "https://localhost",
+        "http://localhost",
+        "capacitor://localhost",
+    ]
     timezone: str = "America/Lima"
     # Instalación de un solo contenedor: carpeta con el frontend compilado.
     static_dir: str | None = None

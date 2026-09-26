@@ -3,6 +3,7 @@ import { inject, untracked } from '@angular/core';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { AuthService } from './auth.service';
+import { apiBase } from './server';
 
 /** Agrega el JWT como Bearer a las llamadas a la API. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -10,7 +11,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // (si no, cerrar sesión re-ejecutaría ese effect y dispararía peticiones sin token → 401).
   const auth = inject(AuthService);
   const token = untracked(() => auth.token());
-  if (token && req.url.startsWith('/api/')) {
+  if (token && req.url.startsWith(apiBase())) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   }
   return next(req);

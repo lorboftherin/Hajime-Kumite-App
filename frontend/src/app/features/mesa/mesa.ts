@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
+import { apiBase } from '../../core/server';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { EVENT_LABEL, MATCH_STATUS, METHOD_LABEL, POINT_LABEL, fmtTime, mmss, newId } from '../../core/format';
@@ -357,7 +358,7 @@ export class MesaPage {
   onPageHide(): void {
     const token = this.auth.token();
     try {
-      fetch(`/api/v1/matches/${this.id()}/presence?device_id=${encodeURIComponent(this.device)}`, {
+      fetch(`${apiBase()}/matches/${this.id()}/presence?device_id=${encodeURIComponent(this.device)}`, {
         method: 'DELETE',
         keepalive: true,
         headers: token ? { Authorization: `Bearer ${token}` } : {},

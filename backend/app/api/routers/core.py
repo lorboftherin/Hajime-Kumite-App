@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import date
 
 from fastapi import APIRouter, Query, Request
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app.api import schemas as s
 from app.api.deps import (
@@ -84,6 +85,31 @@ def user_out(db, u: User) -> s.UserOut:
     out.roles = [s.RoleOut.model_validate(r) for r in roles_of(db, u)]
     out.can_view_documents = can_view_documents(db, u)
     return out
+
+
+@router.post("/auth/delete-account", status_code=204, tags=["auth"])
+def delete_account(data: s.AccountDelete, db: DB, user: CurrentUser):
+    """Borra la propia cuenta de acceso (Google Play y App Store lo exigen).
+
+    La cuenta queda desactivada y sin datos identificativos, y se cierran sus
+    sesiones. La persona ligada y su historial deportivo no se tocan: son
+    del torneo y del dojo (sección 11); borrarlos es «anonimizar persona».
+    """
+    if not verify_password(data.password, user.password_hash):
+        raise Unauthorized("La contraseña no es correcta")
+    if user.is_admin:
+        admins = db.scalar(select(func.count()).select_from(User).where(User.is_admin, User.is_active))
+        if (admins or 0) <= 1:
+            raise Conflict("Eres el único administrador activo: nombra otro antes de borrar tu cuenta")
+    before = {"username": user.username, "person_id": user.person_id}
+    user.username = f"cuenta-borrada-{user.id}"
+    user.display_name = ""
+    user.password_hash = hash_password(secrets.token_urlsafe(32))
+    user.person_id = None
+    user.is_active = False
+    user.token_version = (user.token_version or 0) + 1
+    audit(db, user, "user", user.id, "delete_account", before=before)
+    db.commit()
 
 
 @router.get("/auth/me", response_model=s.UserOut, tags=["auth"])

@@ -106,6 +106,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
           </div>
           <hr />
           <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
+          <a class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
           <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
         </div>
       }

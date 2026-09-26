@@ -13,6 +13,12 @@ export const routes: Routes = [
     title: 'Cambiar contraseña · Hajime',
   },
   {
+    path: 'mi-cuenta',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/login/delete-account').then((m) => m.DeleteAccountPage),
+    title: 'Borrar mi cuenta · Hajime',
+  },
+  {
     // Seguimiento en vivo público (sin inicio de sesión; solo con enlace activo).
     path: 'vivo/:token',
     loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),

@@ -64,6 +64,12 @@ class PasswordChange(BaseModel):
     new_password: str = Field(min_length=8, max_length=200)
 
 
+class AccountDelete(BaseModel):
+    """Borrar la propia cuenta (lo exigen las tiendas de apps): confirma con la contraseña."""
+
+    password: str
+
+
 class UserAdminUpdate(BaseModel):
     """Acciones del Admin sobre una cuenta."""
 
