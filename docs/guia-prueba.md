@@ -11,14 +11,14 @@ Se necesita una laptop con [Docker Desktop](https://www.docker.com/products/dock
 La laptop hace de servidor; tablets y celulares se conectan por Wi‑Fi.
 
 **Opción A: imagen ya compilada (recomendada).** La publica el CI en cada
-cambio. Si el repositorio es privado, primero `docker login ghcr.io` con tu
+cambio de `main` (`:latest`; una versión fija: `:0.2.0`). Si la imagen es privada, primero `docker login ghcr.io` con tu
 usuario de GitHub y un token con permiso `read:packages`.
 
 ```bash
 docker run -d --name hajime -p 8000:8000 \
   -e HAJIME_ADMIN_PASSWORD='una-clave-segura' \
   -v hajime-data:/data \
-  ghcr.io/lorboftherin/hajime-kumite-app:claude-gracious-feynman-qtapgx
+  ghcr.io/lorboftherin/hajime-kumite-app:latest
 ```
 
 **Opción B: compilar desde el código.**

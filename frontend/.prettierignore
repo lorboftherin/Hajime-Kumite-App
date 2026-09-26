@@ -1,0 +1,7 @@
+# Generado o de terceros: Prettier no lo toca.
+android/
+dist/
+.angular/
+coverage/
+node_modules/
+package-lock.json

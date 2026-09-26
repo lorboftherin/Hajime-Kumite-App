@@ -47,13 +47,214 @@
     }
    }
   },
+  "/api/v1/auth/refresh": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Refresh",
+    "description": "Renueva el token de acceso. El token de renovación se rota: guarda el nuevo.",
+    "operationId": "refresh_api_v1_auth_refresh_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefreshIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Logout",
+    "description": "Cierra esta sesión. Sirve con el token de acceso, con el de renovación o con ambos\n(el de acceso puede haber vencido).",
+    "operationId": "logout_api_v1_auth_logout_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/LogoutIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Data"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/sessions": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "My Sessions",
+    "description": "Sesiones abiertas de la propia cuenta (dispositivo, IP y último uso).",
+    "operationId": "my_sessions_api_v1_auth_sessions_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SessionOut"
+         },
+         "type": "array",
+         "title": "Response My Sessions Api V1 Auth Sessions Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/sessions/{session_id}": {
+   "delete": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Close Session",
+    "operationId": "close_session_api_v1_auth_sessions__session_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Session Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{user_id}/sessions": {
+   "delete": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Close User Sessions",
+    "description": "El Admin cierra todas las sesiones de una cuenta (p. ej. tablet perdida).",
+    "operationId": "close_user_sessions_api_v1_users__user_id__sessions_delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/auth/change-password": {
    "post": {
     "tags": [
      "auth"
     ],
     "summary": "Change Password",
-    "description": "Cambia la contraseña propia. Invalida las demás sesiones y devuelve un token nuevo.",
+    "description": "Cambia la contraseña propia. Cierra todas las sesiones y abre una nueva en este dispositivo.",
     "operationId": "change_password_api_v1_auth_change_password_post",
     "requestBody": {
      "content": {
@@ -75,6 +276,46 @@
         }
        }
       }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/delete-account": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Delete Account",
+    "description": "Borra la propia cuenta de acceso (Google Play y App Store lo exigen).\n\nLa cuenta queda desactivada y sin datos identificativos, y se cierran sus\nsesiones. La persona ligada y su historial deportivo no se tocan: son\ndel torneo y del dojo (sección 11); borrarlos es «anonimizar persona».",
+    "operationId": "delete_account_api_v1_auth_delete_account_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AccountDelete"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -664,6 +905,7 @@
      "persons"
     ],
     "summary": "List Persons",
+    "description": "Lista y búsqueda de personas: solo Admin y organizadores (sección 11).",
     "operationId": "list_persons_api_v1_persons_get",
     "security": [
      {
@@ -902,6 +1144,7 @@
      "persons"
     ],
     "summary": "Get Person",
+    "description": "Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos).",
     "operationId": "get_person_api_v1_persons__person_id__get",
     "security": [
      {
@@ -1439,6 +1682,7 @@
      "audit"
     ],
     "summary": "Audit Log",
+    "description": "Sin ``tournament_id``: solo el Admin. Con él: los organizadores de ese torneo.",
     "operationId": "audit_log_api_v1_audit_get",
     "security": [
      {
@@ -1534,6 +1778,7 @@
      "audit"
     ],
     "summary": "Overrides",
+    "description": "Advertencias aceptadas de una entidad: organizadores de su torneo (o el Admin).",
     "operationId": "overrides_api_v1_overrides_get",
     "security": [
      {
@@ -1588,6 +1833,7 @@
      "tournaments"
     ],
     "summary": "List Tournaments",
+    "description": "Solo los torneos que el usuario puede ver (todos para el Admin o un rol global).",
     "operationId": "list_tournaments_api_v1_tournaments_get",
     "security": [
      {
@@ -3235,6 +3481,54 @@
         "schema": {
          "$ref": "#/components/schemas/ImportBatchOut"
         }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/purge": {
+   "post": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Purge Imports",
+    "description": "Borra las filas (con DNI y fechas de nacimiento) de importaciones antiguas.",
+    "operationId": "purge_imports_api_v1_imports_purge_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "default": 30,
+       "title": "Days"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
        }
       }
      },
@@ -4989,13 +5283,54 @@
     }
    }
   },
+  "/health/live": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health Live",
+    "description": "El proceso responde. No toca la base: si esta se pausa, el contenedor no se reinicia.",
+    "operationId": "health_live_health_live_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
   "/health": {
    "get": {
     "tags": [
      "meta"
     ],
-    "summary": "Health",
-    "operationId": "health_health_get",
+    "summary": "Health Live",
+    "description": "El proceso responde. No toca la base: si esta se pausa, el contenedor no se reinicia.",
+    "operationId": "health_live_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health/ready": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health Ready",
+    "description": "Lista para atender: la base responde a SELECT 1 en menos de 2 s.",
+    "operationId": "health_ready_health_ready_get",
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -5011,6 +5346,20 @@
  },
  "components": {
   "schemas": {
+   "AccountDelete": {
+    "properties": {
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "password"
+    ],
+    "title": "AccountDelete",
+    "description": "Borrar la propia cuenta (lo exigen las tiendas de apps): confirma con la contraseña."
+   },
    "AnonymizeIn": {
     "properties": {
      "reason": {
@@ -7150,6 +7499,23 @@
     ],
     "title": "LoginIn"
    },
+   "LogoutIn": {
+    "properties": {
+     "refresh_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh Token"
+     }
+    },
+    "type": "object",
+    "title": "LogoutIn"
+   },
    "MatchOut": {
     "properties": {
      "id": {
@@ -7917,6 +8283,21 @@
     ],
     "title": "RefereeIn"
    },
+   "RefreshIn": {
+    "properties": {
+     "refresh_token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 10,
+      "title": "Refresh Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "refresh_token"
+    ],
+    "title": "RefreshIn"
+   },
    "RegistrationCreate": {
     "properties": {
      "person_id": {
@@ -8487,6 +8868,52 @@
      "ao"
     ],
     "title": "ScoreboardOut"
+   },
+   "SessionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "last_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Used At"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     },
+     "user_agent": {
+      "type": "string",
+      "title": "User Agent"
+     },
+     "ip": {
+      "type": "string",
+      "title": "Ip"
+     },
+     "current": {
+      "type": "boolean",
+      "title": "Current",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "created_at",
+     "last_used_at",
+     "expires_at",
+     "user_agent",
+     "ip"
+    ],
+    "title": "SessionOut"
    },
    "SlotSwapIn": {
     "properties": {
@@ -9059,6 +9486,28 @@
       "type": "string",
       "title": "Token Type",
       "default": "bearer"
+     },
+     "refresh_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh Token"
+     },
+     "expires_in": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires In"
      },
      "user": {
       "$ref": "#/components/schemas/UserOut"

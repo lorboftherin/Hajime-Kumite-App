@@ -120,24 +120,27 @@ python -m app.seed purge-imports            # o --days 60
 (o `POST /api/v1/imports/purge` como Admin). Conviene programarlo, p. ej.
 una vez por semana, o correrlo después de cada torneo.
 
-## Azure (propuesta inicial, sección 22)
+## Azure
 
 **Paso a paso con scripts listos:** [`docs/despliegue-azure.md`](despliegue-azure.md) (`infra/azure/`).
+Acciones que solo puede hacer el dueño: [`docs/acciones-del-duenio.md`](acciones-del-duenio.md).
 
-1. **Azure SQL Database** en un tier económico (serverless con autopausa o Basic),
-   con backups automáticos. Antes de cada torneo real, además, hacer una
-   exportación manual (`.bacpac`).
-2. **Esquema:** `cd backend && HAJIME_DATABASE_URL=<url> alembic upgrade head`
-   (o `HAJIME_AUTO_CREATE_SCHEMA=true` para que el contenedor aplique las
-   migraciones al arrancar, una sola vez; ver «Arranque del contenedor»). `sql/001_schema.sql` queda como referencia del
-   esquema completo.
-3. **App:** Azure Container Apps o App Service para contenedores con la imagen
-   "todo en uno" (`Dockerfile` de la raíz, construida con
-   `--build-arg WITH_MSSQL=true`): sirve la interfaz y la API en la misma URL.
-   Secretos en la configuración del servicio (o Key Vault).
-4. **Primer arranque:** con `HAJIME_ADMIN_PASSWORD` definida, la app crea el
-   admin (si no hay usuarios) y carga la plantilla base. Después conviene
-   quitar esa variable.
+1. **Azure SQL Database:** pruebas en la oferta gratuita (se pausa sola);
+   producción en S0 sin autopausa, con respaldos a cualquier punto de 14 días y
+   retención semanal y mensual. La app entra con su propio usuario
+   (`hajime_app`), no con el administrador.
+2. **Esquema:** lo aplica el job `hajime-<amb>-migrar` (el mismo contenedor con
+   `python -m app.prepare`) antes de cada versión; la app corre con
+   `HAJIME_AUTO_CREATE_SCHEMA=false`. A mano:
+   `cd backend && HAJIME_DATABASE_URL=<url> alembic upgrade head`.
+   `sql/001_schema.sql` queda como referencia del esquema completo.
+3. **App:** Azure Container Apps con la imagen "todo en uno" `-azure` (con el
+   driver de SQL Server), sondas en `/health/live` y `/health/ready`. Pruebas se
+   actualiza sola desde `main`; producción con el workflow «Desplegar a
+   producción» (aprobación manual, rollback con `infra/azure/rollback.sh`).
+4. **Primer arranque:** `crear-ambiente.sh` pasa `HAJIME_ADMIN_PASSWORD` una
+   sola vez; la app crea el admin y la plantilla base, y el script borra esa
+   variable cuando la app responde sana.
 
 ## Local con SQLite (pruebas y torneo mock)
 
@@ -155,7 +158,33 @@ HAJIME_ADMIN_PASSWORD='una-clave' docker compose --profile sqlserver up -d app-s
 
 ## Checklist antes de un torneo real
 
-- [ ] Backup o exportación de la base de datos.
+Una semana antes:
+
+- [ ] La versión que se usará está en producción desde hace días (promovida
+      desde pruebas, no el mismo día) y se probó la mesa en pruebas con ella.
+- [ ] Ensayo de restauración hecho en la temporada: `bash infra/azure/restaurar-prueba.sh prod`
+      (anotar cuánto tardó: ______ s).
+- [ ] Sabes volver atrás: `bash infra/azure/rollback.sh prod` lista las revisiones
+      (anotar la revisión estable: ______________________).
+- [ ] Base de producción sin autopausa y app con mínimo 1 réplica
+      (`crear-ambiente.sh prod` lo deja así; revisar si alguien lo cambió).
+- [ ] Alerta de presupuesto activa y sin sorpresas en el gasto del mes.
+
+El día anterior:
+
+- [ ] Congelar cambios: nada se promueve a producción hasta después del torneo.
+- [ ] Respaldo exportado: `bash infra/azure/respaldar.sh prod` (queda en la lista).
 - [ ] Torneo con la marca `es_prueba` desactivada, y datos con consentimiento registrado.
 - [ ] Llaves impresas desde la app como respaldo en papel.
-- [ ] Tablet cargada y probada en la red del local; plan B: la mesa sigue en papel (principio "la app nunca detiene un torneo").
+
+El día del torneo:
+
+- [ ] `https://<dominio>/health/ready` responde y la app abre en cada tablet.
+- [ ] Tablets cargadas y probadas en la red del local, con la app instalada
+      (PWA o APK) y la sesión del operador abierta; probar cortar el wifi en la
+      mesa y ver que los eventos quedan en cola y se envían al volver.
+- [ ] Plan B: la mesa sigue en papel (principio "la app nunca detiene un torneo").
+
+Después:
+
+- [ ] Respaldo exportado otra vez (`respaldar.sh prod`) con los resultados finales.

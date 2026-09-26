@@ -23,15 +23,16 @@ RUN if [ "$WITH_MSSQL" = "true" ]; then \
       && rm -rf /var/lib/apt/lists/*; \
     fi
 WORKDIR /app
-COPY backend/pyproject.toml ./
+# Dependencias exactas del lockfile (con hashes) en su propia capa: cambiar el
+# código no las reinstala. Se regeneran con scripts/bloquear-dependencias.sh.
+COPY backend/pyproject.toml backend/requirements.txt backend/requirements-mssql.txt ./
+RUN LOCK=requirements.txt && if [ "$WITH_MSSQL" = "true" ]; then LOCK=requirements-mssql.txt; fi \
+    && pip install --no-cache-dir --require-hashes -r "$LOCK"
 COPY backend/app ./app
 COPY backend/scripts ./scripts
 COPY backend/alembic.ini ./
 COPY backend/docker-entrypoint.sh ./
-# La imagen para Azure trae además Azure Monitor (se activa solo con
-# APPLICATIONINSIGHTS_CONNECTION_STRING).
-RUN pip install --no-cache-dir . && if [ "$WITH_MSSQL" = "true" ]; then pip install --no-cache-dir ".[mssql,azure]"; fi \
-    && chmod 755 /app/docker-entrypoint.sh
+RUN pip install --no-cache-dir --no-deps . && chmod 755 /app/docker-entrypoint.sh
 COPY --from=frontend /src/dist/hajime/browser ./static
 
 RUN useradd --create-home --uid 1000 hajime && mkdir -p /data && chown hajime /data

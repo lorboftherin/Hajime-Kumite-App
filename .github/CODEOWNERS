@@ -1,0 +1,8 @@
+# Revisión obligatoria del dueño en cada PR (con la protección de main activa).
+*                       @lorboftherin
+
+# Áreas sensibles: producción, datos y seguridad.
+/.github/               @lorboftherin
+/infra/                 @lorboftherin
+/backend/app/migrations/ @lorboftherin
+/backend/app/security.py @lorboftherin
