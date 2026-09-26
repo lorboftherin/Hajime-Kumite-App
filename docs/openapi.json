@@ -6817,14 +6817,110 @@
     }
    }
   },
+  "/api/v1/billing/config": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Billing Config",
+    "description": "Pasarela activa y llave pública de Culqi (no es secreta). Sin sesión.",
+    "operationId": "billing_config_api_v1_billing_config_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BillingConfigOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{code}/quote": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Quote",
+    "description": "Precio a pagar con el cupón (sin crear nada): para mostrarlo antes de pagar.",
+    "operationId": "quote_api_v1_plans__code__quote_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Code"
+      }
+     },
+     {
+      "name": "period",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "month",
+       "title": "Period"
+      }
+     },
+     {
+      "name": "coupon_code",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Coupon Code"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/QuoteOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/organizations/{oid}/checkout": {
    "post": {
     "tags": [
      "billing"
     ],
-    "summary": "Checkout",
-    "description": "Pide un plan para la organización: crea la suscripción pendiente y el cobro del proveedor.",
-    "operationId": "checkout_api_v1_organizations__oid__checkout_post",
+    "summary": "Organization Checkout",
+    "description": "Contrata o renueva un plan para la organización: suscripción pendiente + cobro de la pasarela.",
+    "operationId": "organization_checkout_api_v1_organizations__oid__checkout_post",
     "security": [
      {
       "HTTPBearer": []
@@ -6875,13 +6971,790 @@
     }
    }
   },
+  "/api/v1/organizations/{oid}/trial": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Organization Trial",
+    "description": "Periodo de prueba gratis del plan (una vez por organización).",
+    "operationId": "organization_trial_api_v1_organizations__oid__trial_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrialIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/me/checkout": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "My Checkout",
+    "description": "Competidor Plus: el titular es la cuenta del usuario.",
+    "operationId": "my_checkout_api_v1_me_checkout_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CheckoutIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CheckoutOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/me/subscriptions": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "My Subscriptions",
+    "operationId": "my_subscriptions_api_v1_me_subscriptions_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SubscriptionOut"
+         },
+         "type": "array",
+         "title": "Response My Subscriptions Api V1 Me Subscriptions Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/me/payments": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "My Payments",
+    "operationId": "my_payments_api_v1_me_payments_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/PaymentOut"
+         },
+         "type": "array",
+         "title": "Response My Payments Api V1 Me Payments Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/subscriptions/{sid}/status": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Subscription Status",
+    "description": "Estado de una suscripción para su titular (página de retorno del pago).",
+    "operationId": "subscription_status_api_v1_subscriptions__sid__status_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Sid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/subscriptions/{sid}/cancel": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Cancel Subscription",
+    "description": "El titular cancela: no se renueva y conserva el acceso hasta el fin del periodo pagado.",
+    "operationId": "cancel_subscription_api_v1_subscriptions__sid__cancel_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Sid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/culqi/charge": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Culqi Charge",
+    "description": "Cobra el token de Culqi Checkout (la tarjeta nunca pasa por el servidor).",
+    "operationId": "culqi_charge_api_v1_payments_culqi_charge_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CulqiChargeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/organizations/{oid}/payments": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Organization Payments",
+    "description": "Historial de pagos y comprobantes de la organización (dueño o administrador).",
+    "operationId": "organization_payments_api_v1_organizations__oid__payments_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PaymentOut"
+         },
+         "title": "Response Organization Payments Api V1 Organizations  Oid  Payments Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "List Payments",
+    "description": "Todos los pagos (Admin Global). ``q`` busca por referencia, organización o usuario.",
+    "operationId": "list_payments_api_v1_payments_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Status"
+      }
+     },
+     {
+      "name": "provider",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Provider"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 100,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PaymentOut"
+         },
+         "title": "Response List Payments Api V1 Payments Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/{pid}/refund": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Refund Payment",
+    "description": "Reembolso (Admin Global): devuelve en la pasarela y, si se pide, corta el acceso.",
+    "operationId": "refund_payment_api_v1_payments__pid__refund_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefundIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/{pid}/invoice": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Emit Invoice",
+    "description": "Emite o reintenta el comprobante de un pago aprobado (Admin Global).",
+    "operationId": "emit_invoice_api_v1_payments__pid__invoice_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invoices/{iid}/refresh": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Refresh Invoice",
+    "description": "Consulta a SUNAT (vía el proveedor) el estado de un comprobante.",
+    "operationId": "refresh_invoice_api_v1_invoices__iid__refresh_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "iid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Iid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvoiceOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/coupons": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "List Coupons",
+    "operationId": "list_coupons_api_v1_coupons_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CouponOut"
+         },
+         "type": "array",
+         "title": "Response List Coupons Api V1 Coupons Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Create Coupon",
+    "operationId": "create_coupon_api_v1_coupons_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CouponIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CouponOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/coupons/{cid}": {
+   "patch": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Update Coupon",
+    "operationId": "update_coupon_api_v1_coupons__cid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CouponUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CouponOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/billing/alerts": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Billing Alerts",
+    "description": "Planes que vencen en los próximos días (o en gracia) de las organizaciones que el\nusuario administra y de su propia cuenta. En marcha blanca no hay avisos.",
+    "operationId": "billing_alerts_api_v1_billing_alerts_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/BillingAlert"
+         },
+         "type": "array",
+         "title": "Response Billing Alerts Api V1 Billing Alerts Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
   "/api/v1/payments/webhook/{provider_name}": {
    "post": {
     "tags": [
      "billing"
     ],
     "summary": "Payment Webhook",
-    "description": "Aviso de la pasarela de pagos. El proveedor verifica la firma; el manual no recibe avisos.",
+    "description": "Aviso de la pasarela. Sin sesión, pero con firma (o autenticación) y consulta a la API.\n\nIdempotente: el mismo pago avisado dos veces no se duplica. Responde 200 a\nlo que no corresponde procesar (para que la pasarela no reintente) y 502\nsi la API de la pasarela no respondió (para que sí reintente).",
     "operationId": "payment_webhook_api_v1_payments_webhook__provider_name__post",
     "parameters": [
      {
@@ -8313,6 +9186,121 @@
      "reason"
     ],
     "title": "AnonymizeIn"
+   },
+   "BillingAlert": {
+    "properties": {
+     "subscription_id": {
+      "type": "integer",
+      "title": "Subscription Id"
+     },
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
+     },
+     "organization_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Name"
+     },
+     "plan_name": {
+      "type": "string",
+      "title": "Plan Name"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "days_left": {
+      "type": "integer",
+      "title": "Days Left"
+     },
+     "in_grace": {
+      "type": "boolean",
+      "title": "In Grace"
+     },
+     "recurring": {
+      "type": "boolean",
+      "title": "Recurring"
+     },
+     "access_until": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Access Until"
+     }
+    },
+    "type": "object",
+    "required": [
+     "subscription_id",
+     "organization_id",
+     "organization_name",
+     "plan_name",
+     "status",
+     "days_left",
+     "in_grace",
+     "recurring",
+     "access_until"
+    ],
+    "title": "BillingAlert",
+    "description": "Aviso para el encabezado: el plan vence pronto o está en gracia."
+   },
+   "BillingConfigOut": {
+    "properties": {
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "provider": {
+      "type": "string",
+      "title": "Provider"
+     },
+     "culqi_public_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Culqi Public Key"
+     },
+     "invoicing": {
+      "type": "string",
+      "title": "Invoicing"
+     },
+     "grace_days": {
+      "type": "integer",
+      "title": "Grace Days"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mode",
+     "provider",
+     "invoicing",
+     "grace_days"
+    ],
+    "title": "BillingConfigOut"
    },
    "Body_upload_import_api_v1_tournaments__tid__imports_post": {
     "properties": {
@@ -9891,6 +10879,55 @@
       ],
       "title": "Period",
       "default": "month"
+     },
+     "coupon_code": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Coupon Code"
+     },
+     "payer_email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "pattern": "^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Payer Email"
+     },
+     "billing_doc": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(\\d{8})?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Billing Doc"
+     },
+     "billing_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Billing Name"
      }
     },
     "type": "object",
@@ -9923,6 +10960,42 @@
      "instructions": {
       "type": "string",
       "title": "Instructions"
+     },
+     "amount_cents": {
+      "type": "integer",
+      "title": "Amount Cents",
+      "default": 0
+     },
+     "currency": {
+      "type": "string",
+      "title": "Currency",
+      "default": "PEN"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description",
+      "default": ""
+     },
+     "recurring": {
+      "type": "boolean",
+      "title": "Recurring",
+      "default": false
+     },
+     "public_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Key"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status",
+      "default": "past_due"
      }
     },
     "type": "object",
@@ -10006,6 +11079,364 @@
      "scope"
     ],
     "title": "ConsentOut"
+   },
+   "CouponIn": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "maxLength": 40,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "title": "Code"
+     },
+     "description": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Description",
+      "default": ""
+     },
+     "percent_off": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Percent Off"
+     },
+     "amount_off_pen": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount Off Pen"
+     },
+     "plan_codes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Plan Codes",
+      "default": []
+     },
+     "max_redemptions": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Redemptions"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "first_period_only": {
+      "type": "boolean",
+      "title": "First Period Only",
+      "default": true
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "code"
+    ],
+    "title": "CouponIn"
+   },
+   "CouponOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description"
+     },
+     "percent_off": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Percent Off"
+     },
+     "amount_off_pen": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount Off Pen"
+     },
+     "plan_codes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Plan Codes"
+     },
+     "max_redemptions": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Redemptions"
+     },
+     "times_redeemed": {
+      "type": "integer",
+      "title": "Times Redeemed"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "first_period_only": {
+      "type": "boolean",
+      "title": "First Period Only"
+     },
+     "active": {
+      "type": "boolean",
+      "title": "Active"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "code",
+     "description",
+     "percent_off",
+     "amount_off_pen",
+     "plan_codes",
+     "max_redemptions",
+     "times_redeemed",
+     "expires_at",
+     "first_period_only",
+     "active",
+     "created_at"
+    ],
+    "title": "CouponOut"
+   },
+   "CouponUpdate": {
+    "properties": {
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "percent_off": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Percent Off"
+     },
+     "amount_off_pen": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount Off Pen"
+     },
+     "plan_codes": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Codes"
+     },
+     "max_redemptions": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Redemptions"
+     },
+     "expires_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires At"
+     },
+     "first_period_only": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Period Only"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active"
+     }
+    },
+    "type": "object",
+    "title": "CouponUpdate"
+   },
+   "CulqiChargeIn": {
+    "properties": {
+     "subscription_id": {
+      "type": "integer",
+      "title": "Subscription Id"
+     },
+     "token": {
+      "type": "string",
+      "maxLength": 100,
+      "minLength": 5,
+      "title": "Token"
+     },
+     "email": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$",
+      "title": "Email"
+     },
+     "first_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 50
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Name"
+     },
+     "last_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 50
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Name"
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 15,
+        "pattern": "^\\+?\\d{6,14}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     }
+    },
+    "type": "object",
+    "required": [
+     "subscription_id",
+     "token",
+     "email"
+    ],
+    "title": "CulqiChargeIn",
+    "description": "Token de Culqi Checkout (generado en el navegador: el servidor nunca ve la tarjeta)."
    },
    "DecisionIn": {
     "properties": {
@@ -11458,6 +12889,96 @@
     ],
     "title": "InvitationOut"
    },
+   "InvoiceOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "doc_type": {
+      "type": "string",
+      "title": "Doc Type"
+     },
+     "serie": {
+      "type": "string",
+      "title": "Serie"
+     },
+     "numero": {
+      "type": "integer",
+      "title": "Numero"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+     },
+     "total_pen": {
+      "type": "integer",
+      "title": "Total Pen"
+     },
+     "pdf_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pdf Url"
+     },
+     "xml_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Xml Url"
+     },
+     "cdr_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cdr Url"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "doc_type",
+     "serie",
+     "numero",
+     "status",
+     "customer_name",
+     "total_pen",
+     "pdf_url",
+     "xml_url",
+     "cdr_url",
+     "message",
+     "created_at"
+    ],
+    "title": "InvoiceOut"
+   },
    "KataMatchScoreIn": {
     "properties": {
      "aka_scores": {
@@ -12367,6 +13888,55 @@
       ],
       "title": "Logo"
      },
+     "tax_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(\\d{11})?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Id"
+     },
+     "legal_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Legal Name"
+     },
+     "tax_address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Address"
+     },
+     "billing_email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "pattern": "^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Billing Email"
+     },
      "owner_user_id": {
       "anyOf": [
        {
@@ -12425,6 +13995,50 @@
        }
       ],
       "title": "Logo"
+     },
+     "tax_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Id"
+     },
+     "legal_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Legal Name"
+     },
+     "tax_address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Address"
+     },
+     "billing_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Billing Email"
      },
      "version": {
       "type": "integer",
@@ -12587,6 +14201,55 @@
        }
       ],
       "title": "Logo"
+     },
+     "tax_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(\\d{11})?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Id"
+     },
+     "legal_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Legal Name"
+     },
+     "tax_address": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tax Address"
+     },
+     "billing_email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "pattern": "^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Billing Email"
      }
     },
     "type": "object",
@@ -12658,6 +14321,168 @@
      "new_password"
     ],
     "title": "PasswordChange"
+   },
+   "PaymentOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "provider": {
+      "type": "string",
+      "title": "Provider"
+     },
+     "provider_ref": {
+      "type": "string",
+      "title": "Provider Ref"
+     },
+     "subscription_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Subscription Id"
+     },
+     "amount_pen": {
+      "type": "integer",
+      "title": "Amount Pen"
+     },
+     "currency": {
+      "type": "string",
+      "title": "Currency"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Period"
+     },
+     "coupon_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Coupon Code"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     },
+     "plan_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Code"
+     },
+     "plan_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Name"
+     },
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
+     },
+     "organization_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Name"
+     },
+     "user_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Id"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     },
+     "invoice": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InvoiceOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "provider",
+     "provider_ref",
+     "subscription_id",
+     "amount_pen",
+     "currency",
+     "status",
+     "period",
+     "coupon_code",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "PaymentOut"
    },
    "PersonCreate": {
     "properties": {
@@ -13017,6 +14842,11 @@
       },
       "type": "array",
       "title": "Features"
+     },
+     "trial_days": {
+      "type": "integer",
+      "title": "Trial Days",
+      "default": 0
      }
     },
     "type": "object",
@@ -13055,6 +14885,19 @@
        }
       ],
       "title": "Price Pen Year"
+     },
+     "trial_days": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 365.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Trial Days"
      }
     },
     "type": "object",
@@ -13132,6 +14975,69 @@
     "title": "PublicLiveIn",
     "description": "Activa o desactiva el seguimiento en vivo público del torneo."
    },
+   "QuoteOut": {
+    "properties": {
+     "plan_code": {
+      "type": "string",
+      "title": "Plan Code"
+     },
+     "plan_name": {
+      "type": "string",
+      "title": "Plan Name"
+     },
+     "period": {
+      "type": "string",
+      "enum": [
+       "month",
+       "year"
+      ],
+      "title": "Period"
+     },
+     "list_cents": {
+      "type": "integer",
+      "title": "List Cents"
+     },
+     "discount_cents": {
+      "type": "integer",
+      "title": "Discount Cents"
+     },
+     "first_cents": {
+      "type": "integer",
+      "title": "First Cents"
+     },
+     "recurring_cents": {
+      "type": "integer",
+      "title": "Recurring Cents"
+     },
+     "coupon_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Coupon Code"
+     },
+     "trial_days": {
+      "type": "integer",
+      "title": "Trial Days",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan_code",
+     "plan_name",
+     "period",
+     "list_cents",
+     "discount_cents",
+     "first_cents",
+     "recurring_cents"
+    ],
+    "title": "QuoteOut"
+   },
    "RefereeAssignIn": {
     "properties": {
      "person_id": {
@@ -13194,6 +15100,26 @@
      "refresh_token"
     ],
     "title": "RefreshIn"
+   },
+   "RefundIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Reason"
+     },
+     "cancel_subscription": {
+      "type": "boolean",
+      "title": "Cancel Subscription",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "RefundIn"
    },
    "RegistrationCreate": {
     "properties": {
@@ -14278,6 +16204,89 @@
       "type": "boolean",
       "title": "Is Current",
       "default": false
+     },
+     "period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Period"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provider"
+     },
+     "recurring": {
+      "type": "boolean",
+      "title": "Recurring",
+      "default": false
+     },
+     "cancel_at_period_end": {
+      "type": "boolean",
+      "title": "Cancel At Period End",
+      "default": false
+     },
+     "grace_until": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grace Until"
+     },
+     "in_grace": {
+      "type": "boolean",
+      "title": "In Grace",
+      "default": false
+     },
+     "access_until": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Access Until"
+     },
+     "coupon_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Coupon Code"
+     },
+     "amount_cents": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount Cents"
      }
     },
     "type": "object",
@@ -15463,6 +17472,19 @@
      "version"
     ],
     "title": "TournamentUpdate"
+   },
+   "TrialIn": {
+    "properties": {
+     "plan_code": {
+      "type": "string",
+      "title": "Plan Code"
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan_code"
+    ],
+    "title": "TrialIn"
    },
    "UserAdminUpdate": {
     "properties": {

@@ -26,6 +26,7 @@ from sqlalchemy import (
     UniqueConstraint,
     false,
     text,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -223,6 +224,11 @@ class Organization(Base, Timestamped, Versioned):
     timezone: Mapped[str] = mapped_column(String(60), default="America/Lima", server_default="America/Lima")
     currency: Mapped[str] = mapped_column(String(3), default="PEN", server_default="PEN")
     logo: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)  # ruta o URL
+    # Datos fiscales para la factura electrónica (SUNAT). Sin RUC se emite boleta.
+    tax_id: Mapped[str | None] = mapped_column(String(11), nullable=True)  # RUC
+    legal_name: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)  # razón social
+    tax_address: Mapped[str | None] = mapped_column(Unicode(300), nullable=True)  # domicilio fiscal
+    billing_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class OrganizationMember(Base):
@@ -250,6 +256,8 @@ class Plan(Base):
     price_pen_year: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     features: Mapped[list[str]] = mapped_column(JSON, default=list)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Días de prueba gratis al contratar por primera vez (0 = sin prueba).
+    trial_days: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
 
 class Subscription(Base):
@@ -270,6 +278,93 @@ class Subscription(Base):
     notes: Mapped[str] = mapped_column(Unicode(500), default="")
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # --- Cobro con pasarela (ver app/services/payments.py y docs/cobros.md) ---
+    period: Mapped[str | None] = mapped_column(String(10), nullable=True)  # month | year
+    provider: Mapped[str | None] = mapped_column(String(20), nullable=True)  # manual | mercadopago | culqi
+    # Suscripción recurrente en la pasarela (preapproval de Mercado Pago, suscripción de Culqi).
+    provider_subscription_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    # Pago rechazado o vencido: sigue con acceso hasta esta fecha (HAJIME_BILLING_GRACE_DAYS).
+    grace_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Cancelada por el titular: conserva el acceso hasta current_period_end y no se renueva.
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    coupon_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Monto esperado del próximo cobro, en céntimos de sol (con el cupón si aplica).
+    amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Titular del comprobante cuando no es una organización (Competidor Plus): DNI opcional.
+    billing_doc: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    billing_name: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
+    billing_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class Payment(Base):
+    """Pago informado por la pasarela (o por un cupón del 100 %).
+
+    ``provider_ref`` es el id del pago en la pasarela: un aviso repetido no
+    duplica nada. ``raw`` guarda solo campos seguros de la respuesta (nunca
+    datos de la tarjeta).
+    """
+
+    __tablename__ = "payments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(20))  # mercadopago | culqi | coupon | manual
+    provider_ref: Mapped[str] = mapped_column(String(120), unique=True)
+    subscription_id: Mapped[int | None] = mapped_column(ForeignKey("subscriptions.id"), nullable=True, index=True)
+    amount_pen: Mapped[int] = mapped_column(Integer, default=0)  # céntimos de sol
+    currency: Mapped[str] = mapped_column(String(3), default="PEN")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected | refunded
+    period: Mapped[str | None] = mapped_column(String(10), nullable=True)  # month | year
+    coupon_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Clave de idempotencia del cobro creado por el servidor (Culqi: hash del token).
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # El periodo de la suscripción ya se extendió por este pago (se aplica una sola vez).
+    applied: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    raw: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow)
+
+
+class Invoice(Base):
+    """Comprobante electrónico (SUNAT) de un pago: boleta o factura."""
+
+    __tablename__ = "invoices"
+    __table_args__ = (UniqueConstraint("serie", "numero", name="uq_invoice_serie_numero"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), unique=True)
+    provider: Mapped[str] = mapped_column(String(20))  # nubefact
+    doc_type: Mapped[str] = mapped_column(String(10))  # boleta | factura
+    serie: Mapped[str] = mapped_column(String(4))
+    numero: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | accepted | rejected | error
+    customer_doc_type: Mapped[str] = mapped_column(String(2), default="-")  # 6 RUC | 1 DNI | - sin documento
+    customer_doc: Mapped[str] = mapped_column(String(15), default="")
+    customer_name: Mapped[str] = mapped_column(Unicode(200), default="")
+    total_pen: Mapped[int] = mapped_column(Integer, default=0)  # céntimos
+    pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    xml_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cdr_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    message: Mapped[str] = mapped_column(Unicode(500), default="")
+    raw: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow)
+
+
+class Coupon(Base):
+    """Cupón de descuento para el checkout (porcentaje o monto fijo en céntimos)."""
+
+    __tablename__ = "coupons"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True)
+    description: Mapped[str] = mapped_column(Unicode(300), default="")
+    percent_off: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1..100
+    amount_off_pen: Mapped[int | None] = mapped_column(Integer, nullable=True)  # céntimos
+    plan_codes: Mapped[list[str]] = mapped_column(JSON, default=list)  # vacío = todos los planes de pago
+    max_redemptions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    times_redeemed: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Solo descuenta el primer periodo (las renovaciones se cobran a precio completo).
+    first_period_only: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
 # ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app import __version__
 from app.api.errors import install_handlers
 from app.api.routers import (
+    billing,
     competition,
     core,
     dojo_portal,
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
         organizer.router,
         history.router,
         organizations.router,
+        billing.router,
         dojo_portal.router,
         public.router,
     )

@@ -6,11 +6,22 @@ import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { fmtDate, ORG_KIND_LABEL, ORG_ROLE_LABEL, SUBSCRIPTION_STATUS } from '../../core/format';
-import { Organization, OrgMember, OrgRole, PlansOut, Subscription } from '../../core/models';
+import { INVOICE_STATUS, invoiceNumber, PAYMENT_STATUS, penFromCents } from '../../core/billing';
+import {
+  BillingConfig,
+  Organization,
+  OrgMember,
+  OrgRole,
+  PaymentOut,
+  Plan,
+  PlansOut,
+  Subscription,
+} from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
 import { PageHead } from '../../shared/page-head';
+import { SubscribeDialog } from '../billing/subscribe-dialog';
 
 /**
  * Página «Organización»: datos, miembros y plan actual. El dueño (owner) o un administrador
@@ -18,7 +29,7 @@ import { PageHead } from '../../shared/page-head';
  */
 @Component({
   selector: 'app-organization-page',
-  imports: [FormsModule, RouterLink, PageHead, Icon, Modal],
+  imports: [FormsModule, RouterLink, PageHead, Icon, Modal, SubscribeDialog],
   template: `
     <div class="container">
       <app-page-head kanji="組" [title]="org()?.name ?? 'Organización'">
@@ -114,6 +125,38 @@ import { PageHead } from '../../shared/page-head';
                     [disabled]="!o.can_manage"
                 /></label>
               </div>
+              <h3>Datos para el comprobante</h3>
+              <p class="small muted">
+                Con RUC se emite factura a la razón social; sin RUC, boleta.
+              </p>
+              <div class="grid-2">
+                <label class="field"
+                  ><span>RUC</span
+                  ><input
+                    name="ruc"
+                    [(ngModel)]="f.tax_id"
+                    inputmode="numeric"
+                    maxlength="11"
+                    pattern="[0-9]{11}"
+                    [disabled]="!o.can_manage"
+                /></label>
+                <label class="field"
+                  ><span>Razón social</span
+                  ><input name="rs" [(ngModel)]="f.legal_name" [disabled]="!o.can_manage"
+                /></label>
+                <label class="field"
+                  ><span>Domicilio fiscal</span
+                  ><input name="df" [(ngModel)]="f.tax_address" [disabled]="!o.can_manage"
+                /></label>
+                <label class="field"
+                  ><span>Correo para comprobantes</span
+                  ><input
+                    name="be"
+                    type="email"
+                    [(ngModel)]="f.billing_email"
+                    [disabled]="!o.can_manage"
+                /></label>
+              </div>
               @if (o.can_manage) {
                 <div class="form-actions">
                   <button class="btn primary" [disabled]="f.name.trim().length < 2 || busy()">
@@ -135,11 +178,38 @@ import { PageHead } from '../../shared/page-head';
               <p>
                 <strong>{{ sub.plan_name }}</strong> · {{ statusLabel(sub.status) }}
                 @if (sub.current_period_end) {
-                  · vigente hasta el {{ date(sub.current_period_end) }}
+                  · {{ sub.cancel_at_period_end ? 'termina' : 'vigente hasta' }} el
+                  {{ date(sub.current_period_end) }}
+                }
+                @if (sub.recurring) {
+                  <span class="badge matcha">Renovación automática</span>
                 }
               </p>
+              @if (sub.in_grace) {
+                <p class="alert warn small">
+                  El último pago no se completó. Mantienes el acceso hasta el
+                  {{ date(sub.access_until ?? sub.grace_until ?? '') }}: renueva para no perderlo.
+                </p>
+              }
+              @if (o.can_manage && plans()?.mode === 'enforced') {
+                <div class="row actions">
+                  @if (!sub.recurring && planOf(sub.plan_code); as p) {
+                    <button class="btn sm primary" type="button" (click)="renew.set(p)">
+                      Renovar
+                    </button>
+                  }
+                  @if (sub.status !== 'canceled' && !sub.cancel_at_period_end) {
+                    <button class="btn sm ghost" type="button" (click)="cancelOwn(sub)">
+                      Cancelar suscripción
+                    </button>
+                  }
+                </div>
+              }
             } @else {
               <p class="muted">Sin suscripción vigente.</p>
+              @if (o.can_manage && plans()?.mode === 'enforced') {
+                <p><a class="btn sm primary" routerLink="/planes">Elegir un plan</a></p>
+              }
             }
             <div class="features">
               @for (feat of o.features; track feat) {
@@ -224,6 +294,57 @@ import { PageHead } from '../../shared/page-head';
             }
           </section>
 
+          @if (o.can_manage) {
+            <section class="card wide" aria-labelledby="h-pagos">
+              <h2 id="h-pagos">Pagos y comprobantes</h2>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Plan</th>
+                      <th class="right">Monto</th>
+                      <th>Estado</th>
+                      <th>Comprobante</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pay of payments(); track pay.id) {
+                      <tr>
+                        <td class="nowrap">{{ date(pay.created_at) }}</td>
+                        <td>
+                          {{ pay.plan_name }}
+                          <span class="small muted">{{
+                            pay.period === 'year' ? 'anual' : 'mensual'
+                          }}</span>
+                        </td>
+                        <td class="right num nowrap">{{ cents(pay.amount_pen) }}</td>
+                        <td>{{ payStatus(pay.status) }}</td>
+                        <td class="small">
+                          @if (pay.invoice; as inv) {
+                            {{ num(inv.serie, inv.numero) }} · {{ invStatus(inv.status) }}
+                            @if (inv.pdf_url) {
+                              · <a [href]="inv.pdf_url" target="_blank" rel="noopener">PDF</a>
+                            }
+                            @if (inv.xml_url) {
+                              · <a [href]="inv.xml_url" target="_blank" rel="noopener">XML</a>
+                            }
+                          } @else {
+                            —
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="muted small">Sin pagos todavía.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          }
+
           <section class="card wide" aria-labelledby="h-miembros">
             <h2 id="h-miembros">Miembros</h2>
             <p class="small muted">
@@ -295,6 +416,10 @@ import { PageHead } from '../../shared/page-head';
       }
     </div>
 
+    @if (renew(); as p) {
+      <app-subscribe-dialog [plan]="p" [config]="config()" (closed)="renew.set(null)" />
+    }
+
     @if (showNew()) {
       <app-modal title="Nueva organización" (closed)="showNew.set(false)">
         <form class="stack" (ngSubmit)="create()">
@@ -350,6 +475,11 @@ import { PageHead } from '../../shared/page-head';
       gap: 0.35rem;
       margin: 0.5rem 0 0.75rem;
     }
+    .actions {
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
     .invite,
     .assign {
       margin-top: 0.75rem;
@@ -374,7 +504,11 @@ export class OrganizationPage {
   readonly org = signal<Organization | null>(null);
   readonly members = signal<OrgMember[]>([]);
   readonly subscriptions = signal<Subscription[]>([]);
+  readonly payments = signal<PaymentOut[]>([]);
   readonly plans = signal<PlansOut | null>(null);
+  readonly config = signal<BillingConfig | null>(null);
+  /** Plan a renovar (abre el diálogo de suscripción). */
+  readonly renew = signal<Plan | null>(null);
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly showNew = signal(false);
@@ -390,6 +524,10 @@ export class OrganizationPage {
     country: 'PE',
     timezone: 'America/Lima',
     currency: 'PEN',
+    tax_id: '',
+    legal_name: '',
+    tax_address: '',
+    billing_email: '',
   };
   inv = { username: '', role: 'member' as OrgRole };
   sub = { plan_code: 'dojo', status: 'active', period_end: '' };
@@ -397,6 +535,9 @@ export class OrganizationPage {
 
   constructor() {
     this.api.get<PlansOut>('/plans').subscribe({ next: (p) => this.plans.set(p), error: () => {} });
+    this.api
+      .get<BillingConfig>('/billing/config')
+      .subscribe({ next: (c) => this.config.set(c), error: () => {} });
     effect(() => {
       const wanted = Number(this.id() ?? 0) || null;
       void this.load(wanted);
@@ -445,8 +586,44 @@ export class OrganizationPage {
         country: o.country,
         timezone: o.timezone,
         currency: o.currency,
+        tax_id: o.tax_id ?? '',
+        legal_name: o.legal_name ?? '',
+        tax_address: o.tax_address ?? '',
+        billing_email: o.billing_email ?? '',
       };
     }
+  }
+
+  planOf(code: string): Plan | null {
+    return this.plans()?.plans.find((p) => p.code === code) ?? null;
+  }
+  cents(v: number): string {
+    return penFromCents(v);
+  }
+  num(serie: string, numero: number): string {
+    return invoiceNumber(serie, numero);
+  }
+  payStatus(s: PaymentOut['status']): string {
+    return PAYMENT_STATUS[s] ?? s;
+  }
+  invStatus(s: string): string {
+    return INVOICE_STATUS[s] ?? s;
+  }
+
+  async cancelOwn(s: Subscription): Promise<void> {
+    const ok = await this.dialog.confirm({
+      title: 'Cancelar suscripción',
+      message: `${s.plan_name} no se renovará. La organización conserva el acceso hasta el fin del periodo pagado.`,
+      confirmText: 'Cancelar suscripción',
+      danger: true,
+    });
+    if (!ok) return;
+    const out = await this.mut.post<Subscription>(
+      `/subscriptions/${s.id}/cancel`,
+      {},
+      { success: 'Suscripción cancelada' },
+    );
+    if (out) await this.refreshOrg();
   }
 
   private async loadDetails(oid: number): Promise<void> {
@@ -455,6 +632,14 @@ export class OrganizationPage {
         () => [],
       ),
     );
+    const org = this.orgs().find((x) => x.id === oid);
+    if (org?.can_manage) {
+      this.payments.set(
+        await firstValueFrom(this.api.get<PaymentOut[]>(`/organizations/${oid}/payments`)).catch(
+          () => [],
+        ),
+      );
+    }
     if (this.auth.isAdmin()) {
       this.subscriptions.set(
         await firstValueFrom(
@@ -486,6 +671,10 @@ export class OrganizationPage {
       version: o.version,
       logo: this.f.logo.trim() || null,
       slug: this.f.slug.trim() || null,
+      tax_id: this.f.tax_id.trim(),
+      legal_name: this.f.legal_name.trim(),
+      tax_address: this.f.tax_address.trim(),
+      billing_email: this.f.billing_email.trim(),
     };
     const out = await this.mut.patch<Organization>(`/organizations/${o.id}`, body, {
       success: 'Organización guardada',

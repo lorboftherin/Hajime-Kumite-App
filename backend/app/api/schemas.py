@@ -848,6 +848,8 @@ class OfficialResultIn(BaseModel):
 OrgKind = Literal["league", "dojo", "organizer"]
 OrgRole = Literal["owner", "admin", "member"]
 SubscriptionStatus = Literal["trial", "active", "past_due", "canceled"]
+# Correo simple (sin dependencias extra): algo@dominio.tld; vacío permitido.
+EMAIL_PATTERN = r"^([^@\s]+@[^@\s]+\.[^@\s]+)?$"
 
 
 class OrganizationCreate(BaseModel):
@@ -858,6 +860,11 @@ class OrganizationCreate(BaseModel):
     timezone: str = Field(default="America/Lima", max_length=60)
     currency: str = Field(default="PEN", min_length=3, max_length=3)
     logo: str | None = Field(default=None, max_length=500)
+    # Datos fiscales (factura electrónica). Sin RUC se emite boleta.
+    tax_id: str | None = Field(default=None, pattern=r"^(\d{11})?$")
+    legal_name: str | None = Field(default=None, max_length=200)
+    tax_address: str | None = Field(default=None, max_length=300)
+    billing_email: str | None = Field(default=None, max_length=200, pattern=EMAIL_PATTERN)
     # Cuenta que queda como dueña (owner) de la organización.
     owner_user_id: int | None = None
 
@@ -871,6 +878,11 @@ class OrganizationUpdate(BaseModel):
     timezone: str | None = Field(default=None, max_length=60)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     logo: str | None = Field(default=None, max_length=500)
+    # Datos fiscales (factura electrónica). Sin RUC se emite boleta.
+    tax_id: str | None = Field(default=None, pattern=r"^(\d{11})?$")
+    legal_name: str | None = Field(default=None, max_length=200)
+    tax_address: str | None = Field(default=None, max_length=300)
+    billing_email: str | None = Field(default=None, max_length=200, pattern=EMAIL_PATTERN)
 
 
 class SubscriptionOut(ORM):
@@ -887,6 +899,18 @@ class SubscriptionOut(ORM):
     notes: str
     created_at: datetime
     is_current: bool = False
+    period: str | None = None
+    provider: str | None = None
+    # Se renueva sola en la pasarela (preapproval / suscripción de Culqi).
+    recurring: bool = False
+    cancel_at_period_end: bool = False
+    grace_until: datetime | None = None
+    # Con acceso por la gracia tras un pago rechazado o vencido.
+    in_grace: bool = False
+    # Hasta cuándo da acceso (con la gracia); None = sin vencimiento o sin acceso.
+    access_until: datetime | None = None
+    coupon_code: str | None = None
+    amount_cents: int | None = None
 
 
 class OrganizationOut(ORM):
@@ -898,6 +922,10 @@ class OrganizationOut(ORM):
     timezone: str
     currency: str
     logo: str | None
+    tax_id: str | None = None
+    legal_name: str | None = None
+    tax_address: str | None = None
+    billing_email: str | None = None
     version: int
     created_at: datetime
     my_role: str | None = None  # owner | admin | member; None para el Admin Global sin membresía
@@ -934,6 +962,7 @@ class PlanOut(ORM):
     price_pen_month: float | None
     price_pen_year: float | None
     features: list[str]
+    trial_days: int = 0
 
 
 class PlansOut(BaseModel):
@@ -945,6 +974,7 @@ class PlansOut(BaseModel):
 class PlanPriceUpdate(BaseModel):
     price_pen_month: float | None = Field(default=None, ge=0)
     price_pen_year: float | None = Field(default=None, ge=0)
+    trial_days: int | None = Field(default=None, ge=0, le=365)
 
 
 class SubscriptionCreate(BaseModel):
@@ -974,13 +1004,161 @@ class MarkPaidIn(BaseModel):
 class CheckoutIn(BaseModel):
     plan_code: str
     period: Literal["month", "year"] = "month"
+    coupon_code: str | None = Field(default=None, max_length=40)
+    # Correo del pagador: Mercado Pago lo exige para el pago mensual automático.
+    payer_email: str | None = Field(default=None, max_length=200, pattern=EMAIL_PATTERN)
+    # Titular de la boleta (Competidor Plus): DNI opcional y nombre.
+    billing_doc: str | None = Field(default=None, pattern=r"^(\d{8})?$")
+    billing_name: str | None = Field(default=None, max_length=200)
 
 
 class CheckoutOut(BaseModel):
-    provider: str
+    provider: str  # manual | mercadopago | culqi | coupon
     subscription_id: int
+    # URL de la pasarela (Mercado Pago): el navegador se redirige allí.
     url: str | None
     instructions: str
+    amount_cents: int = 0
+    currency: str = "PEN"
+    description: str = ""
+    # Cobro mensual automático (preapproval de Mercado Pago o plan de Culqi).
+    recurring: bool = False
+    # Llave pública de Culqi Checkout (no es secreta).
+    public_key: str | None = None
+    # Estado de la suscripción tras el checkout (active si un cupón cubrió todo).
+    status: str = "past_due"
+
+
+class QuoteOut(BaseModel):
+    plan_code: str
+    plan_name: str
+    period: Literal["month", "year"]
+    list_cents: int
+    discount_cents: int
+    # Lo que se cobra ahora y en las renovaciones (en céntimos).
+    first_cents: int
+    recurring_cents: int
+    coupon_code: str | None = None
+    trial_days: int = 0
+
+
+class TrialIn(BaseModel):
+    plan_code: str
+
+
+class CulqiChargeIn(BaseModel):
+    """Token de Culqi Checkout (generado en el navegador: el servidor nunca ve la tarjeta)."""
+
+    subscription_id: int
+    token: str = Field(min_length=5, max_length=100)
+    email: str = Field(max_length=200, pattern=EMAIL_PATTERN)
+    # Para el cobro mensual automático Culqi pide un cliente con estos datos.
+    first_name: str | None = Field(default=None, max_length=50)
+    last_name: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=15, pattern=r"^\+?\d{6,14}$")
+
+
+class InvoiceOut(ORM):
+    id: int
+    doc_type: str
+    serie: str
+    numero: int
+    status: str
+    customer_name: str
+    total_pen: int
+    pdf_url: str | None
+    xml_url: str | None
+    cdr_url: str | None
+    message: str
+    created_at: datetime
+
+
+class PaymentOut(ORM):
+    id: int
+    provider: str
+    provider_ref: str
+    subscription_id: int | None
+    amount_pen: int  # céntimos
+    currency: str
+    status: str
+    period: str | None
+    coupon_code: str | None
+    created_at: datetime
+    updated_at: datetime
+    plan_code: str | None = None
+    plan_name: str | None = None
+    organization_id: int | None = None
+    organization_name: str | None = None
+    user_id: int | None = None
+    username: str | None = None
+    invoice: InvoiceOut | None = None
+
+
+class RefundIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+    # Además de devolver el dinero, cortar el acceso de la suscripción.
+    cancel_subscription: bool = True
+
+
+class CouponIn(BaseModel):
+    code: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    description: str = Field(default="", max_length=300)
+    percent_off: int | None = Field(default=None, ge=1, le=100)
+    amount_off_pen: int | None = Field(default=None, ge=1)  # céntimos
+    plan_codes: list[str] = []
+    max_redemptions: int | None = Field(default=None, ge=1)
+    expires_at: datetime | None = None
+    first_period_only: bool = True
+    active: bool = True
+
+
+class CouponUpdate(BaseModel):
+    description: str | None = Field(default=None, max_length=300)
+    percent_off: int | None = Field(default=None, ge=1, le=100)
+    amount_off_pen: int | None = Field(default=None, ge=1)
+    plan_codes: list[str] | None = None
+    max_redemptions: int | None = Field(default=None, ge=1)
+    expires_at: datetime | None = None
+    first_period_only: bool | None = None
+    active: bool | None = None
+
+
+class CouponOut(ORM):
+    id: int
+    code: str
+    description: str
+    percent_off: int | None
+    amount_off_pen: int | None
+    plan_codes: list[str]
+    max_redemptions: int | None
+    times_redeemed: int
+    expires_at: datetime | None
+    first_period_only: bool
+    active: bool
+    created_at: datetime
+
+
+class BillingConfigOut(BaseModel):
+    mode: str  # marcha_blanca | enforced
+    provider: str  # manual | mercadopago | culqi
+    # Llave pública de Culqi (solo si la pasarela es Culqi).
+    culqi_public_key: str | None = None
+    invoicing: str  # none | nubefact
+    grace_days: int
+
+
+class BillingAlert(BaseModel):
+    """Aviso para el encabezado: el plan vence pronto o está en gracia."""
+
+    subscription_id: int
+    organization_id: int | None
+    organization_name: str | None
+    plan_name: str
+    status: str
+    days_left: int
+    in_grace: bool
+    recurring: bool
+    access_until: datetime | None
 
 
 # --- Autoinscripción por dojo -----------------------------------------------------

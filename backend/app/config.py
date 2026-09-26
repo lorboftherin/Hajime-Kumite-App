@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -87,8 +88,39 @@ class Settings(BaseSettings):
     # enforced: cada función de pago exige una suscripción vigente de la
     # organización (o de la persona, para Competidor Plus).
     billing_mode: Literal["marcha_blanca", "enforced"] = "marcha_blanca"
-    # Proveedor de pagos: por ahora solo «manual» (el Admin marca pagado).
-    payment_provider: str = "manual"
+    # Pasarela de pagos: manual (el Admin marca pagado), mercadopago o culqi.
+    payment_provider: Literal["manual", "mercadopago", "culqi"] = "manual"
+    # Días que una suscripción con pago rechazado o vencido conserva el acceso.
+    billing_grace_days: int = 7
+    # URL pública de la app (https://…): retornos de la pasarela y URL de avisos.
+    # Sin configurar se usa la URL con la que llegó la petición.
+    public_url: str | None = None
+    # Tiempo máximo de cada llamada a la pasarela o al proveedor de comprobantes.
+    payment_http_timeout: float = 15.0
+    # Tamaño máximo del cuerpo de un aviso (webhook) de la pasarela.
+    webhook_max_bytes: int = 65_536
+    # Secretos: SOLO por variables de entorno (o Key Vault). SecretStr evita que
+    # aparezcan en repr() o en los logs.
+    # Mercado Pago (Checkout Pro y preapproval): token de acceso y clave secreta de avisos.
+    mp_access_token: SecretStr | None = None
+    mp_webhook_secret: SecretStr | None = None
+    mp_api_url: str = "https://api.mercadopago.com"
+    # Culqi: llave secreta (servidor) y llave pública (Culqi Checkout en el navegador).
+    culqi_secret_key: SecretStr | None = None
+    culqi_public_key: str | None = None
+    # Contraseña de la autenticación básica configurada en el aviso de Culqi (opcional).
+    culqi_webhook_secret: SecretStr | None = None
+    culqi_api_url: str = "https://api.culqi.com"
+    # Planes recurrentes creados en el panel de Culqi: {"dojo:month": "pln_live_…"}.
+    culqi_plan_ids: dict[str, str] = {}
+
+    # --- Comprobantes electrónicos (SUNAT) ---
+    # none: no se emiten; nubefact: API JSON de Nubefact (OSE/PSE).
+    invoicing_provider: Literal["none", "nubefact"] = "none"
+    nubefact_url: SecretStr | None = None  # la «ruta» de la cuenta: identifica al emisor
+    nubefact_token: SecretStr | None = None
+    nubefact_serie_boleta: str = "BBB1"
+    nubefact_serie_factura: str = "FFF1"
 
     def allowed_cors_origins(self) -> list[str]:
         if self.cors_origins is not None:

@@ -114,6 +114,25 @@ export const routes: Routes = [
         title: 'Planes · Hajime',
       },
       {
+        // Pago con Culqi Checkout (el script de Culqi se carga solo en esta página).
+        path: 'pago/culqi/:id',
+        loadComponent: () => import('./features/billing/culqi-page').then((m) => m.CulqiPage),
+        title: 'Pago · Hajime',
+      },
+      ...(['exito', 'pendiente', 'error'] as const).map((result) => ({
+        // Retorno de la pasarela (Mercado Pago vuelve a estas URL).
+        path: `pago/${result}`,
+        data: { result },
+        loadComponent: () => import('./features/billing/payment-result').then((m) => m.PaymentResultPage),
+        title: 'Pago · Hajime',
+      })),
+      {
+        path: 'pagos',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/billing/payments-admin').then((m) => m.PaymentsAdminPage),
+        title: 'Pagos · Hajime',
+      },
+      {
         path: 'mis-competidores',
         loadComponent: () => import('./features/dojo-portal/dojo-portal').then((m) => m.DojoPortalPage),
         title: 'Mis competidores · Hajime',

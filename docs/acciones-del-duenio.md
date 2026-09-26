@@ -89,6 +89,28 @@ quedó bien.
 15. **Ensayo de restauración** antes del primer torneo real:
     `bash restaurar-prueba.sh prod` y `bash respaldar.sh prod`.
 
+## Cobros (antes de pasar a `enforced`)
+
+Detalle y pasos de prueba en [cobros.md](cobros.md).
+
+1. **Elegir pasarela** (Mercado Pago o Culqi), crear la cuenta de empresa y
+   obtener las credenciales de prueba y de producción.
+2. **Registrar la URL de avisos** en el panel de la pasarela
+   (`https://<dominio>/api/v1/payments/webhook/mercadopago` o `/culqi`) y copiar
+   la clave secreta (Mercado Pago) o poner una contraseña de autenticación
+   básica (Culqi).
+3. (Culqi, mensual) **Crear los planes** en CulqiPanel con los mismos precios.
+4. **Proveedor de comprobantes (OSE/PSE):** contratar Nubefact, dar de alta
+   las series de boleta y factura y copiar la ruta y el token de la API.
+5. **Cargar los secretos** en el Container App (TEST con credenciales de
+   prueba; producción con las reales): `HAJIME_MP_ACCESS_TOKEN`,
+   `HAJIME_MP_WEBHOOK_SECRET` o `HAJIME_CULQI_SECRET_KEY`,
+   `HAJIME_CULQI_PUBLIC_KEY`, `HAJIME_CULQI_WEBHOOK_SECRET`,
+   `HAJIME_NUBEFACT_URL`, `HAJIME_NUBEFACT_TOKEN`; y las variables
+   `HAJIME_PAYMENT_PROVIDER`, `HAJIME_INVOICING_PROVIDER`, `HAJIME_PUBLIC_URL`.
+6. **Decidir** precios finales, días de prueba y si se activa el cupón
+   `PRIMER-TORNEO`; luego `HAJIME_BILLING_MODE=enforced`.
+
 ## Más adelante
 
 - **App de Android en Google Play:** hoy CI y los releases generan un APK de

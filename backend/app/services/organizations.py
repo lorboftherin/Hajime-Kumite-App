@@ -81,6 +81,9 @@ def subscription_out(db: Session, sub: Subscription) -> s.SubscriptionOut:
     plan = entitlements.get_plan(db, sub.plan_code)
     out.plan_name = plan.name if plan else sub.plan_code
     out.is_current = entitlements.is_current(sub)
+    out.recurring = entitlements.auto_renews(sub)
+    out.in_grace = entitlements.in_grace(sub)
+    out.access_until = entitlements.access_until(sub) if out.is_current else None
     return out
 
 

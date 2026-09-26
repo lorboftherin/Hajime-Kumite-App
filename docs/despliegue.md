@@ -33,6 +33,21 @@
 | `HAJIME_EXPOSE_DOCS` | `false` | `/docs` y `/openapi.json`. Sin definir: visibles salvo en `prod` |
 | `HAJIME_LOG_LEVEL` | `INFO` | `DEBUG` muestra también las sondas de salud |
 | `HAJIME_LOG_FORMAT` | `json` | `json` (una línea por evento, para Log Analytics) o `text` |
+| `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan a las funciones de pago (ver `docs/organizaciones-y-planes.md`) |
+| `HAJIME_PAYMENT_PROVIDER` | `manual` | Pasarela: `manual`, `mercadopago` o `culqi` (ver `docs/cobros.md`) |
+| `HAJIME_BILLING_GRACE_DAYS` | `7` | Días de acceso tras un pago rechazado o vencido |
+| `HAJIME_PUBLIC_URL` | `https://hajime.example.pe` | URL pública: retornos y avisos de la pasarela. Sin definir, la de la petición |
+| `HAJIME_MP_ACCESS_TOKEN` | — | **Secreto.** Access Token de Mercado Pago |
+| `HAJIME_MP_WEBHOOK_SECRET` | — | **Secreto.** Clave secreta de los avisos de Mercado Pago (firma `x-signature`) |
+| `HAJIME_CULQI_SECRET_KEY` | — | **Secreto.** Llave secreta de Culqi |
+| `HAJIME_CULQI_PUBLIC_KEY` | `pk_live_…` | Llave pública de Culqi (llega al navegador) |
+| `HAJIME_CULQI_WEBHOOK_SECRET` | — | **Secreto.** Contraseña de la autenticación básica del aviso de Culqi |
+| `HAJIME_CULQI_PLAN_IDS` | `{"dojo:month":"pln_…"}` | Planes de Culqi para el cobro mensual automático |
+| `HAJIME_INVOICING_PROVIDER` | `none` | Comprobantes de SUNAT: `none` o `nubefact` |
+| `HAJIME_NUBEFACT_URL` / `HAJIME_NUBEFACT_TOKEN` | — | **Secretos.** Ruta y token de la API de Nubefact |
+| `HAJIME_NUBEFACT_SERIE_BOLETA` / `_FACTURA` | `BBB1` / `FFF1` | Series dadas de alta en Nubefact |
+| `HAJIME_PAYMENT_HTTP_TIMEOUT` | `15` | Segundos por llamada a la pasarela o a Nubefact |
+| `HAJIME_WEBHOOK_MAX_BYTES` | `65536` | Tamaño máximo del aviso de la pasarela (413 si se pasa) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | — | Activa Azure Monitor (trazas, errores y métricas). La imagen `-azure` ya trae el paquete; en otra instalación: `pip install '.[azure]'` |
 
 Con 3 copias × 2 procesos × (6 + 4) conexiones, la app abre como máximo 60
@@ -87,6 +102,10 @@ Si el contenedor se expone directo a internet sin proxy, poner
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`
   (salvo el overlay `/overlay/…`, que se incrusta en OBS) y, fuera de `dev`,
   `Strict-Transport-Security`.
+- Sin `Content-Security-Policy` por ahora. Si se agrega, permitir
+  `https://checkout.culqi.com` solo en `/pago/culqi/*` (ver `docs/cobros.md`).
+- Avisos de pasarelas (`/api/v1/payments/webhook/…`): sin sesión, con firma o
+  autenticación, consulta a la API de la pasarela y cuerpo limitado.
 - Inicio de sesión: 5 fallos en 10 min bloquean ese usuario desde esa IP por
   5 min; 30 fallos desde una misma IP (cualquier usuario) la bloquean también.
   La cuenta se guarda en la base (tabla `login_attempts`), así vale para todos
