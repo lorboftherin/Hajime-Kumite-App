@@ -1255,7 +1255,7 @@ def tatami_schedule(db: Session, tatami_id: int) -> dict[str, Any]:
     items = schedule_items([tat], cats, list(matches))[tat.id]
     for it in items:
         it["match"] = s.MatchOut.model_validate(it["match"])
-    return {"tatami": tat, "items": items}
+    return {"tatami": tat, "items": items, "categories": cats}
 
 
 def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
@@ -1295,10 +1295,14 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
         if r.person_id and r.person_id in busy
     ]
     current = next((q for q in queue if q["match"].status == "in_progress"), None)
-    from app.services import operation, referees
+    from app.services import operation, referees, schedule
 
+    # Hora estimada de cada combate en espera (app.services.schedule): sin más consultas que el torneo.
+    etas = schedule.for_tatami(db, tat, sched["categories"], sched["items"])
+    for q in queue:
+        q["eta"] = etas.get(q["match"].id)
     return {
-        "tatami": {"id": tat.id, "name": tat.name, "number": tat.number},
+        "tatami": {"id": tat.id, "name": tat.name, "number": tat.number, "planned_start": tat.planned_start},
         "current": current,
         "queue": queue,
         "participants": {k: v.model_dump() for k, v in parts.items()},

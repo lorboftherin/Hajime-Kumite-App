@@ -265,6 +265,9 @@ CREATE TABLE tournaments (
 	template_id INTEGER NULL, 
 	public_token VARCHAR(40) NULL, 
 	public_names VARCHAR(10) NOT NULL DEFAULT 'short', 
+	public_slug VARCHAR(80) NULL, 
+	timezone VARCHAR(40) NOT NULL DEFAULT 'America/Lima', 
+	match_overhead_seconds INTEGER NOT NULL DEFAULT '60', 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -274,6 +277,7 @@ CREATE TABLE tournaments (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE UNIQUE INDEX uq_tournaments_public_slug ON tournaments (public_slug) WHERE public_slug IS NOT NULL;
 CREATE UNIQUE INDEX uq_tournaments_public_token ON tournaments (public_token) WHERE public_token IS NOT NULL;
 CREATE TABLE dojo_memberships (
 	id INTEGER NOT NULL IDENTITY, 
@@ -342,6 +346,7 @@ CREATE TABLE tatamis (
 	tournament_id INTEGER NOT NULL, 
 	number INTEGER NOT NULL, 
 	name NVARCHAR(60) NOT NULL, 
+	planned_start DATETIME2 NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 

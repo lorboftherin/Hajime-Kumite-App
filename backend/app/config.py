@@ -45,6 +45,16 @@ class Settings(BaseSettings):
     public_snapshot_max_age: float = 30.0
     # Hilos propios para /public: el vivo nunca ocupa los hilos de las mesas.
     public_threads: int = 2
+    # Actualización en vivo por SSE (GET /public/{token}/stream, ver
+    # app.services.public_stream). Conexiones abiertas por proceso: pasado el
+    # límite se responde 503 y el navegador sigue con el sondeo de siempre.
+    public_sse_max_connections: int = 500
+    # Cada cuánto el sondeo compartido del proceso mira la versión de la instantánea.
+    public_sse_poll_seconds: float = 1.0
+    # Comentario de latido: mantiene viva la conexión a través de proxies.
+    public_sse_heartbeat_seconds: float = 15.0
+    # Duración máxima de una conexión: el navegador se reconecta solo (EventSource).
+    public_sse_max_seconds: float = 900.0
     # Archivo donde se genera y guarda un secreto JWT si no se configuró uno.
     secret_file: str | None = None
 

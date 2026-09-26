@@ -58,6 +58,7 @@ from app.db.base import get_session, utcnow
 from app.db.models import PublicSnapshot, Tournament
 
 LIVE = "live"
+PEOPLE = "people"  # «¿cuándo pelea?»: competidores y su próximo combate
 LEASE = timedelta(seconds=5)  # tiempo máximo que un proceso se reserva el cálculo
 WAIT_FIRST = 3.0  # sin instantánea previa: cuánto se espera a que otro la termine
 MEMORY_MAX = 1.5  # segundos de la caché en memoria delante de la base
@@ -105,6 +106,20 @@ def _forget_local(session: Session) -> None:
         with _lock:
             for key in [k for k, (_, snap) in _memory.items() if snap.tournament_id in tids]:
                 _memory.pop(key, None)
+        for listener in list(_listeners):  # p. ej. la difusión por SSE de este proceso (public_stream)
+            try:
+                listener(set(tids))
+            except Exception:  # noqa: BLE001 - un oyente no puede romper un commit ya hecho
+                pass
+
+
+# Funciones que se enteran de qué torneos cambiaron al confirmar una escritura en este proceso.
+_listeners: list[Callable[[set[int]], None]] = []
+
+
+def on_change(listener: Callable[[set[int]], None]) -> None:
+    if listener not in _listeners:
+        _listeners.append(listener)
 
 
 @event.listens_for(Session, "after_rollback")
@@ -136,14 +151,17 @@ def clear_memory() -> None:
         _memory.clear()
 
 
-def get(token: str, kind: str, compute: Callable[[Session], dict[str, Any]]) -> Snapshot:
-    """Instantánea vigente de ``kind`` para el torneo del token (``NotFound`` si no existe)."""
+def get(token: str, kind: str, compute: Callable[[Session], dict[str, Any]], *, fresh: bool = False) -> Snapshot:
+    """Instantánea vigente de ``kind`` para el torneo del token (``NotFound`` si no existe).
+
+    ``fresh``: sin pasar por la caché en memoria (la difusión por SSE ya sabe,
+    por ``versions``, que la de la base cambió)."""
     key = (token, kind)
     ttl = min(MEMORY_MAX, get_settings().public_cache_seconds)
     while True:
         with _lock:
             hit = _memory.get(key)
-            if hit and hit[0] > time.monotonic():
+            if hit and hit[0] > time.monotonic() and not fresh:
                 return hit[1]
             flight = _flights.get(key)
             leader = flight is None
@@ -205,6 +223,26 @@ def _read(db: Session, token: str, kind: str):
     if row is None:
         raise NotFound("Este enlace de seguimiento no existe o fue desactivado")
     return row
+
+
+def versions(db: Session, token: str) -> tuple[int, dict[str, Any]]:
+    """Una consulta: id del torneo del token y estado de todas sus instantáneas
+    (etag, dirty, computed_at por vista). ``NotFound`` si el enlace no existe."""
+    rows = db.execute(
+        select(
+            Tournament.id,
+            PublicSnapshot.kind,
+            PublicSnapshot.etag,
+            PublicSnapshot.dirty,
+            PublicSnapshot.computed_at,
+        )
+        .outerjoin(PublicSnapshot, PublicSnapshot.tournament_id == Tournament.id)
+        .where(Tournament.public_token == token)
+    ).all()
+    db.commit()
+    if not rows:
+        raise NotFound("Este enlace de seguimiento no existe o fue desactivado")
+    return rows[0].id, {r.kind: r for r in rows if r.kind is not None}
 
 
 def _snap(tid: int, row) -> Snapshot:

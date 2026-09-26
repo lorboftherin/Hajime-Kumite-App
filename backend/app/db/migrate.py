@@ -21,7 +21,11 @@ LEGACY_MARKERS = (
     ("public_snapshots", "0007_vivo_compartido"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
-LEGACY_COLUMNS = (("tournaments", "public_token", "0003"), ("match_presence", "is_primary", "0008_mesa_principal"))
+LEGACY_COLUMNS = (
+    ("tournaments", "public_token", "0003"),
+    ("match_presence", "is_primary", "0008_mesa_principal"),
+    ("tournaments", "public_slug", "0009_portal_publico"),
+)
 
 
 def alembic_config() -> Config:
