@@ -17,44 +17,45 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, RouterLink, PageHead],
   template: `
     <div class="container narrow">
-      <app-page-head kanji="支払" title="Pago con Culqi" />
+      <app-page-head i18n-title="@@cobro.culqi.pago-culqi" kanji="支払" title="Pago con Culqi" />
       @if (error()) {
         <div class="alert danger">{{ error() }}</div>
       }
       @if (sub(); as s) {
         <section class="card stack">
           <p>
-            <strong>{{ s.plan_name }}</strong> · {{ s.period === 'year' ? 'anual' : 'mensual' }} ·
+            <strong>{{ s.plan_name }}</strong> ·
+            <ng-container i18n="@@cobro.culqi.periodo">{s.period, select, year {anual} other {mensual}}</ng-container> ·
             <span class="num">{{ amount() }}</span>
           </p>
           @if (s.period === 'month' && recurringHint()) {
-            <p class="small muted">
+            <p i18n="@@cobro.culqi.para-pago-mensual-renueve-solo" class="small muted">
               Para que el pago mensual se renueve solo, indica tu nombre y celular (Culqi los pide
               para la suscripción). Si los dejas vacíos, se cobra solo este mes.
             </p>
             <div class="grid-2">
               <label class="field"
-                ><span>Nombres</span><input name="fn" [(ngModel)]="firstName" maxlength="50"
+                ><span i18n="@@cobro.culqi.nombres">Nombres</span><input name="fn" [(ngModel)]="firstName" maxlength="50"
               /></label>
               <label class="field"
-                ><span>Apellidos</span><input name="ln" [(ngModel)]="lastName" maxlength="50"
+                ><span i18n="@@cobro.culqi.apellidos">Apellidos</span><input name="ln" [(ngModel)]="lastName" maxlength="50"
               /></label>
               <label class="field"
-                ><span>Celular</span
+                ><span i18n="@@cobro.culqi.celular">Celular</span
                 ><input name="ph" [(ngModel)]="phone" inputmode="tel" maxlength="15"
               /></label>
             </div>
           }
           <div class="form-actions">
-            <a class="btn" routerLink="/planes">Volver</a>
+            <a i18n="@@cobro.culqi.volver" class="btn" routerLink="/planes">Volver</a>
             <button class="btn primary" type="button" (click)="pay()" [disabled]="busy()">
               @if (busy()) {
                 <span class="spinner"></span>
-              }
+              }<ng-container i18n="@@cobro.culqi.pagar">
               Pagar {{ amount() }}
-            </button>
+            </ng-container></button>
           </div>
-          <p class="small muted">
+          <p i18n="@@cobro.culqi.pago-seguro-procesado-culqi" class="small muted">
             Pago seguro procesado por Culqi. Hajime no ve ni guarda los datos de tu tarjeta.
           </p>
         </section>
@@ -99,9 +100,9 @@ export class CulqiPage implements OnInit {
       ]);
       this.sub.set(sub);
       this.config.set(config);
-      if (!config.culqi_public_key) this.error.set('El pago con Culqi no está disponible ahora.');
+      if (!config.culqi_public_key) this.error.set($localize`:@@cobro.culqi.pago-culqi-no-esta-disponible:El pago con Culqi no está disponible ahora.`);
       else if (sub.is_current && sub.status === 'active' && !sub.in_grace)
-        this.error.set('Esta suscripción ya está pagada.');
+        this.error.set($localize`:@@cobro.culqi.esta-suscripcion-ya-esta-pagada:Esta suscripción ya está pagada.`);
     } catch (e) {
       this.error.set(ApiError.from(e).message);
     }

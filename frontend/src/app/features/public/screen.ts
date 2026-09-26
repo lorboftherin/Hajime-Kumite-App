@@ -61,7 +61,7 @@ function keepAwake(destroy: DestroyRef): void {
               [class.run]="m.running"
               [class.over]="remaining() <= 0 && m.status !== 'finished'"
             >
-              {{ m.status === 'finished' ? 'FIN' : clockText() }}
+              @if (m.status === 'finished') {<ng-container i18n="@@publico.fin">FIN</ng-container>} @else {{{ clockText() }}}
             </span>
           } @else {
             <span class="cat">{{ d.tournament }}</span>
@@ -71,7 +71,7 @@ function keepAwake(destroy: DestroyRef): void {
           @if (m.team; as t) {
             <div class="team">
               {{ t.aka }} <strong>{{ t.wins[0] }}–{{ t.wins[1] }}</strong> {{ t.ao }} ·
-              {{ t.extra ? 'combate extra' : 'combate ' + t.bout }}
+              @if (t.extra) {<ng-container i18n="@@publico.pantalla.combate-extra">combate extra</ng-container>} @else {<ng-container i18n="@@publico.pantalla.combate-n">combate {{ t.bout }}</ng-container>}
             </div>
           }
           <main class="sides">
@@ -83,7 +83,7 @@ function keepAwake(destroy: DestroyRef): void {
               <div class="pts">{{ m.score[0] }}</div>
               <div class="marks">
                 @if (m.senshu === 'aka') {
-                  <span class="senshu">先 Senshu</span>
+                  <span i18n="@@publico.pantalla.senshu" class="senshu">先 Senshu</span>
                 }
                 @if (m.sanction[0]) {
                   <span class="pen">{{ m.sanction[0] }}</span>
@@ -98,7 +98,7 @@ function keepAwake(destroy: DestroyRef): void {
               <div class="pts">{{ m.score[1] }}</div>
               <div class="marks">
                 @if (m.senshu === 'ao') {
-                  <span class="senshu">先 Senshu</span>
+                  <span i18n="@@publico.pantalla.senshu" class="senshu">先 Senshu</span>
                 }
                 @if (m.sanction[1]) {
                   <span class="pen">{{ m.sanction[1] }}</span>
@@ -107,14 +107,14 @@ function keepAwake(destroy: DestroyRef): void {
             </section>
           </main>
         } @else {
-          <main class="idle"><span>Sin combate en curso</span></main>
+          <main class="idle"><span i18n="@@publico.pantalla.sin-combate-curso">Sin combate en curso</span></main>
         }
         <footer class="foot">
           @if (d.next; as n) {
-            <span class="lbl">Siguiente</span>
-            <span class="nx"
-              ><span class="aka">{{ n.aka?.name ?? 'Por definir' }}</span> vs
-              <span class="ao">{{ n.ao?.name ?? 'Por definir' }}</span></span
+            <span i18n="@@publico.pantalla.siguiente" class="lbl">Siguiente</span>
+            <span i18n="@@publico.pantalla.vs" class="nx"
+              ><span class="aka">{{ n.aka?.name ?? txtPorDefinir }}</span> vs
+              <span class="ao">{{ n.ao?.name ?? txtPorDefinir }}</span></span
             >
             <span class="cat">{{ n.category }} · {{ n.number }}</span>
           } @else {
@@ -123,7 +123,7 @@ function keepAwake(destroy: DestroyRef): void {
         </footer>
       } @else {
         <main class="idle">
-          <span>{{ error() || 'Conectando…' }}</span>
+          <span>{{ error() || txtConectando }}</span>
         </main>
       }
     </div>
@@ -131,6 +131,8 @@ function keepAwake(destroy: DestroyRef): void {
   styleUrl: './screen.scss',
 })
 export class ScreenPage {
+  readonly txtPorDefinir = $localize`:@@comun.por-definir:Por definir`;
+  readonly txtConectando = $localize`:@@publico.pantalla.conectando:Conectando…`;
   private api = inject(ApiService);
   readonly token = input.required<string>();
   readonly tatami = input.required<string>();
@@ -211,11 +213,11 @@ export class ScreenPage {
                   ><span class="pts">{{ m.score[1] }}</span>
                 </div>
               } @else {
-                <div class="empty">Sin combate en curso</div>
+                <div i18n="@@publico.pantalla.sin-combate-curso" class="empty">Sin combate en curso</div>
               }
               @if (t.upcoming[0]; as u) {
-                <div class="tnext">
-                  Sigue: {{ u.aka?.name ?? 'Por definir' }} vs {{ u.ao?.name ?? 'Por definir' }} ·
+                <div i18n="@@publico.pantalla.sigue-vs" class="tnext">
+                  Sigue: {{ u.aka?.name ?? txtPorDefinir }} vs {{ u.ao?.name ?? txtPorDefinir }} ·
                   {{ u.number }}
                 </div>
               }
@@ -224,7 +226,7 @@ export class ScreenPage {
         </div>
       } @else {
         <main class="idle">
-          <span>{{ error() || 'Conectando…' }}</span>
+          <span>{{ error() || txtConectando }}</span>
         </main>
       }
     </div>
@@ -232,6 +234,8 @@ export class ScreenPage {
   styleUrl: './screen.scss',
 })
 export class ScreenMosaicPage {
+  readonly txtPorDefinir = $localize`:@@comun.por-definir:Por definir`;
+  readonly txtConectando = $localize`:@@publico.pantalla.conectando:Conectando…`;
   private api = inject(ApiService);
   readonly token = input.required<string>();
   readonly data = signal<PublicLive | null>(null);

@@ -27,18 +27,18 @@ import { Modal } from '../../shared/modal';
   selector: 'app-subscribe-dialog',
   imports: [FormsModule, Modal],
   template: `
-    <app-modal [title]="'Suscribirse a ' + plan().name" (closed)="closed.emit()">
+    <app-modal i18n-title="@@cobro.suscribir.titulo" title="Suscribirse a {{ plan().name }}" (closed)="closed.emit()">
       @if (instructions()) {
         <div class="alert info">{{ instructions() }}</div>
         <div class="form-actions">
-          <button class="btn primary" type="button" (click)="closed.emit()">Entendido</button>
+          <button i18n="@@cobro.suscribir.entendido" class="btn primary" type="button" (click)="closed.emit()">Entendido</button>
         </div>
       } @else {
         <form class="stack" (ngSubmit)="pay()">
           @if (forOrg()) {
             @if (orgs().length) {
               <label class="field">
-                <span>Organización</span>
+                <span i18n="@@cobro.suscribir.organizacion">Organización</span>
                 <select name="org" [(ngModel)]="orgId" required>
                   @for (o of orgs(); track o.id) {
                     <option [ngValue]="o.id">{{ o.name }}</option>
@@ -46,16 +46,16 @@ import { Modal } from '../../shared/modal';
                 </select>
               </label>
             } @else {
-              <p class="alert warn small">
+              <p i18n="@@cobro.suscribir.solo-dueno-administrador" class="alert warn small">
                 Solo el dueño o un administrador de una organización puede contratar este plan.
               </p>
             }
           }
 
           <fieldset class="periods">
-            <legend>Periodo</legend>
+            <legend i18n="@@cobro.suscribir.periodo">Periodo</legend>
             @if (plan().price_pen_month) {
-              <label class="radio">
+              <label i18n="@@cobro.suscribir.mensual" class="radio">
                 <input
                   type="radio"
                   name="period"
@@ -67,7 +67,7 @@ import { Modal } from '../../shared/modal';
               </label>
             }
             @if (plan().price_pen_year) {
-              <label class="radio">
+              <label i18n="@@cobro.suscribir.anual" class="radio">
                 <input
                   type="radio"
                   name="period"
@@ -82,10 +82,10 @@ import { Modal } from '../../shared/modal';
 
           <div class="row coupon">
             <label class="field grow">
-              <span>Cupón (opcional)</span>
-              <input name="coupon" [(ngModel)]="coupon" autocomplete="off" placeholder="CODIGO" />
+              <span i18n="@@cobro.suscribir.cupon-opcional">Cupón (opcional)</span>
+              <input i18n-placeholder="@@cobro.suscribir.codigo" name="coupon" [(ngModel)]="coupon" autocomplete="off" placeholder="CODIGO" />
             </label>
-            <button type="button" class="btn" (click)="requote()" [disabled]="!coupon.trim()">
+            <button i18n="@@cobro.suscribir.aplicar" type="button" class="btn" (click)="requote()" [disabled]="!coupon.trim()">
               Aplicar
             </button>
           </div>
@@ -95,26 +95,26 @@ import { Modal } from '../../shared/modal';
 
           @if (config()?.provider === 'mercadopago') {
             <label class="field">
-              <span>Correo de tu cuenta de Mercado Pago{{ period === 'month' ? ' *' : '' }}</span>
+              <span i18n="@@cobro.suscribir.correo-cuenta-mercado-pago">Correo de tu cuenta de Mercado Pago{{ period === 'month' ? ' *' : '' }}</span>
               <input name="email" type="email" [(ngModel)]="email" autocomplete="email" />
               @if (period === 'month') {
-                <small class="muted">El pago mensual se renueva solo con esa cuenta.</small>
+                <small i18n="@@cobro.suscribir.pago-mensual-renueva-solo-esa" class="muted">El pago mensual se renueva solo con esa cuenta.</small>
               }
             </label>
           }
 
           @if (!forOrg() && profiles().length) {
             <label class="field">
-              <span>¿Para quién?</span>
+              <span i18n="@@cobro.suscribir.para-quien">¿Para quién?</span>
               <select name="holder" [(ngModel)]="personId" (ngModelChange)="onHolder()">
-                <option [ngValue]="null">Mi cuenta</option>
+                <option i18n="@@cobro.suscribir.mi-cuenta" [ngValue]="null">Mi cuenta</option>
                 @for (p of profiles(); track p.person_id) {
                   <option [ngValue]="p.person_id">
-                    {{ p.name }}{{ p.relationship === 'self' ? ' (mi perfil)' : '' }}
+                    {{ p.name }}@if (p.relationship === 'self') {<ng-container i18n="@@cobro.suscribir.mi-perfil"> (mi perfil)</ng-container>}
                   </option>
                 }
               </select>
-              <small class="muted"
+              <small i18n="@@cobro.suscribir.plan-queda-perfil-elegido" class="muted"
                 >El plan queda en el perfil elegido (por ejemplo, el de tu hijo o hija).</small
               >
             </label>
@@ -122,7 +122,7 @@ import { Modal } from '../../shared/modal';
           @if (!forOrg()) {
             <div class="grid-2">
               <label class="field">
-                <span>DNI para la boleta (opcional)</span>
+                <span i18n="@@cobro.suscribir.dni-para-boleta-opcional">DNI para la boleta (opcional)</span>
                 <input
                   name="dni"
                   [(ngModel)]="dni"
@@ -132,7 +132,7 @@ import { Modal } from '../../shared/modal';
                 />
               </label>
               <label class="field">
-                <span>Nombre en la boleta</span>
+                <span i18n="@@cobro.suscribir.nombre-boleta">Nombre en la boleta</span>
                 <input name="bn" [(ngModel)]="billingName" maxlength="200" />
               </label>
             </div>
@@ -141,19 +141,19 @@ import { Modal } from '../../shared/modal';
           @if (quote(); as q) {
             <div class="summary card">
               <div class="line">
-                <span>Precio</span><span class="num">{{ cents(q.list_cents) }}</span>
+                <span i18n="@@cobro.suscribir.precio">Precio</span><span class="num">{{ cents(q.list_cents) }}</span>
               </div>
               @if (q.discount_cents) {
                 <div class="line">
-                  <span>Cupón {{ q.coupon_code }}</span
+                  <span i18n="@@cobro.suscribir.cupon">Cupón {{ q.coupon_code }}</span
                   ><span class="num">− {{ cents(q.discount_cents) }}</span>
                 </div>
               }
               <div class="line total">
-                <span>A pagar hoy</span><span class="num">{{ cents(q.first_cents) }}</span>
+                <span i18n="@@cobro.suscribir.pagar-hoy">A pagar hoy</span><span class="num">{{ cents(q.first_cents) }}</span>
               </div>
               @if (q.recurring_cents !== q.first_cents) {
-                <p class="small muted">
+                <p i18n="@@cobro.suscribir.renovaciones-cobran" class="small muted">
                   Las renovaciones se cobran a {{ cents(q.recurring_cents) }}.
                 </p>
               }
@@ -162,16 +162,16 @@ import { Modal } from '../../shared/modal';
 
           <div class="form-actions">
             @if (forOrg() && plan().trial_days && orgs().length) {
-              <button type="button" class="btn" (click)="trial()" [disabled]="busy()">
+              <button i18n="@@cobro.suscribir.probar-dias-gratis" type="button" class="btn" (click)="trial()" [disabled]="busy()">
                 Probar {{ plan().trial_days }} días gratis
               </button>
             }
             <button class="btn primary" [disabled]="busy() || !canPay()">
               @if (busy()) {
                 <span class="spinner"></span>
-              }
+              }<ng-container i18n="@@cobro.suscribir.continuar-pago">
               Continuar al pago
-            </button>
+            </ng-container></button>
           </div>
         </form>
       }
@@ -315,7 +315,7 @@ export class SubscribeDialog implements OnInit {
           plan_code: this.plan().code,
         }),
       );
-      this.toast.ok(`Prueba de ${this.plan().trial_days} días activada`);
+      this.toast.ok($localize`:@@cobro.suscribir.prueba-dias-activada:Prueba de ${this.plan().trial_days}:trial_days: días activada`);
       this.auth.refreshMe();
       this.closed.emit();
       void this.router.navigate(['/organizacion', this.orgId]);

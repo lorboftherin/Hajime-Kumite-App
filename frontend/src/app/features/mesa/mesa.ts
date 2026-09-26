@@ -45,7 +45,7 @@ import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
 import { FocusTrap } from '../../shared/focus-trap';
 import { LabelPipe } from '../../shared/pipes';
-import { PluralPipe, plural } from '../../shared/plural';
+import { joinList } from '../../shared/plural';
 import {
   CLOCK_EVENTS,
   FinishData,
@@ -117,7 +117,7 @@ function buzz(pattern: number | number[]): void {
 
 @Component({
   selector: 'app-mesa',
-  imports: [FormsModule, RouterLink, LabelPipe, PluralPipe, TeamMatchPanel, FocusTrap, KataMatchScores, InfractionSheet, HanteiSheet],
+  imports: [FormsModule, RouterLink, LabelPipe, TeamMatchPanel, FocusTrap, KataMatchScores, InfractionSheet, HanteiSheet],
   templateUrl: './mesa.html',
   styleUrls: [
     './mesa.scss',
@@ -130,6 +130,24 @@ function buzz(pattern: number | number[]): void {
   ],
 })
 export class MesaPage {
+  // Textos de atributos enlazados de la plantilla (mesa.html).
+  readonly txtCombate = $localize`:@@mesa.combate:Combate`;
+  readonly txtSancion = $localize`:@@mesa.sancion:Sanción`;
+  readonly txtAvisosTiempo = $localize`:@@mesa.avisos-tiempo:Avisos de tiempo`;
+  readonly txtAvisosTiempoApagado = $localize`:@@mesa.avisos-tiempo-sonido-apagado:Avisos de tiempo (sonido apagado)`;
+  readonly txtSonidoApagado = $localize`:@@mesa.sonido-apagado:Sonido apagado`;
+  readonly txtNadaDeshacer = $localize`:@@mesa.nada-deshacer:Nada que deshacer`;
+  readonly txtCorregirResultado = $localize`:@@mesa.corregir-resultado:Corregir resultado`;
+  readonly txtConfirmarGanador = $localize`:@@mesa.confirmar-ganador:Confirmar ganador`;
+  ariaMasAcciones = (c: 'aka' | 'ao') => $localize`:@@mesa.mas-acciones-para:Más acciones para ${c.toUpperCase()}:color:`;
+  ariaPuntaje = (c: string, v: number) => $localize`:@@mesa.puntaje-color:Puntaje ${c}:color:: ${v}:puntaje:`;
+  ariaFaltasC2 = (c: string) => $localize`:@@mesa.faltas-categoria-2:Faltas de categoría 2 de ${c.toUpperCase()}:color:`;
+  ariaSanciones = (c: string) => $localize`:@@mesa.sanciones-de:Sanciones de ${c.toUpperCase()}:color:`;
+  tituloAplicar = (sancion: string) => $localize`:@@mesa.aplicar-sancion:Aplicar ${sancion}:sancion:`;
+  ariaBanderas = (c: string, v: number) => $localize`:@@mesa.banderas-color:Banderas ${c}:color:: ${v}:votos:`;
+  ariaBanderasJueces = (n: number) => $localize`:@@mesa.banderas-jueces:Banderas de ${n}:jueces: jueces`;
+  ariaQuienJuez = (n: number) => $localize`:@@mesa.quien-juez:Quién es el juez ${n}:juez:`;
+
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -217,16 +235,16 @@ export class MesaPage {
   readonly taking = signal(false);
   readonly ownerText = computed(() => {
     const o = this.owner();
-    if (!o) return 'otra tablet';
-    return o.same_user ? 'otra tablet con tu usuario' : `la tablet de ${o.user}`;
+    if (!o) return $localize`:@@mesa.otra-tablet:otra tablet`;
+    return o.same_user ? $localize`:@@mesa.otra-tablet-usuario:otra tablet con tu usuario` : $localize`:@@mesa.tablet:la tablet de ${o.user}:user:`;
   });
   readonly othersText = computed(() => {
     const o = this.others();
     if (!o.length || this.readOnly()) return '';
-    const names = [...new Set(o.map((x) => (x.same_user ? 'otra sesión tuya' : x.user)))].join(
-      ' y ',
-    );
-    return `Este combate también está abierto en: ${names}. Esta tablet lleva la mesa; la otra solo ve el marcador.`;
+    const names = joinList([
+      ...new Set(o.map((x) => (x.same_user ? $localize`:@@mesa.otra-sesion-tuya:otra sesión tuya` : x.user))),
+    ]);
+    return $localize`:@@mesa.este-combate-tambien-esta:Este combate también está abierto en: ${names}:names:. Esta tablet lleva la mesa; la otra solo ve el marcador.`;
   });
 
   /** Kata: qué juez dio cada bandera (opcional, sección 20). */
@@ -319,9 +337,9 @@ export class MesaPage {
     const s = this.sb()?.suggestion;
     if (!s) return '';
     if (s.winner)
-      return `Sugerencia: gana ${s.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[s.method ?? ''] ?? s.method}`;
-    if (s.needs === 'hantei') return 'Empate: se necesita hantei (decisión de jueces)';
-    if (s.needs === 'golden_point') return 'Empate: punto de oro (senshu)';
+      return $localize`:@@mesa.sugerencia-gana:Sugerencia: gana ${s.winner === 'aka' ? 'AKA' : 'AO'}:color: por ${METHOD_LABEL[s.method ?? ''] ?? s.method}:metodo:`;
+    if (s.needs === 'hantei') return $localize`:@@mesa.empate-necesita-hantei-decision:Empate: se necesita hantei (decisión de jueces)`;
+    if (s.needs === 'golden_point') return $localize`:@@mesa.empate-punto-oro-senshu:Empate: punto de oro (senshu)`;
     return s.reason ?? '';
   });
 
@@ -397,13 +415,13 @@ export class MesaPage {
   readonly clockLabel = computed(() => {
     switch (this.clockState()) {
       case 'over':
-        return '¡Tiempo!';
+        return $localize`:@@mesa.tiempo:¡Tiempo!`;
       case 'running':
-        return this.sb()?.golden_point ? 'Punto de oro' : 'En juego';
+        return this.sb()?.golden_point ? $localize`:@@mesa.punto-oro-2:Punto de oro` : $localize`:@@mesa.juego:En juego`;
       case 'paused':
         return 'Yame';
       default:
-        return 'Sin iniciar';
+        return $localize`:@@mesa.sin-iniciar:Sin iniciar`;
     }
   });
   readonly durationText = computed(() => mmss(this.duration()));
@@ -433,14 +451,17 @@ export class MesaPage {
     const { aka, ao } = this.voteCount();
     const missing = this.votes().filter((v) => !v).length;
     const majority = this.majority();
-    if (aka >= majority) return { tone: 'aka', text: `Gana AKA · ${aka} de ${n} banderas` };
-    if (ao >= majority) return { tone: 'ao', text: `Gana AO · ${ao} de ${n} banderas` };
+    if (aka >= majority) return { tone: 'aka', text: $localize`:@@mesa.gana-aka-banderas:Gana AKA · ${aka}:aka: de ${n}:n: banderas` };
+    if (ao >= majority) return { tone: 'ao', text: $localize`:@@mesa.gana-ao-banderas:Gana AO · ${ao}:ao: de ${n}:n: banderas` };
     if (missing)
       return {
         tone: 'wait',
-        text: `${missing === 1 ? 'Falta' : 'Faltan'} ${plural(missing, 'voto', 'votos')} · sin mayoría todavía`,
+        text:
+          missing === 1
+            ? $localize`:@@mesa.falta-1-voto:Falta 1 voto · sin mayoría todavía`
+            : $localize`:@@mesa.faltan-votos:Faltan ${missing}:faltan: votos · sin mayoría todavía`,
       };
-    return { tone: 'tie', text: 'Sin mayoría: decide el juez principal' };
+    return { tone: 'tie', text: $localize`:@@mesa.sin-mayoria-decide-juez:Sin mayoría: decide el juez principal` };
   });
 
   constructor() {
@@ -592,7 +613,10 @@ export class MesaPage {
     const n = this.pending().length;
     if (!n) return undefined;
     ev.preventDefault();
-    const msg = `Hay ${plural(n, 'evento', 'eventos')} sin enviar`;
+    const msg =
+      n === 1
+        ? $localize`:@@mesa.hay-1-evento-sin-enviar:Hay 1 evento sin enviar`
+        : $localize`:@@mesa.hay-eventos-sin-enviar:Hay ${n}:n: eventos sin enviar`;
     ev.returnValue = msg;
     return msg;
   }
@@ -704,9 +728,11 @@ export class MesaPage {
     const s = this.sb();
     const secs = s?.rules?.golden_point_seconds;
     const ok = await this.dialog.confirm({
-      title: 'Punto de oro',
-      message: `Empieza el periodo extra${secs ? ` de ${secs} s` : ' sin límite de tiempo'}: gana el primero que marque.`,
-      confirmText: 'Iniciar punto de oro',
+      title: $localize`:@@mesa.punto-oro-2:Punto de oro`,
+      message: secs
+        ? $localize`:@@mesa.periodo-extra-segundos:Empieza el periodo extra de ${secs}:segundos: s: gana el primero que marque.`
+        : $localize`:@@mesa.periodo-extra-sin-limite:Empieza el periodo extra sin límite de tiempo: gana el primero que marque.`,
+      confirmText: $localize`:@@mesa.iniciar-punto-oro-2:Iniciar punto de oro`,
     });
     if (ok) this.send('golden_point');
   }
@@ -723,16 +749,16 @@ export class MesaPage {
       color === 'aka' ? this.sb()?.match.aka_registration_id : this.sb()?.match.ao_registration_id;
     if (!rules['shikkaku_tournament_wide'] || !rid) return;
     const ok = await this.dialog.confirm({
-      title: 'Descalificar del torneo',
-      message: `${this.name(color)}: ¿descalificar también del torneo completo? Se retiran sus demás inscripciones (bye o walkover en cada llave).`,
-      confirmText: 'Descalificar del torneo',
+      title: $localize`:@@mesa.descalificar-torneo:Descalificar del torneo`,
+      message: $localize`:@@mesa.descalificar-tambien-torneo:${this.name(color)}:name:: ¿descalificar también del torneo completo? Se retiran sus demás inscripciones (bye o walkover en cada llave).`,
+      confirmText: $localize`:@@mesa.descalificar-torneo:Descalificar del torneo`,
       danger: true,
     });
     if (!ok) return;
     const res = await this.mut.post(`/registrations/${rid}/disqualify`, {
-      reason: 'Shikkaku en la mesa',
+      reason: $localize`:@@mesa.shikkaku-mesa:Shikkaku en la mesa`,
     });
-    if (res) this.toast.show('Descalificado del torneo');
+    if (res) this.toast.show($localize`:@@mesa.descalificado-torneo:Descalificado del torneo`);
   }
 
   /** Gota de tinta desde el punto tocado (solo efecto visual; CSS la desactiva con reduced-motion). */
@@ -776,14 +802,14 @@ export class MesaPage {
     this.primary.set(r.primary);
     this.owner.set(r.primary ? null : (r.owner ?? null));
     if (!was && r.primary) {
-      this.toast.show('Esta tablet vuelve a llevar la mesa');
+      this.toast.show($localize`:@@mesa.esta-tablet-vuelve-llevar-mesa:Esta tablet vuelve a llevar la mesa`);
       this.flush();
     }
   }
 
   /** Otra tablet lleva la mesa: esta pasa a solo lectura; la cola se conserva. */
   private toReadOnly(): void {
-    if (this.primary()) this.toast.warn('Otra tablet tomó la mesa: esta queda en solo lectura.');
+    if (this.primary()) this.toast.warn($localize`:@@mesa.otra-tablet-tomo-mesa-esta-queda:Otra tablet tomó la mesa: esta queda en solo lectura.`);
     this.primary.set(false);
     this.moreOpen.set(null);
     this.heartbeat();
@@ -793,9 +819,9 @@ export class MesaPage {
   async takeTable(): Promise<void> {
     if (this.taking()) return;
     const ok = await this.dialog.confirm({
-      title: 'Tomar la mesa',
-      message: `Esta tablet pasará a registrar el combate y ${this.ownerText()} quedará en solo lectura. Háganlo solo si la otra tablet ya no se usa.`,
-      confirmText: 'Tomar la mesa',
+      title: $localize`:@@mesa.tomar-mesa-2:Tomar la mesa`,
+      message: $localize`:@@mesa.esta-tablet-pasara-registrar:Esta tablet pasará a registrar el combate y ${this.ownerText()}:ownerText: quedará en solo lectura. Háganlo solo si la otra tablet ya no se usa.`,
+      confirmText: $localize`:@@mesa.tomar-mesa-2:Tomar la mesa`,
     });
     if (!ok) return;
     this.taking.set(true);
@@ -808,7 +834,7 @@ export class MesaPage {
       this.others.set(r.others);
       this.primary.set(true);
       this.owner.set(null);
-      this.toast.ok('Esta tablet lleva la mesa');
+      this.toast.ok($localize`:@@mesa.esta-tablet-lleva-mesa:Esta tablet lleva la mesa`);
       await this.reload(true);
       this.flush();
     } catch (e) {
@@ -898,8 +924,8 @@ export class MesaPage {
     });
     this.toast.show(
       saved.length === 1
-        ? 'Se recuperó 1 evento sin enviar'
-        : `Se recuperaron ${plural(saved.length, 'evento', 'eventos')} sin enviar`,
+        ? $localize`:@@mesa.recupero-1-evento-sin-enviar:Se recuperó 1 evento sin enviar`
+        : $localize`:@@mesa.recuperaron-sin-enviar:Se recuperaron ${saved.length}:n: eventos sin enviar`,
     );
     this.flush();
   }
@@ -941,13 +967,17 @@ export class MesaPage {
           const sb = finish ? (res as FinishOut).scoreboard : (res as Scoreboard);
           this.pending.update((q) => q.filter((x) => x !== p));
           this.offline.set(false);
-          if (finish) this.toast.ok('Combate cerrado: el cierre en cola se envió');
+          if (finish) this.toast.ok($localize`:@@mesa.combate-cerrado-cierre-cola:Combate cerrado: el cierre en cola se envió`);
           if (p.matchId === this.id()) {
             this.setScoreboard(sb, seq);
             if (finish) this.unlocked.set(false);
             if (p.body.type === 'annul') {
               const t = sb.events.find((x) => x.id === p.body.target_id);
-              this.toast.show(`Deshecho: ${t ? this.describe(t, sb) : 'evento'}`);
+              this.toast.show(
+                t
+                  ? $localize`:@@mesa.deshecho:Deshecho: ${this.describe(t, sb)}:evento:`
+                  : $localize`:@@mesa.deshecho-evento:Deshecho: evento`,
+              );
             }
             // Si la pantalla se abrió sin conexión, completa la carga (categoría, torneo).
             if (this.loadError() || !this.category()) this.load(this.id());
@@ -955,8 +985,8 @@ export class MesaPage {
           const affected = finish ? (res as FinishOut).affected_matches : [];
           if (affected?.length) {
             await this.dialog.alert(
-              'Combates siguientes afectados',
-              'La corrección cambia el ganador de un combate que ya avanzó en la llave. Revisa estos combates:',
+              $localize`:@@mesa.combates-siguientes-afectados:Combates siguientes afectados`,
+              $localize`:@@mesa.correccion-cambia-ganador:La corrección cambia el ganador de un combate que ya avanzó en la llave. Revisa estos combates:`,
               affected,
             );
           }
@@ -969,7 +999,7 @@ export class MesaPage {
             if (this.destroyed) return;
             if (reason === null) {
               this.pending.update((q) => q.filter((x) => x !== p));
-              this.toast.show(`${EVENT_LABEL[p.body.type] ?? p.body.type}: cancelado`);
+              this.toast.show($localize`:@@mesa.cancelado:${EVENT_LABEL[p.body.type] ?? p.body.type}:evento:: cancelado`);
               continue;
             }
             p.body.override = { reason };
@@ -991,7 +1021,7 @@ export class MesaPage {
             this.offline.set(true);
             this.stuck.set(p);
             this.toast.error(
-              `${EVENT_LABEL[p.body.type] ?? p.body.type}: el servidor falla (${err.fullMessage}). La cola queda detenida.`,
+              $localize`:@@mesa.servidor-falla-cola-queda:${EVENT_LABEL[p.body.type] ?? p.body.type}:evento:: el servidor falla (${err.fullMessage}:error:). La cola queda detenida.`,
             );
             return;
           }
@@ -1061,7 +1091,7 @@ export class MesaPage {
       this.reloginPass.set('');
       this.session.resolved();
       this.authBlocked.set(false);
-      this.toast.ok('Sesión iniciada: se reanuda el envío');
+      this.toast.ok($localize`:@@mesa.sesion-iniciada-reanuda-envio:Sesión iniciada: se reanuda el envío`);
       this.heartbeat();
       if (this.pending().length) this.retryNow();
       else this.reload(true);
@@ -1077,13 +1107,13 @@ export class MesaPage {
     const p = this.stuck();
     if (!p) return;
     const clockNote = CLOCK_EVENTS.has(p.body.type)
-      ? ' Atención: es un evento del reloj; al descartarlo, el tiempo de esta tablet y el del servidor dejarán de coincidir. Revisa el reloj y corrígelo con los ajustes de ±1 s y ±10 s.'
+      ? $localize`:@@mesa.atencion-evento-reloj: Atención: es un evento del reloj; al descartarlo, el tiempo de esta tablet y el del servidor dejarán de coincidir. Revisa el reloj y corrígelo con los ajustes de ±1 s y ±10 s.`
       : '';
     const ok = await this.dialog.confirm({
-      title: 'Descartar este evento',
-      message: `Se descartará "${this.stuckText()}" y no quedará registrado en el combate. Los demás eventos pendientes se seguirán enviando.${clockNote}`,
+      title: $localize`:@@mesa.descartar-este-evento-2:Descartar este evento`,
+      message: $localize`:@@mesa.descartara-no-quedara-registrado:Se descartará "${this.stuckText()}:stuckText:" y no quedará registrado en el combate. Los demás eventos pendientes se seguirán enviando.${clockNote}:clockNote:`,
       danger: true,
-      confirmText: 'Descartar',
+      confirmText: $localize`:@@mesa.descartar:Descartar`,
     });
     if (!ok) return;
     this.pending.update((q) => q.filter((x) => x !== p));
@@ -1145,16 +1175,16 @@ export class MesaPage {
   ): Promise<void> {
     const who = color === 'aka' ? 'AKA' : 'AO';
     const text: Record<string, string> = {
-      senshu_cancel: `Cancelar el senshu de ${who}`,
-      kiken: `${who} abandona (kiken)`,
-      shikkaku: `${who} es descalificado (shikkaku)`,
-      walkover: `${who} no se presenta (walkover)`,
-      hantei: `Hantei: los jueces dan la victoria a ${who}`,
+      senshu_cancel: $localize`:@@mesa.cancelar-senshu:Cancelar el senshu de ${who}:who:`,
+      kiken: $localize`:@@mesa.abandona-kiken:${who}:who: abandona (kiken)`,
+      shikkaku: $localize`:@@mesa.descalificado-shikkaku:${who}:who: es descalificado (shikkaku)`,
+      walkover: $localize`:@@mesa.no-presenta-walkover:${who}:who: no se presenta (walkover)`,
+      hantei: $localize`:@@mesa.hantei-jueces-dan-victoria:Hantei: los jueces dan la victoria a ${who}:who:`,
     };
     const ok = await this.dialog.confirm({
       title: EVENT_LABEL[type],
       message: text[type] + '.',
-      confirmText: 'Registrar',
+      confirmText: $localize`:@@mesa.registrar:Registrar`,
     });
     if (ok) this.send(type, { color });
     if (ok && type === 'shikkaku') this.offerDisqualify(color);
@@ -1163,7 +1193,7 @@ export class MesaPage {
   undo(): void {
     const t = this.undoTarget();
     if (!t) {
-      this.toast.show('No hay eventos para deshacer');
+      this.toast.show($localize`:@@mesa.no-hay-eventos-para-deshacer:No hay eventos para deshacer`);
       return;
     }
     // El aviso "Deshecho" se muestra cuando el servidor confirma la anulación (ver flush).
@@ -1209,10 +1239,10 @@ export class MesaPage {
     const t = this.timeEndSuggestion();
     if (!t) return '';
     if (t.winner)
-      return `Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'} por ${METHOD_LABEL[t.method ?? ''] ?? t.method}`;
+      return $localize`:@@mesa.sugerencia-si-termino-tiempo:Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'}:color: por ${METHOD_LABEL[t.method ?? ''] ?? t.method}:metodo:`;
     if (t.needs === 'hantei')
-      return 'Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)';
-    if (t.needs === 'golden_point') return 'Si terminó el tiempo: empate, punto de oro';
+      return $localize`:@@mesa.si-termino-tiempo-empate:Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)`;
+    if (t.needs === 'golden_point') return $localize`:@@mesa.si-termino-tiempo-empate-punto:Si terminó el tiempo: empate, punto de oro`;
     return t.reason ?? '';
   }
 
@@ -1246,7 +1276,7 @@ export class MesaPage {
     this.pending.update((q) => enqueueFinish(q, this.id(), f));
     this.finishOpen.set(false);
     this.toast.warn(
-      'Cierre en cola: anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.',
+      $localize`:@@mesa.cierre-cola-anota-resultado-2:Cierre en cola: anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.`,
     );
     this.flush();
   }
@@ -1254,7 +1284,7 @@ export class MesaPage {
   async confirmFinish(): Promise<void> {
     const f = this.finishForm;
     if (!f.winner) {
-      this.toast.warn('Elige el ganador antes de confirmar.');
+      this.toast.warn($localize`:@@mesa.elige-ganador-antes-confirmar:Elige el ganador antes de confirmar.`);
       return;
     }
     const data: FinishData = {
@@ -1282,7 +1312,7 @@ export class MesaPage {
           this.deviceOpts,
         ),
       {
-        success: 'Combate cerrado',
+        success: $localize`:@@mesa.combate-cerrado-2:Combate cerrado`,
         onConflict: () => this.reload(),
         onError: (err) => {
           if (err.isNetwork || err.code === 'TIMEOUT') {
@@ -1308,8 +1338,8 @@ export class MesaPage {
     this.setScoreboard(res.scoreboard, seq);
     if (res.affected_matches.length) {
       await this.dialog.alert(
-        'Combates siguientes afectados',
-        'La corrección cambia el ganador de un combate que ya avanzó en la llave. Revisa estos combates:',
+        $localize`:@@mesa.combates-siguientes-afectados:Combates siguientes afectados`,
+        $localize`:@@mesa.correccion-cambia-ganador:La corrección cambia el ganador de un combate que ya avanzó en la llave. Revisa estos combates:`,
         res.affected_matches,
       );
     }
@@ -1361,17 +1391,17 @@ export class MesaPage {
     if (!res) return;
     if (res.needs_head_judge) {
       this.needsHead.set(true);
-      this.toast.warn('Empate de banderas: decide el juez principal.');
+      this.toast.warn($localize`:@@mesa.empate-banderas-decide-juez:Empate de banderas: decide el juez principal.`);
       return;
     }
     this.needsHead.set(false);
     this.flagsId = newId(); // decisión registrada: la próxima es otro evento
-    this.toast.ok(`Gana ${res.winner === 'aka' ? 'AKA' : 'AO'} por banderas`);
+    this.toast.ok($localize`:@@mesa.gana-banderas:Gana ${res.winner === 'aka' ? 'AKA' : 'AO'}:color: por banderas`);
     await this.reload();
     if (res.affected?.length) {
       await this.dialog.alert(
-        'Combates siguientes afectados',
-        'Revisa estos combates:',
+        $localize`:@@mesa.combates-siguientes-afectados:Combates siguientes afectados`,
+        $localize`:@@mesa.revisa-estos-combates:Revisa estos combates:`,
         res.affected,
       );
     }
@@ -1395,7 +1425,7 @@ export class MesaPage {
         q.queue.find((it) => it.match.id !== this.id() && it.match.status === 'in_progress') ??
         q.queue.find((it) => it.match.id !== this.id());
       if (!next) {
-        this.dialog.alert('Cola vacía', 'No hay más combates en la cola de este tatami.');
+        this.dialog.alert($localize`:@@mesa.cola-vacia:Cola vacía`, $localize`:@@mesa.no-hay-mas-combates-cola-este:No hay más combates en la cola de este tatami.`);
         return;
       }
       this.router.navigate(['/mesa', next.match.id], { queryParams: { tatami: t } });
@@ -1434,7 +1464,7 @@ export class MesaPage {
     const s = this.sb();
     if (!s) return '';
     const lvl = s.sanction[color];
-    return lvl ? (s.sanction_labels[lvl - 1] ?? `Nivel ${lvl}`) : '';
+    return lvl ? (s.sanction_labels[lvl - 1] ?? $localize`:@@mesa.nivel:Nivel ${lvl}:lvl:`) : '';
   }
 
   describe(
@@ -1451,22 +1481,25 @@ export class MesaPage {
     const who = e.color ? e.color.toUpperCase() + ' · ' : '';
     switch (e.type) {
       case 'point':
-        return `${who}${POINT_LABEL[Number(e.value)] ?? 'Punto'} +${e.value}`;
+        return `${who}${POINT_LABEL[Number(e.value)] ?? $localize`:@@mesa.punto:Punto`} +${e.value}`;
       case 'sanction':
-        return `${who}${sb.sanction_labels[Number(e.value) - 1] ?? 'Sanción ' + e.value}`;
+        return `${who}${sb.sanction_labels[Number(e.value) - 1] ?? $localize`:@@mesa.sancion-nivel:Sanción ${e.value}:nivel:`}`;
       case 'time_adjust': {
         // value suma al tiempo transcurrido; se muestra como cambio del tiempo restante.
         const r = -Number(e.value ?? 0);
-        return `Ajuste de tiempo: ${r > 0 ? '+' : ''}${r} s al restante`;
+        const ajuste = `${r > 0 ? '+' : ''}${r}`;
+        return $localize`:@@mesa.ajuste-tiempo-s-restante:Ajuste de tiempo: ${ajuste}:ajuste: s al restante`;
       }
       case 'annul': {
         const t =
           sb.events.find((x) => x.id === e.target_id) ??
           this.pending().find((p) => p.body.id === e.target_id)?.body;
-        return `Deshacer: ${t ? this.describe(t, sb) : 'evento'}`;
+        return t
+          ? $localize`:@@mesa.deshacer-evento:Deshacer: ${this.describe(t, sb)}:evento:`
+          : $localize`:@@mesa.deshacer-evento-generico:Deshacer: evento`;
       }
       case 'finish':
-        return `${who}Gana por ${METHOD_LABEL[e.method ?? ''] ?? e.method ?? ''}${e.reason ? ' — ' + e.reason : ''}`;
+        return $localize`:@@mesa.gana:${who}:who:Gana por ${METHOD_LABEL[e.method ?? ''] ?? e.method ?? ''}:metodo:${e.reason ? ' — ' + e.reason : ''}:motivo:`;
       default:
         return `${who}${EVENT_LABEL[e.type] ?? e.type}`;
     }

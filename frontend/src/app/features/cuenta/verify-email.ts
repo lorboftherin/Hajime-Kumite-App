@@ -12,15 +12,15 @@ import { AuthCard } from './auth-card';
   selector: 'app-verify-email',
   imports: [AuthCard, RouterLink],
   template: `
-    <app-auth-card id="ve" heading="Confirmar correo" [backLink]="next()" [backText]="nextText()">
+    <app-auth-card i18n-heading="@@cuenta.verificar.confirmar-correo" id="ve" heading="Confirmar correo" [backLink]="next()" [backText]="nextText()">
       @switch (state()) {
         @case ('busy') {
-          <p class="row"><span class="spinner"></span> Confirmando…</p>
+          <p i18n="@@cuenta.verificar.confirmando" class="row"><span class="spinner"></span> Confirmando…</p>
         }
         @case ('ok') {
           <div class="alert ok" role="status">
-            <strong>¡Listo! Tu correo quedó confirmado.</strong>
-            <div class="small">
+            <strong i18n="@@cuenta.verificar.listo-correo-quedo-confirmado">¡Listo! Tu correo quedó confirmado.</strong>
+            <div i18n="@@cuenta.verificar.ya-puedes-recuperar-contrasena" class="small">
               Ya puedes recuperar tu contraseña con él y reclamar tu perfil deportivo.
             </div>
           </div>
@@ -28,9 +28,13 @@ import { AuthCard } from './auth-card';
         }
         @default {
           <div class="alert danger" role="alert">
-            {{ error() || 'El enlace está incompleto. Ábrelo tal como llegó en el correo.' }}
+            @if (error()) {
+              {{ error() }}
+            } @else {
+              <ng-container i18n="@@cuenta.verificar.enlace-incompleto">El enlace está incompleto. Ábrelo tal como llegó en el correo.</ng-container>
+            }
           </div>
-          <p class="small muted">
+          <p i18n="@@cuenta.verificar.puedes-pedir-enlace-nuevo-desde" class="small muted">
             Puedes pedir un enlace nuevo desde «Mi cuenta» después de ingresar.
           </p>
         }
@@ -45,14 +49,14 @@ export class VerifyEmailPage {
   readonly state = signal<'busy' | 'ok' | 'error'>('busy');
   readonly error = signal('');
   readonly next = signal('/login');
-  readonly nextText = signal('Ingresar');
+  readonly nextText = signal($localize`:@@cuenta.verificar.ingresar:Ingresar`);
 
   constructor() {
     const snap = inject(ActivatedRoute).snapshot;
     const token = tokenFromUrl(snap.fragment, snap.queryParamMap.get('token'));
     if (this.auth.isLoggedIn()) {
       this.next.set('/mis-perfiles');
-      this.nextText.set('Ir a mis perfiles');
+      this.nextText.set($localize`:@@cuenta.verificar.ir-mis-perfiles:Ir a mis perfiles`);
     }
     if (!token) {
       this.state.set('error');

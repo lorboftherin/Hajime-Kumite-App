@@ -40,7 +40,7 @@ export function setShareMeta(
   const desc = `${fmtDay(t.start_date)}${where ? ` · ${where}` : ''}. Combates en vivo, horarios, llaves y resultados.`;
   const url = `${location.origin}${path}`;
   const image = `${location.origin}/${SHARE_IMAGE}`;
-  title.setTitle(`${heading} · Hajime en vivo`);
+  title.setTitle($localize`:@@publico.compartir.hajime-vivo:${heading}:heading: · Hajime en vivo`);
   const tags: Array<[string, string, 'name' | 'property']> = [
     ['description', desc, 'name'],
     ['og:type', 'website', 'property'],

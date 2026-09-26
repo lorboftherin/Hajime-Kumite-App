@@ -18,37 +18,37 @@ import { MutationService } from '../core/mutation.service';
   template: `
     <form (ngSubmit)="submit()" class="stack">
       <div class="grid-2">
-        <label class="field"><span>Nombres *</span><input name="fn" [(ngModel)]="f.first_names" required /></label>
-        <label class="field"><span>Apellidos *</span><input name="ln" [(ngModel)]="f.last_names" required /></label>
+        <label class="field"><span i18n="@@persona.form.nombres">Nombres *</span><input name="fn" [(ngModel)]="f.first_names" required /></label>
+        <label class="field"><span i18n="@@persona.form.apellidos">Apellidos *</span><input name="ln" [(ngModel)]="f.last_names" required /></label>
         @if (showPrivate()) {
-          <label class="field"><span>Fecha de nacimiento</span><input type="date" name="bd" [(ngModel)]="f.birth_date" /></label>
+          <label class="field"><span i18n="@@persona.form.fecha-nacimiento">Fecha de nacimiento</span><input type="date" name="bd" [(ngModel)]="f.birth_date" /></label>
         }
         <label class="field">
-          <span>Sexo *</span>
+          <span i18n="@@persona.form.sexo">Sexo *</span>
           <select name="sex" [(ngModel)]="f.sex">
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
+            <option i18n="@@persona.form.masculino" value="M">Masculino</option>
+            <option i18n="@@persona.form.femenino" value="F">Femenino</option>
           </select>
         </label>
         @if (showPrivate()) {
         <label class="field">
-          <span>Documento</span>
+          <span i18n="@@persona.form.documento">Documento</span>
           <div class="row nowrap">
             <select name="dt" [(ngModel)]="f.doc_type" style="width: 7rem">
-              <option value="DNI">DNI</option>
-              <option value="CE">CE</option>
-              <option value="PASSPORT">Pasaporte</option>
-              <option value="OTHER">Otro</option>
+              <option i18n="@@persona.form.dni" value="DNI">DNI</option>
+              <option i18n="@@persona.form.ce" value="CE">CE</option>
+              <option i18n="@@persona.form.pasaporte" value="PASSPORT">Pasaporte</option>
+              <option i18n="@@persona.form.otro" value="OTHER">Otro</option>
             </select>
-            <input class="grow" name="dn" [(ngModel)]="f.doc_number" placeholder="Número (opcional)" />
+            <input i18n-placeholder="@@persona.form.numero-opcional" class="grow" name="dn" [(ngModel)]="f.doc_number" placeholder="Número (opcional)" />
           </div>
         </label>
         }
         @if (fixedDojoId() === null) {
         <label class="field">
-          <span>Dojo</span>
+          <span i18n="@@persona.form.dojo">Dojo</span>
           <select name="dojo" [(ngModel)]="f.dojo_id" (ngModelChange)="f.branch_id = null; dojoSel.set($event)">
-            <option [ngValue]="null">— Sin dojo —</option>
+            <option i18n="@@persona.form.sin-dojo" [ngValue]="null">— Sin dojo —</option>
             @for (d of dojos(); track d.id) {
               <option [ngValue]="d.id">{{ d.name }}</option>
             }
@@ -57,7 +57,7 @@ import { MutationService } from '../core/mutation.service';
         }
         @if (fixedDojoId() === null && branches().length) {
           <label class="field">
-            <span>Sede</span>
+            <span i18n="@@persona.form.sede">Sede</span>
             <select name="branch" [(ngModel)]="f.branch_id">
               <option [ngValue]="null">—</option>
               @for (b of branches(); track b.id) {
@@ -67,7 +67,7 @@ import { MutationService } from '../core/mutation.service';
           </label>
         }
         <label class="field">
-          <span>Grado</span>
+          <span i18n="@@persona.form.grado">Grado</span>
           <select name="grade" [(ngModel)]="f.grade">
             <option [ngValue]="null">—</option>
             @for (g of grades; track g) {
@@ -77,30 +77,30 @@ import { MutationService } from '../core/mutation.service';
         </label>
       </div>
       <fieldset class="consent">
-        <legend><label class="field inline"><input type="checkbox" name="hc" [(ngModel)]="f.has_consent" /> Registrar consentimiento de datos</label></legend>
+        <legend><label i18n="@@persona.form.registrar-consentimiento-datos" class="field inline"><input type="checkbox" name="hc" [(ngModel)]="f.has_consent" /> Registrar consentimiento de datos</label></legend>
         @if (f.has_consent) {
           <div class="grid-3">
-            <label class="field"><span>Otorgado por</span><input name="gb" [(ngModel)]="f.consent_by" placeholder="Nombre del padre/madre o titular" /></label>
+            <label class="field"><span i18n="@@persona.form.otorgado">Otorgado por</span><input i18n-placeholder="@@persona.form.nombre-padre-madre-titular" name="gb" [(ngModel)]="f.consent_by" placeholder="Nombre del padre/madre o titular" /></label>
             <label class="field">
-              <span>Relación</span>
+              <span i18n="@@persona.form.relacion">Relación</span>
               <select name="rel" [(ngModel)]="f.consent_rel">
-                <option value="titular">Titular</option>
-                <option value="padre/madre">Padre / madre</option>
-                <option value="tutor">Tutor</option>
+                <option i18n="@@persona.form.titular" value="titular">Titular</option>
+                <option i18n="@@persona.form.padre-madre" value="padre/madre">Padre / madre</option>
+                <option i18n="@@persona.form.tutor" value="tutor">Tutor</option>
               </select>
             </label>
-            <label class="field"><span>Fecha</span><input type="date" name="go" [(ngModel)]="f.consent_on" /></label>
+            <label class="field"><span i18n="@@persona.form.fecha">Fecha</span><input type="date" name="go" [(ngModel)]="f.consent_on" /></label>
           </div>
         }
       </fieldset>
       @if (docDuplicates().length) {
-        <div class="alert danger">
+        <div class="alert danger"><ng-container i18n="@@persona.form.ya-existe-persona-ese-documento">
           Ya existe una persona con ese documento:
-          <ul>
+          </ng-container><ul>
             @for (d of docDuplicates(); track d.person_id) {
               <li>
                 {{ d.full_name }} (#{{ d.person_id }})
-                <button type="button" class="btn sm" (click)="useExisting.emit(d.person_id)">Usar esta persona</button>
+                <button i18n="@@persona.form.usar-esta-persona" type="button" class="btn sm" (click)="useExisting.emit(d.person_id)">Usar esta persona</button>
               </li>
             }
           </ul>
@@ -108,7 +108,7 @@ import { MutationService } from '../core/mutation.service';
       }
       <div class="form-actions">
         <ng-content />
-        <button class="btn primary" [disabled]="!f.first_names.trim() || !f.last_names.trim() || busy()">Crear persona</button>
+        <button i18n="@@persona.form.crear-persona" class="btn primary" [disabled]="!f.first_names.trim() || !f.last_names.trim() || busy()">Crear persona</button>
       </div>
     </form>
   `,
@@ -197,7 +197,7 @@ export class PersonForm implements OnInit {
     };
     this.busy.set(true);
     const p = await this.mut.post<Person>(this.postPath(), body, {
-      success: 'Persona creada',
+      success: $localize`:@@persona.form.persona-creada:Persona creada`,
       onError: (err) => {
         if (err.code === 'DUPLICATE_DOCUMENT') {
           this.docDuplicates.set((err.details['duplicates'] as Duplicate[]) ?? []);

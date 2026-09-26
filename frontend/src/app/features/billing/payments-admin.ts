@@ -22,47 +22,47 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, PageHead, Icon],
   template: `
     <div class="container">
-      <app-page-head kanji="会計" title="Pagos">
+      <app-page-head i18n-title="@@cobro.admin.pagos" kanji="会計" title="Pagos">
         <div meta class="meta-line">
           @if (config(); as c) {
-            <span>Pasarela: {{ provider(c.provider) }}</span>
-            <span
-              >Comprobantes: {{ c.invoicing === 'nubefact' ? 'Nubefact' : 'desactivados' }}</span
+            <span i18n="@@cobro.admin.pasarela">Pasarela: {{ provider(c.provider) }}</span>
+            <span i18n="@@cobro.admin.comprobantes"
+              >Comprobantes: {c.invoicing, select, nubefact {Nubefact} other {desactivados}}</span
             >
-            <span>Modo: {{ c.mode === 'enforced' ? 'cobro activo' : 'marcha blanca' }}</span>
+            <span i18n="@@cobro.admin.modo">Modo: {c.mode, select, enforced {cobro activo} other {marcha blanca}}</span>
           }
         </div>
       </app-page-head>
 
       <form class="row filters" (ngSubmit)="load()">
-        <input
+        <input i18n-aria-label="@@cobro.admin.buscar-pagos" i18n-placeholder="@@cobro.admin.referencia-organizacion-usuario"
           name="q"
           [(ngModel)]="q"
           placeholder="Referencia, organización o usuario"
           aria-label="Buscar pagos"
         />
-        <select name="st" [(ngModel)]="status" aria-label="Estado" (ngModelChange)="load()">
-          <option value="">Todos los estados</option>
-          <option value="approved">Aprobados</option>
-          <option value="pending">Pendientes</option>
-          <option value="rejected">Rechazados</option>
-          <option value="refunded">Reembolsados</option>
+        <select i18n-aria-label="@@cobro.admin.estado" name="st" [(ngModel)]="status" aria-label="Estado" (ngModelChange)="load()">
+          <option i18n="@@cobro.admin.todos-estados" value="">Todos los estados</option>
+          <option i18n="@@cobro.admin.aprobados" value="approved">Aprobados</option>
+          <option i18n="@@cobro.admin.pendientes" value="pending">Pendientes</option>
+          <option i18n="@@cobro.admin.rechazados" value="rejected">Rechazados</option>
+          <option i18n="@@cobro.admin.reembolsados" value="refunded">Reembolsados</option>
         </select>
-        <button class="btn"><app-icon name="search" /> Buscar</button>
+        <button i18n="@@cobro.admin.buscar" class="btn"><app-icon name="search" /> Buscar</button>
       </form>
 
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Titular</th>
-              <th>Plan</th>
-              <th class="right">Monto</th>
-              <th>Estado</th>
-              <th>Pasarela</th>
-              <th>Comprobante</th>
-              <th><span class="sr-only">Acciones</span></th>
+              <th i18n="@@cobro.admin.fecha">Fecha</th>
+              <th i18n="@@cobro.admin.titular">Titular</th>
+              <th i18n="@@cobro.admin.plan">Plan</th>
+              <th i18n="@@cobro.admin.monto" class="right">Monto</th>
+              <th i18n="@@cobro.admin.estado-2">Estado</th>
+              <th i18n="@@cobro.admin.pasarela-2">Pasarela</th>
+              <th i18n="@@cobro.admin.comprobante">Comprobante</th>
+              <th><span i18n="@@cobro.admin.acciones" class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
@@ -94,8 +94,8 @@ import { PageHead } from '../../shared/page-head';
                       invStatus(inv.status)
                     }}</span>
                     @if (p.credit_note; as nc) {
-                      <br />Nota de crédito
-                      @if (nc.pdf_url) {
+                      <ng-container i18n="@@cobro.admin.nota-credito"><br />Nota de crédito
+                      </ng-container>@if (nc.pdf_url) {
                         <a [href]="nc.pdf_url" target="_blank" rel="noopener">{{
                           num(nc.serie, nc.numero)
                         }}</a>
@@ -118,14 +118,14 @@ import { PageHead } from '../../shared/page-head';
                     config()?.invoicing === 'nubefact'
                   ) {
                     @if (!p.invoice || p.invoice.status === 'error') {
-                      <button class="btn sm" (click)="invoice(p)">Emitir comprobante</button>
+                      <button i18n="@@cobro.admin.emitir-comprobante" class="btn sm" (click)="invoice(p)">Emitir comprobante</button>
                     }
                   }
                   @if (p.status === 'refunded' && p.credit_note?.status === 'error') {
-                    <button class="btn sm" (click)="invoice(p)">Reintentar nota de crédito</button>
+                    <button i18n="@@cobro.admin.reintentar-nota-credito" class="btn sm" (click)="invoice(p)">Reintentar nota de crédito</button>
                   }
                   @if (p.status === 'approved') {
-                    <button class="btn sm ghost" (click)="refund(p)">Reembolsar</button>
+                    <button i18n="@@cobro.admin.reembolsar" class="btn sm ghost" (click)="refund(p)">Reembolsar</button>
                   }
                 </td>
               </tr>
@@ -134,9 +134,9 @@ import { PageHead } from '../../shared/page-head';
                 <td colspan="8" class="muted small">
                   @if (loading()) {
                     <span class="spinner"></span>
-                  } @else {
+                  } @else {<ng-container i18n="@@cobro.admin.sin-pagos">
                     Sin pagos.
-                  }
+                  </ng-container>}
                 </td>
               </tr>
             }
@@ -145,17 +145,17 @@ import { PageHead } from '../../shared/page-head';
       </div>
 
       <section class="card coupons" aria-labelledby="h-cupones">
-        <h2 id="h-cupones">Cupones</h2>
+        <h2 i18n="@@cobro.admin.cupones" id="h-cupones">Cupones</h2>
         <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Descuento</th>
-                <th>Planes</th>
-                <th>Usos</th>
-                <th>Vence</th>
-                <th>Activo</th>
+                <th i18n="@@cobro.admin.codigo">Código</th>
+                <th i18n="@@cobro.admin.descuento">Descuento</th>
+                <th i18n="@@cobro.admin.planes">Planes</th>
+                <th i18n="@@cobro.admin.usos">Usos</th>
+                <th i18n="@@cobro.admin.vence">Vence</th>
+                <th i18n="@@cobro.admin.activo">Activo</th>
               </tr>
             </thead>
             <tbody>
@@ -167,12 +167,14 @@ import { PageHead } from '../../shared/page-head';
                   </td>
                   <td class="nowrap">
                     {{ c.percent_off ? c.percent_off + ' %' : money(c.amount_off_pen ?? 0) }}
-                    <span class="small muted">{{
-                      c.first_period_only ? '(primer periodo)' : '(siempre)'
-                    }}</span>
+                    <span class="small muted">@if (c.first_period_only) {<ng-container i18n="@@cobro.admin.primer-periodo">(primer periodo)</ng-container>} @else {<ng-container i18n="@@cobro.admin.siempre">(siempre)</ng-container>}</span>
                   </td>
                   <td class="small">
-                    {{ c.plan_codes.length ? c.plan_codes.join(', ') : 'Todos' }}
+                    @if (c.plan_codes.length) {
+                      {{ c.plan_codes.join(', ') }}
+                    } @else {
+                      <ng-container i18n="@@cobro.admin.planes-todos">Todos</ng-container>
+                    }
                   </td>
                   <td class="num">
                     {{ c.times_redeemed }}{{ c.max_redemptions ? ' / ' + c.max_redemptions : '' }}
@@ -183,7 +185,7 @@ import { PageHead } from '../../shared/page-head';
                       type="checkbox"
                       [checked]="c.active"
                       (change)="toggle(c)"
-                      [attr.aria-label]="'Cupón ' + c.code + ' activo'"
+                      [attr.aria-label]="ariaCupon(c.code)"
                     />
                   </td>
                 </tr>
@@ -192,14 +194,14 @@ import { PageHead } from '../../shared/page-head';
           </table>
         </div>
         <form class="row new-coupon" (ngSubmit)="createCoupon()">
-          <input
+          <input i18n-aria-label="@@cobro.admin.codigo-3" i18n-placeholder="@@cobro.admin.codigo-2"
             name="cc"
             [(ngModel)]="nc.code"
             placeholder="CÓDIGO"
             aria-label="Código"
             required
           />
-          <input
+          <input i18n-aria-label="@@cobro.admin.porcentaje-descuento" i18n-placeholder="@@cobro.admin.desc"
             name="cp"
             type="number"
             min="1"
@@ -208,22 +210,22 @@ import { PageHead } from '../../shared/page-head';
             placeholder="% desc."
             aria-label="Porcentaje de descuento"
           />
-          <input
+          <input i18n-aria-label="@@cobro.admin.descripcion" i18n-placeholder="@@cobro.admin.descripcion"
             name="cd"
             [(ngModel)]="nc.description"
             placeholder="Descripción"
             aria-label="Descripción"
           />
-          <select name="cpl" [(ngModel)]="nc.plans" aria-label="Planes">
-            <option value="">Todos los planes</option>
-            <option value="dojo,organizador">Dojo y Organizador</option>
-            <option value="competidor_plus">Competidor Plus</option>
+          <select i18n-aria-label="@@cobro.admin.planes-2" name="cpl" [(ngModel)]="nc.plans" aria-label="Planes">
+            <option i18n="@@cobro.admin.todos-planes" value="">Todos los planes</option>
+            <option i18n="@@cobro.admin.dojo-organizador" value="dojo,organizador">Dojo y Organizador</option>
+            <option i18n="@@cobro.admin.competidor-plus" value="competidor_plus">Competidor Plus</option>
           </select>
-          <label class="small"
+          <label i18n="@@cobro.admin.solo-primer-periodo" class="small"
             ><input type="checkbox" name="cf" [(ngModel)]="nc.firstOnly" /> Solo primer
             periodo</label
           >
-          <button class="btn" [disabled]="!nc.code.trim() || !nc.percent">
+          <button i18n="@@cobro.admin.crear" class="btn" [disabled]="!nc.code.trim() || !nc.percent">
             <app-icon name="plus" /> Crear
           </button>
         </form>
@@ -267,6 +269,10 @@ export class PaymentsAdminPage {
   q = '';
   status = '';
   nc = { code: '', percent: null as number | null, description: '', plans: '', firstOnly: true };
+
+  ariaCupon(code: string): string {
+    return $localize`:@@cobro.admin.cupon-activo:Cupón ${code}:codigo: activo`;
+  }
 
   constructor() {
     this.api.get<BillingConfig>('/billing/config').subscribe({ next: (c) => this.config.set(c) });
@@ -315,17 +321,17 @@ export class PaymentsAdminPage {
 
   async refund(p: PaymentOut): Promise<void> {
     const reason = await this.dialog.prompt({
-      title: 'Reembolsar pago',
-      message: `Se devolverán ${this.money(p.amount_pen)} por ${this.provider(p.provider)} y se cancelará la suscripción. Si hubo comprobante, emite la nota de crédito en Nubefact.`,
-      label: 'Motivo',
+      title: $localize`:@@cobro.admin.reembolsar-pago:Reembolsar pago`,
+      message: $localize`:@@cobro.admin.devolveran-cancelara-suscripcion:Se devolverán ${this.money(p.amount_pen)}:money: por ${this.provider(p.provider)}:provider: y se cancelará la suscripción. Si hubo comprobante, emite la nota de crédito en Nubefact.`,
+      label: $localize`:@@cobro.admin.motivo:Motivo`,
       minLength: 3,
-      confirmText: 'Reembolsar',
+      confirmText: $localize`:@@cobro.admin.reembolsar-2:Reembolsar`,
     });
     if (reason === null) return;
     const out = await this.mut.post<PaymentOut>(
       `/payments/${p.id}/refund`,
       { reason: reason.trim(), cancel_subscription: true },
-      { success: 'Pago reembolsado' },
+      { success: $localize`:@@cobro.admin.pago-reembolsado:Pago reembolsado` },
     );
     if (out) this.replace(out);
   }
@@ -339,7 +345,7 @@ export class PaymentsAdminPage {
     const out = await this.mut.patch<Coupon>(
       `/coupons/${c.id}`,
       { active: !c.active },
-      { success: c.active ? 'Cupón desactivado' : 'Cupón activado' },
+      { success: c.active ? $localize`:@@cobro.admin.cupon-desactivado:Cupón desactivado` : $localize`:@@cobro.admin.cupon-activado:Cupón activado` },
     );
     if (out) this.coupons.update((l) => l.map((x) => (x.id === out.id ? out : x)));
     else await this.loadCoupons();
@@ -353,7 +359,7 @@ export class PaymentsAdminPage {
       plan_codes: this.nc.plans ? this.nc.plans.split(',') : [],
       first_period_only: this.nc.firstOnly,
     };
-    const out = await this.mut.post<Coupon>('/coupons', body, { success: 'Cupón creado' });
+    const out = await this.mut.post<Coupon>('/coupons', body, { success: $localize`:@@cobro.admin.cupon-creado:Cupón creado` });
     if (out) {
       this.coupons.update((l) => [out, ...l]);
       this.nc = { code: '', percent: null, description: '', plans: '', firstOnly: true };

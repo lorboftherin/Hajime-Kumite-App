@@ -85,10 +85,10 @@ export class DialogService {
   }
 
   /** Lista advertencias y pide motivo (mín. 3 caracteres). Devuelve el motivo o null. */
-  warnings(warnings: WarningItem[], message = 'Hay advertencias que requieren confirmación'): Promise<string | null> {
+  warnings(warnings: WarningItem[], message = $localize`:@@dialogo.hay-advertencias-requieren:Hay advertencias que requieren confirmación`): Promise<string | null> {
     return this.open<string | null>({
       kind: 'warnings',
-      title: 'Advertencias',
+      title: $localize`:@@dialogo.advertencias:Advertencias`,
       message,
       warnings,
     } as DialogRequest);

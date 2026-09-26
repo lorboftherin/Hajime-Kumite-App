@@ -61,15 +61,15 @@ const PEOPLE_REFRESH_MS = 20000;
   template: `
     <div class="page">
       <header class="top">
-        <a class="brand" routerLink="/torneos-publicos" aria-label="Torneos públicos"
-          ><app-enso class="mark" /><app-hajime-word class="word" /><span class="live-tag"
+        <a i18n-aria-label="@@publico.vivo.torneos-publicos" class="brand" routerLink="/torneos-publicos" aria-label="Torneos públicos"
+          ><app-enso class="mark" /><app-hajime-word class="word" /><span i18n="@@publico.vivo.vivo" class="live-tag"
             >en vivo</span
           ></a
         >
         @if (data(); as d) {
           <span class="pulse" [class.stale]="stale()" role="status">
             <i aria-hidden="true"></i
-            >{{ stale() ? 'Reconectando…' : 'Actualizado ' + (updated() | date: 'HH:mm:ss') }}
+            >@if (stale()) {<ng-container i18n="@@publico.vivo.reconectando">Reconectando…</ng-container>} @else {<ng-container i18n="@@publico.vivo.actualizado">Actualizado {{ updated() | date: 'HH:mm:ss' }}</ng-container>}
           </span>
         }
       </header>
@@ -88,22 +88,22 @@ const PEOPLE_REFRESH_MS = 20000;
           </p>
         </section>
 
-        <nav class="jump" aria-label="Secciones">
-          <a href="#cuando" (click)="go($event, 'cuando')">¿Cuándo pelea?</a>
-          <a href="#tatamis" (click)="go($event, 'tatamis')">Tatamis</a>
+        <nav i18n-aria-label="@@publico.vivo.secciones" class="jump" aria-label="Secciones">
+          <a i18n="@@publico.vivo.cuando-pelea" href="#cuando" (click)="go($event, 'cuando')">¿Cuándo pelea?</a>
+          <a i18n="@@publico.vivo.tatamis" href="#tatamis" (click)="go($event, 'tatamis')">Tatamis</a>
           @if (d.awards.length) {
-            <a href="#premios" (click)="go($event, 'premios')">Premios</a>
+            <a i18n="@@publico.vivo.premios" href="#premios" (click)="go($event, 'premios')">Premios</a>
           }
-          <a href="#resultados" (click)="go($event, 'resultados')">Resultados</a>
-          <a href="#categorias" (click)="go($event, 'categorias')">Llaves</a>
-          <a href="#medallero" (click)="go($event, 'medallero')">Medallero</a>
+          <a i18n="@@publico.vivo.resultados" href="#resultados" (click)="go($event, 'resultados')">Resultados</a>
+          <a i18n="@@publico.vivo.llaves" href="#categorias" (click)="go($event, 'categorias')">Llaves</a>
+          <a i18n="@@publico.vivo.medallero" href="#medallero" (click)="go($event, 'medallero')">Medallero</a>
         </nav>
 
         <section id="cuando" class="when" aria-labelledby="h-cuando">
-          <h2 id="h-cuando" class="sec">¿Cuándo pelea?</h2>
+          <h2 i18n="@@publico.vivo.cuando-pelea" id="h-cuando" class="sec">¿Cuándo pelea?</h2>
           <label class="search">
-            <span class="sr-only">Buscar competidor por nombre o dojo</span>
-            <input
+            <span i18n="@@publico.vivo.buscar-competidor-nombre-dojo" class="sr-only">Buscar competidor por nombre o dojo</span>
+            <input i18n-placeholder="@@publico.vivo.nombre-dojo-p-ej-diego-kaze"
               type="search"
               [ngModel]="query()"
               (ngModelChange)="query.set($event)"
@@ -114,7 +114,7 @@ const PEOPLE_REFRESH_MS = 20000;
           </label>
           <app-push-hint [always]="false" />
           @if (highlighted(); as h) {
-            <h3 class="sub">Siguiendo</h3>
+            <h3 i18n="@@publico.vivo.siguiendo" class="sub">Siguiendo</h3>
             <ul class="fighters hl" id="seguido">
               <ng-container *ngTemplateOutlet="fighter; context: { $implicit: h }" />
             </ul>
@@ -125,24 +125,24 @@ const PEOPLE_REFRESH_MS = 20000;
                 <ng-container *ngTemplateOutlet="fighter; context: { $implicit: c }" />
               } @empty {
                 <li class="idle">
-                  {{
-                    people()
-                      ? 'Nadie coincide con «' + query().trim() + '».'
-                      : 'Cargando competidores…'
-                  }}
+                  @if (people()) {
+                    <ng-container i18n="@@publico.vivo.nadie-coincide">Nadie coincide con «{{ query().trim() }}».</ng-container>
+                  } @else {
+                    <ng-container i18n="@@publico.vivo.cargando-competidores">Cargando competidores…</ng-container>
+                  }
                 </li>
               }
             </ul>
           }
           @if (favorites().length) {
-            <h3 class="sub">Mis favoritos</h3>
+            <h3 i18n="@@publico.vivo.mis-favoritos" class="sub">Mis favoritos</h3>
             <ul class="fighters favs">
               @for (c of favorites(); track c.key) {
                 <ng-container *ngTemplateOutlet="fighter; context: { $implicit: c }" />
               }
             </ul>
           } @else if (!query()) {
-            <p class="idle small">
+            <p i18n="@@publico.vivo.busca-competidor-marcalo-para" class="idle small">
               Busca a tu competidor y márcalo con ★ para tenerlo siempre arriba (se guarda solo en
               este dispositivo). Con la campana te avisamos cuando le toque, su resultado y sus
               medallas (<a routerLink="/avisos">ajustes de avisos</a>).
@@ -150,21 +150,21 @@ const PEOPLE_REFRESH_MS = 20000;
           }
         </section>
 
-        <section id="tatamis" class="tatamis" aria-label="Tatamis">
+        <section i18n-aria-label="@@publico.vivo.tatamis-2" id="tatamis" class="tatamis" aria-label="Tatamis">
           @for (t of d.tatamis; track t.id) {
             <article class="tat">
               <header>
                 <h2>{{ t.name }}</h2>
-                <span class="prog">{{ t.done }} de {{ t.total }} combates</span>
+                <span i18n="@@publico.vivo.combates" class="prog">{{ t.done }} de {{ t.total }} combates</span>
               </header>
               @if (t.current; as m) {
                 <div class="now">
-                  <div class="kicker">
+                  <div i18n="@@publico.vivo.curso" class="kicker">
                     <span class="dot" aria-hidden="true"></span>En curso · {{ m.category }} ·
                     {{ m.number }}
                   </div>
                   @if (m.bout; as b) {
-                    <div class="teamline">
+                    <div i18n="@@publico.vivo.combate-individual" class="teamline">
                       {{ m.aka?.name }} <strong>{{ m.score[0] }}–{{ m.score[1] }}</strong>
                       {{ m.ao?.name }} · combate individual
                     </div>
@@ -174,18 +174,18 @@ const PEOPLE_REFRESH_MS = 20000;
                   }
                 </div>
               } @else {
-                <p class="idle">Sin combate en curso.</p>
+                <p i18n="@@publico.vivo.sin-combate-curso" class="idle">Sin combate en curso.</p>
               }
               @if (t.upcoming.length) {
                 <div class="next">
-                  <span class="lbl">Siguen</span>
+                  <span i18n="@@publico.vivo.siguen" class="lbl">Siguen</span>
                   <ol>
                     @for (u of t.upcoming; track u.code + u.category) {
                       <li>
                         <span class="n">{{ u.number }}</span>
-                        <span class="vs"
-                          ><span class="aka">{{ u.aka?.name ?? 'Por definir' }}</span> vs
-                          <span class="ao">{{ u.ao?.name ?? 'Por definir' }}</span></span
+                        <span i18n="@@publico.vivo.vs" class="vs"
+                          ><span class="aka">{{ u.aka?.name ?? txtPorDefinir }}</span> vs
+                          <span class="ao">{{ u.ao?.name ?? txtPorDefinir }}</span></span
                         >
                         <span class="cat"
                           >{{ u.category }}
@@ -199,20 +199,20 @@ const PEOPLE_REFRESH_MS = 20000;
                 </div>
               }
               @if (t.last; as l) {
-                <p class="last">
+                <p i18n="@@publico.vivo.ultimo-gano" class="last">
                   Último: {{ winnerName(l) }} ganó {{ l.score[0] }}–{{ l.score[1] }} ·
                   {{ l.category }}
                 </p>
               }
             </article>
           } @empty {
-            <p class="idle">El torneo todavía no tiene tatamis.</p>
+            <p i18n="@@publico.vivo.torneo-todavia-no-tiene-tatamis" class="idle">El torneo todavía no tiene tatamis.</p>
           }
         </section>
 
         @if (d.awards.length) {
           <section id="premios" aria-labelledby="h-premios">
-            <h2 id="h-premios" class="sec">Premios del torneo</h2>
+            <h2 i18n="@@publico.vivo.premios-torneo" id="h-premios" class="sec">Premios del torneo</h2>
             <div class="awards">
               @for (a of d.awards; track a.title) {
                 <div class="award">
@@ -226,7 +226,7 @@ const PEOPLE_REFRESH_MS = 20000;
         }
 
         <section id="resultados" aria-labelledby="h-res">
-          <h2 id="h-res" class="sec">
+          <h2 i18n="@@publico.vivo.resultados-categoria-s" id="h-res" class="sec">
             Resultados <span class="muted">{{ d.results.length }} categoría(s) finalizada(s)</span>
           </h2>
           @for (r of d.results; track r.category) {
@@ -247,16 +247,16 @@ const PEOPLE_REFRESH_MS = 20000;
                 }
               </ol>
               @if (r.category_id) {
-                <a class="more" [routerLink]="catLink(r.category_id)">Ver la llave completa →</a>
+                <a i18n="@@publico.vivo.ver-llave-completa" class="more" [routerLink]="catLink(r.category_id)">Ver la llave completa →</a>
               }
             </details>
           } @empty {
-            <p class="idle">Todavía no hay categorías finalizadas.</p>
+            <p i18n="@@publico.vivo.todavia-no-hay-categorias" class="idle">Todavía no hay categorías finalizadas.</p>
           }
         </section>
 
         <section id="categorias" aria-labelledby="h-cat">
-          <h2 id="h-cat" class="sec">Llaves por categoría</h2>
+          <h2 i18n="@@publico.vivo.llaves-categoria" id="h-cat" class="sec">Llaves por categoría</h2>
           @if (d.categories.length) {
             <ul class="cats">
               @for (c of d.categories; track c.id ?? c.name) {
@@ -271,21 +271,21 @@ const PEOPLE_REFRESH_MS = 20000;
               }
             </ul>
           } @else {
-            <p class="idle">Sin categorías publicadas.</p>
+            <p i18n="@@publico.vivo.sin-categorias-publicadas" class="idle">Sin categorías publicadas.</p>
           }
         </section>
 
         <section id="medallero" aria-labelledby="h-med">
-          <h2 id="h-med" class="sec">Medallero por dojo</h2>
+          <h2 i18n="@@publico.vivo.medallero-dojo" id="h-med" class="sec">Medallero por dojo</h2>
           @if (d.medal_table.length) {
             <table class="medals">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Dojo</th>
-                  <th title="Oro">Oro</th>
-                  <th title="Plata">Plata</th>
-                  <th title="Bronce">Bronce</th>
+                  <th i18n="@@publico.vivo.dojo">Dojo</th>
+                  <th i18n="@@publico.vivo.oro-2" i18n-title="@@publico.vivo.oro" title="Oro">Oro</th>
+                  <th i18n="@@publico.vivo.plata-2" i18n-title="@@publico.vivo.plata" title="Plata">Plata</th>
+                  <th i18n="@@publico.vivo.bronce-2" i18n-title="@@publico.vivo.bronce" title="Bronce">Bronce</th>
                 </tr>
               </thead>
               <tbody>
@@ -301,23 +301,23 @@ const PEOPLE_REFRESH_MS = 20000;
               </tbody>
             </table>
           } @else {
-            <p class="idle">Sin medallas todavía.</p>
+            <p i18n="@@publico.vivo.sin-medallas-todavia" class="idle">Sin medallas todavía.</p>
           }
         </section>
 
-        <footer class="foot">
+        <footer class="foot"><ng-container i18n="@@publico.vivo.datos-publicados-organizacion">
           Datos publicados por la organización del torneo.
           <a routerLink="/torneos-publicos">Más torneos</a> · Hajime · Torneos de karate.
-          <div class="foot-lang"><app-language-select /></div>
+          </ng-container><div class="foot-lang"><app-language-select /></div>
         </footer>
       } @else if (error()) {
         <section class="hero">
-          <h1>Enlace no disponible</h1>
+          <h1 i18n="@@publico.vivo.enlace-no-disponible">Enlace no disponible</h1>
           <p>{{ error() }}</p>
-          <p><a routerLink="/torneos-publicos">Ver torneos públicos</a></p>
+          <p><a i18n="@@publico.vivo.ver-torneos-publicos" routerLink="/torneos-publicos">Ver torneos públicos</a></p>
         </section>
       } @else {
-        <p class="idle">Cargando…</p>
+        <p i18n="@@publico.vivo.cargando" class="idle">Cargando…</p>
       }
     </div>
 
@@ -346,9 +346,7 @@ const PEOPLE_REFRESH_MS = 20000;
           [class.on]="favKeys().has(c.key)"
           (click)="toggleFav(c)"
           [attr.aria-pressed]="favKeys().has(c.key)"
-          [attr.aria-label]="
-            (favKeys().has(c.key) ? 'Quitar de favoritos a ' : 'Marcar como favorito a ') + c.name
-          "
+          [attr.aria-label]="ariaFavorito(favKeys().has(c.key), c.name)"
         >
           {{ favKeys().has(c.key) ? '★' : '☆' }}
         </button>
@@ -384,6 +382,11 @@ const PEOPLE_REFRESH_MS = 20000;
   styleUrl: './live.scss',
 })
 export class PublicLivePage {
+  readonly txtPorDefinir = $localize`:@@comun.por-definir:Por definir`;
+  ariaFavorito = (es: boolean, nombre: string) =>
+    es
+      ? $localize`:@@publico.vivo.quitar-favoritos:Quitar de favoritos a ${nombre}:nombre:`
+      : $localize`:@@publico.vivo.marcar-favorito:Marcar como favorito a ${nombre}:nombre:`;
   private api = inject(ApiService);
   private meta = inject(Meta);
   private title = inject(Title);
@@ -407,10 +410,10 @@ export class PublicLivePage {
   private scrolled = false;
 
   readonly catStatus: Record<string, string> = {
-    open: 'Inscripciones',
-    ready: 'Llave lista',
-    in_progress: 'En curso',
-    finished: 'Terminada',
+    open: $localize`:@@publico.vivo.inscripciones:Inscripciones`,
+    ready: $localize`:@@publico.vivo.llave-lista:Llave lista`,
+    in_progress: $localize`:@@publico.vivo.curso-2:En curso`,
+    finished: $localize`:@@publico.vivo.terminada:Terminada`,
   };
 
   /** Base de la API y de los enlaces de la página. */
@@ -533,9 +536,9 @@ export class PublicLivePage {
       if (!state) return;
       this.pushKeys.set(new Set(state.keys));
       if (on && !this.favKeys().has(c.key)) this.toggleFav(c);
-      this.toast.ok(on ? `Te avisaremos cuando le toque a ${c.name}` : 'Aviso quitado');
+      this.toast.ok(on ? $localize`:@@publico.vivo.te-avisaremos-cuando-le-toque:Te avisaremos cuando le toque a ${c.name}:name:` : $localize`:@@publico.vivo.aviso-quitado:Aviso quitado`);
     } catch {
-      this.toast.error('No se pudo guardar el aviso');
+      this.toast.error($localize`:@@publico.vivo.no-pudo-guardar-aviso:No se pudo guardar el aviso`);
     } finally {
       this.pushBusy.set(false);
     }
@@ -544,7 +547,7 @@ export class PublicLivePage {
   winnerName(m: PublicMatch): string {
     if (m.winner === 'aka') return m.aka?.name ?? 'AKA';
     if (m.winner === 'ao') return m.ao?.name ?? 'AO';
-    return 'Empate';
+    return $localize`:@@publico.vivo.empate:Empate`;
   }
 
   go(ev: Event, id: string): void {

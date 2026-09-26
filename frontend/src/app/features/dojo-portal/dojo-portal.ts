@@ -34,10 +34,10 @@ interface Pick {
   imports: [FormsModule, PageHead, Icon, Modal, PersonForm, StatusBadge, PushButton, PushHint],
   template: `
     <div class="container">
-      <app-page-head kanji="門" [title]="dojo()?.name ?? 'Mis competidores'">
-        <div meta class="meta-line"><span>Mis competidores e inscripción en línea</span></div>
+      <app-page-head kanji="門" [title]="dojo()?.name ?? textoMisCompetidores">
+        <div meta class="meta-line"><span i18n="@@portal-dojo.mis-competidores-e-inscripcion">Mis competidores e inscripción en línea</span></div>
         @if (dojos().length > 1) {
-          <select
+          <select i18n-aria-label="@@portal-dojo.elegir-dojo"
             [ngModel]="dojoId()"
             (ngModelChange)="dojoId.set($event)"
             aria-label="Elegir dojo"
@@ -51,10 +51,11 @@ interface Pick {
           <app-push-button
             [on]="pushDojos().has(did)"
             [busy]="pushBusy()"
-            [label]="'todo el dojo'"
+            i18n-label="@@portal-dojo.todo-dojo"
+            label="todo el dojo"
             (toggled)="togglePush({ dojo_id: did }, $event)"
           />
-          <button class="btn primary" (click)="showNew.set(true)">
+          <button i18n="@@portal-dojo.nuevo-competidor" class="btn primary" (click)="showNew.set(true)">
             <app-icon name="plus" /> Nuevo competidor
           </button>
         }
@@ -62,13 +63,13 @@ interface Pick {
 
       @if (!dojos().length && !loading()) {
         <div class="card empty">
-          <p><strong>No administras ningún dojo.</strong></p>
+          <p><strong i18n="@@portal-dojo.no-administras-ningun-dojo">No administras ningún dojo.</strong></p><ng-container i18n="@@portal-dojo.abre-enlace-invitacion-te-envio">
           Abre el enlace de invitación que te envió el organizador del torneo para vincular tu
           cuenta a tu dojo.
-        </div>
+        </ng-container></div>
       } @else {
-        <div class="seg" role="tablist" aria-label="Secciones">
-          <button
+        <div i18n-aria-label="@@portal-dojo.secciones" class="seg" role="tablist" aria-label="Secciones">
+          <button i18n="@@portal-dojo.competidores"
             role="tab"
             [class.on]="tab() === 'competidores'"
             [attr.aria-selected]="tab() === 'competidores'"
@@ -76,7 +77,7 @@ interface Pick {
           >
             Competidores
           </button>
-          <button
+          <button i18n="@@portal-dojo.inscribir-torneo"
             role="tab"
             [class.on]="tab() === 'inscribir'"
             [attr.aria-selected]="tab() === 'inscribir'"
@@ -84,7 +85,7 @@ interface Pick {
           >
             Inscribir en torneo
           </button>
-          <button
+          <button i18n="@@portal-dojo.mis-inscripciones"
             role="tab"
             [class.on]="tab() === 'estado'"
             [attr.aria-selected]="tab() === 'estado'"
@@ -101,12 +102,12 @@ interface Pick {
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Competidor</th>
-                    <th>Sexo</th>
-                    <th>Nacimiento</th>
-                    <th>Documento</th>
-                    <th>Grado</th>
-                    <th><span class="sr-only">Acciones</span></th>
+                    <th i18n="@@portal-dojo.competidor">Competidor</th>
+                    <th i18n="@@portal-dojo.sexo">Sexo</th>
+                    <th i18n="@@portal-dojo.nacimiento">Nacimiento</th>
+                    <th i18n="@@portal-dojo.documento">Documento</th>
+                    <th i18n="@@portal-dojo.grado">Grado</th>
+                    <th><span i18n="@@portal-dojo.acciones" class="sr-only">Acciones</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -133,15 +134,15 @@ interface Pick {
                           [label]="p.first_names + ' ' + p.last_names"
                           (toggled)="togglePush({ person_id: p.id }, $event)"
                         />
-                        <button class="btn sm" (click)="openEdit(p)">Editar</button>
+                        <button i18n="@@portal-dojo.editar" class="btn sm" (click)="openEdit(p)">Editar</button>
                       </td>
                     </tr>
                   } @empty {
                     <tr>
                       <td colspan="6" class="empty">
-                        <p><strong>Tu dojo aún no tiene competidores.</strong></p>
+                        <p><strong i18n="@@portal-dojo.dojo-aun-no-tiene-competidores">Tu dojo aún no tiene competidores.</strong></p><ng-container i18n="@@portal-dojo.agrega-primero-nuevo-competidor">
                         Agrega el primero con «Nuevo competidor».
-                      </td>
+                      </ng-container></td>
                     </tr>
                   }
                 </tbody>
@@ -150,12 +151,12 @@ interface Pick {
           }
           @case ('inscribir') {
             @if (!openTournaments().length) {
-              <div class="card empty">No hay torneos con la inscripción en línea abierta.</div>
+              <div i18n="@@portal-dojo.no-hay-torneos-inscripcion-linea" class="card empty">No hay torneos con la inscripción en línea abierta.</div>
             } @else {
               <label class="field tsel">
-                <span>Torneo</span>
+                <span i18n="@@portal-dojo.torneo">Torneo</span>
                 <select [ngModel]="tournamentId()" (ngModelChange)="selectTournament($event)">
-                  <option [ngValue]="null">— Elige un torneo —</option>
+                  <option i18n="@@portal-dojo.elige-torneo" [ngValue]="null">— Elige un torneo —</option>
                   @for (t of openTournaments(); track t.id) {
                     <option [ngValue]="t.id">
                       {{ t.name }} · {{ date(t.start_date) }} · {{ t.organization_name }}
@@ -170,19 +171,19 @@ interface Pick {
                     ,
                   }
                   {{ t.city }}
-                  @if (t.self_registration_closes_at) {
+                  @if (t.self_registration_closes_at) {<ng-container i18n="@@portal-dojo.cierra">
                     · Cierra el {{ dateTime(t.self_registration_closes_at) }}
-                  }
+                  </ng-container>}<ng-container i18n="@@portal-dojo.inscripciones-quedan-pendientes">
                   · Las inscripciones quedan pendientes hasta que el organizador las apruebe.
-                </p>
+                </ng-container></p>
                 <div class="table-wrap">
                   <table class="table">
                     <thead>
                       <tr>
-                        <th><span class="sr-only">Inscribir</span></th>
-                        <th>Competidor</th>
-                        <th>Categoría</th>
-                        <th>Peso</th>
+                        <th><span i18n="@@portal-dojo.inscribir" class="sr-only">Inscribir</span></th>
+                        <th i18n="@@portal-dojo.competidor">Competidor</th>
+                        <th i18n="@@portal-dojo.categoria">Categoría</th>
+                        <th i18n="@@portal-dojo.peso">Peso</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -194,9 +195,7 @@ interface Pick {
                               type="checkbox"
                               [(ngModel)]="pk.selected"
                               (ngModelChange)="onSelect(p.id)"
-                              [attr.aria-label]="
-                                'Inscribir a ' + p.first_names + ' ' + p.last_names
-                              "
+                              [attr.aria-label]="ariaInscribir(p.first_names + ' ' + p.last_names)"
                             />
                           </td>
                           <td>
@@ -208,17 +207,17 @@ interface Pick {
                               [(ngModel)]="pk.category_id"
                               (ngModelChange)="touch()"
                               [disabled]="!pk.selected"
-                              [attr.aria-label]="'Categoría de ' + p.first_names"
+                              [attr.aria-label]="ariaCategoria(p.first_names)"
                             >
-                              <option [ngValue]="null">— Categoría —</option>
+                              <option i18n="@@portal-dojo.categoria-2" [ngValue]="null">— Categoría —</option>
                               @if (pk.suggested.length) {
-                                <optgroup label="Sugeridas">
+                                <optgroup i18n-label="@@portal-dojo.sugeridas" label="Sugeridas">
                                   @for (c of suggestedCats(pk); track c.id) {
                                     <option [ngValue]="c.id">{{ c.name }}</option>
                                   }
                                 </optgroup>
                               }
-                              <optgroup label="Todas">
+                              <optgroup i18n-label="@@portal-dojo.todas" label="Todas">
                                 @for (c of categories(); track c.id) {
                                   <option [ngValue]="c.id">{{ c.name }}</option>
                                 }
@@ -231,7 +230,7 @@ interface Pick {
                               [(ngModel)]="pk.weight_class"
                               [disabled]="!pk.selected"
                               placeholder="-45"
-                              [attr.aria-label]="'Peso de ' + p.first_names"
+                              [attr.aria-label]="ariaPeso(p.first_names)"
                             />
                           </td>
                         </tr>
@@ -240,13 +239,12 @@ interface Pick {
                   </table>
                 </div>
                 <div class="form-actions">
-                  <button
+                  <button i18n="@@portal-dojo.enviar"
                     class="btn primary"
                     (click)="submit()"
                     [disabled]="!ready().length || busy()"
                   >
-                    Enviar {{ ready().length }}
-                    {{ ready().length === 1 ? 'inscripción' : 'inscripciones' }}
+                    {ready().length, plural, =1 {Enviar 1 inscripción} other {Enviar {{ ready().length }} inscripciones}}
                   </button>
                 </div>
               }
@@ -257,11 +255,11 @@ interface Pick {
               <table class="table">
                 <thead>
                   <tr>
-                    <th>Torneo</th>
-                    <th>Competidor</th>
-                    <th>Categoría</th>
-                    <th>Estado</th>
-                    <th><span class="sr-only">Acciones</span></th>
+                    <th i18n="@@portal-dojo.torneo">Torneo</th>
+                    <th i18n="@@portal-dojo.competidor">Competidor</th>
+                    <th i18n="@@portal-dojo.categoria">Categoría</th>
+                    <th i18n="@@portal-dojo.estado">Estado</th>
+                    <th><span i18n="@@portal-dojo.acciones" class="sr-only">Acciones</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,13 +276,13 @@ interface Pick {
                       </td>
                       <td class="right">
                         @if (r.status === 'pending') {
-                          <button class="btn sm ghost" (click)="cancel(r)">Retirar</button>
+                          <button i18n="@@portal-dojo.retirar" class="btn sm ghost" (click)="cancel(r)">Retirar</button>
                         }
                       </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="5" class="muted small">Aún no hay inscripciones de tu dojo.</td>
+                      <td i18n="@@portal-dojo.aun-no-hay-inscripciones-dojo" colspan="5" class="muted small">Aún no hay inscripciones de tu dojo.</td>
                     </tr>
                   }
                 </tbody>
@@ -296,55 +294,55 @@ interface Pick {
     </div>
 
     @if (showNew() && dojoId()) {
-      <app-modal title="Nuevo competidor" [wide]="true" (closed)="showNew.set(false)">
+      <app-modal i18n-title="@@portal-dojo.nuevo-competidor-2" title="Nuevo competidor" [wide]="true" (closed)="showNew.set(false)">
         <app-person-form
           [postPath]="'/dojo-portal/dojos/' + dojoId() + '/competitors'"
           [fixedDojoId]="dojoId()"
           [privateFields]="true"
           (created)="onCreated()"
         >
-          <button type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
+          <button i18n="@@portal-dojo.cancelar" type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
         </app-person-form>
       </app-modal>
     }
 
     @if (edit(); as e) {
-      <app-modal title="Editar competidor" (closed)="edit.set(null)">
+      <app-modal i18n-title="@@portal-dojo.editar-competidor" title="Editar competidor" (closed)="edit.set(null)">
         <form class="stack" (ngSubmit)="saveEdit(e)">
           <div class="grid-2">
             <label class="field"
-              ><span>Nombres *</span><input name="fn" [(ngModel)]="e.first_names" required
+              ><span i18n="@@portal-dojo.nombres">Nombres *</span><input name="fn" [(ngModel)]="e.first_names" required
             /></label>
             <label class="field"
-              ><span>Apellidos *</span><input name="ln" [(ngModel)]="e.last_names" required
+              ><span i18n="@@portal-dojo.apellidos">Apellidos *</span><input name="ln" [(ngModel)]="e.last_names" required
             /></label>
             <label class="field"
-              ><span>Fecha de nacimiento</span
+              ><span i18n="@@portal-dojo.fecha-nacimiento">Fecha de nacimiento</span
               ><input type="date" name="bd" [(ngModel)]="e.birth_date"
             /></label>
             <label class="field">
-              <span>Sexo</span>
+              <span i18n="@@portal-dojo.sexo">Sexo</span>
               <select name="sx" [(ngModel)]="e.sex">
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
+                <option i18n="@@portal-dojo.masculino" value="M">Masculino</option>
+                <option i18n="@@portal-dojo.femenino" value="F">Femenino</option>
               </select>
             </label>
             <label class="field">
-              <span>Documento</span>
+              <span i18n="@@portal-dojo.documento">Documento</span>
               <div class="row nowrap">
                 <select name="dt" [(ngModel)]="e.doc_type" style="width: 7rem">
-                  <option value="DNI">DNI</option>
-                  <option value="CE">CE</option>
-                  <option value="PASSPORT">Pasaporte</option>
-                  <option value="OTHER">Otro</option>
+                  <option i18n="@@portal-dojo.dni" value="DNI">DNI</option>
+                  <option i18n="@@portal-dojo.ce" value="CE">CE</option>
+                  <option i18n="@@portal-dojo.pasaporte" value="PASSPORT">Pasaporte</option>
+                  <option i18n="@@portal-dojo.otro" value="OTHER">Otro</option>
                 </select>
                 <input class="grow" name="dn" [(ngModel)]="e.doc_number" />
               </div>
             </label>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn" (click)="edit.set(null)">Cancelar</button>
-            <button
+            <button i18n="@@portal-dojo.cancelar" type="button" class="btn" (click)="edit.set(null)">Cancelar</button>
+            <button i18n="@@portal-dojo.guardar"
               class="btn primary"
               [disabled]="!e.first_names.trim() || !e.last_names.trim() || busy()"
             >
@@ -400,6 +398,10 @@ interface Pick {
   `,
 })
 export class DojoPortalPage {
+  readonly textoMisCompetidores = $localize`:@@portal-dojo.mis-competidores:Mis competidores`;
+  ariaInscribir = (nombre: string) => $localize`:@@portal-dojo.inscribir-a:Inscribir a ${nombre}:nombre:`;
+  ariaCategoria = (nombre: string) => $localize`:@@portal-dojo.categoria-de:Categoría de ${nombre}:nombre:`;
+  ariaPeso = (nombre: string) => $localize`:@@portal-dojo.peso-de:Peso de ${nombre}:nombre:`;
   private api = inject(ApiService);
   private mut = inject(MutationService);
 
@@ -458,12 +460,12 @@ export class DojoPortalPage {
       this.toast.ok(
         on
           ? target.dojo_id
-            ? 'Te avisaremos de todos los competidores del dojo'
-            : 'Te avisaremos de sus combates'
-          : 'Aviso quitado',
+            ? $localize`:@@portal-dojo.te-avisaremos-todos-competidores:Te avisaremos de todos los competidores del dojo`
+            : $localize`:@@portal-dojo.te-avisaremos-combates:Te avisaremos de sus combates`
+          : $localize`:@@portal-dojo.aviso-quitado:Aviso quitado`,
       );
     } catch {
-      this.toast.error('No se pudo guardar el aviso');
+      this.toast.error($localize`:@@portal-dojo.no-pudo-guardar-aviso:No se pudo guardar el aviso`);
     } finally {
       this.pushBusy.set(false);
     }
@@ -587,7 +589,7 @@ export class DojoPortalPage {
       `/dojo-portal/dojos/${d}/tournaments/${t}/registrations`,
       { items },
       {
-        success: 'Inscripciones enviadas: quedan pendientes de aprobación',
+        success: $localize`:@@portal-dojo.inscripciones-enviadas-quedan:Inscripciones enviadas: quedan pendientes de aprobación`,
       },
     );
     this.busy.set(false);
@@ -604,7 +606,7 @@ export class DojoPortalPage {
     const out = await this.mut.post<DojoRegistration>(
       `/dojo-portal/dojos/${d}/registrations/${r.id}/cancel`,
       {},
-      { success: 'Solicitud retirada' },
+      { success: $localize`:@@portal-dojo.solicitud-retirada:Solicitud retirada` },
     );
     if (out) await this.loadRegs();
   }
@@ -643,7 +645,7 @@ export class DojoPortalPage {
       body['document'] = { doc_type: e.doc_type, number: e.doc_number.trim() };
     this.busy.set(true);
     const out = await this.mut.patch<Person>(`/dojo-portal/dojos/${d}/competitors/${e.id}`, body, {
-      success: 'Competidor actualizado',
+      success: $localize`:@@portal-dojo.competidor-actualizado:Competidor actualizado`,
       onConflict: () => void this.loadPeople(d),
     });
     this.busy.set(false);

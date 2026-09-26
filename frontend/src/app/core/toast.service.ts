@@ -36,7 +36,7 @@ export class ToastService {
   }
   /** 402 PLAN_REQUIRED: aviso fijo con enlace a la página de planes. */
   planRequired(text: string): void {
-    this.show(text, 'warn', 0, { label: 'Ver planes', path: '/planes' });
+    this.show(text, 'warn', 0, { label: $localize`:@@aviso.ver-planes:Ver planes`, path: '/planes' });
   }
   dismiss(id: number): void {
     this.toasts.update((l) => l.filter((t) => t.id !== id));

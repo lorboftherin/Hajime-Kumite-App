@@ -7,12 +7,13 @@ import { Modal } from '../../shared/modal';
 import { LabelPipe } from '../../shared/pipes';
 import { RulesForm, cleanRules, editableKata, kataPayload } from '../../shared/rules-form';
 import { TournamentContext } from './tournament-context';
+import { etiquetas } from '../../core/i18n/etiquetas';
 
-const TIE_LABEL: Record<string, string> = {
+const TIE_LABEL: Record<string, string> = etiquetas(() => ({
   hantei: 'Hantei',
-  golden_point: 'Punto de oro',
-  senshu_hantei: 'Senshu y hantei',
-};
+  golden_point: $localize`:@@torneo.reglas.punto-oro:Punto de oro`,
+  senshu_hantei: $localize`:@@torneo.reglas.senshu-hantei:Senshu y hantei`,
+}));
 
 /**
  * Reglas deportivas del torneo (docs/reglas-configurables.md): resumen y
@@ -26,46 +27,40 @@ const TIE_LABEL: Record<string, string> = {
       <section class="card rules">
         <div class="general-head">
           <div>
-            <h3>Reglas deportivas</h3>
-            <p class="small muted">
+            <h3 i18n="@@torneo.reglas.reglas-deportivas">Reglas deportivas</h3>
+            <p i18n="@@torneo.reglas.valen-para-todas-categorias-cada" class="small muted">
               Valen para todas las categorías; cada categoría puede cambiarlas.
             </p>
           </div>
-          <button class="btn sm" (click)="open(t)">Editar reglas</button>
+          <button i18n="@@torneo.reglas.editar-reglas" class="btn sm" (click)="open(t)">Editar reglas</button>
         </div>
         <dl class="dl cols">
           <div>
-            <dt>Edad</dt>
+            <dt i18n="@@torneo.reglas.edad">Edad</dt>
             <dd>
-              {{
-                t.age_mode === 'birth_year' ? 'Por año de nacimiento' : 'A la fecha de referencia'
-              }}
+              <ng-container i18n="@@torneo.reglas.modo-edad">{t.age_mode, select, birth_year {Por año de nacimiento} other {A la fecha de referencia}}</ng-container>
             </dd>
           </div>
           <div>
-            <dt>Formato por defecto</dt>
+            <dt i18n="@@torneo.reglas.formato-defecto">Formato por defecto</dt>
             <dd>{{ t.default_format | label: formatLabel }}</dd>
           </div>
           <div>
-            <dt>Empate en kumite</dt>
+            <dt i18n="@@torneo.reglas.empate-kumite">Empate en kumite</dt>
             <dd>{{ tieText(t) }}</dd>
           </div>
           <div>
-            <dt>Faltas</dt>
+            <dt i18n="@@torneo.reglas.faltas">Faltas</dt>
             <dd>
-              {{
-                t.kumite_rules['sanction_preset'] === 'two_categories'
-                  ? 'Dos categorías'
-                  : 'Una escalera'
-              }}
+              <ng-container i18n="@@torneo.reglas.escalera-faltas">{t.kumite_rules['sanction_preset'], select, two_categories {Dos categorías} other {Una escalera}}</ng-container>
             </dd>
           </div>
           <div>
-            <dt>Kata</dt>
+            <dt i18n="@@torneo.reglas.kata">Kata</dt>
             <dd>{{ kataText(t) }}</dd>
           </div>
           <div>
-            <dt>Desempate round robin</dt>
+            <dt i18n="@@torneo.reglas.desempate-round-robin">Desempate round robin</dt>
             <dd>{{ rrText(t) }}</dd>
           </div>
         </dl>
@@ -73,22 +68,22 @@ const TIE_LABEL: Record<string, string> = {
     }
 
     @if (editing()) {
-      <app-modal title="Reglas deportivas del torneo" [wide]="true" (closed)="editing.set(false)">
+      <app-modal i18n-title="@@torneo.reglas.reglas-deportivas-torneo" title="Reglas deportivas del torneo" [wide]="true" (closed)="editing.set(false)">
         <form (ngSubmit)="save()" class="stack">
           <div class="grid-3">
             <label class="field">
-              <span>Cálculo de la edad</span>
+              <span i18n="@@torneo.reglas.calculo-edad">Cálculo de la edad</span>
               <select name="am" [(ngModel)]="form.age_mode">
-                <option value="date">Edad cumplida a la fecha de referencia</option>
-                <option value="birth_year">Por año de nacimiento (año − año de nacimiento)</option>
+                <option i18n="@@torneo.reglas.edad-cumplida-fecha-referencia" value="date">Edad cumplida a la fecha de referencia</option>
+                <option i18n="@@torneo.reglas.ano-nacimiento-ano-ano" value="birth_year">Por año de nacimiento (año − año de nacimiento)</option>
               </select>
             </label>
             <label class="field">
-              <span>Formato por defecto</span>
+              <span i18n="@@torneo.reglas.formato-defecto">Formato por defecto</span>
               <select name="df" [(ngModel)]="form.default_format">
-                <option value="single_elimination">Eliminación directa</option>
-                <option value="round_robin">Round robin</option>
-                <option value="groups_knockout">Grupos + eliminación</option>
+                <option i18n="@@torneo.reglas.eliminacion-directa" value="single_elimination">Eliminación directa</option>
+                <option i18n="@@torneo.reglas.round-robin" value="round_robin">Round robin</option>
+                <option i18n="@@torneo.reglas.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
               </select>
             </label>
           </div>
@@ -98,13 +93,13 @@ const TIE_LABEL: Record<string, string> = {
             [kata]="kata"
             [competition]="competition"
           />
-          <p class="small muted">
+          <p i18n="@@torneo.reglas.cambiar-edad-metodo-kata-no" class="small muted">
             Cambiar la edad o el método de kata no altera las llaves ya generadas; revisa las
             categorías en curso.
           </p>
           <div class="form-actions">
-            <button type="button" class="btn" (click)="editing.set(false)">Cancelar</button>
-            <button class="btn primary" [disabled]="saving()">Guardar reglas</button>
+            <button i18n="@@torneo.reglas.cancelar" type="button" class="btn" (click)="editing.set(false)">Cancelar</button>
+            <button i18n="@@torneo.reglas.guardar-reglas" class="btn primary" [disabled]="saving()">Guardar reglas</button>
           </div>
         </form>
       </app-modal>
@@ -146,9 +141,9 @@ export class TournamentRules {
   kataText(t: Tournament): string {
     const d = t.kata_defaults as Record<string, any>;
     if (d['preset'] === 'wkf') return 'Preset WKF';
-    const method = d['method'] === 'scores' ? 'Puntuación' : 'Banderas';
+    const method = d['method'] === 'scores' ? $localize`:@@torneo.reglas.puntuacion:Puntuación` : $localize`:@@torneo.reglas.banderas:Banderas`;
     const rounds =
-      Array.isArray(d['rounds']) && d['rounds'].length ? ` · pasan ${d['rounds'].join(' → ')}` : '';
+      Array.isArray(d['rounds']) && d['rounds'].length ? $localize`:@@torneo.reglas.pasan: · pasan ${d['rounds'].join(' → ')}:join:` : '';
     return `${method}${rounds}`;
   }
 
@@ -193,7 +188,7 @@ export class TournamentRules {
         kata_defaults: kataPayload(this.kata) ?? {},
         competition_rules: cleanRules(this.competition) ?? {},
       },
-      { success: 'Reglas guardadas', onConflict: () => this.ctx.reload() },
+      { success: $localize`:@@torneo.reglas.reglas-guardadas:Reglas guardadas`, onConflict: () => this.ctx.reload() },
     );
     this.saving.set(false);
     if (res) {

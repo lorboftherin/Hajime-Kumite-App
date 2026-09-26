@@ -22,19 +22,19 @@ import { Icon } from '../../shared/icon';
         <app-wordmark class="brand" />
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="da-title">
           <div>
-            <h1 id="da-title">Borrar mi cuenta</h1>
-            <p class="muted small lead">Sesión: {{ auth.user()?.username }}</p>
+            <h1 i18n="@@cuenta.borrar.borrar-mi-cuenta" id="da-title">Borrar mi cuenta</h1>
+            <p i18n="@@cuenta.borrar.sesion" class="muted small lead">Sesión: {{ auth.user()?.username }}</p>
           </div>
           <div class="alert warn">
-            <strong>Esto no se puede deshacer.</strong>
-            <div class="small">
+            <strong i18n="@@cuenta.borrar.esto-no-puede-deshacer">Esto no se puede deshacer.</strong>
+            <div i18n="@@cuenta.borrar.borra-cuenta-acceso-cierran-tus" class="small">
               Se borra tu cuenta de acceso y se cierran tus sesiones. Los resultados de los torneos
               no cambian: pertenecen a cada torneo y a tu dojo. Si además quieres que tu nombre deje
               de aparecer en ellos, pídeselo a la organización.
             </div>
           </div>
           <label class="field">
-            <span>Confirma con tu contraseña</span>
+            <span i18n="@@cuenta.borrar.confirma-contrasena">Confirma con tu contraseña</span>
             <input
               name="password"
               type="password"
@@ -46,7 +46,7 @@ import { Icon } from '../../shared/icon';
           </label>
           <label class="check">
             <input type="checkbox" name="sure" [(ngModel)]="sure" />
-            <span>Entiendo que mi cuenta se borrará de forma definitiva.</span>
+            <span i18n="@@cuenta.borrar.entiendo-mi-cuenta-borrara-forma">Entiendo que mi cuenta se borrará de forma definitiva.</span>
           </label>
           @if (error()) {
             <div class="alert danger">{{ error() }}</div>
@@ -58,11 +58,11 @@ import { Icon } from '../../shared/icon';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }
+            }<ng-container i18n="@@cuenta.borrar.borrar-mi-cuenta-2">
             Borrar mi cuenta
-          </button>
+          </ng-container></button>
           <div class="foot">
-            <a class="back-link" routerLink="/torneos"><app-icon name="back" /> Volver</a>
+            <a i18n="@@cuenta.borrar.volver" class="back-link" routerLink="/torneos"><app-icon name="back" /> Volver</a>
           </div>
         </form>
       </div>
@@ -123,7 +123,7 @@ export class DeleteAccountPage {
     this.error.set('');
     try {
       await this.auth.deleteAccount(this.password());
-      this.toast.ok('Tu cuenta fue borrada');
+      this.toast.ok($localize`:@@cuenta.borrar.cuenta-fue-borrada:Tu cuenta fue borrada`);
       this.router.navigate(['/login']);
     } catch (e) {
       this.error.set(ApiError.from(e).fullMessage);

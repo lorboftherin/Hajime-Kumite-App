@@ -19,12 +19,12 @@ export class UpdateService {
     this.sw.versionUpdates.subscribe((ev) => {
       if (ev.type === 'VERSION_READY') {
         this.toast.show(
-          'Hay una versión nueva de Hajime. Recarga la página para usarla.',
+          $localize`:@@actualizacion.hay-version-nueva-hajime-recarga:Hay una versión nueva de Hajime. Recarga la página para usarla.`,
           'info',
           15000,
         );
       } else if (ev.type === 'VERSION_INSTALLATION_FAILED') {
-        this.toast.warn('No se pudo descargar la versión nueva. Se sigue usando la actual.');
+        this.toast.warn($localize`:@@actualizacion.no-pudo-descargar-version-nueva:No se pudo descargar la versión nueva. Se sigue usando la actual.`);
       }
     });
     const stable = this.app.isStable.pipe(first((s) => s));

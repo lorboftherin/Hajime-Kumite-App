@@ -16,26 +16,26 @@ import { LanguageSelect } from '../../shared/language-select';
     <app-auth-frame>
       <div class="login">
         <section class="intro">
-          <div class="wordmark" role="img" aria-label="Hajime, torneos de karate">
+          <div i18n-aria-label="@@login.hajime-torneos-karate" class="wordmark" role="img" aria-label="Hajime, torneos de karate">
             <app-enso class="mark" />
             <div class="words">
               <app-hajime-word class="word" />
               <app-hajime-tagline class="tag" />
             </div>
           </div>
-          <p class="tagline">Organiza torneos con calma.<br />Registra cada combate con respeto.</p>
-          <p class="sub">
+          <p i18n="@@login.organiza-torneos-calma-registra" class="tagline">Organiza torneos con calma.<br />Registra cada combate con respeto.</p>
+          <p i18n="@@login.gestion-torneos-karate-peru" class="sub">
             <span class="kanji" aria-hidden="true">始め</span> Gestión de torneos de karate · Perú
           </p>
         </section>
 
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="login-title">
           <div>
-            <h1 id="login-title">Ingresar</h1>
-            <p class="muted small lead">Con tu usuario o tu correo.</p>
+            <h1 i18n="@@login.ingresar" id="login-title">Ingresar</h1>
+            <p i18n="@@login.usuario-correo" class="muted small lead">Con tu usuario o tu correo.</p>
           </div>
           <label class="field">
-            <span>Usuario o correo</span>
+            <span i18n="@@login.usuario-correo-2">Usuario o correo</span>
             <input
               name="username"
               [(ngModel)]="username"
@@ -45,7 +45,7 @@ import { LanguageSelect } from '../../shared/language-select';
             />
           </label>
           <label class="field">
-            <span>Contraseña</span>
+            <span i18n="@@login.contrasena">Contraseña</span>
             <input
               name="password"
               type="password"
@@ -54,13 +54,13 @@ import { LanguageSelect } from '../../shared/language-select';
               required
             />
           </label>
-          <a class="small forgot" routerLink="/recuperar-clave">¿Olvidaste tu contraseña?</a>
+          <a i18n="@@login.olvidaste-contrasena" class="small forgot" routerLink="/recuperar-clave">¿Olvidaste tu contraseña?</a>
           @if (error()) {
             <div class="alert" [class.danger]="!locked()" [class.warn]="locked()" role="alert">
               @if (locked()) {
-                <strong>Una pausa breve.</strong>
+                <strong i18n="@@login.pausa-breve">Una pausa breve.</strong>
                 <div>{{ error() }}</div>
-                <div class="small muted-ink">
+                <div i18n="@@login.seguridad-intentos-detienen-unos" class="small muted-ink">
                   Por seguridad, los intentos se detienen unos minutos. Respira; tus datos están a
                   salvo.
                 </div>
@@ -76,20 +76,20 @@ import { LanguageSelect } from '../../shared/language-select';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }
+            }<ng-container i18n="@@login.ingresar-2">
             Ingresar
-          </button>
+          </ng-container></button>
           @if (openSignup()) {
-            <p class="small center signup">
+            <p i18n="@@login.compites-tienes-hijos-compiten" class="small center signup">
               ¿Compites o tienes hijos que compiten? <a routerLink="/crear-cuenta">Crea tu cuenta</a>
             </p>
           }
           @if (mobile) {
             <details class="server">
-              <summary class="small muted">Servidor: {{ server() }}</summary>
+              <summary i18n="@@login.servidor" class="small muted">Servidor: {{ server() }}</summary>
               <label class="field">
-                <span>Dirección del servidor</span>
-                <input
+                <span i18n="@@login.direccion-servidor">Dirección del servidor</span>
+                <input i18n-placeholder="@@login.https-hajime-lorboftherin-com"
                   name="server"
                   [ngModel]="server()"
                   (ngModelChange)="changeServer($event)"
@@ -99,7 +99,7 @@ import { LanguageSelect } from '../../shared/language-select';
                   placeholder="https://hajime.lorboftherin.com"
                 />
               </label>
-              <p class="small muted">Solo cámbiala si la organización te dio otra dirección.</p>
+              <p i18n="@@login.solo-cambiala-si-organizacion-te" class="small muted">Solo cámbiala si la organización te dio otra dirección.</p>
             </details>
           }
         </form>
@@ -293,7 +293,7 @@ export class LoginPage {
       this.locked.set(err.status === 429 || err.code === 'TOO_MANY_ATTEMPTS');
       this.error.set(
         this.locked()
-          ? err.message || 'Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.'
+          ? err.message || $localize`:@@login.demasiados-intentos-fallidos:Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.`
           : err.fullMessage,
       );
     } finally {

@@ -9,7 +9,6 @@ import { tatamiScopes } from '../../core/roles';
 import { StatusBadge } from '../../shared/badge';
 import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
-import { PluralPipe } from '../../shared/plural';
 import { hourText, zoneOfIso } from '../public/public-logic';
 
 interface View {
@@ -24,14 +23,14 @@ interface View {
  */
 @Component({
   selector: 'app-my-tatami',
-  imports: [RouterLink, PageHead, Icon, StatusBadge, PluralPipe],
+  imports: [RouterLink, PageHead, Icon, StatusBadge],
   template: `
     <div class="container">
-      <app-page-head kanji="畳" title="Mi tatami">
+      <app-page-head i18n-title="@@mesa.mi-tatami.mi-tatami" kanji="畳" title="Mi tatami">
         <div meta class="meta-line">
-          <span>Combates de tu tatami, en el orden de la planilla</span>
+          <span i18n="@@mesa.mi-tatami.combates-tatami-orden-planilla">Combates de tu tatami, en el orden de la planilla</span>
         </div>
-        <button class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
+        <button i18n-aria-label="@@mesa.mi-tatami.actualizar" i18n-title="@@mesa.mi-tatami.actualizar" class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
       </app-page-head>
 
       @for (v of views(); track v.id) {
@@ -40,28 +39,28 @@ interface View {
             <div class="t-head">
               <h2>{{ tname(q) }}</h2>
               @if (q.progress; as pr) {
-                <span class="muted small num">{{ pr.done }} de {{ pr.total | plural: 'combate' : 'combates' }}</span>
+                <span i18n="@@mesa.mi-tatami.hechos-de-total" class="muted small num">{pr.total, plural, =1 {{{ pr.done }} de 1 combate} other {{{ pr.done }} de {{ pr.total }} combates}}</span>
               }
             </div>
             @if (next(q); as it) {
               <a class="go" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: q.tatami.id }">
-                <span class="go-kicker">{{ it.match.status === 'in_progress' ? 'Combate en curso' : 'Siguiente combate' }}</span>
-                <span class="go-main">{{ it.match.status === 'in_progress' ? 'Abrir combate en curso' : 'Abrir siguiente combate' }} →</span>
+                <span i18n="@@mesa.mi-tatami.curso-siguiente" class="go-kicker">{it.match.status, select, in_progress {Combate en curso} other {Siguiente combate}}</span>
+                <span i18n="@@mesa.mi-tatami.abrir-curso-siguiente" class="go-main">{it.match.status, select, in_progress {Abrir combate en curso} other {Abrir siguiente combate}} →</span>
                 <span class="go-sub"><span class="num">{{ it.number }}</span> · {{ it.category_name }}@if (it.eta && it.match.status !== 'in_progress') { · ≈ {{ hour(it.eta) }}}</span>
                 <span class="go-vs">
                   <span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span>
-                  <span class="vs" aria-hidden="true">vs</span>
+                  <span i18n="@@mesa.mi-tatami.vs" class="vs" aria-hidden="true">vs</span>
                   <span class="ao">{{ pname(q, it.match.ao_registration_id) }}</span>
                 </span>
               </a>
             } @else {
               <div class="empty-q">
-                <p><strong>No hay combates listos en este tatami.</strong></p>
-                <p class="small muted">Cuando el organizador genere las llaves o termine la ronda anterior, aparecerán aquí.</p>
+                <p><strong i18n="@@mesa.mi-tatami.no-hay-combates-listos-este">No hay combates listos en este tatami.</strong></p>
+                <p i18n="@@mesa.mi-tatami.cuando-organizador-genere-llaves" class="small muted">Cuando el organizador genere las llaves o termine la ronda anterior, aparecerán aquí.</p>
               </div>
             }
             @if (rest(q).length) {
-              <div class="label">Después</div>
+              <div i18n="@@mesa.mi-tatami.despues" class="label">Después</div>
               <ol class="queue">
                 @for (it of rest(q); track it.match.id) {
                   <li>
@@ -72,7 +71,7 @@ interface View {
                         <span class="small"><span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span> · <span class="ao">{{ pname(q, it.match.ao_registration_id) }}</span></span>
                       </span>
                       @if (it.eta) {
-                        <span class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
+                        <span i18n-title="@@mesa.mi-tatami.hora-estimada-inicio" class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
                       }
                       @if (it.match.status !== 'ready') {
                         <app-status [status]="it.match.status" type="match" />
@@ -84,7 +83,7 @@ interface View {
             }
             @if (q.conflicts.length) {
               <div class="alert warn small mt">
-                <strong>Con combates pendientes en otro tatami:</strong>
+                <strong i18n="@@mesa.mi-tatami.combates-pendientes-otro-tatami">Con combates pendientes en otro tatami:</strong>
                 {{ conflictNames(q) }}
               </div>
             }
@@ -96,10 +95,10 @@ interface View {
         </section>
       } @empty {
         <div class="card empty">
-          <p><strong>No tienes un tatami asignado.</strong></p>
+          <p><strong i18n="@@mesa.mi-tatami.no-tienes-tatami-asignado">No tienes un tatami asignado.</strong></p><ng-container i18n="@@mesa.mi-tatami.pide-organizador-te-asigne-como">
           Pide al organizador que te asigne como operador de mesa de un tatami, o revisa
           <a routerLink="/torneos">los torneos</a>.
-        </div>
+        </ng-container></div>
       }
     </div>
   `,
@@ -265,7 +264,7 @@ export class MyTatamiPage {
   }
 
   tname(q: TatamiQueue): string {
-    return q.tatami.name || `Tatami ${q.tatami.number}`;
+    return q.tatami.name || $localize`:@@mesa.mi-tatami.tatami:Tatami ${q.tatami.number}:number:`;
   }
 
   /** El combate en curso o, si no hay, el siguiente listo. */
@@ -284,7 +283,7 @@ export class MyTatamiPage {
   }
 
   pname(q: TatamiQueue, rid: number | null): string {
-    if (!rid) return 'Por definir';
+    if (!rid) return $localize`:@@mesa.mi-tatami.definir:Por definir`;
     return q.participants[rid]?.name ?? `#${rid}`;
   }
 

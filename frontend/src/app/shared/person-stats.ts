@@ -1,8 +1,8 @@
 import { Component, computed, effect, input, inject, signal, untracked } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import { METHOD_LABEL, mmss } from '../core/format';
+import { etiquetas } from '../core/i18n/etiquetas';
 import { PersonStats } from '../core/models';
-import { PluralPipe } from './plural';
 
 const TECH = [
   { key: 'ippon', label: 'Ippon', pts: 3 },
@@ -10,7 +10,14 @@ const TECH = [
   { key: 'yuko', label: 'Yuko', pts: 1 },
 ] as const;
 
-const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, draw: { k: '分', t: 'Empate' } } as const;
+const FORM = etiquetas(
+  () =>
+    ({
+      win: { k: '勝', t: $localize`:@@persona.estadisticas.gano:Ganó` },
+      loss: { k: '負', t: $localize`:@@persona.estadisticas.perdio:Perdió` },
+      draw: { k: '分', t: $localize`:@@persona.estadisticas.empate:Empate` },
+    }) as const,
+);
 
 /**
  * Perfil deportivo (GET /persons/{id}/stats): números de kumite, técnicas,
@@ -19,57 +26,57 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
  */
 @Component({
   selector: 'app-person-stats',
-  imports: [PluralPipe],
+  imports: [],
   template: `
     @if (stats(); as s) {
       @let k = s.kumite;
-      <section class="card profile" aria-label="Perfil deportivo">
+      <section i18n-aria-label="@@persona.estadisticas.perfil-deportivo" class="card profile" aria-label="Perfil deportivo">
         <div class="head">
           <div>
-            <h3>Perfil deportivo</h3>
-            <p class="muted small">Kumite en torneos oficiales · {{ s.tournaments | plural: 'torneo' : 'torneos' }}</p>
+            <h3 i18n="@@persona.estadisticas.perfil-deportivo-2">Perfil deportivo</h3>
+            <p i18n="@@persona.estadisticas.kumite-torneos-oficiales" class="muted small">Kumite en torneos oficiales · {s.tournaments, plural, =1 {1 torneo} other {{{ s.tournaments }} torneos}}</p>
           </div>
           @if (s.form.length) {
-            <div class="form" aria-label="Últimos combates">
-              <span class="small muted">Forma</span>
+            <div i18n-aria-label="@@persona.estadisticas.ultimos-combates" class="form" aria-label="Últimos combates">
+              <span i18n="@@persona.estadisticas.forma" class="small muted">Forma</span>
               @for (r of s.form; track $index) {
                 <span class="f {{ r }}" [title]="formInfo[r].t">{{ formInfo[r].k }}</span>
               }
             </div>
           }
-          <div class="index" title="Índice Hajime: victorias y podios pesan más que la técnica; recibir puntos resta un poco.">
+          <div i18n-title="@@persona.estadisticas.indice-hajime-victorias-podios" class="index" title="Índice Hajime: victorias y podios pesan más que la técnica; recibir puntos resta un poco.">
             <span class="num">{{ s.mvp_index }}</span>
-            <span class="small muted">índice Hajime</span>
+            <span i18n="@@persona.estadisticas.indice-hajime" class="small muted">índice Hajime</span>
           </div>
         </div>
 
         @if (k.matches) {
           <div class="tiles">
-            <div class="tile"><span class="v">{{ k.matches }}</span><span class="l">Combates</span></div>
-            <div class="tile"><span class="v">{{ k.wins }}<small>–{{ k.losses }}@if (k.draws) {–{{ k.draws }}}</small></span><span class="l">Ganados–perdidos</span></div>
-            <div class="tile"><span class="v">{{ k.win_pct }}<small>%</small></span><span class="l">Victorias</span></div>
-            <div class="tile"><span class="v">{{ k.avg_points }}</span><span class="l">Puntos por combate</span></div>
-            <div class="tile"><span class="v">{{ k.senshu_pct ?? '—' }}@if (k.senshu_pct !== null) {<small>%</small>}</span><span class="l">Senshu (primera ventaja)</span></div>
-            <div class="tile"><span class="v">{{ k.longest_streak }}</span><span class="l">Racha de victorias</span></div>
-            <div class="tile"><span class="v">{{ k.fastest_win !== null ? mmss(k.fastest_win) : '—' }}</span><span class="l">Victoria más rápida</span></div>
+            <div class="tile"><span class="v">{{ k.matches }}</span><span i18n="@@persona.estadisticas.combates" class="l">Combates</span></div>
+            <div class="tile"><span class="v">{{ k.wins }}<small>–{{ k.losses }}@if (k.draws) {–{{ k.draws }}}</small></span><span i18n="@@persona.estadisticas.ganados-perdidos" class="l">Ganados–perdidos</span></div>
+            <div class="tile"><span class="v">{{ k.win_pct }}<small>%</small></span><span i18n="@@persona.estadisticas.victorias" class="l">Victorias</span></div>
+            <div class="tile"><span class="v">{{ k.avg_points }}</span><span i18n="@@persona.estadisticas.puntos-combate" class="l">Puntos por combate</span></div>
+            <div class="tile"><span class="v">{{ k.senshu_pct ?? '—' }}@if (k.senshu_pct !== null) {<small>%</small>}</span><span i18n="@@persona.estadisticas.senshu-primera-ventaja" class="l">Senshu (primera ventaja)</span></div>
+            <div class="tile"><span class="v">{{ k.longest_streak }}</span><span i18n="@@persona.estadisticas.racha-victorias" class="l">Racha de victorias</span></div>
+            <div class="tile"><span class="v">{{ k.fastest_win !== null ? mmss(k.fastest_win) : '—' }}</span><span i18n="@@persona.estadisticas.victoria-mas-rapida" class="l">Victoria más rápida</span></div>
             @if (s.best_kata_score !== null) {
-              <div class="tile"><span class="v">{{ s.best_kata_score.toFixed(1) }}</span><span class="l">Mejor nota de kata</span></div>
+              <div class="tile"><span class="v">{{ s.best_kata_score.toFixed(1) }}</span><span i18n="@@persona.estadisticas.mejor-nota-kata" class="l">Mejor nota de kata</span></div>
             }
           </div>
 
           <div class="cols">
             <div>
-              <h4>Técnicas</h4>
+              <h4 i18n="@@persona.estadisticas.tecnicas">Técnicas</h4>
               <table class="tech">
                 <thead>
-                  <tr><th scope="col"><span class="sr-only">Técnica</span></th><th scope="col">Marcadas</th><th scope="col" class="right">Recibidas</th></tr>
+                  <tr><th scope="col"><span i18n="@@persona.estadisticas.tecnica" class="sr-only">Técnica</span></th><th i18n="@@persona.estadisticas.marcadas" scope="col">Marcadas</th><th i18n="@@persona.estadisticas.recibidas" scope="col" class="right">Recibidas</th></tr>
                 </thead>
                 <tbody>
                   @for (t of tech; track t.key) {
                     <tr>
-                      <th scope="row">{{ t.label }} <span class="muted small">{{ t.pts }} pt</span></th>
+                      <th scope="row">{{ t.label }} <span i18n="@@persona.estadisticas.pt" class="muted small">{{ t.pts }} pt</span></th>
                       <td>
-                        <span class="bar-wrap" [title]="t.label + ': ' + k.techniques[t.key] + ' marcadas'">
+                        <span class="bar-wrap" [title]="tituloMarcadas(t.label, k.techniques[t.key])">
                           <span class="bar" [style.width.%]="pct(k.techniques[t.key])"></span>
                           <span class="bv">{{ k.techniques[t.key] }}</span>
                         </span>
@@ -79,10 +86,10 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
                   }
                 </tbody>
               </table>
-              <p class="small muted">Puntos a favor {{ k.points_for }} · en contra {{ k.points_against }}</p>
+              <p i18n="@@persona.estadisticas.puntos-favor-contra" class="small muted">Puntos a favor {{ k.points_for }} · en contra {{ k.points_against }}</p>
             </div>
             <div>
-              <h4>Cómo gana</h4>
+              <h4 i18n="@@persona.estadisticas.como-gana">Cómo gana</h4>
               @if (methods().length) {
                 <ul class="methods">
                   @for (m of methods(); track m.key) {
@@ -90,21 +97,21 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
                   }
                 </ul>
               } @else {
-                <p class="small muted">Todavía sin victorias.</p>
+                <p i18n="@@persona.estadisticas.todavia-sin-victorias" class="small muted">Todavía sin victorias.</p>
               }
             </div>
           </div>
         } @else {
-          <p class="muted small">Todavía no tiene combates de kumite cerrados en torneos oficiales.</p>
+          <p i18n="@@persona.estadisticas.todavia-no-tiene-combates-kumite" class="muted small">Todavía no tiene combates de kumite cerrados en torneos oficiales.</p>
         }
 
-        <h4>Insignias <span class="muted small">{{ earned() }} de {{ s.badges.length }}</span></h4>
+        <h4 i18n="@@persona.estadisticas.insignias">Insignias <span class="muted small">{{ earned() }} de {{ s.badges.length }}</span></h4>
         <ul class="badges">
           @for (b of s.badges; track b.code) {
-            <li [class.on]="b.earned" [title]="b.description + (b.earned ? '' : ' (pendiente)')">
+            <li [class.on]="b.earned" [title]="b.earned ? b.description : tituloPendiente(b.description)">
               <span class="seal" aria-hidden="true">{{ b.kanji }}</span>
               <span class="bn">{{ b.name }}</span>
-              <span class="sr-only">{{ b.earned ? 'obtenida' : 'pendiente' }}: {{ b.description }}</span>
+              <span i18n="@@persona.estadisticas.insignia-estado" class="sr-only">@if (b.earned) {obtenida} @else {pendiente}: {{ b.description }}</span>
             </li>
           }
         </ul>
@@ -311,6 +318,8 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
   `,
 })
 export class PersonStatsView {
+  tituloMarcadas = (tecnica: string, n: number) => $localize`:@@persona.estadisticas.tecnica-marcadas:${tecnica}:tecnica:: ${n}:n: marcadas`;
+  tituloPendiente = (descripcion: string) => $localize`:@@persona.estadisticas.pendiente-sufijo:${descripcion}:descripcion: (pendiente)`;
   private api = inject(ApiService);
   readonly personId = input.required<number>();
   readonly stats = signal<PersonStats | null>(null);

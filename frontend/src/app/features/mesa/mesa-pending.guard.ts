@@ -2,7 +2,6 @@ import { inject } from '@angular/core';
 import { CanDeactivateFn } from '@angular/router';
 import { DialogService } from '../../core/dialog.service';
 import { SessionExpiredService } from '../../core/session-expired.service';
-import { plural } from '../../shared/plural';
 import type { MesaPage } from './mesa';
 
 /**
@@ -20,12 +19,12 @@ export const mesaPendingGuard: CanDeactivateFn<MesaPage> = (cmp, _route, _state,
   const n = cmp?.pending?.().length ?? 0;
   if (!n) return true;
   return inject(DialogService).confirm({
-    title: 'Eventos sin enviar',
+    title: $localize`:@@mesa.eventos-sin-enviar:Eventos sin enviar`,
     message:
       n === 1
-        ? 'Hay 1 evento sin enviar. Queda guardado en este dispositivo y se enviará al volver a abrir este combate. ¿Salir de todos modos?'
-        : `Hay ${plural(n, 'evento', 'eventos')} sin enviar. Quedan guardados en este dispositivo y se enviarán al volver a abrir este combate. ¿Salir de todos modos?`,
-    confirmText: 'Salir',
+        ? $localize`:@@mesa.hay-1-evento-sin-enviar-queda:Hay 1 evento sin enviar. Queda guardado en este dispositivo y se enviará al volver a abrir este combate. ¿Salir de todos modos?`
+        : $localize`:@@mesa.hay-sin-enviar-quedan-guardados:Hay ${n}:n: eventos sin enviar. Quedan guardados en este dispositivo y se enviarán al volver a abrir este combate. ¿Salir de todos modos?`,
+    confirmText: $localize`:@@mesa.salir-2:Salir`,
     danger: true,
   });
 };

@@ -123,8 +123,8 @@ export function looksLikeCode(text: string): boolean {
 
 /** «hasta 45 kg», «45–50 kg», «más de 68 kg». */
 export function rangeText(min: number | null, max: number | null): string {
-  if (min !== null && max !== null) return `${min}–${max} kg`;
-  if (max !== null) return `hasta ${max} kg`;
-  if (min !== null) return `más de ${min} kg`;
+  if (min !== null && max !== null) return $localize`:@@acreditacion.kg:${min}:min:–${max}:max: kg`;
+  if (max !== null) return $localize`:@@acreditacion.hasta-kg:hasta ${max}:max: kg`;
+  if (min !== null) return $localize`:@@acreditacion.mas-kg:más de ${min}:min: kg`;
   return '';
 }

@@ -15,46 +15,46 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, RouterLink, PageHead, Icon, LanguageSelect],
   template: `
     <div class="container narrow">
-      <app-page-head kanji="私" title="Mi cuenta">
+      <app-page-head i18n-title="@@cuenta.mi-cuenta" kanji="私" title="Mi cuenta">
         <div meta class="meta-line">
-          <span>Sesión: {{ auth.user()?.username }}</span>
+          <span i18n="@@cuenta.sesion">Sesión: {{ auth.user()?.username }}</span>
         </div>
       </app-page-head>
 
       <section class="card stack">
-        <h2 class="h3">Correo</h2>
+        <h2 i18n="@@cuenta.correo" class="h3">Correo</h2>
         @if (auth.user()?.email; as email) {
           <p class="row">
             <span class="mono grow">{{ email }}</span>
             @if (auth.user()?.email_verified_at) {
-              <span class="badge matcha">Verificado</span>
+              <span i18n="@@cuenta.verificado" class="badge matcha">Verificado</span>
             } @else {
-              <span class="badge yamabuki">Sin verificar</span>
+              <span i18n="@@cuenta.sin-verificar" class="badge yamabuki">Sin verificar</span>
             }
           </p>
           @if (!auth.user()?.email_verified_at) {
-            <div class="alert warn">
+            <div class="alert warn"><ng-container i18n="@@cuenta.confirma-correo-enlace-te">
               Confirma tu correo con el enlace que te enviamos. Sin eso no puedes recuperar la
               contraseña ni reclamar perfiles.
-              <div>
-                <button class="btn sm" type="button" (click)="resend()" [disabled]="busy()">
+              </ng-container><div>
+                <button i18n="@@cuenta.enviar-otro-enlace" class="btn sm" type="button" (click)="resend()" [disabled]="busy()">
                   Enviar otro enlace
                 </button>
               </div>
             </div>
           }
         } @else {
-          <p class="muted small">
+          <p i18n="@@cuenta.cuenta-no-tiene-correo-agregalo" class="muted small">
             Tu cuenta no tiene correo. Agrégalo para poder recuperar tu contraseña.
           </p>
         }
         <form class="stack" (ngSubmit)="saveEmail()">
           <label class="field">
-            <span>{{ auth.user()?.email ? 'Cambiar correo' : 'Correo' }}</span>
+            <span i18n="@@cuenta.cambiar-correo-correo">@if (auth.user()?.email) {Cambiar correo} @else {Correo}</span>
             <input name="email" type="email" [(ngModel)]="email" autocomplete="email" />
           </label>
           <label class="field">
-            <span>Tu contraseña actual (para confirmar)</span>
+            <span i18n="@@cuenta.contrasena-actual-para-confirmar">Tu contraseña actual (para confirmar)</span>
             <input
               name="pw"
               type="password"
@@ -66,7 +66,7 @@ import { PageHead } from '../../shared/page-head';
             <div class="alert danger" role="alert">{{ error() }}</div>
           }
           <div class="form-actions">
-            <button
+            <button i18n="@@cuenta.guardar-correo"
               class="btn primary"
               [disabled]="busy() || !email().includes('@') || !password()"
             >
@@ -77,35 +77,35 @@ import { PageHead } from '../../shared/page-head';
       </section>
 
       <section class="card stack">
-        <h2 class="h3">Nombre visible</h2>
+        <h2 i18n="@@cuenta.nombre-visible" class="h3">Nombre visible</h2>
         <form class="row" (ngSubmit)="saveName()">
-          <input
+          <input i18n-aria-label="@@cuenta.nombre-visible-2"
             class="grow"
             name="name"
             [(ngModel)]="name"
             autocomplete="name"
             aria-label="Nombre visible"
           />
-          <button class="btn" [disabled]="busy() || !name().trim()">Guardar</button>
+          <button i18n="@@cuenta.guardar" class="btn" [disabled]="busy() || !name().trim()">Guardar</button>
         </form>
       </section>
 
       <section class="card stack">
-        <h2 class="h3">Idioma</h2>
-        <p class="muted small">
+        <h2 i18n="@@cuenta.idioma" class="h3">Idioma</h2>
+        <p i18n="@@cuenta.idioma-hajime-este-dispositivo" class="muted small">
           El idioma de Hajime en este dispositivo. Al cambiarlo, la aplicación se vuelve a cargar.
         </p>
         <div><app-language-select /></div>
       </section>
 
       <section class="card links">
-        <a routerLink="/mis-perfiles"><app-icon name="open" /> Mis perfiles deportivos</a>
-        <a routerLink="/avisos"><app-icon name="bell" /> Avisos en este dispositivo</a>
-        <a routerLink="/cambiar-clave"><app-icon name="key" /> Cambiar contraseña</a>
-        <a routerLink="/privacidad"
+        <a i18n="@@cuenta.mis-perfiles-deportivos" routerLink="/mis-perfiles"><app-icon name="open" /> Mis perfiles deportivos</a>
+        <a i18n="@@cuenta.avisos-este-dispositivo" routerLink="/avisos"><app-icon name="bell" /> Avisos en este dispositivo</a>
+        <a i18n="@@cuenta.cambiar-contrasena" routerLink="/cambiar-clave"><app-icon name="key" /> Cambiar contraseña</a>
+        <a i18n="@@cuenta.privacidad-datos-muestran-quien" routerLink="/privacidad"
           ><app-icon name="open" /> Privacidad: qué datos se muestran y a quién</a
         >
-        <a routerLink="/mi-cuenta" class="danger"><app-icon name="close" /> Borrar mi cuenta</a>
+        <a i18n="@@cuenta.borrar-mi-cuenta" routerLink="/mi-cuenta" class="danger"><app-icon name="close" /> Borrar mi cuenta</a>
       </section>
     </div>
   `,
@@ -165,7 +165,7 @@ export class AccountPage {
   async saveEmail(): Promise<void> {
     const r = await this.patch(
       { email: this.email().trim(), current_password: this.password() },
-      'Correo guardado. Te enviamos un enlace para confirmarlo.',
+      $localize`:@@cuenta.correo-guardado-te-enviamos:Correo guardado. Te enviamos un enlace para confirmarlo.`,
     );
     if (r) {
       this.email.set('');
@@ -174,7 +174,7 @@ export class AccountPage {
   }
 
   async saveName(): Promise<void> {
-    await this.patch({ display_name: this.name().trim() }, 'Nombre guardado');
+    await this.patch({ display_name: this.name().trim() }, $localize`:@@cuenta.nombre-guardado:Nombre guardado`);
   }
 
   async resend(): Promise<void> {
@@ -182,7 +182,7 @@ export class AccountPage {
     await this.mut.post(
       '/auth/verify-email/resend',
       {},
-      { success: 'Te enviamos un enlace nuevo' },
+      { success: $localize`:@@cuenta.te-enviamos-enlace-nuevo:Te enviamos un enlace nuevo` },
     );
     this.busy.set(false);
   }

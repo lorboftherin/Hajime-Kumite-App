@@ -92,7 +92,7 @@ export class PublicFeed<L = unknown, P = unknown, O = unknown> {
     on('people', this.o.onPeople);
     on('overlay', this.o.onOverlay);
     es.addEventListener('gone', () => {
-      this.o.onGone?.('El enlace fue desactivado por la organización');
+      this.o.onGone?.($localize`:@@publico.feed.enlace-fue-desactivado:El enlace fue desactivado por la organización`);
       this.stop();
     });
     es.onopen = () => (this.mode = 'sse');

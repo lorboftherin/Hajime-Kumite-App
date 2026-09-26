@@ -19,15 +19,16 @@ import { Enso, HajimeWord } from '../../shared/enso';
 import { personLink } from '../../shared/person-link';
 import { KIND_LABEL, bracketRounds } from './public-logic';
 import { PublicBracketMatch, PublicCategory } from './public-models';
+import { etiquetas } from '../../core/i18n/etiquetas';
 
 const REFRESH_MS = 10000;
 
-const STATUS: Record<string, string> = {
-  open: 'Inscripciones abiertas',
-  ready: 'Llave lista',
-  in_progress: 'En curso',
-  finished: 'Terminada',
-};
+const STATUS: Record<string, string> = etiquetas(() => ({
+  open: $localize`:@@publico.categoria.inscripciones-abiertas:Inscripciones abiertas`,
+  ready: $localize`:@@publico.categoria.llave-lista:Llave lista`,
+  in_progress: $localize`:@@publico.categoria.curso-2:En curso`,
+  finished: $localize`:@@publico.categoria.terminada:Terminada`,
+}));
 
 /**
  * Llave y resultados de una categoría para el público (`/t/:slug/categoria/:id`
@@ -41,23 +42,23 @@ const STATUS: Record<string, string> = {
   template: `
     <div class="page">
       <header class="top">
-        <a class="brand" [routerLink]="back()" aria-label="Volver al torneo"
+        <a i18n-aria-label="@@publico.categoria.volver-torneo" class="brand" [routerLink]="back()" aria-label="Volver al torneo"
           ><app-enso class="mark" /><app-hajime-word class="word"
         /></a>
-        <a class="btn-back" [routerLink]="back()">← {{ data()?.tournament?.name ?? 'Torneo' }}</a>
+        <a class="btn-back" [routerLink]="back()">← {{ data()?.tournament?.name ?? txtTorneo }}</a>
       </header>
       @if (data(); as d) {
         <section class="hero">
           <h1>{{ d.category.name }}</h1>
           <p>
-            {{ status(d.category.status) }} · {{ d.entrants.length }}
-            {{ d.category.is_team ? 'equipos' : 'competidores' }}
+            {{ status(d.category.status) }} ·
+            <ng-container i18n="@@publico.categoria.n-inscritos">{{ d.entrants.length }} @if (d.category.is_team) {equipos} @else {competidores}</ng-container>
           </p>
         </section>
 
         @if (d.podium.length) {
           <details class="res" open>
-            <summary>Resultados</summary>
+            <summary i18n="@@publico.categoria.resultados">Resultados</summary>
             <ol class="podium">
               @for (p of d.podium; track $index) {
                 <li>
@@ -76,19 +77,19 @@ const STATUS: Record<string, string> = {
         }
 
         @if (d.standings?.length) {
-          <h2 class="sec">{{ d.format === 'kata_rounds' ? 'Puntuaciones' : 'Tabla' }}</h2>
+          <h2 i18n="@@publico.categoria.puntuaciones-tabla" class="sec">{d.format, select, kata_rounds {Puntuaciones} other {Tabla}}</h2>
           <table class="table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Competidor</th>
+                <th i18n="@@publico.categoria.competidor">Competidor</th>
                 @if (d.format === 'kata_rounds') {
-                  <th>Kata</th>
-                  <th>Nota</th>
+                  <th i18n="@@publico.categoria.kata">Kata</th>
+                  <th i18n="@@publico.categoria.nota">Nota</th>
                 } @else {
-                  <th>Ganados</th>
-                  <th>Jugados</th>
-                  <th>Puntos</th>
+                  <th i18n="@@publico.categoria.ganados">Ganados</th>
+                  <th i18n="@@publico.categoria.jugados">Jugados</th>
+                  <th i18n="@@publico.categoria.puntos">Puntos</th>
                 }
               </tr>
             </thead>
@@ -119,8 +120,8 @@ const STATUS: Record<string, string> = {
         }
 
         @if (rounds().length) {
-          <h2 class="sec">Llave</h2>
-          <div class="bracket" role="list" aria-label="Llave por rondas">
+          <h2 i18n="@@publico.categoria.llave" class="sec">Llave</h2>
+          <div i18n-aria-label="@@publico.categoria.llave-rondas" class="bracket" role="list" aria-label="Llave por rondas">
             @for (r of rounds(); track r.round) {
               <section class="round" role="listitem" [attr.aria-label]="r.label">
                 <h3>{{ r.label }}</h3>
@@ -137,7 +138,7 @@ const STATUS: Record<string, string> = {
           </div>
         }
         @if (extra().length) {
-          <h2 class="sec">{{ d.format === 'round_robin' ? 'Combates' : 'Otros combates' }}</h2>
+          <h2 i18n="@@publico.categoria.combates-otros" class="sec">{d.format, select, round_robin {Combates} other {Otros combates}}</h2>
           <div class="extra">
             @for (m of extra(); track m.code) {
               <ng-container
@@ -148,25 +149,25 @@ const STATUS: Record<string, string> = {
           </div>
         }
         @if (!d.format) {
-          <h2 class="sec">Inscritos</h2>
+          <h2 i18n="@@publico.categoria.inscritos" class="sec">Inscritos</h2>
           <ul class="list">
             @for (e of d.entrants; track $index) {
               <li>
                 {{ e.name }} <span class="muted">{{ e.dojo }}</span>
               </li>
             } @empty {
-              <li class="muted">Sin inscritos todavía.</li>
+              <li i18n="@@publico.categoria.sin-inscritos-todavia" class="muted">Sin inscritos todavía.</li>
             }
           </ul>
-          <p class="muted">La llave se publica cuando la organización la genera.</p>
+          <p i18n="@@publico.categoria.llave-publica-cuando" class="muted">La llave se publica cuando la organización la genera.</p>
         }
       } @else if (error()) {
         <section class="hero">
-          <h1>Categoría no disponible</h1>
+          <h1 i18n="@@publico.categoria.categoria-no-disponible">Categoría no disponible</h1>
           <p>{{ error() }}</p>
         </section>
       } @else {
-        <p class="muted">Cargando…</p>
+        <p i18n="@@publico.categoria.cargando" class="muted">Cargando…</p>
       }
     </div>
 
@@ -182,7 +183,7 @@ const STATUS: Record<string, string> = {
             <span>{{ kindLabel[m.kind] }}</span>
           }
           @if (m.status === 'in_progress') {
-            <span class="now">En curso</span>
+            <span i18n="@@publico.categoria.curso" class="now">En curso</span>
           }
           @if (m.status === 'finished' && m.method) {
             <span>{{ method(m.method) }}</span>
@@ -193,7 +194,7 @@ const STATUS: Record<string, string> = {
             @if (link(m.aka?.public_id); as l) {
               <a class="plink" [routerLink]="l">{{ m.aka?.name }}</a>
             } @else {
-              {{ m.aka?.name ?? 'Por definir' }}
+              {{ m.aka?.name ?? txtPorDefinir }}
             }
           </span>
           <span class="dj">{{ m.aka?.dojo }}</span>
@@ -206,7 +207,7 @@ const STATUS: Record<string, string> = {
             @if (link(m.ao?.public_id); as l) {
               <a class="plink" [routerLink]="l">{{ m.ao?.name }}</a>
             } @else {
-              {{ m.ao?.name ?? 'Por definir' }}
+              {{ m.ao?.name ?? txtPorDefinir }}
             }
           </span>
           <span class="dj">{{ m.ao?.dojo }}</span>
@@ -220,6 +221,8 @@ const STATUS: Record<string, string> = {
   styleUrls: ['./live.scss', './category.scss'],
 })
 export class PublicCategoryPage {
+  readonly txtTorneo = $localize`:@@publico.categoria.torneo:Torneo`;
+  readonly txtPorDefinir = $localize`:@@comun.por-definir:Por definir`;
   private api = inject(ApiService);
   private meta = inject(Meta);
   private title = inject(Title);
@@ -265,7 +268,7 @@ export class PublicCategoryPage {
       const d = await firstValueFrom(this.api.get<PublicCategory>(this.apiPath()));
       this.data.set(d);
       this.error.set('');
-      this.title.setTitle(`${d.category.name} · ${d.tournament.name} · Hajime en vivo`);
+      this.title.setTitle($localize`:@@publico.categoria.hajime-vivo:${d.category.name}:name: · ${d.tournament.name}:name_2: · Hajime en vivo`);
       this.meta.updateTag(
         { property: 'og:title', content: `${d.category.name} · ${d.tournament.name}` },
         'property="og:title"',

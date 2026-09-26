@@ -1,44 +1,44 @@
 <div class="mesa" [class.kata-mode]="isKata()">
   <!-- ============ Encabezado: identidad del combate y conexión ============ -->
   <header class="hdr">
-    <a class="hbtn back" [routerLink]="backLink()" [queryParams]="sb()?.bout ? tatamiParams() : {}" aria-label="Salir de la mesa">←<span class="hide-xs">Salir</span></a>
+    <a i18n-aria-label="@@mesa.salir-mesa" class="hbtn back" [routerLink]="backLink()" [queryParams]="sb()?.bout ? tatamiParams() : {}" aria-label="Salir de la mesa">←<span i18n="@@mesa.salir" class="hide-xs">Salir</span></a>
     <div class="ident">
       <span class="kj" aria-hidden="true">{{ isKata() ? '型' : '組手' }}</span>
-      <strong class="cat" [title]="category()?.name ?? ''">{{ category()?.name ?? 'Combate' }}</strong>
+      <strong class="cat" [title]="category()?.name ?? ''">{{ category()?.name ?? txtCombate }}</strong>
       @if (match(); as m) {
         <span class="dotsep" aria-hidden="true">·</span>
         <span class="code">{{ tatamiInfo()?.matchNumber ?? m.code }}</span>
         @if (tatamiInfo(); as t) {
           <span class="dotsep hide-sm" aria-hidden="true">·</span>
-          <span class="tat hide-sm">Tatami {{ t.number }}</span>
+          <span i18n="@@mesa.tatami" class="tat hide-sm">Tatami {{ t.number }}</span>
         }
         <span class="mstatus st-{{ m.status }}">{{ m.status | label: matchStatus }}</span>
       }
       @if (sb()?.bout; as b) {
-        <a class="bout-link" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()" title="Volver al enfrentamiento por equipos">
-          {{ b.is_extra ? 'Combate extra' : 'Combate ' + b.bout_number }} · {{ b.aka_team }} {{ b.wins.aka }}–{{ b.wins.ao }} {{ b.ao_team }}
+        <a i18n-title="@@mesa.volver-enfrentamiento-equipos" class="bout-link" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()" title="Volver al enfrentamiento por equipos">
+          @if (b.is_extra) {<ng-container i18n="@@mesa.combate-extra">Combate extra</ng-container>} @else {<ng-container i18n="@@mesa.combate-n">Combate {{ b.bout_number }}</ng-container>} · {{ b.aka_team }} {{ b.wins.aka }}–{{ b.wins.ao }} {{ b.ao_team }}
         </a>
       }
     </div>
     <div class="conn" role="status" aria-live="polite">
       @if (stuck()) {
-        <span class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i>Evento bloqueado · {{ pending().length | plural: 'pendiente' : 'pendientes' }}</span>
-        <button class="hbtn" (click)="retryNow()" title="Reintentar el evento bloqueado">Reintentar</button>
-        <button class="hbtn danger" (click)="discardStuck()">Descartar este evento</button>
+        <span i18n="@@mesa.evento-bloqueado" class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i>Evento bloqueado · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}</span>
+        <button i18n="@@mesa.reintentar" i18n-title="@@mesa.reintentar-evento-bloqueado" class="hbtn" (click)="retryNow()" title="Reintentar el evento bloqueado">Reintentar</button>
+        <button i18n="@@mesa.descartar-este-evento" class="hbtn danger" (click)="discardStuck()">Descartar este evento</button>
       } @else if (authBlocked()) {
-        <button class="pill shu breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sesión vencida · {{ pending().length | plural: 'pendiente' : 'pendientes' }}
+        <button i18n="@@mesa.sesion-vencida" i18n-title="@@mesa.reintentar-ahora" class="pill shu breathe" (click)="retryNow()" title="Reintentar ahora">
+          <i aria-hidden="true"></i>Sesión vencida · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}
         </button>
       } @else if (noSignal()) {
-        <button class="pill yamabuki breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sin conexión · {{ pending().length | plural: 'pendiente' : 'pendientes' }}
+        <button i18n="@@mesa.sin-conexion" i18n-title="@@mesa.reintentar-ahora" class="pill yamabuki breathe" (click)="retryNow()" title="Reintentar ahora">
+          <i aria-hidden="true"></i>Sin conexión · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}
         </button>
       } @else if (pending().length) {
-        <span class="pill nezumi"><i aria-hidden="true"></i>Enviando {{ pending().length }}…</span>
+        <span i18n="@@mesa.enviando" class="pill nezumi"><i aria-hidden="true"></i>Enviando {{ pending().length }}…</span>
       } @else if (readOnly()) {
-        <span class="pill nezumi"><i aria-hidden="true"></i>Solo lectura</span>
+        <span i18n="@@mesa.solo-lectura" class="pill nezumi"><i aria-hidden="true"></i>Solo lectura</span>
       } @else {
-        <span class="pill matcha"><i aria-hidden="true"></i>En línea</span>
+        <span i18n="@@mesa.linea" class="pill matcha"><i aria-hidden="true"></i>En línea</span>
       }
       <div class="opts">
         <button
@@ -47,20 +47,20 @@
           (click)="optsOpen.set(!optsOpen())"
           [attr.aria-expanded]="optsOpen()"
           aria-haspopup="true"
-          [attr.aria-label]="muted() ? 'Avisos de tiempo (sonido apagado)' : 'Avisos de tiempo'"
-          [title]="muted() ? 'Sonido apagado' : 'Avisos de tiempo'"
+          [attr.aria-label]="muted() ? txtAvisosTiempoApagado : txtAvisosTiempo"
+          [title]="muted() ? txtSonidoApagado : txtAvisosTiempo"
         >{{ muted() ? '🔕' : '🔔' }}</button>
         @if (optsOpen()) {
-          <div class="opts-panel" role="group" aria-label="Avisos de tiempo">
-            <div class="opts-title">Avisos de tiempo</div>
-            <p class="opts-hint">Pitido corto a los 15 s (atoshi baraku) y largo al llegar a 0:00, con vibración y parpadeo del reloj.</p>
-            <label class="opts-row"><input type="checkbox" [checked]="!muted()" (change)="toggleMute()" /> Sonido en este dispositivo</label>
-            <label class="opts-row"><input type="checkbox" [checked]="autoYame()" (change)="toggleAutoYame()" /> Detener el reloj automáticamente al terminar (yame)</label>
-            <button class="hbtn" (click)="testSound()">Probar sonido</button>
+          <div i18n-aria-label="@@mesa.avisos-tiempo" class="opts-panel" role="group" aria-label="Avisos de tiempo">
+            <div i18n="@@mesa.avisos-tiempo-2" class="opts-title">Avisos de tiempo</div>
+            <p i18n="@@mesa.pitido-corto-15-s-atoshi-baraku" class="opts-hint">Pitido corto a los 15 s (atoshi baraku) y largo al llegar a 0:00, con vibración y parpadeo del reloj.</p>
+            <label i18n="@@mesa.sonido-este-dispositivo" class="opts-row"><input type="checkbox" [checked]="!muted()" (change)="toggleMute()" /> Sonido en este dispositivo</label>
+            <label i18n="@@mesa.detener-reloj-automaticamente" class="opts-row"><input type="checkbox" [checked]="autoYame()" (change)="toggleAutoYame()" /> Detener el reloj automáticamente al terminar (yame)</label>
+            <button i18n="@@mesa.probar-sonido" class="hbtn" (click)="testSound()">Probar sonido</button>
           </div>
         }
       </div>
-      <button class="hbtn icon" (click)="reload()" title="Recargar" aria-label="Recargar marcador">↻</button>
+      <button i18n-aria-label="@@mesa.recargar-marcador" i18n-title="@@mesa.recargar" class="hbtn icon" (click)="reload()" title="Recargar" aria-label="Recargar marcador">↻</button>
     </div>
   </header>
 
@@ -72,13 +72,13 @@
   }
   @if (readOnly()) {
     <div class="notice ai readonly-note" role="status">
-      <span><strong>Solo lectura.</strong> La mesa de este combate la lleva {{ ownerText() }}; aquí ves el marcador en vivo.@if (pending().length) { Esta tablet tiene {{ pending().length | plural: 'evento' : 'eventos' }} sin enviar: se enviarán si tomas la mesa. }</span>
-      <button class="qbtn primary" [disabled]="taking()" (click)="takeTable()">Tomar la mesa</button>
+      <span><ng-container i18n="@@mesa.solo-lectura-mesa-este-combate"><strong>Solo lectura.</strong> La mesa de este combate la lleva {{ ownerText() }}; aquí ves el marcador en vivo.</ng-container>@if (pending().length) {<ng-container i18n="@@mesa.esta-tablet-tiene-sin-enviar"> Esta tablet tiene {pending().length, plural, =1 {1 evento} other {{{ pending().length }} eventos}} sin enviar: se enviarán si tomas la mesa. </ng-container>}</span>
+      <button i18n="@@mesa.tomar-mesa" class="qbtn primary" [disabled]="taking()" (click)="takeTable()">Tomar la mesa</button>
     </div>
   }
   @if (finishQueued(); as fq) {
-    <div class="notice yamabuki" role="status">
-      <strong>Cierre en cola:</strong> {{ fq.body.winner === 'draw' ? 'hikiwake (empate)' : 'gana ' + (fq.body.winner === 'aka' ? 'AKA' : 'AO') }}.
+    <div i18n="@@mesa.cierre-cola-anota-resultado" class="notice yamabuki" role="status">
+      <strong>Cierre en cola:</strong> {fq.body.winner, select, draw {hikiwake (empate)} aka {gana AKA} other {gana AO}}.
       Anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.
     </div>
   }
@@ -86,27 +86,27 @@
     <div class="relogin-backdrop"><div class="relogin" role="dialog" aria-modal="true" aria-labelledby="relogin-title" appFocusTrap>
       <form (ngSubmit)="relogin()">
         <div class="relogin-head">
-          <strong id="relogin-title">Inicia sesión para seguir enviando</strong>
-          <span>La sesión venció. La mesa sigue abierta y {{ pending().length ? 'la cola (' + (pending().length | plural: 'evento' : 'eventos') + ') se conserva' : 'no se perdió nada' }}.</span>
+          <strong i18n="@@mesa.inicia-sesion-para-seguir" id="relogin-title">Inicia sesión para seguir enviando</strong>
+          <span i18n="@@mesa.sesion-vencio-mesa-sigue-abierta">La sesión venció. La mesa sigue abierta y {pending().length, plural, =0 {no se perdió nada} =1 {la cola (1 evento) se conserva} other {la cola ({{ pending().length }} eventos) se conserva}}.</span>
         </div>
-        <label class="sfield"><span>Usuario</span><input name="u" autocomplete="username" [ngModel]="reloginUser()" (ngModelChange)="reloginUser.set($event)" required /></label>
-        <label class="sfield"><span>Contraseña</span><input name="p" type="password" autocomplete="current-password" [ngModel]="reloginPass()" (ngModelChange)="reloginPass.set($event)" required autofocus /></label>
+        <label class="sfield"><span i18n="@@mesa.usuario">Usuario</span><input name="u" autocomplete="username" [ngModel]="reloginUser()" (ngModelChange)="reloginUser.set($event)" required /></label>
+        <label class="sfield"><span i18n="@@mesa.contrasena">Contraseña</span><input name="p" type="password" autocomplete="current-password" [ngModel]="reloginPass()" (ngModelChange)="reloginPass.set($event)" required autofocus /></label>
         @if (reloginError()) {
           <p class="sheet-warn">{{ reloginError() }}</p>
         }
         <button class="qbtn primary" type="submit" [disabled]="reloginBusy() || !reloginUser() || !reloginPass()">
           @if (reloginBusy()) {
             <span class="spin" aria-hidden="true"></span>
-          }
+          }<ng-container i18n="@@mesa.ingresar-seguir">
           Ingresar y seguir
-        </button>
+        </ng-container></button>
       </form>
     </div></div>
   }
 
   @if (sb(); as s) {
     @if (!playable()) {
-      <div class="notice yamabuki">El combate aún no tiene dos participantes definidos (estado: {{ s.match.status }}).</div>
+      <div i18n="@@mesa.combate-aun-no-tiene-dos" class="notice yamabuki">El combate aún no tiene dos participantes definidos (estado: {{ s.match.status }}).</div>
     }
 
     <!-- ============ Combate cerrado: banda serena con sello ============ -->
@@ -115,54 +115,54 @@
         <div class="result-band {{ s.winner ?? 'draw' }}" role="status">
           <div class="hanko" aria-hidden="true"><span>{{ s.winner ? '勝' : '分' }}</span></div>
           <div class="rb-text">
-            <div class="rb-kicker">Combate cerrado</div>
+            <div i18n="@@mesa.combate-cerrado" class="rb-kicker">Combate cerrado</div>
             <div class="rb-win">
               @if (s.winner) {
                 <span class="rb-color">{{ s.winner === 'aka' ? 'AKA' : 'AO' }}</span>
                 <span class="rb-name">{{ name(s.winner) }}</span>
               } @else {
-                <span class="rb-name">Hikiwake · empate</span>
+                <span i18n="@@mesa.hikiwake-empate" class="rb-name">Hikiwake · empate</span>
               }
             </div>
             <div class="rb-method">
-              @if (s.method === 'draw') {
+              @if (s.method === 'draw') {<ng-container i18n="@@mesa.marcador">
                 Marcador {{ s.score.aka }}–{{ s.score.ao }}
-              } @else {
+              </ng-container>} @else {<ng-container i18n="@@mesa.por">
                 por {{ s.method | label: methodLabel }}
-                @if (!isKata()) {
+                </ng-container>@if (!isKata()) {
                   · {{ s.score.aka }}–{{ s.score.ao }}
                 }
               }
             </div>
           </div>
           <div class="rb-actions">
-            <button class="qbtn" (click)="unlocked.set(true)">Desbloquear para corregir</button>
-            <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
+            <button i18n="@@mesa.desbloquear-para-corregir" class="qbtn" (click)="unlocked.set(true)">Desbloquear para corregir</button>
+            <button i18n="@@mesa.corregir-resultado" class="qbtn" (click)="openFinish()">Corregir resultado</button>
             @if (s.bout; as b) {
-              <a class="qbtn primary" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()">Volver al enfrentamiento →</a>
+              <a i18n="@@mesa.volver-enfrentamiento" class="qbtn primary" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()">Volver al enfrentamiento →</a>
             } @else if (tatamiId()) {
-              <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
+              <button i18n="@@mesa.siguiente-combate" class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
         </div>
       } @else {
         <div class="result-band compact {{ s.winner ?? 'draw' }}" role="status">
           <div class="rb-text">
-            <div class="rb-kicker">Modo corrección</div>
+            <div i18n="@@mesa.modo-correccion" class="rb-kicker">Modo corrección</div>
             <div class="rb-method">
-              @if (s.winner) {
+              @if (s.winner) {<ng-container i18n="@@mesa.cerrado-gana">
                 Cerrado: gana {{ s.winner === 'aka' ? 'AKA' : 'AO' }} por {{ s.method | label: methodLabel }}.
-              } @else {
+              </ng-container>} @else {<ng-container i18n="@@mesa.cerrado-empate-hikiwake">
                 Cerrado en empate (hikiwake).
-              }
+              </ng-container>}<ng-container i18n="@@mesa.cambios-quedan-auditados">
               Los cambios quedan auditados.
-            </div>
+            </ng-container></div>
           </div>
           <div class="rb-actions">
-            <button class="qbtn" (click)="unlocked.set(false)">Volver a bloquear</button>
-            <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
+            <button i18n="@@mesa.volver-bloquear" class="qbtn" (click)="unlocked.set(false)">Volver a bloquear</button>
+            <button i18n="@@mesa.corregir-resultado" class="qbtn" (click)="openFinish()">Corregir resultado</button>
             @if (!s.bout && tatamiId()) {
-              <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
+              <button i18n="@@mesa.siguiente-combate" class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
         </div>
@@ -180,26 +180,26 @@
             <div class="side-top">
               <span class="clabel">{{ c === 'aka' ? 'AKA' : 'AO' }}<span class="ckj" aria-hidden="true">{{ c === 'aka' ? '赤' : '青' }}</span></span>
               <div class="more">
-                <button
+                <button i18n="@@mesa.mas"
                   class="more-btn"
                   [class.open]="moreOpen() === c"
                   [disabled]="locked()"
                   (click)="toggleMore(c)"
                   [attr.aria-expanded]="moreOpen() === c"
-                  [attr.aria-label]="'Más acciones para ' + (c === 'aka' ? 'AKA' : 'AO')"
+                  [attr.aria-label]="ariaMasAcciones(c)"
                 >
                   Más <span aria-hidden="true">⋯</span>
                 </button>
                 @if (moreOpen() === c) {
-                  <div class="more-menu" role="menu" [attr.aria-label]="'Más acciones para ' + (c === 'aka' ? 'AKA' : 'AO')" (keydown)="onMoreKey($event)">
-                    <button role="menuitem" [disabled]="s.senshu !== c" (click)="rare('senshu_cancel', c)">
+                  <div class="more-menu" role="menu" [attr.aria-label]="ariaMasAcciones(c)" (keydown)="onMoreKey($event)">
+                    <button i18n="@@mesa.cancelar-senshu-retira-primera" role="menuitem" [disabled]="s.senshu !== c" (click)="rare('senshu_cancel', c)">
                       Cancelar senshu<small>Retira la primera ventaja</small>
                     </button>
-                    <button role="menuitem" (click)="rare('hantei', c)">Hantei (gana)<small>Decisión de los jueces</small></button>
+                    <button i18n="@@mesa.hantei-gana-decision-jueces" role="menuitem" (click)="rare('hantei', c)">Hantei (gana)<small>Decisión de los jueces</small></button>
                     <hr />
-                    <button role="menuitem" (click)="rare('kiken', c)">Kiken<small>Abandona el combate</small></button>
-                    <button role="menuitem" (click)="rare('shikkaku', c)">Shikkaku<small>Descalificación</small></button>
-                    <button role="menuitem" (click)="rare('walkover', c)">Walkover<small>No se presenta</small></button>
+                    <button i18n="@@mesa.kiken-abandona-combate" role="menuitem" (click)="rare('kiken', c)">Kiken<small>Abandona el combate</small></button>
+                    <button i18n="@@mesa.shikkaku-descalificacion" role="menuitem" (click)="rare('shikkaku', c)">Shikkaku<small>Descalificación</small></button>
+                    <button i18n="@@mesa.walkover-no-presenta" role="menuitem" (click)="rare('walkover', c)">Walkover<small>No se presenta</small></button>
                   </div>
                 }
               </div>
@@ -213,21 +213,21 @@
             <div class="score-box">
               <div class="score-wrap">
                 @for (v of [s.score[c]]; track v) {
-                  <span class="score" [attr.aria-label]="'Puntaje ' + c + ': ' + v">{{ v }}</span>
+                  <span class="score" [attr.aria-label]="ariaPuntaje(c, v)">{{ v }}</span>
                 }
-                <span class="senshu" [class.on]="s.senshu === c" [attr.aria-hidden]="s.senshu !== c" title="Senshu (primera ventaja)">
-                  先<span class="sr-only">Senshu</span>
+                <span i18n-title="@@mesa.senshu-primera-ventaja" class="senshu" [class.on]="s.senshu === c" [attr.aria-hidden]="s.senshu !== c" title="Senshu (primera ventaja)">
+                  先<span i18n="@@mesa.senshu" class="sr-only">Senshu</span>
                 </span>
               </div>
             </div>
 
             @if (s.sanction_c2; as c2) {
-              <div class="ladder-c2" [attr.aria-label]="'Faltas de categoría 2 de ' + (c === 'aka' ? 'AKA' : 'AO')">
-                <span>Cat. 1: {{ s.sanction[c] ? s.sanction_labels[s.sanction[c] - 1] : '—' }}</span>
-                <span>Cat. 2: {{ c2[c] ? (s.sanction_labels_c2 ?? s.sanction_labels)[c2[c] - 1] : '—' }}</span>
+              <div class="ladder-c2" [attr.aria-label]="ariaFaltasC2(c)">
+                <span i18n="@@mesa.cat-1">Cat. 1: {{ s.sanction[c] ? s.sanction_labels[s.sanction[c] - 1] : '—' }}</span>
+                <span i18n="@@mesa.cat-2">Cat. 2: {{ c2[c] ? (s.sanction_labels_c2 ?? s.sanction_labels)[c2[c] - 1] : '—' }}</span>
               </div>
             }
-            <div class="ladder" role="group" [attr.aria-label]="'Sanciones de ' + (c === 'aka' ? 'AKA' : 'AO')">
+            <div class="ladder" role="group" [attr.aria-label]="ariaSanciones(c)">
               @for (label of s.sanction_labels; track $index; let i = $index) {
                 <button
                   class="mark"
@@ -236,7 +236,7 @@
                   [disabled]="locked()"
                   (click)="sanction(c, i + 1)"
                   [attr.aria-pressed]="s.sanction[c] >= i + 1"
-                  [title]="'Aplicar ' + label"
+                  [title]="tituloAplicar(label)"
                   [attr.aria-label]="label"
                 >
                   <span class="ink-mark" aria-hidden="true"></span>
@@ -247,76 +247,76 @@
 
             <div class="points">
               <button class="pbtn" [disabled]="locked()" (pointerdown)="ink($event)" (click)="point(c, 1)">
-                <b>+1</b><span>Yuko</span>
+                <b>+1</b><span i18n="@@mesa.yuko">Yuko</span>
               </button>
               <button class="pbtn" [disabled]="locked()" (pointerdown)="ink($event)" (click)="point(c, 2)">
-                <b>+2</b><span>Waza-ari</span>
+                <b>+2</b><span i18n="@@mesa.waza-ari">Waza-ari</span>
               </button>
               <button class="pbtn" [disabled]="locked()" (pointerdown)="ink($event)" (click)="point(c, 3)">
-                <b>+3</b><span>Ippon</span>
+                <b>+3</b><span i18n="@@mesa.ippon">Ippon</span>
               </button>
             </div>
           </section>
         }
 
-        <section class="center" aria-label="Reloj y control">
+        <section i18n-aria-label="@@mesa.reloj-control" class="center" aria-label="Reloj y control">
           <div class="clock {{ clockState() }}" [class.warn]="clockWarn()" [class.flash-warn]="flash() === 'warn'" [class.flash-end]="flash() === 'end'">
             <div class="clock-label">{{ clockLabel() }}</div>
             <div class="digits" role="timer">{{ timeOver() ? '0:00' : timerText() }}</div>
             <div class="clock-sub">
               @if (s.golden_point) {
-                <span class="golden">Punto de oro</span> ·
-              }
-              de {{ s.golden_point && !s.period_seconds ? 'sin límite' : durationText() }}
-            </div>
+                <span i18n="@@mesa.punto-oro" class="golden">Punto de oro</span> ·
+              }<ng-container i18n="@@mesa.de-duracion">
+              de @if (s.golden_point && !s.period_seconds) {sin límite} @else {{{ durationText() }}}
+            </ng-container></div>
           </div>
 
           @if (clock().running) {
-            <button class="go yame" [disabled]="locked()" (click)="yame()">
+            <button i18n="@@mesa.yame" class="go yame" [disabled]="locked()" (click)="yame()">
               YAME<small aria-hidden="true">止め</small>
             </button>
           } @else {
-            <button class="go hajime" [disabled]="locked()" (click)="hajime()">
+            <button i18n="@@mesa.hajime" class="go hajime" [disabled]="locked()" (click)="hajime()">
               HAJIME<small aria-hidden="true">始め</small>
             </button>
           }
 
-          <div class="adjust" role="group" aria-label="Ajuste del tiempo restante (segundos)">
-            <button [disabled]="locked()" (click)="adjust(10)" title="Restar 10 s al tiempo restante">−10</button>
-            <button [disabled]="locked()" (click)="adjust(1)" title="Restar 1 s">−1</button>
-            <span class="adj-label" aria-hidden="true">s</span>
-            <button [disabled]="locked()" (click)="adjust(-1)" title="Sumar 1 s">+1</button>
-            <button [disabled]="locked()" (click)="adjust(-10)" title="Sumar 10 s">+10</button>
+          <div i18n-aria-label="@@mesa.ajuste-tiempo-restante-segundos" class="adjust" role="group" aria-label="Ajuste del tiempo restante (segundos)">
+            <button i18n-title="@@mesa.restar-10-s-tiempo-restante" [disabled]="locked()" (click)="adjust(10)" title="Restar 10 s al tiempo restante">−10</button>
+            <button i18n-title="@@mesa.restar-1-s" [disabled]="locked()" (click)="adjust(1)" title="Restar 1 s">−1</button>
+            <span i18n="@@mesa.s" class="adj-label" aria-hidden="true">s</span>
+            <button i18n-title="@@mesa.sumar-1-s" [disabled]="locked()" (click)="adjust(-1)" title="Sumar 1 s">+1</button>
+            <button i18n-title="@@mesa.sumar-10-s" [disabled]="locked()" (click)="adjust(-10)" title="Sumar 10 s">+10</button>
           </div>
 
           <div class="slot">
             @if (suggestionText() && !(finished() && !unlocked())) {
               <div class="suggest {{ suggestionTone() }}" role="status">
-                <span class="sg-kicker">{{ suggestionTone() === 'win' ? 'Sugerencia' : 'Decisión pendiente' }}</span>
+                <span i18n="@@mesa.sugerencia-decision-pendiente" class="sg-kicker">{suggestionTone(), select, win {Sugerencia} other {Decisión pendiente}}</span>
                 <span class="sg-text">{{ suggestionText() }}</span>
                 @if (!finished() && playable()) {
                   @if (s.suggestion.needs === 'golden_point' && !s.golden_point) {
-                    <button class="sg-go" (click)="startGoldenPoint()">Iniciar punto de oro</button>
+                    <button i18n="@@mesa.iniciar-punto-oro" class="sg-go" (click)="startGoldenPoint()">Iniciar punto de oro</button>
                   }
-                  <button class="sg-go" (click)="openFinish()">Revisar y cerrar</button>
+                  <button i18n="@@mesa.revisar-cerrar" class="sg-go" (click)="openFinish()">Revisar y cerrar</button>
                 }
               </div>
             } @else if (log()[0]; as last) {
               <div class="last-ev" [class.annulled]="last.annulled">
-                <span class="sg-kicker">Último evento</span>
+                <span i18n="@@mesa.ultimo-evento" class="sg-kicker">Último evento</span>
                 <span class="le-text"><span class="dot {{ last.color ?? 'none' }}" aria-hidden="true"></span>{{ last.text }}</span>
-                <span class="le-time">{{ last.time }}{{ last.pending ? ' · pendiente' : '' }}</span>
+                <span class="le-time">{{ last.time }}@if (last.pending) {<ng-container i18n="@@mesa.pendiente-sufijo"> · pendiente</ng-container>}</span>
               </div>
             }
           </div>
 
           <div class="center-foot">
             <button class="undo" [disabled]="!undoTarget() || locked()" (click)="undo()">
-              <span class="undo-main"><span aria-hidden="true">↶</span> Deshacer último</span>
-              <span class="undo-what">{{ undoText() || 'Nada que deshacer' }}</span>
+              <span i18n="@@mesa.deshacer-ultimo" class="undo-main"><span aria-hidden="true">↶</span> Deshacer último</span>
+              <span class="undo-what">{{ undoText() || txtNadaDeshacer }}</span>
             </button>
-            <button class="finish" [disabled]="!playable()" (click)="openFinish()">
-              {{ finished() ? 'Corregir resultado' : 'Finalizar combate' }}
+            <button i18n="@@mesa.corregir-finalizar" class="finish" [disabled]="!playable()" (click)="openFinish()">
+              @if (finished()) {Corregir resultado} @else {Finalizar combate}
             </button>
           </div>
         </section>
@@ -346,27 +346,27 @@
             <div class="score-box">
               <div class="score-wrap">
                 @for (v of [voteCount()[c]]; track v) {
-                  <span class="score" [attr.aria-label]="'Banderas ' + c + ': ' + v">{{ v }}</span>
+                  <span class="score" [attr.aria-label]="ariaBanderas(c, v)">{{ v }}</span>
                 }
               </div>
             </div>
-            <div class="kcap">{{ voteCount()[c] === 1 ? 'bandera' : 'banderas' }}</div>
+            <div i18n="@@mesa.bandera-banderas" class="kcap">{voteCount()[c], plural, =1 {bandera} other {banderas}}</div>
           </section>
         }
 
-        <section class="center" aria-label="Decisión">
+        <section i18n-aria-label="@@mesa.decision" class="center" aria-label="Decisión">
           <div class="kpreview {{ kataPreview().tone }}">
-            <div class="clock-label">Vista previa</div>
+            <div i18n="@@mesa.vista-previa" class="clock-label">Vista previa</div>
             <div class="kp-text">{{ kataPreview().text }}</div>
-            <div class="clock-sub">{{ judges() }} jueces · mayoría {{ majority() }}</div>
+            <div i18n="@@mesa.jueces-mayoria" class="clock-sub">{{ judges() }} jueces · mayoría {{ majority() }}</div>
           </div>
 
           @if (needsHead()) {
             <div class="suggest needs head">
-              <span class="sg-text">Empate o votos incompletos: decide el juez principal.</span>
-              <div class="head-pick" role="group" aria-label="Voto del juez principal">
-                <button class="hflag aka" [class.on]="headVote() === 'aka'" [attr.aria-pressed]="headVote() === 'aka'" (click)="headVote.set('aka')">AKA</button>
-                <button class="hflag ao" [class.on]="headVote() === 'ao'" [attr.aria-pressed]="headVote() === 'ao'" (click)="headVote.set('ao')">AO</button>
+              <span i18n="@@mesa.empate-votos-incompletos-decide" class="sg-text">Empate o votos incompletos: decide el juez principal.</span>
+              <div i18n-aria-label="@@mesa.voto-juez-principal" class="head-pick" role="group" aria-label="Voto del juez principal">
+                <button i18n="@@mesa.aka" class="hflag aka" [class.on]="headVote() === 'aka'" [attr.aria-pressed]="headVote() === 'aka'" (click)="headVote.set('aka')">AKA</button>
+                <button i18n="@@mesa.ao" class="hflag ao" [class.on]="headVote() === 'ao'" [attr.aria-pressed]="headVote() === 'ao'" (click)="headVote.set('ao')">AO</button>
               </div>
             </div>
           }
@@ -375,20 +375,20 @@
             <button class="go hajime register" [disabled]="!playable() || flagsBusy()" (click)="submitFlags()">
               @if (flagsBusy()) {
                 <span class="spin" aria-hidden="true"></span>
-              }
+              }<ng-container i18n="@@mesa.registrar-decision">
               Registrar decisión
-            </button>
+            </ng-container></button>
           </div>
         </section>
 
-        <section class="judges" [attr.aria-label]="'Banderas de ' + judges() + ' jueces'">
+        <section class="judges" [attr.aria-label]="ariaBanderasJueces(judges())">
           @for (v of votes(); track $index; let i = $index) {
             <div class="judge" [class.voted]="!!v">
               <div class="jhead">
                 @if (judgeOptions(); as jo) {
                   @if (jo.assigned.length || jo.others.length) {
-                    <select class="jsel" [ngModel]="judgeIds()[i]" (ngModelChange)="setJudge(i, $event)" [attr.aria-label]="'Quién es el juez ' + (i + 1)">
-                      <option [ngValue]="null">Juez {{ i + 1 }}</option>
+                    <select class="jsel" [ngModel]="judgeIds()[i]" (ngModelChange)="setJudge(i, $event)" [attr.aria-label]="ariaQuienJuez(i + 1)">
+                      <option i18n="@@mesa.juez" [ngValue]="null">Juez {{ i + 1 }}</option>
                       @for (r of jo.assigned; track r.person_id) {
                         <option [ngValue]="r.person_id">{{ r.name }}{{ r.position ? ' · ' + r.position : '' }}</option>
                       }
@@ -397,18 +397,18 @@
                       }
                     </select>
                   } @else {
-                    <span class="jname">Juez {{ i + 1 }}</span>
+                    <span i18n="@@mesa.juez" class="jname">Juez {{ i + 1 }}</span>
                   }
                 } @else {
-                  <span class="jname">Juez {{ i + 1 }}</span>
+                  <span i18n="@@mesa.juez" class="jname">Juez {{ i + 1 }}</span>
                 }
-                <span class="jstate {{ v ?? 'none' }}">{{ v === 'aka' ? 'AKA' : v === 'ao' ? 'AO' : 'Sin voto' }}</span>
+                <span class="jstate {{ v ?? 'none' }}">@if (v === 'aka') {AKA} @else if (v === 'ao') {AO} @else {<ng-container i18n="@@mesa.sin-voto">Sin voto</ng-container>}</span>
               </div>
               <div class="jflags">
-                <button class="flag aka" [class.on]="v === 'aka'" [class.off]="v === 'ao'" [attr.aria-pressed]="v === 'aka'" [disabled]="!playable()" (click)="vote(i, 'aka')">
+                <button i18n="@@mesa.aka-2" class="flag aka" [class.on]="v === 'aka'" [class.off]="v === 'ao'" [attr.aria-pressed]="v === 'aka'" [disabled]="!playable()" (click)="vote(i, 'aka')">
                   <span class="cloth" aria-hidden="true"></span>AKA
                 </button>
-                <button class="flag ao" [class.on]="v === 'ao'" [class.off]="v === 'aka'" [attr.aria-pressed]="v === 'ao'" [disabled]="!playable()" (click)="vote(i, 'ao')">
+                <button i18n="@@mesa.ao-2" class="flag ao" [class.on]="v === 'ao'" [class.off]="v === 'aka'" [attr.aria-pressed]="v === 'ao'" [disabled]="!playable()" (click)="vote(i, 'ao')">
                   <span class="cloth" aria-hidden="true"></span>AO
                 </button>
               </div>
@@ -420,10 +420,10 @@
 
     <!-- ============ Historial ============ -->
     @if (!s.is_team_match) {
-    <section class="log" aria-label="Eventos">
+    <section i18n-aria-label="@@mesa.eventos" class="log" aria-label="Eventos">
       <div class="log-head">
-        <span class="log-title">Eventos</span>
-        <span class="log-note">hora del dispositivo, Lima</span>
+        <span i18n="@@mesa.eventos-2" class="log-title">Eventos</span>
+        <span i18n="@@mesa.hora-dispositivo-lima" class="log-note">hora del dispositivo, Lima</span>
       </div>
       <ol>
         @for (r of log(); track r.id; let first = $first) {
@@ -432,39 +432,39 @@
             <span class="dot {{ r.color ?? 'none' }}" aria-hidden="true"></span>
             <span class="txt">{{ r.text }}</span>
             @if (r.pending) {
-              <span class="tag pend">pendiente</span>
+              <span i18n="@@mesa.pendiente" class="tag pend">pendiente</span>
             }
             @if (r.annulled) {
-              <span class="tag">anulado</span>
+              <span i18n="@@mesa.anulado" class="tag">anulado</span>
             }
           </li>
         } @empty {
-          <li class="empty-log">Sin eventos todavía. El primer toque quedará aquí.</li>
+          <li i18n="@@mesa.sin-eventos-todavia-primer-toque" class="empty-log">Sin eventos todavía. El primer toque quedará aquí.</li>
         }
       </ol>
     </section>
     }
   } @else if (!loadError()) {
-    <div class="loading"><span class="spin" aria-hidden="true"></span><span>Preparando la mesa…</span></div>
+    <div class="loading"><span class="spin" aria-hidden="true"></span><span i18n="@@mesa.preparando-mesa">Preparando la mesa…</span></div>
   }
 </div>
 
 <!-- ============ Hoja de cierre ============ -->
 @if (finishOpen()) {
   <div class="sheet-backdrop" (click)="onSheetBackdrop($event)">
-    <div class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="finished() ? 'Corregir resultado' : 'Confirmar ganador'" appFocusTrap>
+    <div class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="finished() ? txtCorregirResultado : txtConfirmarGanador" appFocusTrap>
       @if (sb(); as s) {
         <div class="sheet-head">
           <div>
             <div class="sheet-kicker">{{ category()?.name }} · {{ s.match.code }}</div>
-            <h2>{{ finished() ? 'Corregir resultado' : 'Confirmar ganador' }}</h2>
+            <h2>{{ finished() ? txtCorregirResultado : txtConfirmarGanador }}</h2>
           </div>
-          <button type="button" class="hbtn icon" (click)="finishOpen.set(false)" aria-label="Cerrar">✕</button>
+          <button i18n-aria-label="@@mesa.cerrar" type="button" class="hbtn icon" (click)="finishOpen.set(false)" aria-label="Cerrar">✕</button>
         </div>
 
         @if (!isKata()) {
-          <div class="sheet-score" aria-label="Marcador">
-            <span class="aka-t">AKA {{ s.score.aka }}</span><span class="dash">–</span><span class="ao-t">{{ s.score.ao }} AO</span>
+          <div i18n-aria-label="@@mesa.marcador-2" class="sheet-score" aria-label="Marcador">
+            <span i18n="@@mesa.aka-3" class="aka-t">AKA {{ s.score.aka }}</span><span class="dash">–</span><span i18n="@@mesa.ao-3" class="ao-t">{{ s.score.ao }} AO</span>
           </div>
         }
         @if (suggestionText()) {
@@ -474,10 +474,10 @@
           <p class="sheet-sug {{ timeEndSuggestion()?.winner ? 'win' : 'needs' }}">{{ te }}</p>
         }
         @if (!finishForm.winner) {
-          <p class="sheet-warn">Sin sugerencia del servidor: elige el ganador.</p>
+          <p i18n="@@mesa.sin-sugerencia-servidor-elige" class="sheet-warn">Sin sugerencia del servidor: elige el ganador.</p>
         }
 
-        <div class="winner-pick" role="radiogroup" aria-label="Ganador">
+        <div i18n-aria-label="@@mesa.ganador" class="winner-pick" role="radiogroup" aria-label="Ganador">
           @for (c of colors; track c) {
             <label class="wcard {{ c }}" [class.on]="finishForm.winner === c" [class.dim]="!!finishForm.winner && finishForm.winner !== c">
               <input type="radio" name="winner" [value]="c" [(ngModel)]="finishForm.winner" />
@@ -490,8 +490,8 @@
           @if (s.bout) {
             <label class="wdraw" [class.on]="finishForm.winner === 'draw'" [class.dim]="!!finishForm.winner && finishForm.winner !== 'draw'">
               <input type="radio" name="winner" value="draw" [(ngModel)]="finishForm.winner" />
-              <span class="wc-name">Hikiwake · empate</span>
-              <span class="wc-dojo">Por equipos, un combate puede terminar empatado</span>
+              <span i18n="@@mesa.hikiwake-empate" class="wc-name">Hikiwake · empate</span>
+              <span i18n="@@mesa.equipos-combate-puede-terminar" class="wc-dojo">Por equipos, un combate puede terminar empatado</span>
             </label>
           }
         </div>
@@ -499,7 +499,7 @@
         <div class="sheet-grid">
           @if (finishForm.winner !== 'draw') {
             <label class="sfield">
-              <span>Método</span>
+              <span i18n="@@mesa.metodo">Método</span>
               <select [(ngModel)]="finishForm.method">
                 @for (m of methods(); track m) {
                   <option [value]="m">{{ methodLabel[m] }}</option>
@@ -510,25 +510,25 @@
             <span></span>
           }
           @if (!isKata()) {
-            <label class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
+            <label i18n="@@mesa.tiempo-cumplido" class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
           }
         </div>
         <label class="sfield">
-          <span>Motivo / observación {{ finished() ? '(corrección)' : '(opcional)' }}</span>
+          <span i18n="@@mesa.motivo-observacion">Motivo / observación @if (finished()) {(corrección)} @else {(opcional)}</span>
           <input [(ngModel)]="finishForm.reason" />
         </label>
         @if (noSignal()) {
-          <p class="sheet-warn offline-note">
+          <p i18n="@@mesa.sin-senal-anota-resultado" class="sheet-warn offline-note">
             <strong>Sin señal.</strong> Anota el resultado en la planilla; se cerrará cuando vuelva la señal.
             El cierre queda en cola en esta tablet y se envía solo, una única vez.
           </p>
         } @else if (pending().length) {
-          <p class="sheet-warn">
-            Hay {{ pending().length | plural: 'evento' : 'eventos' }} sin enviar: el cierre queda en cola y se envía después de ellos.
+          <p i18n="@@mesa.hay-sin-enviar-cierre-queda-cola" class="sheet-warn">
+            Hay {pending().length, plural, =1 {1 evento} other {{{ pending().length }} eventos}} sin enviar: el cierre queda en cola y se envía después de ellos.
           </p>
         }
         <div class="sheet-actions">
-          <button class="qbtn" (click)="finishOpen.set(false)">Volver</button>
+          <button i18n="@@mesa.volver" class="qbtn" (click)="finishOpen.set(false)">Volver</button>
           <button
             class="confirm"
             [class.aka]="finishForm.winner === 'aka'"
@@ -540,15 +540,15 @@
             @if (finishing()) {
               <span class="spin" aria-hidden="true"></span>
             }
-            @if (finishWillQueue() && finishForm.winner) {
+            @if (finishWillQueue() && finishForm.winner) {<ng-container i18n="@@mesa.dejar-cierre-cola">
               Dejar el cierre en cola
-            } @else if (finishForm.winner === 'draw') {
+            </ng-container>} @else if (finishForm.winner === 'draw') {<ng-container i18n="@@mesa.confirmar-hikiwake-empate">
               Confirmar: hikiwake (empate)
-            } @else if (finishForm.winner) {
+            </ng-container>} @else if (finishForm.winner) {<ng-container i18n="@@mesa.confirmar-gana">
               Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}
-            } @else {
+            </ng-container>} @else {<ng-container i18n="@@mesa.elige-ganador">
               Elige un ganador
-            }
+            </ng-container>}
           </button>
         </div>
       }
@@ -561,7 +561,7 @@
   @if (sb()?.infractions; as inf) {
     <app-infraction-sheet
       [color]="f.color"
-      [label]="sb()?.sanction_labels?.[f.level - 1] ?? 'Sanción'"
+      [label]="sb()?.sanction_labels?.[f.level - 1] ?? txtSancion"
       [infractions]="inf"
       (picked)="onInfraction($event)"
       (closed)="infractionFor.set(null)"

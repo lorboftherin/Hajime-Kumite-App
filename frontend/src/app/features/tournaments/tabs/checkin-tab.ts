@@ -19,7 +19,6 @@ import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
-import { PluralPipe } from '../../../shared/plural';
 import {
   CheckinCard,
   CheckinView,
@@ -31,14 +30,15 @@ import {
 } from '../../checkin/checkin-logic';
 import { QrScanner, qrScanSupported } from '../../checkin/qr-scanner';
 import { TournamentContext } from '../tournament-context';
+import { lista } from '../../../core/i18n/etiquetas';
 
-const VIEWS: Array<{ value: CheckinView; label: string }> = [
-  { value: 'all', label: 'Todos' },
-  { value: 'pending', label: 'Pendientes' },
-  { value: 'present', label: 'Presentes' },
-  { value: 'absent', label: 'Ausentes' },
-  { value: 'out_of_weight', label: 'Fuera de peso' },
-];
+const VIEWS: Array<{ value: CheckinView; label: string }> = lista(() => [
+  { value: 'all', label: $localize`:@@torneo.acreditacion.todos:Todos` },
+  { value: 'pending', label: $localize`:@@torneo.acreditacion.pendientes-2:Pendientes` },
+  { value: 'present', label: $localize`:@@torneo.acreditacion.presentes-3:Presentes` },
+  { value: 'absent', label: $localize`:@@torneo.acreditacion.ausentes-3:Ausentes` },
+  { value: 'out_of_weight', label: $localize`:@@torneo.acreditacion.fuera-peso:Fuera de peso` },
+]);
 
 /**
  * Mesa de acreditación el día del torneo, pensada para una tablet: buscador
@@ -46,28 +46,28 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
  */
 @Component({
   selector: 'app-checkin-tab',
-  imports: [FormsModule, RouterLink, Icon, Modal, PluralPipe, QrScanner],
+  imports: [FormsModule, RouterLink, Icon, Modal, QrScanner],
   template: `
     <div class="head-row">
       <div class="totals" aria-live="polite">
-        <span class="tot present"
+        <span i18n="@@torneo.acreditacion.presentes" class="tot present"
           ><strong>{{ data()?.totals?.present ?? 0 }}</strong> presentes</span
         >
-        <span class="tot absent"
+        <span i18n="@@torneo.acreditacion.ausentes" class="tot absent"
           ><strong>{{ data()?.totals?.absent ?? 0 }}</strong> ausentes</span
         >
-        <span class="tot pending"
+        <span i18n="@@torneo.acreditacion.pendientes" class="tot pending"
           ><strong>{{ data()?.totals?.pending ?? 0 }}</strong> pendientes</span
         >
         @if (data()?.checkin_required) {
-          <span class="badge yamabuki">Check-in obligatorio</span>
+          <span i18n="@@torneo.acreditacion.check-in-obligatorio" class="badge yamabuki">Check-in obligatorio</span>
         }
       </div>
       <span class="grow"></span>
-      <a class="btn" [routerLink]="['/torneos', ctx.id(), 'credenciales']"
+      <a i18n="@@torneo.acreditacion.credenciales" class="btn" [routerLink]="['/torneos', ctx.id(), 'credenciales']"
         ><app-icon name="print" /> Credenciales</a
       >
-      <button
+      <button i18n-aria-label="@@torneo.acreditacion.ajustes-acreditacion" i18n-title="@@torneo.acreditacion.ajustes-acreditacion"
         class="btn ghost icon-only"
         (click)="settingsOpen.set(true)"
         title="Ajustes de acreditación"
@@ -75,7 +75,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
       >
         <app-icon name="more" />
       </button>
-      <button
+      <button i18n-aria-label="@@torneo.acreditacion.actualizar" i18n-title="@@torneo.acreditacion.actualizar"
         class="btn ghost icon-only"
         (click)="load()"
         title="Actualizar"
@@ -88,7 +88,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
     <form class="finder" (ngSubmit)="submitSearch()">
       <div class="search big">
         <app-icon name="search" />
-        <input
+        <input i18n-aria-label="@@torneo.acreditacion.buscar-nombre-dojo-codigo" i18n-placeholder="@@torneo.acreditacion.nombre-dojo-codigo-credencial"
           #finder
           name="q"
           autocomplete="off"
@@ -101,7 +101,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
         />
       </div>
       @if (canScan) {
-        <button
+        <button i18n="@@torneo.acreditacion.qr" i18n-title="@@torneo.acreditacion.leer-qr-credencial-camara"
           type="button"
           class="btn lg"
           (click)="scanOpen.set(true)"
@@ -113,7 +113,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
     </form>
 
     <div class="filters">
-      <div class="chips" role="group" aria-label="Filtro por estado">
+      <div i18n-aria-label="@@torneo.acreditacion.filtro-estado" class="chips" role="group" aria-label="Filtro por estado">
         @for (v of views; track v.value) {
           <button
             type="button"
@@ -126,17 +126,17 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
           </button>
         }
       </div>
-      <select aria-label="Dojo" [ngModel]="dojoId()" (ngModelChange)="dojoId.set($event)">
-        <option [ngValue]="0">Todos los dojos</option>
+      <select i18n-aria-label="@@torneo.acreditacion.dojo" aria-label="Dojo" [ngModel]="dojoId()" (ngModelChange)="dojoId.set($event)">
+        <option i18n="@@torneo.acreditacion.todos-dojos" [ngValue]="0">Todos los dojos</option>
         @for (d of dojos(); track d.id) {
           <option [ngValue]="d.id">{{ d.name }}</option>
         }
       </select>
-      <span class="count">{{ shown().length | plural: 'persona' : 'personas' }}</span>
+      <span i18n="@@torneo.acreditacion.n-personas" class="count">{shown().length, plural, =1 {1 persona} other {{{ shown().length }} personas}}</span>
     </div>
 
     <div class="layout">
-      <section class="cards" aria-label="Competidores">
+      <section i18n-aria-label="@@torneo.acreditacion.competidores" class="cards" aria-label="Competidores">
         @for (c of shown(); track c.key) {
           <article
             class="pcard"
@@ -164,10 +164,10 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
                   [attr.aria-pressed]="c.status === 'present'"
                 >
                   @if (c.status === 'present') {
-                    <app-icon name="check" /> Presente
-                  } @else {
+                    <ng-container i18n="@@torneo.acreditacion.presente"><app-icon name="check" /> Presente
+                  </ng-container>} @else {<ng-container i18n="@@torneo.acreditacion.presente-2">
                     Presente
-                  }
+                  </ng-container>}
                 </button>
                 <button
                   type="button"
@@ -176,7 +176,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
                   (click)="mark(c, c.status === 'absent' ? 'pending' : 'absent')"
                   [attr.aria-pressed]="c.status === 'absent'"
                 >
-                  {{ c.status === 'absent' ? 'Deshacer ausente' : 'Ausente' }}
+                  <ng-container i18n="@@torneo.acreditacion.deshacer-ausente">{c.status, select, absent {Deshacer ausente} other {Ausente}}</ng-container>
                 </button>
               </div>
             </header>
@@ -193,17 +193,16 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
                       [class.shu]="!r.weigh_in_resolved"
                       [class.nezumi]="r.weigh_in_resolved"
                     >
-                      {{ r.weigh_in_result === 'over' ? 'Pasado de peso' : 'Bajo el peso'
-                      }}{{ r.weigh_in_resolved ? ' · aceptado' : '' }}
+                      <ng-container i18n="@@torneo.acreditacion.pasado-bajo-peso">{r.weigh_in_result, select, over {Pasado de peso} other {Bajo el peso}}@if (r.weigh_in_resolved) { · aceptado}</ng-container>
                     </span>
                   } @else if (r.weigh_in_result === 'ok') {
-                    <span class="badge matcha">Peso OK</span>
+                    <span i18n="@@torneo.acreditacion.peso-ok" class="badge matcha">Peso OK</span>
                   }
                   @if (
                     r.checkin_status === 'absent' &&
                     ['ready', 'in_progress'].includes(r.category_status)
                   ) {
-                    <button
+                    <button i18n="@@torneo.acreditacion.walkover" i18n-title="@@torneo.acreditacion.retirar-no-presento-dar-walkover"
                       class="btn sm danger quiet"
                       (click)="noShow(r)"
                       title="Retirar con «No se presentó» y dar walkover al rival"
@@ -217,8 +216,8 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
             @if (c.needsWeighIn) {
               <form class="weigh" (ngSubmit)="weigh(c)">
                 <label class="field inline">
-                  <span>Peso</span>
-                  <input
+                  <span i18n="@@torneo.acreditacion.peso">Peso</span>
+                  <input i18n-placeholder="@@torneo.acreditacion.kg"
                     [name]="'w' + c.key"
                     inputmode="decimal"
                     enterkeyhint="done"
@@ -226,13 +225,13 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
                     placeholder="kg"
                     [ngModel]="weights()[c.key] ?? c.weight ?? ''"
                     (ngModelChange)="setWeight(c.key, $event)"
-                    [attr.aria-label]="'Peso de ' + c.name + ' en kg'"
+                    [attr.aria-label]="ariaPesoKg(c.name)"
                   />
-                  <span class="muted">kg</span>
+                  <span i18n="@@torneo.acreditacion.kg-2" class="muted">kg</span>
                 </label>
-                <button class="btn" [disabled]="busy().has(c.key)">Pesar</button>
+                <button i18n="@@torneo.acreditacion.pesar" class="btn" [disabled]="busy().has(c.key)">Pesar</button>
                 @if (c.unresolved) {
-                  <button type="button" class="btn danger quiet" (click)="resolve(c)">
+                  <button i18n="@@torneo.acreditacion.resolver-peso" type="button" class="btn danger quiet" (click)="resolve(c)">
                     Resolver peso…
                   </button>
                 }
@@ -244,48 +243,48 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
             @if (!data()) {
               <span class="spinner"></span>
             } @else {
-              <p><strong>Nadie coincide con la búsqueda.</strong></p>
+              <p><strong i18n="@@torneo.acreditacion.nadie-coincide-busqueda">Nadie coincide con la búsqueda.</strong></p><ng-container i18n="@@torneo.acreditacion.prueba-otro-nombre-dojo-filtro">
               Prueba con otro nombre, dojo o filtro.
-            }
+            </ng-container>}
           </div>
         }
       </section>
 
       <aside class="side">
-        <h2 class="section-title">Por categoría</h2>
+        <h2 i18n="@@torneo.acreditacion.categoria" class="section-title">Por categoría</h2>
         <ul class="catcount">
           @for (k of data()?.categories ?? []; track k.category_id) {
             <li>
               <span class="grow">{{ k.category_name }}</span>
-              <span class="num present" title="Presentes">{{ k.present }}</span>
-              <span class="num absent" title="Ausentes">{{ k.absent }}</span>
-              <span class="num muted" title="Total">/ {{ k.total }}</span>
+              <span i18n-title="@@torneo.acreditacion.presentes-2" class="num present" title="Presentes">{{ k.present }}</span>
+              <span i18n-title="@@torneo.acreditacion.ausentes-2" class="num absent" title="Ausentes">{{ k.absent }}</span>
+              <span i18n-title="@@torneo.acreditacion.total" class="num muted" title="Total">/ {{ k.total }}</span>
             </li>
           } @empty {
-            <li class="muted small">Sin inscripciones activas.</li>
+            <li i18n="@@torneo.acreditacion.sin-inscripciones-activas" class="muted small">Sin inscripciones activas.</li>
           }
         </ul>
-        <p class="hint legend">
+        <p i18n="@@torneo.acreditacion.presentes-ausentes" class="hint legend">
           <span class="num present">■</span> presentes <span class="num absent">■</span> ausentes
         </p>
       </aside>
     </div>
 
     @if (scanOpen()) {
-      <app-modal title="Leer credencial" (closed)="scanOpen.set(false)">
+      <app-modal i18n-title="@@torneo.acreditacion.leer-credencial" title="Leer credencial" (closed)="scanOpen.set(false)">
         <app-qr-scanner (scanned)="onScanned($event)" />
       </app-modal>
     }
 
     @if (resolving(); as rv) {
-      <app-modal [title]="'Peso fuera de rango · ' + rv.card.name" (closed)="resolving.set(null)">
+      <app-modal i18n-title="@@torneo.acreditacion.peso-fuera-rango-de" title="Peso fuera de rango · {{ rv.card.name }}" (closed)="resolving.set(null)">
         @for (it of rv.items; track it.registration_id) {
           <div class="resolve">
             @for (w of it.warnings; track w.code) {
               <p class="alert warn small">{{ w.message }}</p>
             }
             @if (it.suggestions.length) {
-              <p class="small">Mover a la categoría que corresponde al peso:</p>
+              <p i18n="@@torneo.acreditacion.mover-categoria-corresponde-peso" class="small">Mover a la categoría que corresponde al peso:</p>
               <div class="row wrap">
                 @for (sg of it.suggestions; track sg.category_id) {
                   <button class="btn" (click)="move(it, sg.category_id, sg.name)">
@@ -294,9 +293,9 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
                 }
               </div>
             } @else {
-              <p class="muted small">No hay otra categoría abierta que corresponda a este peso.</p>
+              <p i18n="@@torneo.acreditacion.no-hay-otra-categoria-abierta" class="muted small">No hay otra categoría abierta que corresponda a este peso.</p>
             }
-            <button class="btn ghost" (click)="accept(it)">
+            <button i18n="@@torneo.acreditacion.dejarlo-motivo" class="btn ghost" (click)="accept(it)">
               Dejarlo en «{{ it.category_name }}» con motivo…
             </button>
           </div>
@@ -305,19 +304,19 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
     }
 
     @if (settingsOpen()) {
-      <app-modal title="Ajustes de acreditación" (closed)="settingsOpen.set(false)">
+      <app-modal i18n-title="@@torneo.acreditacion.ajustes-acreditacion" title="Ajustes de acreditación" (closed)="settingsOpen.set(false)">
         <form class="stack" (ngSubmit)="saveSettings()">
-          <label class="field inline"
+          <label i18n="@@torneo.acreditacion.check-in-obligatorio-2" class="field inline"
             ><input type="checkbox" name="req" [(ngModel)]="settings.checkin_required" /> Check-in
             obligatorio</label
           >
-          <p class="hint">
+          <p i18n="@@torneo.acreditacion.check-in-obligatorio-3" class="hint">
             Con check-in obligatorio, la verificación «listo para iniciar» y la generación de llaves
             avisan de los inscritos sin acreditar. Sin él, la acreditación es opcional y nada
             cambia.
           </p>
           <label class="field">
-            <span>Tolerancia de peso (kg)</span>
+            <span i18n="@@torneo.acreditacion.tolerancia-peso-kg">Tolerancia de peso (kg)</span>
             <input
               name="tol"
               inputmode="decimal"
@@ -325,7 +324,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
               placeholder="0"
             />
           </label>
-          <div class="form-actions"><button class="btn primary">Guardar</button></div>
+          <div class="form-actions"><button i18n="@@torneo.acreditacion.guardar" class="btn primary">Guardar</button></div>
         </form>
       </app-modal>
     }
@@ -542,6 +541,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = [
   `,
 })
 export class CheckinTab implements OnInit {
+  ariaPesoKg = (nombre: string) => $localize`:@@torneo.acreditacion.peso-de-kg:Peso de ${nombre}:nombre: en kg`;
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
   private mut = inject(MutationService);
@@ -660,12 +660,12 @@ export class CheckinTab implements OnInit {
   private async offerWalkover(res: CheckinResult): Promise<void> {
     if (!res.absent_with_bracket?.length) return;
     const choice = await this.dialog.choose({
-      title: 'Ausente con llave generada',
+      title: $localize`:@@torneo.acreditacion.ausente-llave-generada:Ausente con llave generada`,
       message:
-        'La llave de estas categorías ya existe. Puedes retirarlo con «No se presentó» y dar walkover a sus rivales, o decidirlo más tarde.',
+        $localize`:@@torneo.acreditacion.llave-estas-categorias-ya-existe:La llave de estas categorías ya existe. Puedes retirarlo con «No se presentó» y dar walkover a sus rivales, o decidirlo más tarde.`,
       items: res.absent_with_bracket.map((a) => a.category_name),
-      choices: [{ value: 'walkover', label: 'Dar walkover ahora', primary: true, danger: true }],
-      cancelText: 'Más tarde',
+      choices: [{ value: 'walkover', label: $localize`:@@torneo.acreditacion.dar-walkover-ahora:Dar walkover ahora`, primary: true, danger: true }],
+      cancelText: $localize`:@@torneo.acreditacion.mas-tarde:Más tarde`,
     });
     if (choice !== 'walkover') return;
     for (const a of res.absent_with_bracket) await this.noShowId(a.registration_id);
@@ -674,9 +674,9 @@ export class CheckinTab implements OnInit {
 
   async noShow(r: CheckinRow): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: 'Dar walkover',
-      message: `Se retira a ${r.name} de «${r.category_name}» con el motivo «No se presentó» y su rival gana por walkover.`,
-      confirmText: 'Dar walkover',
+      title: $localize`:@@torneo.acreditacion.dar-walkover:Dar walkover`,
+      message: $localize`:@@torneo.acreditacion.retira-motivo-no-presento-rival:Se retira a ${r.name}:name: de «${r.category_name}:category_name:» con el motivo «No se presentó» y su rival gana por walkover.`,
+      confirmText: $localize`:@@torneo.acreditacion.dar-walkover:Dar walkover`,
       danger: true,
     });
     if (!ok) return;
@@ -690,8 +690,8 @@ export class CheckinTab implements OnInit {
     );
     if (res) {
       const msg = res.walkover_matches.length
-        ? `Walkover en ${res.walkover_matches.join(', ')}`
-        : 'Retirado: no se presentó';
+        ? $localize`:@@torneo.acreditacion.walkover-2:Walkover en ${res.walkover_matches.join(', ')}:join:`
+        : $localize`:@@torneo.acreditacion.retirado-no-presento:Retirado: no se presentó`;
       this.toast.ok(
         res.waiting_matches.length
           ? `${msg}. Pendiente (rival por definir): ${res.waiting_matches.join(', ')}`
@@ -704,7 +704,7 @@ export class CheckinTab implements OnInit {
     const raw = this.weights()[c.key] ?? (c.weight !== null ? String(c.weight) : '');
     const kg = parseWeight(raw);
     if (kg === null) {
-      this.toast.warn('Escribe el peso en kg (por ejemplo 45,3).');
+      this.toast.warn($localize`:@@torneo.acreditacion.escribe-peso-kg-ejemplo-45-3:Escribe el peso en kg (por ejemplo 45,3).`);
       return;
     }
     const target = c.rows.find((r) => r.needs_weigh_in) ?? c.rows[0];
@@ -721,7 +721,7 @@ export class CheckinTab implements OnInit {
         const card = this.cards().find((x) => x.key === c.key) ?? c;
         this.resolving.set({ card, items: bad });
       } else {
-        this.toast.ok(`${c.name}: ${kg} kg, peso OK`);
+        this.toast.ok($localize`:@@torneo.acreditacion.kg-peso-ok:${c.name}:name:: ${kg}:kg: kg, peso OK`);
       }
     } catch (e) {
       this.toast.error(ApiError.from(e).fullMessage);
@@ -753,18 +753,18 @@ export class CheckinTab implements OnInit {
 
   async move(it: WeighInItem, categoryId: number, name: string): Promise<void> {
     const reason = await this.dialog.prompt({
-      title: `Mover a «${name}»`,
-      message: 'Queda registrado en la auditoría.',
-      label: 'Motivo',
+      title: $localize`:@@torneo.acreditacion.mover:Mover a «${name}:name:»`,
+      message: $localize`:@@torneo.acreditacion.queda-registrado-auditoria:Queda registrado en la auditoría.`,
+      label: $localize`:@@torneo.acreditacion.motivo:Motivo`,
       minLength: 3,
-      initial: 'Peso en la balanza oficial',
-      confirmText: 'Mover',
+      initial: $localize`:@@torneo.acreditacion.peso-balanza-oficial:Peso en la balanza oficial`,
+      confirmText: $localize`:@@torneo.acreditacion.mover-2:Mover`,
     });
     if (!reason) return;
     const res = await this.mut.post<Registration>(
       `/registrations/${it.registration_id}/weigh-in/move`,
       { category_id: categoryId, reason },
-      { success: `Movido a «${name}»` },
+      { success: $localize`:@@torneo.acreditacion.movido:Movido a «${name}:name:»` },
     );
     if (res) {
       this.resolving.set(null);
@@ -774,17 +774,17 @@ export class CheckinTab implements OnInit {
 
   async accept(it: WeighInItem): Promise<void> {
     const reason = await this.dialog.prompt({
-      title: 'Aceptar fuera de peso',
-      message: `Compite en «${it.category_name}» aunque el peso esté fuera de rango. Queda como advertencia aceptada.`,
-      label: 'Motivo',
+      title: $localize`:@@torneo.acreditacion.aceptar-fuera-peso:Aceptar fuera de peso`,
+      message: $localize`:@@torneo.acreditacion.compite-aunque-peso-este-fuera:Compite en «${it.category_name}:category_name:» aunque el peso esté fuera de rango. Queda como advertencia aceptada.`,
+      label: $localize`:@@torneo.acreditacion.motivo:Motivo`,
       minLength: 3,
-      confirmText: 'Aceptar',
+      confirmText: $localize`:@@torneo.acreditacion.aceptar:Aceptar`,
     });
     if (!reason) return;
     const res = await this.mut.post<Registration>(
       `/registrations/${it.registration_id}/weigh-in/accept`,
       { reason },
-      { success: 'Peso aceptado con motivo' },
+      { success: $localize`:@@torneo.acreditacion.peso-aceptado-motivo:Peso aceptado con motivo` },
     );
     if (res) {
       this.resolving.set(null);
@@ -813,7 +813,7 @@ export class CheckinTab implements OnInit {
         this.api.post<CheckinResult>(`/tournaments/${this.ctx.id()}/checkin/scan`, { code }),
       );
       this.apply(res.registrations);
-      this.toast.ok(`${res.name}: presente`);
+      this.toast.ok($localize`:@@torneo.acreditacion.presente-3:${res.name}:name:: presente`);
       this.q.set('');
       this.finder()?.nativeElement.focus();
       await this.offerWalkover(res);
@@ -833,7 +833,7 @@ export class CheckinTab implements OnInit {
         checkin_required: this.settings.checkin_required,
         weigh_in_tolerance_kg: tol,
       },
-      { success: 'Ajustes guardados', onConflict: () => this.ctx.reload() },
+      { success: $localize`:@@torneo.acreditacion.ajustes-guardados:Ajustes guardados`, onConflict: () => this.ctx.reload() },
     );
     if (res) {
       this.ctx.tournament.set(res);

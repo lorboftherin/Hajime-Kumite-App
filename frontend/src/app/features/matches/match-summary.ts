@@ -26,9 +26,9 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
   template: `
     <div class="container">
     @if (data(); as d) {
-      <app-page-head kanji="試合" [title]="'Combate ' + d.match.code">
+      <app-page-head kanji="試合" i18n-title="@@combate.resumen.titulo" title="Combate {{ d.match.code }}">
         @if (competitor()) {
-          <a back class="back-link" routerLink="/mis-perfiles">← Mis perfiles</a>
+          <a i18n="@@combate.resumen.mis-perfiles" back class="back-link" routerLink="/mis-perfiles">← Mis perfiles</a>
         } @else {
           <a back class="back-link" [routerLink]="['/categorias', d.category.id, 'llave']">← {{ d.category.name }}</a>
         }
@@ -38,19 +38,19 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
           }
         </div>
         @if (!competitor()) {
-          <a class="btn" [routerLink]="['/mesa', d.match.id]">Abrir en la mesa</a>
+          <a i18n="@@combate.resumen.abrir-mesa" class="btn" [routerLink]="['/mesa', d.match.id]">Abrir en la mesa</a>
         }
-        <button class="btn primary" (click)="share()" [disabled]="d.match.status !== 'finished'">Compartir resultado</button>
+        <button i18n="@@combate.resumen.compartir-resultado" class="btn primary" (click)="share()" [disabled]="d.match.status !== 'finished'">Compartir resultado</button>
       </app-page-head>
 
-      <section class="card board" aria-label="Marcador final">
+      <section i18n-aria-label="@@combate.resumen.marcador-final" class="card board" aria-label="Marcador final">
         @for (c of colors; track c) {
           <div class="side {{ c }}" [class.won]="d.match.winner === c">
             <span class="clabel">{{ c === 'aka' ? 'AKA' : 'AO' }}</span>
             <span class="name">{{ d[c].name ?? '—' }}</span>
             <span class="dojo">{{ d[c].dojo }}</span>
             @if (d.match.winner === c) {
-              <span class="hanko" aria-label="Ganador">勝</span>
+              <span i18n-aria-label="@@combate.resumen.ganador" class="hanko" aria-label="Ganador">勝</span>
             }
           </div>
           @if (c === 'aka') {
@@ -64,10 +64,10 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
 
       <section class="card" aria-labelledby="worm-title">
         <div class="chart-head">
-          <h3 id="worm-title">Cómo se construyó el marcador</h3>
-          <ul class="legend" aria-label="Leyenda">
-            <li><span class="key aka"></span>AKA</li>
-            <li><span class="key ao"></span>AO</li>
+          <h3 i18n="@@combate.resumen.como-construyo-marcador" id="worm-title">Cómo se construyó el marcador</h3>
+          <ul i18n-aria-label="@@combate.resumen.leyenda" class="legend" aria-label="Leyenda">
+            <li i18n="@@combate.resumen.aka"><span class="key aka"></span>AKA</li>
+            <li i18n="@@combate.resumen.ao"><span class="key ao"></span>AO</li>
           </ul>
         </div>
         @if (points().length) {
@@ -88,8 +88,8 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
                   <circle class="dot {{ p.color }}" [attr.cx]="x(p.elapsed)" [attr.cy]="y(p.color === 'aka' ? p.aka : p.ao)" r="4.5" />
                 }
               }
-              <text class="end aka" [attr.x]="W - M.right + 8" [attr.y]="endY('aka')">AKA {{ d.aka.score }}</text>
-              <text class="end ao" [attr.x]="W - M.right + 8" [attr.y]="endY('ao')">AO {{ d.ao.score }}</text>
+              <text i18n="@@combate.resumen.aka-2" class="end aka" [attr.x]="W - M.right + 8" [attr.y]="endY('aka')">AKA {{ d.aka.score }}</text>
+              <text i18n="@@combate.resumen.ao-2" class="end ao" [attr.x]="W - M.right + 8" [attr.y]="endY('ao')">AO {{ d.ao.score }}</text>
               @if (hover(); as h) {
                 <line class="cross" [attr.x1]="x(h.elapsed)" [attr.x2]="x(h.elapsed)" [attr.y1]="M.top" [attr.y2]="y(0)" />
               }
@@ -98,21 +98,21 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
               <div class="tip" [style.left.%]="(100 * x(h.elapsed)) / W">
                 <strong>{{ h.aka }}–{{ h.ao }}</strong>
                 <span>{{ describe(h) }}</span>
-                <span class="muted">{{ mm(h.elapsed) }} de reloj</span>
+                <span i18n="@@combate.resumen.reloj" class="muted">{{ mm(h.elapsed) }} de reloj</span>
               </div>
             }
           </div>
         } @else {
-          <p class="muted small">El combate no tiene puntos registrados.</p>
+          <p i18n="@@combate.resumen.combate-no-tiene-puntos" class="muted small">El combate no tiene puntos registrados.</p>
         }
       </section>
 
       <div class="cols">
-        <section class="card" aria-label="Técnicas por lado">
-          <h3>Técnicas</h3>
+        <section i18n-aria-label="@@combate.resumen.tecnicas-lado" class="card" aria-label="Técnicas por lado">
+          <h3 i18n="@@combate.resumen.tecnicas">Técnicas</h3>
           <table class="table compact">
             <thead>
-              <tr><th scope="col"></th><th scope="col" class="center">AKA</th><th scope="col" class="center">AO</th></tr>
+              <tr><th scope="col"></th><th i18n="@@combate.resumen.aka-3" scope="col" class="center">AKA</th><th i18n="@@combate.resumen.ao-3" scope="col" class="center">AO</th></tr>
             </thead>
             <tbody>
               @for (t of techRows; track t.key) {
@@ -123,16 +123,16 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
                 </tr>
               }
               <tr>
-                <th scope="row">Senshu</th>
+                <th i18n="@@combate.resumen.senshu" scope="row">Senshu</th>
                 <td class="center">{{ d.senshu === 'aka' ? '先' : '' }}</td>
                 <td class="center">{{ d.senshu === 'ao' ? '先' : '' }}</td>
               </tr>
             </tbody>
           </table>
-          <p class="small muted">Tiempo de reloj: {{ mm(d.elapsed) }}@if (d.duration) { de {{ mm(d.duration) }}}</p>
+          <p class="small muted"><ng-container i18n="@@combate.resumen.tiempo-reloj">Tiempo de reloj: {{ mm(d.elapsed) }}</ng-container>@if (d.duration) {<ng-container i18n="@@combate.resumen.de"> de {{ mm(d.duration) }}</ng-container>}</p>
         </section>
-        <section class="card" aria-label="Momentos del combate">
-          <h3>Momentos</h3>
+        <section i18n-aria-label="@@combate.resumen.momentos-combate" class="card" aria-label="Momentos del combate">
+          <h3 i18n="@@combate.resumen.momentos">Momentos</h3>
           <ol class="moments">
             @for (p of points(); track p.event_id) {
               <li>
@@ -142,11 +142,11 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
                 <span class="num">{{ p.aka }}–{{ p.ao }}</span>
               </li>
             } @empty {
-              <li class="muted small">Sin eventos de marcador.</li>
+              <li i18n="@@combate.resumen.sin-eventos-marcador" class="muted small">Sin eventos de marcador.</li>
             }
           </ol>
           @if (d.match.parent_match_id) {
-            <p class="small"><a [routerLink]="['/mesa', d.match.parent_match_id]">Ver el enfrentamiento por equipos</a></p>
+            <p class="small"><a i18n="@@combate.resumen.ver-enfrentamiento-equipos" [routerLink]="['/mesa', d.match.parent_match_id]">Ver el enfrentamiento por equipos</a></p>
           }
         </section>
       </div>
@@ -202,15 +202,15 @@ export class MatchSummaryPage {
   readonly resultText = computed(() => {
     const d = this.data();
     if (!d) return '';
-    if (d.match.status !== 'finished') return 'Combate en curso';
-    if (d.match.method === 'draw') return 'Hikiwake (empate)';
-    return `por ${METHOD_LABEL[d.match.method ?? ''] ?? d.match.method ?? ''}`;
+    if (d.match.status !== 'finished') return $localize`:@@combate.resumen.combate-curso:Combate en curso`;
+    if (d.match.method === 'draw') return $localize`:@@combate.resumen.hikiwake-empate:Hikiwake (empate)`;
+    return $localize`:@@combate.resumen.por-metodo:por ${METHOD_LABEL[d.match.method ?? ''] ?? d.match.method ?? ''}:metodo:`;
   });
 
   readonly chartLabel = computed(() => {
     const d = this.data();
     if (!d) return '';
-    return `Marcador acumulado en el tiempo: AKA termina con ${d.aka.score} y AO con ${d.ao.score}.`;
+    return $localize`:@@combate.resumen.marcador-acumulado-tiempo-aka:Marcador acumulado en el tiempo: AKA termina con ${d.aka.score}:aka: y AO con ${d.ao.score}:ao:.`;
   });
 
   constructor() {
@@ -283,11 +283,11 @@ export class MatchSummaryPage {
 
   describe(p: TimelinePoint): string {
     const who = p.color ? p.color.toUpperCase() : '';
-    if (p.type === 'point') return `${who} · ${POINT_LABEL[p.value ?? 0] ?? 'Punto'} +${p.value}`;
+    if (p.type === 'point') return `${who} · ${POINT_LABEL[p.value ?? 0] ?? $localize`:@@combate.resumen.punto:Punto`} +${p.value}`;
     if (p.type === 'finish') {
       const d = this.data();
-      if (d?.match.method === 'draw' || !p.color) return 'Cierre: hikiwake';
-      return `Cierre: gana ${who}`;
+      if (d?.match.method === 'draw' || !p.color) return $localize`:@@combate.resumen.cierre-hikiwake:Cierre: hikiwake`;
+      return $localize`:@@combate.resumen.cierre-gana:Cierre: gana ${who}:who:`;
     }
     return who;
   }
@@ -297,9 +297,9 @@ export class MatchSummaryPage {
     if (!d) return;
     try {
       const shared = await shareMatchCard(d, this.resultText());
-      if (!shared) this.toast.ok('Imagen descargada');
+      if (!shared) this.toast.ok($localize`:@@combate.resumen.imagen-descargada:Imagen descargada`);
     } catch {
-      this.toast.error('No se pudo generar la imagen');
+      this.toast.error($localize`:@@combate.resumen.no-pudo-generar-imagen:No se pudo generar la imagen`);
     }
   }
 }

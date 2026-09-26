@@ -14,16 +14,16 @@ import { RankingView } from './ranking-view';
     <div class="page container">
       <header class="top">
         <div class="brand">
-          <app-enso class="mark" /><app-hajime-word class="word" /><span class="tag">ranking</span>
+          <app-enso class="mark" /><app-hajime-word class="word" /><span i18n="@@ranking.publico.ranking" class="tag">ranking</span>
         </div>
       </header>
       @if (data(); as d) {
         <h1>{{ d.season.name }}</h1>
-        <p class="muted">
+        <p class="muted"><ng-container i18n="@@ranking.publico.temporada">
           Temporada {{ d.season.year }}
-          @if (d.season.tournaments?.length) {
+          </ng-container>@if (d.season.tournaments?.length) {<ng-container i18n="@@ranking.publico.torneos">
             · {{ d.season.tournaments!.length }} torneos
-          }
+          </ng-container>}
         </p>
         <app-ranking-view
           [detail]="d"
@@ -99,7 +99,7 @@ export class PublicRankingPage {
     } catch (e) {
       const err = ApiError.from(e);
       this.error.set(
-        err.status === 404 ? 'Este ranking no existe o no es público.' : err.fullMessage,
+        err.status === 404 ? $localize`:@@ranking.publico.este-ranking-no-existe-no:Este ranking no existe o no es público.` : err.fullMessage,
       );
     }
   }

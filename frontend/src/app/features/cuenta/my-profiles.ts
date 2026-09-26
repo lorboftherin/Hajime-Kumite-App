@@ -43,22 +43,22 @@ import { ClaimForm } from './claim-form';
   ],
   template: `
     <div class="container">
-      <app-page-head kanji="選手" title="Mis perfiles">
+      <app-page-head i18n-title="@@cuenta.perfiles.mis-perfiles" kanji="選手" title="Mis perfiles">
         <div meta class="meta-line">
-          <span
+          <span i18n="@@cuenta.perfiles.perfil-deportivo-tus-hijos-hijas"
             >Tu perfil deportivo y el de tus hijos o hijas: historial, estadísticas e
             insignias.</span
           >
         </div>
-        <button class="btn primary" type="button" (click)="claiming.set(!claiming())">
+        <button i18n="@@cuenta.perfiles.reclamar-perfil" class="btn primary" type="button" (click)="claiming.set(!claiming())">
           <app-icon name="plus" /> Reclamar un perfil
         </button>
       </app-page-head>
 
       @if (!auth.user()?.email_verified_at) {
         <div class="alert warn">
-          <strong>Confirma tu correo para reclamar perfiles.</strong>
-          <div class="small">
+          <strong i18n="@@cuenta.perfiles.confirma-correo-para-reclamar">Confirma tu correo para reclamar perfiles.</strong>
+          <div i18n="@@cuenta.perfiles.te-enviamos-enlace-registrarte" class="small">
             Te enviamos un enlace al registrarte. Puedes pedir otro en
             <a routerLink="/perfil">Mi cuenta</a>.
           </div>
@@ -67,25 +67,25 @@ import { ClaimForm } from './claim-form';
 
       @if (claiming()) {
         <section class="card">
-          <h2 class="section-title first">Reclamar un perfil</h2>
+          <h2 i18n="@@cuenta.perfiles.reclamar-perfil-2" class="section-title first">Reclamar un perfil</h2>
           <app-claim-form (sent)="onSent()" />
         </section>
       }
 
       @if (claims().length) {
         <section class="card">
-          <h2 class="section-title first">Mis solicitudes</h2>
+          <h2 i18n="@@cuenta.perfiles.mis-solicitudes" class="section-title first">Mis solicitudes</h2>
           <ul class="list-plain claims">
             @for (c of claims(); track c.id) {
               <li class="row">
                 <span class="grow">
                   <strong>{{ c.person_name }}</strong>
                   <span class="muted small">
-                    · {{ relation[c.relationship] }} · {{ c.dojo || 'Sin dojo' }} ·
+                    · {{ relation[c.relationship] }} · {{ c.dojo || sinDojo }} ·
                     {{ when(c.created_at) }}</span
                   >
                   @if (c.reason && c.status === 'rejected') {
-                    <span class="small block">Motivo: {{ c.reason }}</span>
+                    <span i18n="@@cuenta.perfiles.motivo" class="small block">Motivo: {{ c.reason }}</span>
                   }
                 </span>
                 <span
@@ -104,7 +104,7 @@ import { ClaimForm } from './claim-form';
 
       @if (profiles(); as ps) {
         @if (ps.length) {
-          <div class="tabs" role="tablist" aria-label="Perfiles">
+          <div i18n-aria-label="@@cuenta.perfiles.perfiles" class="tabs" role="tablist" aria-label="Perfiles">
             @for (p of ps; track p.person_id) {
               <button
                 type="button"
@@ -114,9 +114,7 @@ import { ClaimForm } from './claim-form';
                 (click)="selectedId.set(p.person_id)"
               >
                 <span class="name">{{ p.name }}</span>
-                <span class="small muted">{{
-                  p.relationship === 'self' ? 'Mi perfil' : 'Familia'
-                }}</span>
+                <span i18n="@@cuenta.perfiles.mi-perfil-familia" class="small muted">{p.relationship, select, self {Mi perfil} other {Familia}}</span>
               </button>
             }
           </div>
@@ -125,14 +123,14 @@ import { ClaimForm } from './claim-form';
               <div class="grow">
                 <h2>{{ p.name }}</h2>
                 <p class="muted small">
-                  {{ p.dojo || 'Sin dojo' }} · {{ relation[p.relationship] }}
+                  {{ p.dojo || sinDojo }} · {{ relation[p.relationship] }}
                 </p>
               </div>
               @if (p.public_id) {
-                <a class="btn sm" [routerLink]="link(p.public_id)"
+                <a i18n="@@cuenta.perfiles.perfil-publico" class="btn sm" [routerLink]="link(p.public_id)"
                   ><app-icon name="open" /> Perfil público</a
                 >
-                <button class="btn sm" type="button" (click)="share(p)" [disabled]="sharing()">
+                <button i18n="@@cuenta.perfiles.compartir-tarjeta" class="btn sm" type="button" (click)="share(p)" [disabled]="sharing()">
                   Compartir tarjeta
                 </button>
               }
@@ -143,7 +141,7 @@ import { ClaimForm } from './claim-form';
                 (toggled)="togglePush(p, $event)"
               />
               @if (p.guardianship_id) {
-                <button class="btn sm ghost" type="button" (click)="leave(p)">
+                <button i18n="@@cuenta.perfiles.dejar-seguir" class="btn sm ghost" type="button" (click)="leave(p)">
                   Dejar de seguir
                 </button>
               }
@@ -154,8 +152,8 @@ import { ClaimForm } from './claim-form';
           }
         } @else if (!claiming()) {
           <div class="card empty">
-            <p><strong>Aún no tienes perfiles ligados.</strong></p>
-            <p class="small">
+            <p><strong i18n="@@cuenta.perfiles.aun-no-tienes-perfiles-ligados">Aún no tienes perfiles ligados.</strong></p>
+            <p i18n="@@cuenta.perfiles.busca-perfil-hijo-hija-reclamar" class="small">
               Busca tu perfil (o el de tu hijo o hija) con «Reclamar un perfil». Lo aprueba el dojo
               o la organización.
             </p>
@@ -230,6 +228,7 @@ export class MyProfilesPage {
   private toast = inject(ToastService);
 
   readonly relation = RELATION_LABEL;
+  readonly sinDojo = $localize`:@@comun.sin-dojo:Sin dojo`;
   readonly status = CLAIM_STATUS_LABEL;
   readonly when = fmtDateTime;
   readonly link = personLink;
@@ -264,10 +263,10 @@ export class MyProfilesPage {
       const s = await this.push.followAccount({ person_id: p.person_id }, on);
       if (!s) return;
       this.pushPersons.set(new Set(s.person_ids));
-      this.toast.ok(on ? `Te avisaremos de los combates de ${p.name}` : 'Aviso quitado');
+      this.toast.ok(on ? $localize`:@@cuenta.perfiles.te-avisaremos-combates:Te avisaremos de los combates de ${p.name}:name:` : $localize`:@@cuenta.perfiles.aviso-quitado:Aviso quitado`);
     } catch {
       this.pushPersons.update((set) => toggled(set, p.person_id, !on));
-      this.toast.error('No se pudo guardar el aviso');
+      this.toast.error($localize`:@@cuenta.perfiles.no-pudo-guardar-aviso:No se pudo guardar el aviso`);
     } finally {
       this.pushBusy.set(false);
     }
@@ -296,7 +295,7 @@ export class MyProfilesPage {
       );
       await shareProfileCard(pub, `${location.origin}/competidor/${p.public_id}`);
     } catch {
-      this.toast.error('No se pudo preparar la tarjeta');
+      this.toast.error($localize`:@@cuenta.perfiles.no-pudo-preparar-tarjeta:No se pudo preparar la tarjeta`);
     } finally {
       this.sharing.set(false);
     }
@@ -304,19 +303,19 @@ export class MyProfilesPage {
 
   async leave(p: MyProfile): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: 'Dejar de seguir este perfil',
-      message: `Dejarás de ver el historial completo de ${p.name}. Para volver a verlo tendrás que pedirlo otra vez.`,
-      confirmText: 'Dejar de seguir',
+      title: $localize`:@@cuenta.perfiles.dejar-seguir-este-perfil:Dejar de seguir este perfil`,
+      message: $localize`:@@cuenta.perfiles.dejaras-ver-historial-completo:Dejarás de ver el historial completo de ${p.name}:name:. Para volver a verlo tendrás que pedirlo otra vez.`,
+      confirmText: $localize`:@@cuenta.perfiles.dejar-seguir-2:Dejar de seguir`,
       danger: true,
     });
     if (!ok || !p.guardianship_id) return;
     this.api.delete<void>(`/me/guardianships/${p.guardianship_id}`).subscribe({
       next: () => {
-        this.toast.ok('Listo');
+        this.toast.ok($localize`:@@cuenta.perfiles.listo:Listo`);
         this.selectedId.set(null);
         this.load();
       },
-      error: () => this.toast.error('No se pudo quitar'),
+      error: () => this.toast.error($localize`:@@cuenta.perfiles.no-pudo-quitar:No se pudo quitar`),
     });
   }
 }

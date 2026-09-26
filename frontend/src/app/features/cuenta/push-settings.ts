@@ -23,7 +23,7 @@ import { Icon } from '../../shared/icon';
   template: `
     <div class="page">
       <header class="top">
-        <a
+        <a i18n-aria-label="@@avisos.ajustes.hajime"
           class="brand"
           [routerLink]="auth.user() ? '/perfil' : '/torneos-publicos'"
           aria-label="Hajime"
@@ -31,8 +31,8 @@ import { Icon } from '../../shared/icon';
         /></a>
       </header>
       <article class="card doc">
-        <h1><app-icon name="bell" /> Avisos</h1>
-        <p>
+        <h1 i18n="@@avisos.ajustes.avisos"><app-icon name="bell" /> Avisos</h1>
+        <p i18n="@@avisos.ajustes.hajime-te-avisa-este-dispositivo">
           Hajime te avisa en este dispositivo cuando le toca a quien sigues («te toca en ~3
           combates» y «¡A tatami!»), su resultado y sus medallas. Elige a quién seguir con
           «Avisarme» en la página del torneo, en «Mis perfiles» o en «Mis competidores».
@@ -41,12 +41,12 @@ import { Icon } from '../../shared/icon';
         @if (push.support() !== 'ok') {
           <div class="alert warn" role="note">{{ push.message() }}</div>
         } @else if (!state().subscribed) {
-          <p>Este dispositivo todavía no recibe avisos.</p>
-          <button class="btn primary" type="button" (click)="activate()" [disabled]="busy()">
+          <p i18n="@@avisos.ajustes.este-dispositivo-todavia-no">Este dispositivo todavía no recibe avisos.</p>
+          <button i18n="@@avisos.ajustes.activar-avisos-este-dispositivo" class="btn primary" type="button" (click)="activate()" [disabled]="busy()">
             <app-icon name="bell" /> Activar avisos en este dispositivo
           </button>
         } @else {
-          <h2>Qué avisos recibir</h2>
+          <h2 i18n="@@avisos.ajustes.avisos-recibir">Qué avisos recibir</h2>
           <form class="prefs" (ngSubmit)="save()">
             @for (p of labels; track p.key) {
               <label class="check">
@@ -63,32 +63,31 @@ import { Icon } from '../../shared/icon';
               </label>
             }
             <div class="form-actions">
-              <button class="btn primary" [disabled]="busy()">Guardar</button>
+              <button i18n="@@avisos.ajustes.guardar" class="btn primary" [disabled]="busy()">Guardar</button>
             </div>
           </form>
           @if (following()) {
-            <p class="small muted">
-              Con tu cuenta sigues {{ following() }}
-              {{ following() === 1 ? 'perfil o dojo' : 'perfiles o dojos' }} en este dispositivo.
+            <p i18n="@@avisos.ajustes.cuenta-sigues-este-dispositivo" class="small muted">
+              Con tu cuenta sigues {following(), plural, =1 {1 perfil o dojo} other {{{ following() }} perfiles o dojos}} en este dispositivo.
             </p>
           }
-          <button class="btn ghost danger" type="button" (click)="off()" [disabled]="busy()">
+          <button i18n="@@avisos.ajustes.dejar-recibir-avisos-este" class="btn ghost danger" type="button" (click)="off()" [disabled]="busy()">
             Dejar de recibir avisos en este dispositivo
           </button>
         }
 
-        <h2>iPhone y iPad</h2>
-        <p>
+        <h2 i18n="@@avisos.ajustes.iphone-ipad">iPhone y iPad</h2>
+        <p i18n="@@avisos.ajustes.safari-solo-entrega-avisos">
           Safari solo entrega avisos a Hajime instalado: toca Compartir → «Agregar a pantalla de
           inicio», abre Hajime desde ese ícono y activa los avisos allí (iOS 16.4 o superior).
         </p>
-        <h2>App de Android</h2>
-        <p>
+        <h2 i18n="@@avisos.ajustes.app-android">App de Android</h2>
+        <p i18n="@@avisos.ajustes.app-android-todavia-no-recibe">
           La app de Android todavía no recibe avisos. Para recibirlos, abre Hajime en Chrome e
           instálalo desde el navegador («Instalar app»).
         </p>
-        <h2>Privacidad</h2>
-        <p class="small">
+        <h2 i18n="@@avisos.ajustes.privacidad">Privacidad</h2>
+        <p i18n="@@avisos.ajustes.guardamos-direccion-avisos-este" class="small">
           Guardamos la dirección de avisos de este navegador y a quién sigues. Los favoritos de la
           página pública se borran al terminar el torneo. Los avisos de menores usan el nombre
           abreviado, como la página pública.
@@ -197,10 +196,10 @@ export class PushSettingsPage {
     try {
       if (await this.push.ensure()) {
         await this.refresh();
-        this.toast.ok('Avisos activados en este dispositivo');
+        this.toast.ok($localize`:@@avisos.ajustes.avisos-activados-este:Avisos activados en este dispositivo`);
       }
     } catch {
-      this.toast.error('No se pudieron activar los avisos');
+      this.toast.error($localize`:@@avisos.ajustes.no-pudieron-activar-avisos:No se pudieron activar los avisos`);
     } finally {
       this.busy.set(false);
     }
@@ -212,10 +211,10 @@ export class PushSettingsPage {
       const s = await this.push.setPreferences(this.prefs());
       if (s) {
         this.state.set(s);
-        this.toast.ok('Preferencias guardadas');
+        this.toast.ok($localize`:@@avisos.ajustes.preferencias-guardadas:Preferencias guardadas`);
       }
     } catch {
-      this.toast.error('No se pudieron guardar');
+      this.toast.error($localize`:@@avisos.ajustes.no-pudieron-guardar:No se pudieron guardar`);
     } finally {
       this.busy.set(false);
     }
@@ -226,9 +225,9 @@ export class PushSettingsPage {
     try {
       await this.push.unsubscribe();
       this.state.set(EMPTY_PUSH_STATE);
-      this.toast.ok('Ya no recibirás avisos en este dispositivo');
+      this.toast.ok($localize`:@@avisos.ajustes.ya-no-recibiras-avisos-este:Ya no recibirás avisos en este dispositivo`);
     } catch {
-      this.toast.error('No se pudo desactivar');
+      this.toast.error($localize`:@@avisos.ajustes.no-pudo-desactivar:No se pudo desactivar`);
     } finally {
       this.busy.set(false);
     }

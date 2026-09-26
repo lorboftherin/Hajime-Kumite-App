@@ -28,19 +28,19 @@ import { TournamentContext } from '../tournament-context';
     @if (ctx.tournament(); as t) {
       <div class="cols">
         <section class="card">
-          <h3>Inscripción en línea</h3>
-          <p class="small muted">
+          <h3 i18n="@@torneo.solicitudes.inscripcion-linea">Inscripción en línea</h3>
+          <p i18n="@@torneo.solicitudes.senseis-administradores-dojo" class="small muted">
             Los senseis (administradores de dojo) inscriben a sus alumnos con las mismas sugerencias
             y advertencias que ves tú. Sus inscripciones quedan pendientes hasta que las apruebes:
             no entran a las llaves mientras tanto.
           </p>
           <form class="stack" (ngSubmit)="saveSettings(t)">
-            <label class="field inline"
+            <label i18n="@@torneo.solicitudes.inscripcion-linea-abierta" class="field inline"
               ><input type="checkbox" name="open" [(ngModel)]="open" /> Inscripción en línea
               abierta</label
             >
             <label class="field">
-              <span>Cierre (hora de Lima, opcional)</span>
+              <span i18n="@@torneo.solicitudes.cierre-hora-lima-opcional">Cierre (hora de Lima, opcional)</span>
               <input
                 type="datetime-local"
                 name="closes"
@@ -49,26 +49,26 @@ import { TournamentContext } from '../tournament-context';
               />
             </label>
             <div class="form-actions">
-              <button class="btn primary" [disabled]="busy()">Guardar</button>
+              <button i18n="@@torneo.solicitudes.guardar" class="btn primary" [disabled]="busy()">Guardar</button>
             </div>
           </form>
         </section>
 
         <section class="card">
-          <h3>Enlaces de invitación</h3>
-          <p class="small muted">
+          <h3 i18n="@@torneo.solicitudes.enlaces-invitacion">Enlaces de invitación</h3>
+          <p i18n="@@torneo.solicitudes.enlace-dojo-vincula-sensei-como" class="small muted">
             Un enlace por dojo vincula al sensei como administrador de ese dojo (si el dojo ya tiene
             otro, te llega el pedido aquí). El enlace general sirve para cualquier dojo y siempre
             pide tu aprobación.
           </p>
           <div class="row gen">
-            <select [(ngModel)]="invDojo" aria-label="Dojo del enlace">
-              <option [ngValue]="null">Enlace general (cualquier dojo)</option>
+            <select i18n-aria-label="@@torneo.solicitudes.dojo-enlace" [(ngModel)]="invDojo" aria-label="Dojo del enlace">
+              <option i18n="@@torneo.solicitudes.enlace-general-cualquier-dojo" [ngValue]="null">Enlace general (cualquier dojo)</option>
               @for (d of dojos(); track d.id) {
                 <option [ngValue]="d.id">{{ d.name }}</option>
               }
             </select>
-            <button class="btn" (click)="createInvitation(t)" [disabled]="busy()">
+            <button i18n="@@torneo.solicitudes.generar-enlace" class="btn" (click)="createInvitation(t)" [disabled]="busy()">
               <app-icon name="plus" /> Generar enlace
             </button>
           </div>
@@ -76,29 +76,29 @@ import { TournamentContext } from '../tournament-context';
             @for (i of invitations(); track i.id) {
               <li [class.revoked]="i.revoked_at">
                 <div class="grow">
-                  <strong>{{ i.dojo_name ?? 'General' }}</strong>
+                  <strong>{{ i.dojo_name ?? txtGeneral }}</strong>
                   <span class="muted small">
-                    · {{ i.uses }} {{ i.uses === 1 ? 'uso' : 'usos' }}
-                    @if (i.revoked_at) {
+                    · <ng-container i18n="@@torneo.solicitudes.n-usos">{i.uses, plural, =1 {1 uso} other {{{ i.uses }} usos}}</ng-container>
+                    @if (i.revoked_at) {<ng-container i18n="@@torneo.solicitudes.revocado">
                       · revocado
-                    }
+                    </ng-container>}
                   </span>
                   @if (!i.revoked_at) {
                     <input
                       readonly
                       [value]="link(i)"
                       (focus)="$any($event.target).select()"
-                      [attr.aria-label]="'Enlace de ' + (i.dojo_name ?? 'invitación general')"
+                      [attr.aria-label]="ariaEnlace(i.dojo_name)"
                     />
                   }
                 </div>
                 @if (!i.revoked_at) {
-                  <button class="btn sm" (click)="copy(link(i))">Copiar</button>
-                  <button class="btn sm ghost" (click)="revoke(i)">Revocar</button>
+                  <button i18n="@@torneo.solicitudes.copiar" class="btn sm" (click)="copy(link(i))">Copiar</button>
+                  <button i18n="@@torneo.solicitudes.revocar" class="btn sm ghost" (click)="revoke(i)">Revocar</button>
                 }
               </li>
             } @empty {
-              <li class="muted small">Aún no hay enlaces.</li>
+              <li i18n="@@torneo.solicitudes.aun-no-hay-enlaces" class="muted small">Aún no hay enlaces.</li>
             }
           </ul>
         </section>
@@ -106,20 +106,20 @@ import { TournamentContext } from '../tournament-context';
 
       <section class="card">
         <div class="row head">
-          <h3 class="grow">
+          <h3 i18n="@@torneo.solicitudes.inscripciones-aprobar" class="grow">
             Inscripciones por aprobar <span class="muted small">{{ regs().length }}</span>
           </h3>
           <button class="btn sm" (click)="toggleAll()" [disabled]="!regs().length">
-            {{ allSelected() ? 'Quitar selección' : 'Seleccionar todas' }}
+            <ng-container i18n="@@torneo.solicitudes.quitar-seleccionar-todas">@if (allSelected()) {Quitar selección} @else {Seleccionar todas}</ng-container>
           </button>
-          <button
+          <button i18n="@@torneo.solicitudes.aprobar"
             class="btn sm primary"
             (click)="decide('approve')"
             [disabled]="!selected().size || busy()"
           >
             Aprobar ({{ selected().size }})
           </button>
-          <button
+          <button i18n="@@torneo.solicitudes.rechazar"
             class="btn sm danger"
             (click)="decide('reject')"
             [disabled]="!selected().size || busy()"
@@ -131,13 +131,13 @@ import { TournamentContext } from '../tournament-context';
           <table class="table">
             <thead>
               <tr>
-                <th><span class="sr-only">Elegir</span></th>
-                <th>Competidor</th>
-                <th>Dojo</th>
-                <th>Categoría</th>
-                <th>Grado</th>
-                <th>Peso</th>
-                <th>Edad</th>
+                <th><span i18n="@@torneo.solicitudes.elegir" class="sr-only">Elegir</span></th>
+                <th i18n="@@torneo.solicitudes.competidor">Competidor</th>
+                <th i18n="@@torneo.solicitudes.dojo">Dojo</th>
+                <th i18n="@@torneo.solicitudes.categoria">Categoría</th>
+                <th i18n="@@torneo.solicitudes.grado">Grado</th>
+                <th i18n="@@torneo.solicitudes.peso">Peso</th>
+                <th i18n="@@torneo.solicitudes.edad">Edad</th>
               </tr>
             </thead>
             <tbody>
@@ -148,7 +148,7 @@ import { TournamentContext } from '../tournament-context';
                       type="checkbox"
                       [checked]="selected().has(r.id)"
                       (change)="toggle(r.id)"
-                      [attr.aria-label]="'Elegir ' + r.person_name"
+                      [attr.aria-label]="ariaElegir(r.person_name)"
                     />
                   </td>
                   <td>
@@ -162,7 +162,7 @@ import { TournamentContext } from '../tournament-context';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="muted small">No hay inscripciones pendientes.</td>
+                  <td i18n="@@torneo.solicitudes.no-hay-inscripciones-pendientes" colspan="7" class="muted small">No hay inscripciones pendientes.</td>
                 </tr>
               }
             </tbody>
@@ -172,23 +172,23 @@ import { TournamentContext } from '../tournament-context';
 
       @if (adminReqs().length) {
         <section class="card">
-          <h3>Pedidos para administrar un dojo</h3>
+          <h3 i18n="@@torneo.solicitudes.pedidos-para-administrar-dojo">Pedidos para administrar un dojo</h3>
           <ul class="list-plain invs">
             @for (a of adminReqs(); track a.id) {
               <li>
                 <div class="grow">
-                  <strong>{{ a.display_name || a.username }}</strong>
+                  <ng-container i18n="@@torneo.solicitudes.pide-administrar"><strong>{{ a.display_name || a.username }}</strong>
                   <span class="muted small">({{ a.username }})</span> pide administrar
-                  <strong>{{ a.dojo_name }}</strong>
+                  <strong>{{ a.dojo_name }}</strong></ng-container>
                   <div class="small muted">
                     {{ when(a.created_at) }}
-                    @if (a.current_admins.length) {
+                    @if (a.current_admins.length) {<ng-container i18n="@@torneo.solicitudes.admin-actual">
                       · Admin actual: {{ a.current_admins.join(', ') }}
-                    }
+                    </ng-container>}
                   </div>
                 </div>
-                <button class="btn sm primary" (click)="decideAdmin(a, true)">Aprobar</button>
-                <button class="btn sm ghost" (click)="decideAdmin(a, false)">Rechazar</button>
+                <button i18n="@@torneo.solicitudes.aprobar-2" class="btn sm primary" (click)="decideAdmin(a, true)">Aprobar</button>
+                <button i18n="@@torneo.solicitudes.rechazar-2" class="btn sm ghost" (click)="decideAdmin(a, false)">Rechazar</button>
               </li>
             }
           </ul>
@@ -236,6 +236,12 @@ import { TournamentContext } from '../tournament-context';
   `,
 })
 export class RequestsTab {
+  readonly txtGeneral = $localize`:@@torneo.solicitudes.general:General`;
+  ariaEnlace = (dojo: string | null | undefined) =>
+    dojo
+      ? $localize`:@@torneo.solicitudes.enlace-de:Enlace de ${dojo}:dojo:`
+      : $localize`:@@torneo.solicitudes.enlace-invitacion-general:Enlace de invitación general`;
+  ariaElegir = (nombre: string) => $localize`:@@torneo.solicitudes.elegir-persona:Elegir ${nombre}:nombre:`;
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
   private mut = inject(MutationService);
@@ -299,9 +305,9 @@ export class RequestsTab {
   async copy(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
-      this.toast.ok('Enlace copiado');
+      this.toast.ok($localize`:@@torneo.solicitudes.enlace-copiado:Enlace copiado`);
     } catch {
-      this.toast.warn('No se pudo copiar: selecciona el enlace y cópialo a mano');
+      this.toast.warn($localize`:@@torneo.solicitudes.no-pudo-copiar-selecciona-enlace:No se pudo copiar: selecciona el enlace y cópialo a mano`);
     }
   }
 
@@ -309,7 +315,7 @@ export class RequestsTab {
     this.busy.set(true);
     const body = { open: this.open, closes_at: this.open ? limaInputToIso(this.closesAt) : null };
     const out = await this.mut.put<Tournament>(`/tournaments/${t.id}/self-registration`, body, {
-      success: this.open ? 'Inscripción en línea abierta' : 'Inscripción en línea cerrada',
+      success: this.open ? $localize`:@@torneo.solicitudes.inscripcion-linea-abierta-2:Inscripción en línea abierta` : $localize`:@@torneo.solicitudes.inscripcion-linea-cerrada:Inscripción en línea cerrada`,
     });
     this.busy.set(false);
     if (out) this.ctx.tournament.set(out);
@@ -320,7 +326,7 @@ export class RequestsTab {
     const inv = await this.mut.post<Invitation>(
       `/tournaments/${t.id}/invitations`,
       { dojo_id: this.invDojo },
-      { success: 'Enlace generado' },
+      { success: $localize`:@@torneo.solicitudes.enlace-generado:Enlace generado` },
     );
     this.busy.set(false);
     if (inv) this.invitations.update((l) => [inv, ...l]);
@@ -328,15 +334,15 @@ export class RequestsTab {
 
   async revoke(i: Invitation): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: 'Revocar enlace',
+      title: $localize`:@@torneo.solicitudes.revocar-enlace:Revocar enlace`,
       message:
-        'El enlace dejará de funcionar. Los senseis que ya lo usaron conservan su acceso al dojo.',
-      confirmText: 'Revocar',
+        $localize`:@@torneo.solicitudes.enlace-dejara-funcionar-senseis:El enlace dejará de funcionar. Los senseis que ya lo usaron conservan su acceso al dojo.`,
+      confirmText: $localize`:@@torneo.solicitudes.revocar-2:Revocar`,
       danger: true,
     });
     if (!ok) return;
     await this.mut.run(() => this.api.delete<void>(`/invitations/${i.id}`), {
-      success: 'Enlace revocado',
+      success: $localize`:@@torneo.solicitudes.enlace-revocado:Enlace revocado`,
     });
     await this.load();
   }
@@ -359,11 +365,14 @@ export class RequestsTab {
     let reason: string | null = null;
     if (action === 'reject') {
       reason = await this.dialog.prompt({
-        title: `Rechazar ${ids.length === 1 ? 'la inscripción' : ids.length + ' inscripciones'}`,
-        message: 'El sensei verá este motivo.',
-        label: 'Motivo',
+        title:
+          ids.length === 1
+            ? $localize`:@@torneo.solicitudes.rechazar-1:Rechazar la inscripción`
+            : $localize`:@@torneo.solicitudes.rechazar-n:Rechazar ${ids.length}:n: inscripciones`,
+        message: $localize`:@@torneo.solicitudes.sensei-vera-este-motivo:El sensei verá este motivo.`,
+        label: $localize`:@@torneo.solicitudes.motivo:Motivo`,
         minLength: 3,
-        confirmText: 'Rechazar',
+        confirmText: $localize`:@@torneo.solicitudes.rechazar-4:Rechazar`,
       });
       if (reason === null) return;
     }
@@ -377,13 +386,19 @@ export class RequestsTab {
     const n = action === 'approve' ? out.approved.length : out.rejected.length;
     if (n)
       this.toast.ok(
-        `${n} ${n === 1 ? 'inscripción' : 'inscripciones'} ${action === 'approve' ? 'aprobada' : 'rechazada'}${n === 1 ? '' : 's'}`,
+        action === 'approve'
+          ? n === 1
+            ? $localize`:@@torneo.solicitudes.1-aprobada:1 inscripción aprobada`
+            : $localize`:@@torneo.solicitudes.n-aprobadas:${n}:n: inscripciones aprobadas`
+          : n === 1
+            ? $localize`:@@torneo.solicitudes.1-rechazada:1 inscripción rechazada`
+            : $localize`:@@torneo.solicitudes.n-rechazadas:${n}:n: inscripciones rechazadas`,
       );
     if (out.skipped.length) {
       const names = new Map(this.regs().map((r) => [r.id, r.person_name]));
       await this.dialog.alert(
-        'Algunas no se pudieron aprobar',
-        'Revísalas: puedes moverlas a otra categoría o rechazarlas.',
+        $localize`:@@torneo.solicitudes.algunas-no-pudieron-aprobar:Algunas no se pudieron aprobar`,
+        $localize`:@@torneo.solicitudes.revisalas-puedes-moverlas-otra:Revísalas: puedes moverlas a otra categoría o rechazarlas.`,
         out.skipped.map((x) => `${names.get(x.id) ?? '#' + x.id}: ${x.reason}`),
       );
     }
@@ -397,7 +412,7 @@ export class RequestsTab {
       `/dojo-admin-requests/${a.id}/decide`,
       { approve },
       {
-        success: approve ? 'Ahora administra el dojo' : 'Pedido rechazado',
+        success: approve ? $localize`:@@torneo.solicitudes.ahora-administra-dojo:Ahora administra el dojo` : $localize`:@@torneo.solicitudes.pedido-rechazado:Pedido rechazado`,
       },
     );
     if (out) await this.load();

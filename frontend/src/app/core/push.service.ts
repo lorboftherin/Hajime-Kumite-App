@@ -90,8 +90,8 @@ export class PushService {
 
   /** Explica por qué este dispositivo no puede recibir avisos. */
   async explain(): Promise<void> {
-    const msg = this.message() || 'No se pudo activar los avisos en este dispositivo.';
-    await this.dialog.alert('Avisos en este dispositivo', msg);
+    const msg = this.message() || $localize`:@@avisos.no-pudo-activar-avisos-este:No se pudo activar los avisos en este dispositivo.`;
+    await this.dialog.alert($localize`:@@avisos.avisos-este-dispositivo:Avisos en este dispositivo`, msg);
   }
 
   /**

@@ -1,29 +1,30 @@
 import { fmtSoles } from './format';
 import { BillingAlert, PaymentOut } from './models';
+import { etiquetas } from './i18n/etiquetas';
 
 /** Culqi Checkout v4: se carga desde su CDN oficial SOLO en la página de pago. */
 export const CULQI_CHECKOUT_JS = 'https://checkout.culqi.com/js/v4';
 
-export const PAYMENT_STATUS: Record<PaymentOut['status'], string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  refunded: 'Reembolsado',
-};
+export const PAYMENT_STATUS: Record<PaymentOut['status'], string> = etiquetas(() => ({
+  pending: $localize`:@@cobro.pendiente:Pendiente`,
+  approved: $localize`:@@cobro.aprobado:Aprobado`,
+  rejected: $localize`:@@cobro.rechazado:Rechazado`,
+  refunded: $localize`:@@cobro.reembolsado:Reembolsado`,
+}));
 
-export const INVOICE_STATUS: Record<string, string> = {
-  pending: 'Enviado',
-  accepted: 'Aceptado por SUNAT',
-  rejected: 'Rechazado por SUNAT',
-  error: 'Con error',
-};
+export const INVOICE_STATUS: Record<string, string> = etiquetas(() => ({
+  pending: $localize`:@@cobro.enviado:Enviado`,
+  accepted: $localize`:@@cobro.aceptado-sunat:Aceptado por SUNAT`,
+  rejected: $localize`:@@cobro.rechazado-sunat:Rechazado por SUNAT`,
+  error: $localize`:@@cobro.error:Con error`,
+}));
 
-export const PROVIDER_LABEL: Record<string, string> = {
-  manual: 'Manual',
+export const PROVIDER_LABEL: Record<string, string> = etiquetas(() => ({
+  manual: $localize`:@@cobro.manual:Manual`,
   mercadopago: 'Mercado Pago',
   culqi: 'Culqi',
-  coupon: 'Cupón',
-};
+  coupon: $localize`:@@cobro.cupon:Cupón`,
+}));
 
 /** Céntimos de sol → «S/ 69» o «S/ 34.50» (formato del idioma: ver fmtSoles). */
 export function penFromCents(cents: number | null | undefined): string {
@@ -34,13 +35,14 @@ export function penFromCents(cents: number | null | undefined): string {
 export function alertText(a: BillingAlert): string {
   const who = a.organization_name
     ? `${a.plan_name} de ${a.organization_name}`
-    : `Tu plan ${a.plan_name}`;
+    : $localize`:@@cobro.plan:Tu plan ${a.plan_name}:plan_name:`;
   if (a.in_grace) {
-    const d = a.days_left === 1 ? '1 día' : `${a.days_left} días`;
-    return `${who}: el pago no se completó. Tienes ${d} de gracia antes de perder el acceso.`;
+    const d = a.days_left === 1 ? $localize`:@@cobro.1-dia:1 día` : $localize`:@@cobro.dias:${a.days_left}:dias: días`;
+    return $localize`:@@cobro.pago-no-completo-tienes-gracia:${who}:who:: el pago no se completó. Tienes ${d}:d: de gracia antes de perder el acceso.`;
   }
-  if (a.days_left <= 0) return `${who} vence hoy.`;
-  return `${who} vence en ${a.days_left === 1 ? '1 día' : `${a.days_left} días`}.`;
+  if (a.days_left <= 0) return $localize`:@@cobro.vence-hoy:${who}:who: vence hoy.`;
+  if (a.days_left === 1) return $localize`:@@cobro.vence-1-dia:${who}:who: vence en 1 día.`;
+  return $localize`:@@cobro.vence-dias:${who}:who: vence en ${a.days_left}:dias: días.`;
 }
 
 /** Comprobante como «B001-00000012» (serie y número de 8 dígitos). */
@@ -76,10 +78,10 @@ export function loadCulqi(doc: Document = document): Promise<CulqiGlobal> {
     s.src = CULQI_CHECKOUT_JS;
     s.async = true;
     s.onload = () =>
-      window.Culqi ? resolve(window.Culqi) : reject(new Error('Culqi Checkout no cargó'));
+      window.Culqi ? resolve(window.Culqi) : reject(new Error($localize`:@@cobro.culqi-checkout-no-cargo:Culqi Checkout no cargó`));
     s.onerror = () => {
       culqiLoading = null;
-      reject(new Error('No se pudo cargar Culqi Checkout. Revisa tu conexión.'));
+      reject(new Error($localize`:@@cobro.no-pudo-cargar-culqi-checkout:No se pudo cargar Culqi Checkout. Revisa tu conexión.`));
     };
     doc.head.appendChild(s);
   });
@@ -113,7 +115,7 @@ export function openCulqi(
         culqi.close();
         resolve({ token: t.id, email: t.email });
       } else {
-        resolve({ error: culqi.error?.user_message || 'No se pudo procesar el pago' });
+        resolve({ error: culqi.error?.user_message || $localize`:@@cobro.no-pudo-procesar-pago:No se pudo procesar el pago` });
       }
     };
     culqi.open();

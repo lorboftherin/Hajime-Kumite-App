@@ -1,3 +1,4 @@
+import { etiquetas, lista } from './i18n/etiquetas';
 // Lógica pura de los avisos push (qué soporta el dispositivo y qué mensaje mostrar).
 // Probada en push-logic.spec.ts. Ver docs/avisos-push.md.
 
@@ -31,24 +32,20 @@ export function pushSupport(env: PushEnv, serverEnabled: boolean | null): PushSu
   return 'ok';
 }
 
-export const PUSH_MESSAGES: Record<PushSupport, string> = {
+export const PUSH_MESSAGES: Record<PushSupport, string> = etiquetas(() => ({
   ok: '',
   app:
-    'La app de Android todavía no recibe avisos. Instala Hajime desde el navegador para ' +
-    'recibirlos: ábrelo en Chrome y elige «Instalar app» o «Agregar a la pantalla principal».',
+    $localize`:@@avisos.app-android-todavia-no-recibe:La app de Android todavía no recibe avisos. Instala Hajime desde el navegador para recibirlos: ábrelo en Chrome y elige «Instalar app» o «Agregar a la pantalla principal».`,
   'ios-install':
-    'En iPhone y iPad los avisos solo llegan con Hajime instalado: en Safari toca Compartir → ' +
-    '«Agregar a pantalla de inicio», abre Hajime desde ese ícono y vuelve a tocar «Avisarme» ' +
-    '(iOS 16.4 o superior).',
+    $localize`:@@avisos.iphone-ipad-avisos-solo-llegan:En iPhone y iPad los avisos solo llegan con Hajime instalado: en Safari toca Compartir → «Agregar a pantalla de inicio», abre Hajime desde ese ícono y vuelve a tocar «Avisarme» (iOS 16.4 o superior).`,
   unsupported:
-    'Este navegador no puede recibir avisos. Prueba con Chrome, Edge, Firefox o Safari al día.',
+    $localize`:@@avisos.este-navegador-no-puede-recibir:Este navegador no puede recibir avisos. Prueba con Chrome, Edge, Firefox o Safari al día.`,
   'no-sw':
-    'Los avisos necesitan la versión instalable de Hajime (no funcionan en navegación privada).',
-  'server-off': 'Los avisos no están activos en este servidor.',
+    $localize`:@@avisos.avisos-necesitan-version:Los avisos necesitan la versión instalable de Hajime (no funcionan en navegación privada).`,
+  'server-off': $localize`:@@avisos.avisos-no-estan-activos-este:Los avisos no están activos en este servidor.`,
   denied:
-    'Bloqueaste las notificaciones de Hajime. Actívalas en los ajustes del sitio del navegador ' +
-    '(el candado junto a la dirección) y vuelve a intentarlo.',
-};
+    $localize`:@@avisos.bloqueaste-notificaciones-hajime:Bloqueaste las notificaciones de Hajime. Actívalas en los ajustes del sitio del navegador (el candado junto a la dirección) y vuelve a intentarlo.`,
+}));
 
 /** iPhone, iPad o iPod (el iPad moderno se presenta como Mac con pantalla táctil). */
 export function isIos(userAgent: string, maxTouchPoints = 0): boolean {
@@ -138,17 +135,17 @@ export const EMPTY_PUSH_STATE: PushState = {
   dojo_ids: [],
 };
 
-export const PREFERENCE_LABELS: { key: keyof PushPreferences; label: string; hint: string }[] = [
+export const PREFERENCE_LABELS: { key: keyof PushPreferences; label: string; hint: string }[] = lista(() => [
   {
     key: 'turn',
-    label: 'Te toca pronto',
-    hint: '«Te toca en ~3 combates» y «¡A tatami!» cuando su combate es el siguiente.',
+    label: $localize`:@@avisos.te-toca-pronto:Te toca pronto`,
+    hint: $localize`:@@avisos.te-toca-3-combates-tatami-cuando:«Te toca en ~3 combates» y «¡A tatami!» cuando su combate es el siguiente.`,
   },
-  { key: 'results', label: 'Resultados', hint: 'Ganó o perdió, contra quién y el marcador.' },
-  { key: 'medals', label: 'Medallas', hint: 'Oro, plata o bronce al cerrar la categoría.' },
+  { key: 'results', label: $localize`:@@avisos.resultados:Resultados`, hint: $localize`:@@avisos.gano-perdio-contra-quien:Ganó o perdió, contra quién y el marcador.` },
+  { key: 'medals', label: $localize`:@@avisos.medallas:Medallas`, hint: $localize`:@@avisos.oro-plata-bronce-cerrar:Oro, plata o bronce al cerrar la categoría.` },
   {
     key: 'account',
-    label: 'Mi cuenta',
-    hint: 'Inscripciones revisadas por el organizador y perfiles aprobados.',
+    label: $localize`:@@avisos.mi-cuenta:Mi cuenta`,
+    hint: $localize`:@@avisos.inscripciones-revisadas:Inscripciones revisadas por el organizador y perfiles aprobados.`,
   },
-];
+]);

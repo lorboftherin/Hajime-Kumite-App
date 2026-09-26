@@ -88,7 +88,7 @@ export async function shareMatchCard(d: MatchSummary, resultText: string): Promi
   g.textAlign = 'center';
   g.font = `700 28px ${display}`;
   g.fillStyle = '#8A8377';
-  g.fillText('Hajime · Torneos de karate', S / 2, 1010);
+  g.fillText($localize`:@@combate.compartir.hajime-torneos-karate:Hajime · Torneos de karate`, S / 2, 1010);
 
   const blob: Blob = await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'));
   const file = new File([blob], `hajime-${d.match.code}.png`, { type: 'image/png' });

@@ -73,7 +73,7 @@ export class HajimeWord {
 /** Eslogan «TORNEOS DE KARATE» con la raya que lo precede. */
 @Component({
   selector: 'app-hajime-tagline',
-  template: `<span class="rule" aria-hidden="true"></span><svg [attr.viewBox]="vb" role="img" aria-label="Torneos de karate" focusable="false"><path [attr.d]="d" fill="currentColor" /></svg>`,
+  template: `<span class="rule" aria-hidden="true"></span><svg i18n-aria-label="@@marca.torneos-karate" [attr.viewBox]="vb" role="img" aria-label="Torneos de karate" focusable="false"><path [attr.d]="d" fill="currentColor" /></svg>`,
   styles: `
     :host { display: inline-flex; align-items: center; gap: 0.9em; line-height: 0; height: 0.62em; color: var(--nezumi-ink, #6e6860); }
     svg { height: 100%; width: auto; overflow: visible; display: block; }

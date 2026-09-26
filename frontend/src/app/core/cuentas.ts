@@ -1,3 +1,4 @@
+import { etiquetas } from './i18n/etiquetas';
 // Cuentas de competidor: correo, reclamo de perfiles y perfil público (docs/cuentas-y-correo.md).
 
 /** Resultado de la búsqueda para reclamar: solo lo público (nunca documento ni fecha de nacimiento). */
@@ -65,17 +66,17 @@ export interface PublicProfile {
   tournaments: PublicProfileEntry[];
 }
 
-export const RELATION_LABEL: Record<ClaimRelation, string> = {
-  self: 'Mi perfil',
-  parent: 'Padre o madre',
-  guardian: 'Apoderado',
-};
+export const RELATION_LABEL: Record<ClaimRelation, string> = etiquetas(() => ({
+  self: $localize`:@@cuenta.mi-perfil:Mi perfil`,
+  parent: $localize`:@@cuenta.padre-madre:Padre o madre`,
+  guardian: $localize`:@@cuenta.apoderado:Apoderado`,
+}));
 
-export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  rejected: 'No aprobada',
-};
+export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = etiquetas(() => ({
+  pending: $localize`:@@cuenta.pendiente:Pendiente`,
+  approved: $localize`:@@cuenta.aprobada:Aprobada`,
+  rejected: $localize`:@@cuenta.no-aprobada:No aprobada`,
+}));
 
 /** Lee el token de un enlace de correo (`…#<token>`); acepta también `?token=`. */
 export function tokenFromUrl(fragment: string | null, query: string | null): string {
