@@ -187,10 +187,23 @@ No existía forma de asignar roles.
 | Marca `es_prueba` | ✅ Solo el Admin la cambia después de crear el torneo |
 | Inyección de fórmulas en el Excel exportado; archivos comprimidos maliciosos | ✅ Celdas escapadas; tope de filas y de tamaño descomprimido |
 | Registro del banco de datos, edades de consentimiento, nombres abreviados de menores en público (Fase 5) | ⏳ Requiere asesoría legal; el portal público no existe todavía |
+| Lecturas con ámbito (antes bastaba cualquier cuenta para leer todo) | ✅ Cada lectura de torneo (llaves, inscripciones, resultados, reportes, PDF y Excel, líderes, combates, cola y planilla del tatami) exige Admin o un rol de organizador, operador de mesa o árbitro con ámbito global, de ese torneo o de un tatami suyo (`TournamentReader`, `TatamiReader`, `CategoryReader`, `MatchReader` en `api/deps.py`). La lista de torneos trae solo los accesibles. Personas: lista y búsqueda solo staff; la ficha, staff o la propia persona. Historial y estadísticas: staff o la propia persona; historial de dojo: staff, su sensei o sus miembros. Líderes globales: staff |
+| Auditoría y advertencias aceptadas | ✅ La auditoría completa es solo del Admin; la de un torneo, de sus organizadores, con las fotos de personas, inscripciones, equipos y árbitros redactadas. `/overrides` se resuelve por el torneo de la entidad |
+| Mesa: latido de presencia abierto a cualquier cuenta | ✅ Exige ser operador del combate |
+| Anonimización incompleta | ✅ Además de la persona: auditoría de sus inscripciones, equipos y asignaciones de árbitro, su nombre en mensajes de advertencias y motivos, y filas de importación (las que la crearon o la citaban como duplicado) |
+| DNI y fechas de nacimiento guardados para siempre en las filas de importación | ✅ Se borran al confirmar o cancelar; los lotes de más de 30 días pierden sus filas (`python -m app.seed purge-imports` o `POST /imports/purge`) |
+| Accesos a datos sensibles sin registro | ✅ Mostrar documento o fecha de nacimiento en la ficha de una persona deja una entrada `view_sensitive` en la auditoría (una por usuario y persona cada 15 min) |
 
-**Pendiente (bajo):** los tokens duran 12 h sin revocación ni cambio de
-contraseña por API; no hay límite de intentos de login. Conviene resolverlo
-antes de la Fase 3 (uso oficial), junto con la decisión de autenticación.
+**Resuelto (sesiones, 26/09/2026):** el token de acceso dura 60 min
+(`HAJIME_ACCESS_TOKEN_MINUTES`) y se renueva solo con un token de
+renovación opaco (30 días, `HAJIME_REFRESH_TOKEN_DAYS`) guardado como hash
+en `user_sessions` y rotado en cada uso; reutilizar uno ya rotado cierra
+todas las sesiones del usuario. `POST /auth/logout`, `GET /auth/sessions`,
+`DELETE /auth/sessions/{id}` y, para el Admin, `DELETE /users/{id}/sessions`.
+Cambiar la contraseña, desactivar la cuenta o borrarla cierra sus sesiones
+(se mantiene `token_version`). El JWT lleva `kid`: con
+`HAJIME_JWT_PREVIOUS_SECRET` se rota el secreto sin expulsar a nadie. El
+cambio de contraseña por API y el límite de intentos de login ya existían.
 
 ### 5.4 Frontend (mesa de kumite)
 
