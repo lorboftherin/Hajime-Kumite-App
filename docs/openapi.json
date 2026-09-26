@@ -359,6 +359,51 @@
       "HTTPBearer": []
      }
     ]
+   },
+   "patch": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Update Me",
+    "description": "Nombre visible y correo de la propia cuenta (el correo nuevo queda sin verificar).",
+    "operationId": "update_me_api_v1_auth_me_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProfileUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
    }
   },
   "/api/v1/persons/{person_id}/roles": {
@@ -1814,6 +1859,567 @@
         "schema": {}
        }
       }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/options": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Auth Options",
+    "description": "Qué ofrece la pantalla de acceso (sin iniciar sesión).",
+    "operationId": "auth_options_api_v1_auth_options_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/forgot-password": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Forgot Password",
+    "description": "Envía un enlace para crear una contraseña nueva. Responde igual exista o no el correo.",
+    "operationId": "forgot_password_api_v1_auth_forgot_password_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EmailIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/reset-password": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Reset Password",
+    "description": "Crea la contraseña nueva con el enlace (un solo uso, 1 h) y cierra todas las sesiones.",
+    "operationId": "reset_password_api_v1_auth_reset_password_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResetPasswordIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/verify-email": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Verify Email",
+    "description": "Confirma el correo con el enlace recibido (no necesita iniciar sesión).",
+    "operationId": "verify_email_api_v1_auth_verify_email_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TokenIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/verify-email/resend": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Resend Verification",
+    "operationId": "resend_verification_api_v1_auth_verify_email_resend_post",
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/signup": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Signup",
+    "description": "Registro abierto (``HAJIME_OPEN_SIGNUP``). Responde igual si el correo ya tenía cuenta.",
+    "operationId": "signup_api_v1_auth_signup_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignupIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/profiles/search": {
+   "get": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Search Profiles",
+    "description": "Busca perfiles para reclamar: solo nombre abreviado, dojo y torneos.",
+    "operationId": "search_profiles_api_v1_profiles_search_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Q"
+      }
+     },
+     {
+      "name": "dojo_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProfileSearchOut"
+         },
+         "title": "Response Search Profiles Api V1 Profiles Search Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/profile-claims": {
+   "post": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Create Claim",
+    "operationId": "create_claim_api_v1_profile_claims_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ClaimIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ClaimOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Claims To Review",
+    "description": "Solicitudes que puede revisar el usuario: todas (organizador, Admin) o las de su dojo.",
+    "operationId": "claims_to_review_api_v1_profile_claims_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": "pending",
+       "title": "Status"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ClaimReviewOut"
+         },
+         "title": "Response Claims To Review Api V1 Profile Claims Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/profile-claims/mine": {
+   "get": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "My Claims",
+    "operationId": "my_claims_api_v1_profile_claims_mine_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ClaimOut"
+         },
+         "type": "array",
+         "title": "Response My Claims Api V1 Profile Claims Mine Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/profile-claims/pending-count": {
+   "get": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Pending Count",
+    "operationId": "pending_count_api_v1_profile_claims_pending_count_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/profile-claims/{claim_id}/review": {
+   "post": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Review Claim",
+    "operationId": "review_claim_api_v1_profile_claims__claim_id__review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "claim_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Claim Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ClaimReviewIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MessageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/me/profiles": {
+   "get": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "My Profiles",
+    "description": "El propio perfil y los de los menores a cargo.",
+    "operationId": "my_profiles_api_v1_me_profiles_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MyProfileOut"
+         },
+         "type": "array",
+         "title": "Response My Profiles Api V1 Me Profiles Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/me/guardianships/{guardianship_id}": {
+   "delete": {
+    "tags": [
+     "claims"
+    ],
+    "summary": "Remove Guardianship",
+    "operationId": "remove_guardianship_api_v1_me_guardianships__guardianship_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "guardianship_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Guardianship Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -5979,7 +6585,7 @@
      "stats"
     ],
     "summary": "Match Summary",
-    "description": "Hoja del combate con técnicas por lado y línea de tiempo del marcador.",
+    "description": "Hoja del combate con técnicas por lado y línea de tiempo del marcador.\n\nLa leen quienes leen el torneo y, además, la persona que peleó y su padre, madre\no apoderado verificado; para ellos el rival va con el nombre abreviado.",
     "operationId": "match_summary_api_v1_matches__mid__summary_get",
     "security": [
      {
@@ -8131,6 +8737,47 @@
     }
    }
   },
+  "/api/v1/public/persons/{public_id}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Public Person",
+    "description": "Nombre (abreviado si es menor), dojo, medallas y torneos disputados. Nunca documento,\nfecha de nacimiento ni datos de contacto.",
+    "operationId": "public_person_api_v1_public_persons__public_id__get",
+    "parameters": [
+     {
+      "name": "public_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Public Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/public/{token}": {
    "get": {
     "tags": [
@@ -9934,6 +10581,301 @@
     ],
     "title": "CheckoutOut"
    },
+   "ClaimIn": {
+    "properties": {
+     "public_id": {
+      "type": "string",
+      "maxLength": 24,
+      "minLength": 4,
+      "title": "Public Id"
+     },
+     "relationship": {
+      "type": "string",
+      "enum": [
+       "self",
+       "parent",
+       "guardian"
+      ],
+      "title": "Relationship"
+     },
+     "evidence": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Evidence",
+      "default": ""
+     },
+     "document_last4": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[0-9A-Za-z]{4}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Document Last4"
+     },
+     "consent": {
+      "type": "boolean",
+      "title": "Consent",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "public_id",
+     "relationship"
+    ],
+    "title": "ClaimIn"
+   },
+   "ClaimOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "relationship": {
+      "type": "string",
+      "title": "Relationship"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "public_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Id"
+     },
+     "person_name": {
+      "type": "string",
+      "title": "Person Name"
+     },
+     "dojo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "status",
+     "relationship",
+     "created_at",
+     "public_id",
+     "person_name"
+    ],
+    "title": "ClaimOut"
+   },
+   "ClaimReviewIn": {
+    "properties": {
+     "approve": {
+      "type": "boolean",
+      "title": "Approve"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "approve"
+    ],
+    "title": "ClaimReviewIn"
+   },
+   "ClaimReviewOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "relationship": {
+      "type": "string",
+      "title": "Relationship"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "public_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Id"
+     },
+     "person_name": {
+      "type": "string",
+      "title": "Person Name"
+     },
+     "dojo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo"
+     },
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "user_id": {
+      "type": "integer",
+      "title": "User Id"
+     },
+     "user_name": {
+      "type": "string",
+      "title": "User Name"
+     },
+     "user_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Email"
+     },
+     "evidence": {
+      "type": "string",
+      "title": "Evidence"
+     },
+     "document_match": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Document Match"
+     },
+     "is_minor": {
+      "type": "boolean",
+      "title": "Is Minor"
+     },
+     "birth_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Birth Date"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "status",
+     "relationship",
+     "created_at",
+     "public_id",
+     "person_name",
+     "person_id",
+     "user_id",
+     "user_name",
+     "user_email",
+     "evidence",
+     "document_match",
+     "is_minor"
+    ],
+    "title": "ClaimReviewOut",
+    "description": "Lo que ve quien revisa (dojo, organizador o Admin)."
+   },
    "ConsentIn": {
     "properties": {
      "given_by": {
@@ -10588,6 +11530,20 @@
      "birth_date"
     ],
     "title": "DuplicateOut"
+   },
+   "EmailIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "maxLength": 254,
+      "title": "Email"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email"
+    ],
+    "title": "EmailIn"
    },
    "EventIn": {
     "properties": {
@@ -12173,6 +13129,78 @@
     ],
     "title": "MembershipIn"
    },
+   "MessageOut": {
+    "properties": {
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "message"
+    ],
+    "title": "MessageOut"
+   },
+   "MyProfileOut": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "public_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "relationship": {
+      "type": "string",
+      "title": "Relationship"
+     },
+     "dojo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo"
+     },
+     "guardianship_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Guardianship Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id",
+     "public_id",
+     "name",
+     "relationship",
+     "dojo"
+    ],
+    "title": "MyProfileOut",
+    "description": "Perfil ligado a la cuenta: el propio (self) o el de un menor a cargo."
+   },
    "OfficialResultIn": {
     "properties": {
      "official_winner_registration_id": {
@@ -13104,6 +14132,93 @@
     ],
     "title": "PresenceIn"
    },
+   "ProfileSearchOut": {
+    "properties": {
+     "public_id": {
+      "type": "string",
+      "title": "Public Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "dojo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo"
+     },
+     "tournaments": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tournaments"
+     },
+     "tournament_count": {
+      "type": "integer",
+      "title": "Tournament Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "public_id",
+     "name",
+     "dojo",
+     "tournaments",
+     "tournament_count"
+    ],
+    "title": "ProfileSearchOut",
+    "description": "Resultado público: nunca documento ni fecha de nacimiento."
+   },
+   "ProfileUpdate": {
+    "properties": {
+     "display_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Display Name"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 254
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "current_password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Password"
+     }
+    },
+    "type": "object",
+    "title": "ProfileUpdate",
+    "description": "Datos de la propia cuenta. Cambiar el correo pide la contraseña actual."
+   },
    "PublicLiveIn": {
     "properties": {
      "enabled": {
@@ -13645,6 +14760,28 @@
     ],
     "title": "RegistrationUpdate"
    },
+   "ResetPasswordIn": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 20,
+      "title": "Token"
+     },
+     "new_password": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 8,
+      "title": "New Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "new_password"
+    ],
+    "title": "ResetPasswordIn"
+   },
    "RoleIn": {
     "properties": {
      "role": {
@@ -14034,6 +15171,34 @@
      "ip"
     ],
     "title": "SessionOut"
+   },
+   "SignupIn": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "maxLength": 254,
+      "title": "Email"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 8,
+      "title": "Password"
+     },
+     "display_name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Display Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "email",
+     "password",
+     "display_name"
+    ],
+    "title": "SignupIn"
    },
    "SlotSwapIn": {
     "properties": {
@@ -14938,6 +16103,21 @@
     ],
     "title": "TieBreakIn"
    },
+   "TokenIn": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 20,
+      "title": "Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token"
+    ],
+    "title": "TokenIn"
+   },
    "TokenOut": {
     "properties": {
      "access_token": {
@@ -15522,6 +16702,18 @@
        }
       ],
       "title": "Reset Password"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 254
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
      }
     },
     "type": "object",
@@ -15561,6 +16753,18 @@
        }
       ],
       "title": "Person Id"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 254
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
      }
     },
     "type": "object",
@@ -15649,6 +16853,29 @@
       "type": "boolean",
       "title": "Can View Documents",
       "default": false
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "email_verified_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email Verified At"
      },
      "organizations": {
       "items": {

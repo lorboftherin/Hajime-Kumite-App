@@ -33,14 +33,37 @@ export function hasOrganizations(user: User | null | undefined): boolean {
   return !!user?.is_admin || (user?.organizations ?? []).length > 0;
 }
 
+/** Cuenta de competidor (o de padre, madre o apoderado): sin roles, organizaciones ni dojos a cargo. */
+export function isCompetitorOnly(user: User | null | undefined): boolean {
+  return (
+    !!user &&
+    !user.is_admin &&
+    !(user.roles ?? []).length &&
+    !(user.organizations ?? []).length &&
+    !dojoAdminOf(user).length
+  );
+}
+
+/** Revisa solicitudes de perfil: Admin, organizadores y el dojo (sensei o administrador del dojo). */
+export function canReviewClaims(user: User | null | undefined): boolean {
+  return (
+    isStaff(user) ||
+    dojoAdminOf(user).length > 0 ||
+    (user?.roles ?? []).some(
+      (r) => (r.role === 'sensei' || r.role === 'dojo_admin') && r.scope_type === 'dojo',
+    )
+  );
+}
+
 /**
  * Pantalla de inicio: el operador de mesa de un tatami (que no es staff) entra directo a
- * «Mi tatami»; el sensei que solo administra su dojo, a «Mis competidores»; los demás, a
- * la lista de torneos.
+ * «Mi tatami»; el sensei que solo administra su dojo, a «Mis competidores»; una cuenta de
+ * competidor, a «Mis perfiles»; los demás, a la lista de torneos.
  */
 export function homePath(user: User | null | undefined): string {
   if (isStaff(user)) return '/torneos';
   if (tatamiScopes(user).length) return '/mi-tatami';
   if (dojoAdminOf(user).length) return '/mis-competidores';
+  if (isCompetitorOnly(user)) return '/mis-perfiles';
   return '/torneos';
 }

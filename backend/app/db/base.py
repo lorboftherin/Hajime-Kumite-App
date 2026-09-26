@@ -117,6 +117,14 @@ def get_engine() -> Engine:
     return _engine or init_engine()
 
 
+def session_factory() -> sessionmaker[Session]:
+    """Fábrica de sesiones para trabajo fuera de una petición (p. ej. el despachador de correo)."""
+    if _SessionLocal is None:
+        init_engine()
+    assert _SessionLocal is not None
+    return _SessionLocal
+
+
 def get_session() -> Iterator[Session]:
     if _SessionLocal is None:
         init_engine()

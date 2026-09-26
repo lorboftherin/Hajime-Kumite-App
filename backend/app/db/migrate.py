@@ -21,6 +21,7 @@ LEGACY_MARKERS = (
     ("public_snapshots", "0007_vivo_compartido"),
     ("organizations", "0009_organizaciones"),
     ("category_splits", "0010_reglas_deportivas"),
+    ("outbox_emails", "0011_cuentas"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (("tournaments", "public_token", "0003"), ("match_presence", "is_primary", "0008_mesa_principal"))

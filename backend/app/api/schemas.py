@@ -58,6 +58,8 @@ class UserOut(ORM):
     person_id: int | None
     roles: list[RoleOut] = []
     can_view_documents: bool = False
+    email: str | None = None
+    email_verified_at: datetime | None = None
     # Organizaciones de las que es miembro (con su rol) y dojos que administra.
     organizations: list[UserOrganizationOut] = []
     dojo_admin_of: list[int] = []
@@ -109,6 +111,8 @@ class UserAdminUpdate(BaseModel):
     display_name: str | None = None
     person_id: int | None = None
     reset_password: str | None = Field(default=None, min_length=8, max_length=200)
+    # Correo de la cuenta ("" lo quita). Queda sin verificar y se envía el enlace.
+    email: str | None = Field(default=None, max_length=254)
 
 
 class UserCreate(BaseModel):
@@ -117,6 +121,7 @@ class UserCreate(BaseModel):
     display_name: str = ""
     is_admin: bool = False
     person_id: int | None = None
+    email: str | None = Field(default=None, max_length=254)
 
 
 # --- Personas -----------------------------------------------------------

@@ -8,6 +8,7 @@ tests). Se evita ON DELETE CASCADE para no chocar con la restricción de
 
 from __future__ import annotations
 
+import secrets
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -40,6 +41,17 @@ class User(Base, Timestamped):
     """Usuario: cuenta de acceso ligada opcionalmente a una Persona."""
 
     __tablename__ = "users"
+    # Correo único solo entre las cuentas que lo tienen (las antiguas no tienen):
+    # en SQL Server un UNIQUE común admite un solo NULL.
+    __table_args__ = (
+        Index(
+            "uq_users_email",
+            "email",
+            unique=True,
+            mssql_where=text("email IS NOT NULL"),
+            sqlite_where=text("email IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -50,6 +62,9 @@ class User(Base, Timestamped):
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     display_name: Mapped[str] = mapped_column(Unicode(200), default="")
+    # Correo en minúsculas (recuperar la contraseña, avisos). NULL en cuentas antiguas.
+    email: Mapped[str | None] = mapped_column(Unicode(254), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class UserSession(Base):
@@ -74,10 +89,24 @@ class UserSession(Base):
     ip: Mapped[str] = mapped_column(String(45), default="")
 
 
+def new_public_id() -> str:
+    """Identificador público no secuencial del perfil (``/competidor/<id>``)."""
+    return secrets.token_urlsafe(9)  # 12 caracteres, 72 bits
+
+
 class Person(Base, Timestamped, Versioned):
     """Persona."""
 
     __tablename__ = "persons"
+    __table_args__ = (
+        Index(
+            "uq_persons_public_id",
+            "public_id",
+            unique=True,
+            mssql_where=text("public_id IS NOT NULL"),
+            sqlite_where=text("public_id IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     first_names: Mapped[str] = mapped_column(Unicode(120))
     last_names: Mapped[str] = mapped_column(Unicode(120))
@@ -88,6 +117,8 @@ class Person(Base, Timestamped, Versioned):
     merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True)
     anonymized_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     is_test_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Perfil público básico sin inicio de sesión. La migración 0011_cuentas lo rellena.
+    public_id: Mapped[str | None] = mapped_column(String(24), nullable=True, default=new_public_id)
 
     documents: Mapped[list[IdentityDocument]] = relationship(back_populates="person", lazy="selectin")
     roles: Mapped[list[PersonRole]] = relationship(back_populates="person", lazy="selectin")
@@ -837,3 +868,96 @@ class LoginAttempt(Base):
     failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     window_start: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Correo y cuentas de competidor (docs/cuentas-y-correo.md)
+# ---------------------------------------------------------------------------
+
+
+class OutboxEmail(Base):
+    """Bandeja de salida: los correos se envían fuera de la petición HTTP.
+
+    ``locked_until`` es la reserva (*lease*) de quien lo está enviando: otro
+    proceso solo lo toma si la reserva venció (ver ``app.services.mail``).
+    """
+
+    __tablename__ = "outbox_emails"
+    __table_args__ = (Index("ix_outbox_emails_pending", "status", "next_attempt_at"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    to_address: Mapped[str] = mapped_column(Unicode(254))
+    subject: Mapped[str] = mapped_column(Unicode(250))
+    html: Mapped[str] = mapped_column(UnicodeText)
+    text: Mapped[str] = mapped_column(UnicodeText)
+    kind: Mapped[str] = mapped_column(String(40), default="")  # plantilla: reset, verify, claim…
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | sending | sent | failed
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Unicode(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    next_attempt_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class PasswordReset(Base):
+    """Enlace de recuperación de contraseña: de un solo uso, vence en 1 h. Solo se guarda el hash."""
+
+    __tablename__ = "password_resets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    ip: Mapped[str] = mapped_column(String(45), default="")
+
+
+class EmailVerification(Base):
+    """Enlace para verificar un correo. Vale para el correo indicado (si cambia, no sirve)."""
+
+    __tablename__ = "email_verifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    email: Mapped[str] = mapped_column(Unicode(254))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class ProfileClaim(Base):
+    """Solicitud de una cuenta para ligarse a un perfil deportivo (Persona).
+
+    ``relationship``: ``self`` (el adulto reclama el suyo), ``parent`` o
+    ``guardian`` (padre, madre o apoderado de un menor). Los últimos dígitos del
+    documento que envía el usuario se comparan en el servidor y no se guardan:
+    solo queda ``document_match``.
+    """
+
+    __tablename__ = "profile_claims"
+    __table_args__ = (Index("ix_profile_claims_status", "status", "person_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    relation: Mapped[str] = mapped_column("relationship", String(20))  # self | parent | guardian
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
+    evidence: Mapped[str] = mapped_column(Unicode(500), default="")
+    document_match: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    consent_id: Mapped[int | None] = mapped_column(ForeignKey("data_consents.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+
+
+class Guardianship(Base):
+    """Padre, madre o apoderado verificado de un menor: ve su historial completo."""
+
+    __tablename__ = "guardianships"
+    __table_args__ = (UniqueConstraint("user_id", "person_id", name="uq_guardianship"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id"), index=True)
+    relation: Mapped[str] = mapped_column("relationship", String(20))  # parent | guardian
+    claim_id: Mapped[int | None] = mapped_column(ForeignKey("profile_claims.id"), nullable=True)
+    verified_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)

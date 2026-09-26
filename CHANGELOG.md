@@ -12,6 +12,24 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Correo transaccional** con bandeja de salida en la base (`outbox_emails`),
+  reintentos con espera creciente, reserva entre procesos y proveedores
+  `console`, `smtp` (STARTTLS) y `acs` (Azure Communication Services por REST).
+  Hilo despachador en la API y `python -m app.mail_worker` para un Job.
+- **Correo en las cuentas:** recuperación de contraseña («¿Olvidaste tu
+  contraseña?», enlace de un solo uso por 1 h que cierra todas las sesiones),
+  verificación del correo, correo en «Mi cuenta» y en Usuarios; se entra
+  también con el correo.
+- **Cuentas de competidor** (`HAJIME_OPEN_SIGNUP`): registro abierto, reclamo
+  del propio perfil o del de un hijo o hija, revisión por el dojo u
+  organizador, tutela con consentimiento del apoderado, «Mis perfiles» con
+  historial, estadísticas e insignias.
+- **Perfil público** del competidor en `/competidor/<id>` sin datos sensibles y
+  página de **Privacidad** (texto provisional).
+- **Avisos por correo** al sensei cuando se revisan sus inscripciones (aprobadas
+  y rechazadas con motivo) y al dojo cuando llega una solicitud de perfil. El
+  administrador del dojo ve el historial de sus competidores; la persona y su
+  apoderado ven la hoja de sus combates.
 - **Organizaciones (multi-organizador):** cada torneo pertenece a una liga,
   dojo u organizador; owner/admin administran todos sus torneos y member los
   lee. Página «Organización» (datos, miembros, plan) y selector al crear un
@@ -26,6 +44,11 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   reparte enlaces de invitación; el sensei (admin de dojo) gestiona «Mis
   competidores» y los inscribe; las inscripciones quedan pendientes hasta que
   el organizador las aprueba o rechaza en lote (pestaña «Solicitudes»).
+
+### Seguridad
+
+- De los rivales, quien no es organizador ve solo el nombre abreviado en el
+  historial. Los últimos dígitos del documento de un reclamo no se guardan.
 
 ### Operación
 

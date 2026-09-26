@@ -58,6 +58,12 @@ def _name(p: Person | None) -> str:
     return f"{p.first_names} {p.last_names}" if p else ""
 
 
+def _short_name(p: Person) -> str:
+    first = (p.first_names or "").split()
+    initial = (p.last_names or "").strip()[:1]
+    return f"{first[0] if first else ''} {initial}.".strip() if initial else (first[0] if first else "")
+
+
 def _facts(db: Session, matches: list[Match]) -> dict[int, MatchFacts]:
     """Hechos de varios combates con una sola consulta de eventos."""
     if not matches:
@@ -564,8 +570,12 @@ def _mmss(seconds: float | None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def match_summary(db: Session, mid: int) -> dict[str, Any]:
-    """Hoja del combate: marcador, técnicas por lado y la línea de tiempo."""
+def match_summary(db: Session, mid: int, full_names_for: set[int] | None = None) -> dict[str, Any]:
+    """Hoja del combate: marcador, técnicas por lado y la línea de tiempo.
+
+    ``full_names_for``: si se indica, solo esas personas llevan el nombre completo;
+    las demás (el rival, que puede ser menor) van abreviadas («Diego R.»). Es para
+    la propia persona o su apoderado, que no leen el torneo completo."""
     m = get_match(db, mid)
     c = db.get(Category, m.category_id)
     if c is None:
@@ -579,9 +589,17 @@ def match_summary(db: Session, mid: int) -> dict[str, Any]:
         pid = m.aka_person_id if color == "aka" else m.ao_person_id
         p = parts.get(rid) if rid else None
         person = db.get(Person, pid) if pid else None
+        name = _name(person) if person else (p.name if p else None)
+        if full_names_for is not None and name:
+            who = person
+            if who is None and rid:
+                reg = db.get(Registration, rid)
+                who = reg.person if reg is not None else None
+            if who is not None and who.id not in full_names_for:
+                name = _short_name(who)
         side[color] = {
             "registration_id": rid,
-            "name": _name(person) if person else (p.name if p else None),
+            "name": name,
             "dojo": p.name if person and p else (p.dojo_name if p else None),
             "score": f.score[color],
             "techniques": f.points[color],
