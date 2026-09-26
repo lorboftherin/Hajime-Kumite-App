@@ -134,6 +134,9 @@ def bootstrap(settings) -> None:
             except IntegrityError:
                 db.rollback()
                 log.info("El admin %s ya lo creó otro proceso", name)
+        from app.services.entitlements import ensure_plans
+
+        ensure_plans(db)  # planes nuevos del catálogo (no toca precios existentes)
         if settings.load_base_template and db.scalar(select(func.count()).select_from(User)):
             if not db.scalar(select(func.count()).select_from(CategoryTemplate)):
                 from app.seed import cmd_template

@@ -37,8 +37,15 @@ class RoleOut(ORM):
 
 class RoleIn(BaseModel):
     role: Literal["organizer", "table_operator", "dojo_admin", "referee", "sensei"]
-    scope_type: Literal["global", "tournament", "dojo", "tatami"] = "global"
+    scope_type: Literal["global", "organization", "tournament", "dojo", "tatami"] = "global"
     scope_id: int | None = None
+
+
+class UserOrganizationOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    role: str
 
 
 class UserOut(ORM):
@@ -51,6 +58,9 @@ class UserOut(ORM):
     person_id: int | None
     roles: list[RoleOut] = []
     can_view_documents: bool = False
+    # Organizaciones de las que es miembro (con su rol) y dojos que administra.
+    organizations: list[UserOrganizationOut] = []
+    dojo_admin_of: list[int] = []
 
 
 class TokenOut(BaseModel):
@@ -286,6 +296,7 @@ class TemplateOut(ORM):
     name: str
     description: str
     version: int
+    organization_id: int | None = None  # None = plantilla global
     items: list[TemplateItemOut] = []
 
 
@@ -358,6 +369,9 @@ class TournamentCreate(BaseModel):
     kata_defaults: dict[str, Any] = {}
     template_id: int | None = None
     tatami_count: int = Field(default=1, ge=1, le=12)
+    # Organización dueña. Si se omite: la única de la que el usuario es
+    # owner/admin, o la organización principal para el Admin Global.
+    organization_id: int | None = None
 
 
 class TournamentUpdate(BaseModel):
@@ -399,6 +413,10 @@ class TournamentOut(ORM):
     tatamis: list[TatamiOut] = []
     public_token: str | None = None
     public_names: str = "short"
+    organization_id: int
+    organization_name: str = ""
+    self_registration_open: bool = False
+    self_registration_closes_at: datetime | None = None
 
 
 class PublicLiveIn(BaseModel):
@@ -465,6 +483,8 @@ class RegistrationOut(ORM):
     age_at_reference: int | None
     status: str
     withdrawn_reason: str | None
+    rejection_reason: str | None = None
+    requested_by_id: int | None = None
     seed: int | None
     version: int
     person_name: str = ""  # en categorías por equipos, el nombre del equipo
@@ -736,3 +756,256 @@ class OfficialResultIn(BaseModel):
     official_ao_score: int | None = None
     finding: str | None = None
     error_source: Literal["app", "paper", "none"] | None = None
+
+
+# --- Organizaciones, planes y suscripciones --------------------------------------
+
+OrgKind = Literal["league", "dojo", "organizer"]
+OrgRole = Literal["owner", "admin", "member"]
+SubscriptionStatus = Literal["trial", "active", "past_due", "canceled"]
+
+
+class OrganizationCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    slug: str | None = Field(default=None, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    kind: OrgKind = "organizer"
+    country: str = Field(default="PE", min_length=2, max_length=2)
+    timezone: str = Field(default="America/Lima", max_length=60)
+    currency: str = Field(default="PEN", min_length=3, max_length=3)
+    logo: str | None = Field(default=None, max_length=500)
+    # Cuenta que queda como dueña (owner) de la organización.
+    owner_user_id: int | None = None
+
+
+class OrganizationUpdate(BaseModel):
+    version: int
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    slug: str | None = Field(default=None, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    kind: OrgKind | None = None
+    country: str | None = Field(default=None, min_length=2, max_length=2)
+    timezone: str | None = Field(default=None, max_length=60)
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
+    logo: str | None = Field(default=None, max_length=500)
+
+
+class SubscriptionOut(ORM):
+    id: int
+    organization_id: int | None
+    person_id: int | None
+    user_id: int | None
+    plan_code: str
+    plan_name: str = ""
+    status: str
+    current_period_end: datetime | None
+    source: str
+    reference: str | None
+    notes: str
+    created_at: datetime
+    is_current: bool = False
+
+
+class OrganizationOut(ORM):
+    id: int
+    name: str
+    slug: str
+    kind: str
+    country: str
+    timezone: str
+    currency: str
+    logo: str | None
+    version: int
+    created_at: datetime
+    my_role: str | None = None  # owner | admin | member; None para el Admin Global sin membresía
+    can_manage: bool = False
+    subscription: SubscriptionOut | None = None
+    # Funciones disponibles hoy (en marcha blanca, todas).
+    features: list[str] = []
+    tournament_count: int = 0
+
+
+class MemberIn(BaseModel):
+    """Invitar a un usuario existente, por nombre de usuario o id."""
+
+    username: str | None = None
+    user_id: int | None = None
+    role: OrgRole = "member"
+
+
+class MemberUpdate(BaseModel):
+    role: OrgRole
+
+
+class MemberOut(BaseModel):
+    user_id: int
+    username: str
+    display_name: str
+    role: str
+
+
+class PlanOut(ORM):
+    code: str
+    name: str
+    audience: str
+    price_pen_month: float | None
+    price_pen_year: float | None
+    features: list[str]
+
+
+class PlansOut(BaseModel):
+    mode: str  # marcha_blanca | enforced
+    plans: list[PlanOut]
+    features: dict[str, str]  # código → nombre legible
+
+
+class PlanPriceUpdate(BaseModel):
+    price_pen_month: float | None = Field(default=None, ge=0)
+    price_pen_year: float | None = Field(default=None, ge=0)
+
+
+class SubscriptionCreate(BaseModel):
+    """Suscripción manual (Admin Global): a una organización, persona o cuenta."""
+
+    organization_id: int | None = None
+    person_id: int | None = None
+    user_id: int | None = None
+    plan_code: str
+    status: SubscriptionStatus = "active"
+    current_period_end: datetime | None = None
+    notes: str = Field(default="", max_length=500)
+
+
+class SubscriptionUpdate(BaseModel):
+    plan_code: str | None = None
+    status: SubscriptionStatus | None = None
+    current_period_end: datetime | None = None
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class MarkPaidIn(BaseModel):
+    period: Literal["month", "year"] = "month"
+    reference: str | None = Field(default=None, max_length=120)
+
+
+class CheckoutIn(BaseModel):
+    plan_code: str
+    period: Literal["month", "year"] = "month"
+
+
+class CheckoutOut(BaseModel):
+    provider: str
+    subscription_id: int
+    url: str | None
+    instructions: str
+
+
+# --- Autoinscripción por dojo -----------------------------------------------------
+
+
+class SelfRegistrationIn(BaseModel):
+    open: bool
+    closes_at: datetime | None = None
+
+
+class InvitationCreate(BaseModel):
+    dojo_id: int | None = None  # None = enlace general
+
+
+class InvitationOut(ORM):
+    id: int
+    tournament_id: int
+    dojo_id: int | None
+    dojo_name: str | None = None
+    token: str
+    created_at: datetime
+    revoked_at: datetime | None
+    uses: int
+
+
+class InvitationInfo(BaseModel):
+    """Lo que ve quien abre un enlace de invitación."""
+
+    tournament_id: int
+    tournament_name: str
+    organization_name: str
+    start_date: date
+    dojo_id: int | None
+    dojo_name: str | None
+    self_registration_open: bool
+    # Si la cuenta ya administra el dojo del enlace.
+    already_admin: bool
+    # Dojos que la cuenta ya administra.
+    my_dojo_ids: list[int] = []
+
+
+class InvitationAccept(BaseModel):
+    # Solo en un enlace general: dojo que la cuenta pide administrar.
+    dojo_id: int | None = None
+
+
+class InvitationAcceptOut(BaseModel):
+    status: Literal["granted", "already_admin", "pending_approval"]
+    dojo_id: int
+    tournament_id: int
+
+
+class DojoAdminRequestOut(BaseModel):
+    id: int
+    tournament_id: int
+    dojo_id: int
+    dojo_name: str
+    user_id: int
+    username: str
+    display_name: str
+    status: str
+    created_at: datetime
+    current_admins: list[str] = []
+
+
+class DecisionIn(BaseModel):
+    approve: bool
+
+
+class DojoRegistrationItem(BaseModel):
+    person_id: int
+    category_id: int
+    weight_class: str | None = None
+
+
+class DojoRegistrationBatch(BaseModel):
+    items: list[DojoRegistrationItem] = Field(min_length=1, max_length=300)
+    override: Override | None = None
+
+
+class OpenTournamentOut(BaseModel):
+    id: int
+    name: str
+    start_date: date
+    end_date: date | None
+    venue: str
+    city: str
+    organization_name: str
+    self_registration_closes_at: datetime | None
+
+
+class DojoRegistrationOut(RegistrationOut):
+    tournament_name: str = ""
+    category_name: str = ""
+
+
+class RegistrationDecisionIn(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+    action: Literal["approve", "reject"]
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class RegistrationDecisionOut(BaseModel):
+    approved: list[int] = []
+    rejected: list[int] = []
+    # Las que no se pudieron aprobar, con el motivo.
+    skipped: list[dict[str, Any]] = []
+
+
+class RegistrationRequestsOut(BaseModel):
+    registrations: list[DojoRegistrationOut]
+    dojo_admin_requests: list[DojoAdminRequestOut]
+    count: int

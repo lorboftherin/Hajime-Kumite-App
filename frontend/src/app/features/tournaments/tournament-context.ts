@@ -11,6 +11,8 @@ export class TournamentContext {
   readonly tournament = signal<Tournament | null>(null);
   readonly categories = signal<Category[]>([]);
   readonly error = signal<string>('');
+  /** Solicitudes de autoinscripción pendientes (contador de la pestaña «Solicitudes»). */
+  readonly pendingCount = signal(0);
 
   readonly categoryById = computed(() => new Map(this.categories().map((c) => [c.id, c])));
 
@@ -26,6 +28,15 @@ export class TournamentContext {
 
   async reload(): Promise<void> {
     await this.load(this.id());
+  }
+
+  async loadPendingCount(): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.api.get<{ count: number }>(`/tournaments/${this.id()}/registration-requests/count`));
+      this.pendingCount.set(r.count);
+    } catch {
+      this.pendingCount.set(0); // sin permiso de organizador: no hay contador
+    }
   }
 
   async loadCategories(): Promise<Category[]> {

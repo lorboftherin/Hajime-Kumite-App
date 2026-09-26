@@ -23,8 +23,16 @@ export interface RoleOut {
 
 export interface RoleIn {
   role: 'organizer' | 'table_operator' | 'dojo_admin' | 'referee' | 'sensei';
-  scope_type: 'global' | 'tournament' | 'dojo' | 'tatami';
+  scope_type: 'global' | 'organization' | 'tournament' | 'dojo' | 'tatami';
   scope_id: number | null;
+}
+
+/** Organización de la que la cuenta es miembro (GET /auth/me). */
+export interface UserOrganization {
+  id: number;
+  name: string;
+  slug: string;
+  role: OrgRole;
 }
 
 export interface User {
@@ -40,6 +48,10 @@ export interface User {
   roles?: RoleOut[];
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento. */
   can_view_documents?: boolean;
+  /** Organizaciones de la cuenta con su rol. */
+  organizations?: UserOrganization[];
+  /** Dojos que administra (rol dojo_admin): «Mis competidores». */
+  dojo_admin_of?: number[];
 }
 
 export interface TokenOut {
@@ -193,6 +205,11 @@ export interface Tournament {
   /** Enlace secreto del seguimiento en vivo público (null = desactivado). */
   public_token?: string | null;
   public_names?: 'short' | 'full';
+  organization_id?: number;
+  organization_name?: string;
+  /** Autoinscripción por dojo abierta (y hasta cuándo, en UTC). */
+  self_registration_open?: boolean;
+  self_registration_closes_at?: string | null;
 }
 
 // --- Inscripciones ---
@@ -209,6 +226,9 @@ export interface Registration {
   age_at_reference: number | null;
   status: string;
   withdrawn_reason: string | null;
+  /** Autoinscripción: motivo del rechazo y cuenta que la pidió. */
+  rejection_reason?: string | null;
+  requested_by_id?: number | null;
   seed: number | null;
   version: number;
   /** Nombre de la persona o, en categorías por equipos, del equipo. */
@@ -776,4 +796,131 @@ export interface OverlayData {
     winner: Color | null;
     team: { aka: string; ao: string; wins: [number, number]; bout: number; extra: boolean } | null;
   } | null;
+}
+
+// --- Organizaciones, planes y suscripciones ---
+export type OrgRole = 'owner' | 'admin' | 'member';
+export type OrgKind = 'league' | 'dojo' | 'organizer';
+
+export interface Subscription {
+  id: number;
+  organization_id: number | null;
+  person_id: number | null;
+  user_id: number | null;
+  plan_code: string;
+  plan_name: string;
+  status: 'trial' | 'active' | 'past_due' | 'canceled';
+  current_period_end: string | null;
+  source: 'manual' | 'payment';
+  reference: string | null;
+  notes: string;
+  created_at: string;
+  /** Vigente: da acceso hoy. */
+  is_current: boolean;
+}
+
+export interface Organization {
+  id: number;
+  name: string;
+  slug: string;
+  kind: OrgKind;
+  country: string;
+  timezone: string;
+  currency: string;
+  logo: string | null;
+  version: number;
+  created_at: string;
+  my_role: OrgRole | null;
+  can_manage: boolean;
+  subscription: Subscription | null;
+  /** Funciones disponibles hoy (en marcha blanca, todas). */
+  features: string[];
+  tournament_count: number;
+}
+
+export interface OrgMember {
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: OrgRole;
+}
+
+export interface Plan {
+  code: string;
+  name: string;
+  audience: 'organization' | 'person' | 'all';
+  price_pen_month: number | null;
+  price_pen_year: number | null;
+  features: string[];
+}
+
+export interface PlansOut {
+  mode: 'marcha_blanca' | 'enforced';
+  plans: Plan[];
+  features: Record<string, string>;
+}
+
+// --- Autoinscripción por dojo ---
+export interface Invitation {
+  id: number;
+  tournament_id: number;
+  dojo_id: number | null;
+  dojo_name: string | null;
+  token: string;
+  created_at: string;
+  revoked_at: string | null;
+  uses: number;
+}
+
+export interface InvitationInfo {
+  tournament_id: number;
+  tournament_name: string;
+  organization_name: string;
+  start_date: string;
+  dojo_id: number | null;
+  dojo_name: string | null;
+  self_registration_open: boolean;
+  already_admin: boolean;
+  my_dojo_ids: number[];
+}
+
+export interface DojoAdminRequest {
+  id: number;
+  tournament_id: number;
+  dojo_id: number;
+  dojo_name: string;
+  user_id: number;
+  username: string;
+  display_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  current_admins: string[];
+}
+
+export interface DojoRegistration extends Registration {
+  tournament_name: string;
+  category_name: string;
+}
+
+export interface RegistrationRequests {
+  registrations: DojoRegistration[];
+  dojo_admin_requests: DojoAdminRequest[];
+  count: number;
+}
+
+export interface RegistrationDecision {
+  approved: number[];
+  rejected: number[];
+  skipped: Array<{ id: number; reason: string }>;
+}
+
+export interface OpenTournament {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string | null;
+  venue: string;
+  city: string;
+  organization_name: string;
+  self_registration_closes_at: string | null;
 }

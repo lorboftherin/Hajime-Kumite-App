@@ -10,6 +10,29 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Organizaciones (multi-organizador):** cada torneo pertenece a una liga,
+  dojo u organizador; owner/admin administran todos sus torneos y member los
+  lee. Página «Organización» (datos, miembros, plan) y selector al crear un
+  torneo. Rol con ámbito «organización».
+- **Planes y derechos verificados en la API:** tablas `plans` y
+  `subscriptions`; con `HAJIME_BILLING_MODE=enforced` las funciones de pago
+  responden 402 `PLAN_REQUIRED` (crear torneos, varios tatamis, overlay,
+  Shadow Mode, importar Excel, autoinscripción). En marcha blanca (por
+  defecto) todo está permitido. Suscripciones manuales del Admin, página
+  «Planes» e interfaz `payments.Provider` con el proveedor manual.
+- **Autoinscripción por dojo:** el organizador abre la inscripción en línea y
+  reparte enlaces de invitación; el sensei (admin de dojo) gestiona «Mis
+  competidores» y los inscribe; las inscripciones quedan pendientes hasta que
+  el organizador las aprueba o rechaza en lote (pestaña «Solicitudes»).
+
+### Operación
+
+- Migración `0009_organizaciones`: crea la «Organización principal» y le
+  asigna todos los torneos existentes antes de volver obligatoria
+  `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.
+
 ## [0.2.0] - 2026-09-26
 
 Primera versión numerada: reúne el MVP completo usado en el torneo mock y en

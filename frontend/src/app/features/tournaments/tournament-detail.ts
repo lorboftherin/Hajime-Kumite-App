@@ -21,6 +21,9 @@ import { TournamentContext } from './tournament-context';
             @if (t.is_test) {
               <span class="badge yamabuki hollow">Torneo de prueba</span>
             }
+            @if (t.organization_name) {
+              <span class="org" title="Organización">{{ t.organization_name }}</span>
+            }
             <span class="num">{{ t.start_date | fdate }}@if (t.end_date && t.end_date !== t.start_date) { – {{ t.end_date | fdate }}}</span>
             @if (t.venue || t.city) {
               <span>{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</span>
@@ -31,6 +34,12 @@ import { TournamentContext } from './tournament-context';
           <a routerLink="resumen" routerLinkActive="active">Resumen</a>
           <a routerLink="categorias" routerLinkActive="active">Categorías</a>
           <a routerLink="inscripciones" routerLinkActive="active">Inscripciones</a>
+          <a routerLink="solicitudes" routerLinkActive="active">
+            Solicitudes
+            @if (ctx.pendingCount()) {
+              <span class="badge shu count" [attr.aria-label]="ctx.pendingCount() + ' pendientes'">{{ ctx.pendingCount() }}</span>
+            }
+          </a>
           <a routerLink="importar" routerLinkActive="active">Importar Excel</a>
           <a routerLink="tatamis" routerLinkActive="active">Tatamis</a>
           <a routerLink="arbitros" routerLinkActive="active">Árbitros</a>
@@ -47,6 +56,16 @@ import { TournamentContext } from './tournament-context';
       }
     </div>
   `,
+  styles: `
+    .count {
+      margin-left: 0.35rem;
+      font-size: var(--fs-12);
+    }
+    .org {
+      color: var(--sumi-2);
+      font-weight: 500;
+    }
+  `,
 })
 export class TournamentDetailPage {
   readonly ctx = inject(TournamentContext);
@@ -58,6 +77,7 @@ export class TournamentDetailPage {
       if (id && id !== this.ctx.id()) {
         this.ctx.load(id);
         this.ctx.loadCategories();
+        this.ctx.loadPendingCount();
       }
     });
   }
