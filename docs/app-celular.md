@@ -62,7 +62,10 @@ está en `frontend/android/` y se versiona; lo que genera `cap sync` no.
 | Ambas | Política de privacidad publicada (Ley 29733, menores de edad), formularios de datos (Data safety / Privacy labels), capturas de pantalla, clasificación de contenido. La app se declara para adultos (competidores mayores, padres o apoderados y dojos), no como app infantil. **Borrar la cuenta desde la app** ya existe (menú de usuario → «Borrar mi cuenta»). |
 | Cobros | Nada dentro de la app: la membresía se paga en la web (`docs/modelo-negocio.md`). |
 
-Pendiente para después: notificaciones push nativas (Firebase) y enlaces que
+Pendiente para después: notificaciones push nativas (Firebase; el camino está
+en [`avisos-push.md`](avisos-push.md), «Camino a FCM». Mientras tanto la app
+oculta la campana «Avisarme» y sugiere instalar Hajime desde el navegador, que
+sí recibe avisos Web Push) y enlaces que
 abran la app (por ejemplo, el enlace «en vivo» compartido por WhatsApp).
 
 ## Cómo está hecho

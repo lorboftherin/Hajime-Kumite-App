@@ -83,8 +83,22 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
   propagación de un punto.
 
+- **Avisos push «te toca pronto»** (Web Push con VAPID, sin Firebase en la
+  web): «Te toca en ~3 combates», «¡A tatami!», resultado de cada combate y
+  medallas del competidor seguido; para las cuentas, inscripciones revisadas y
+  perfiles aprobados. Campana «Avisarme» junto a la estrella en la página
+  pública (sin cuenta, vence al terminar el torneo), en «Mis perfiles» y en
+  «Mis competidores» (alumno o todo el dojo); preferencias en `/avisos`. Un
+  recorrido por torneo tras cada cambio (no por espectador), bandeja
+  `notification_outbox` deduplicada con reserva entre procesos, hilo en la API
+  y `python -m app.push_worker`. Ver `docs/avisos-push.md`.
+
 ### Seguridad
 
+- Avisos push: el endpoint de una suscripción debe ser https y de un servicio
+  de push conocido (sin POST a URL arbitrarias); cambiarla sin sesión exige su
+  secreto `auth`; los avisos abrevian el nombre de los menores y el clic solo
+  abre rutas internas.
 - De los rivales, quien no es organizador ve solo el nombre abreviado en el
   historial. Los últimos dígitos del documento de un reclamo no se guardan.
 
@@ -97,6 +111,11 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   de diplomas y tablas `ranking_seasons`/`ranking_entries`; compatible hacia atrás).
 - Migración `0013_portal_publico` (columnas nuevas con valor por defecto o
   nulas; los torneos con vivo activo reciben su dirección fija).
+- Migración `0015_avisos_push` (tablas nuevas `push_subscriptions`,
+  `push_follows` y `notification_outbox`; compatible hacia atrás).
+- Dependencias nuevas del backend: `cryptography` y `http-ece` (cifrado
+  RFC 8291). Variables `HAJIME_VAPID_*` y `HAJIME_PUSH_*`; las claves se
+  generan con `python -m app.seed vapid-keys` (ver `docs/despliegue.md`).
 
 ## [0.2.0] - 2026-09-26
 

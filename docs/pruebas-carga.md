@@ -266,6 +266,16 @@ conexión, desde el POST del punto hasta que lo recibe.
 - Falta repetir en Azure: `prueba_carga.py --url https://… --tatamis 8
   --espectadores 200 --sse 500`.
 
+## Avisos push con 500 suscripciones (26/09/2026)
+
+Un torneo de 8 con 500 suscripciones siguiendo a dos competidores cada una
+(`tests/api/test_avisos_push.py::test_carga_500_suscripciones_un_recorrido`).
+Empezar un combate dispara **un** recorrido del torneo (no uno por
+espectador): 49 ms para encolar 562 avisos (71–89 ms con 1000); sin nada
+nuevo, 29–31 ms. Enviarlos (cifrado + VAPID, servidor falso, 8 hilos): 389 ms.
+El recorrido corre después del commit en el hilo de avisos: la mesa no lo
+espera. Detalle en [`avisos-push.md`](avisos-push.md).
+
 ## Cómo repetir la prueba contra Azure
 
 Desde Azure Cloud Shell (pide la contraseña del admin, no se muestra; con

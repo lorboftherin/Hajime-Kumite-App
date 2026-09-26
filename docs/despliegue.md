@@ -43,6 +43,11 @@
 | `HAJIME_MAIL_POLL_SECONDS`, `HAJIME_MAIL_MAX_ATTEMPTS`, `HAJIME_MAIL_LEASE_SECONDS` | `5`, `6`, `120` | Frecuencia de revisión, intentos y reserva de cada correo |
 | `HAJIME_OPEN_SIGNUP` | `true` | Registro abierto de cuentas de competidor (por defecto `false`) |
 | `HAJIME_AUTO_APPROVE_SELF_CLAIM` | `false` | Aprueba solo el reclamo de un adulto con los 4 últimos dígitos del documento correctos. Los menores siempre los revisa una persona |
+| `HAJIME_VAPID_PUBLIC_KEY`, `HAJIME_VAPID_PRIVATE_KEY`, `HAJIME_VAPID_SUBJECT` | `python -m app.seed vapid-keys` las genera; la privada, **secreto**; `mailto:soporte@hajime.pe` | Avisos push («te toca pronto»). Sin las dos claves quedan apagados. No cambiarlas: invalida todas las suscripciones. Ver [`avisos-push.md`](avisos-push.md) |
+| `HAJIME_PUSH_DISPATCHER` | `true` | Hilo de avisos push en cada proceso (recorre los torneos que cambian y envía). En `false` si lo hace un Job con `python -m app.push_worker --loop` |
+| `HAJIME_PUSH_SOON_AHEAD`, `HAJIME_PUSH_TURN_TTL_SECONDS` | `3`, `600` | «Te toca en ~N combates» y vigencia de los avisos de turno |
+| `HAJIME_PUSH_POLL_SECONDS`, `HAJIME_PUSH_SWEEP_SECONDS`, `HAJIME_PUSH_MAX_ATTEMPTS`, `HAJIME_PUSH_LEASE_SECONDS`, `HAJIME_PUSH_TIMEOUT` | `2`, `30`, `5`, `60`, `10` | Revisión de la bandeja, pasada por los torneos en curso, reintentos, reserva de un lote y espera del POST |
+| `HAJIME_PUSH_ALLOWED_HOSTS` | `["fcm.googleapis.com","push.services.mozilla.com","notify.windows.com","push.apple.com"]` | Servicios de push aceptados (JSON). Evita que el servidor haga POST a cualquier URL |
 | `HAJIME_NOTIFY_DIPLOMAS` | `true` | Correo «Tus diplomas están listos» a la persona y a su apoderado (con correo) al finalizar una categoría con podio (por defecto `false`) |
 
 Con 3 copias × 2 procesos × (6 + 4) conexiones, la app abre como máximo 60
