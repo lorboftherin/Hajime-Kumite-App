@@ -13,11 +13,20 @@ import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { PersonForm } from '../../../shared/person-form';
+import { PluralPipe, plural } from '../../../shared/plural';
+import { registrationSummary } from '../organizer-logic';
 import { TournamentContext } from '../tournament-context';
+
+/** Resultado del walkover masivo (POST /registrations/{rid}/walkover). */
+interface WalkoverResult {
+  registration_id: number;
+  walkover_matches: string[];
+  waiting_matches: string[];
+}
 
 @Component({
   selector: 'app-registrations-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, PersonForm, Icon],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, PersonForm, Icon, PluralPipe],
   template: `
     <div class="toolbar">
       <div class="search">
@@ -33,7 +42,7 @@ import { TournamentContext } from '../tournament-context';
         }
       </select>
       <label class="field inline small"><input type="checkbox" [ngModel]="showWithdrawn()" (ngModelChange)="showWithdrawn.set($event)" /> Mostrar retiradas</label>
-      <span class="count">{{ filtered().length }} {{ filtered().length === 1 ? 'inscripción' : 'inscripciones' }}</span>
+      <span class="count">{{ filtered().length | plural: 'inscripción' : 'inscripciones' }}</span>
       @if (teamCategories().length) {
         <button class="btn" (click)="openTeam()" title="Inscribir un equipo en una categoría por equipos"><app-icon name="plus" /> Equipo</button>
       }
@@ -91,8 +100,12 @@ import { TournamentContext } from '../tournament-context';
                 @if (r.status === 'active') {
                   @if (r.team_id) {
                     <button class="btn sm ghost" (click)="openTeam(r)">Editar</button>
+                  } @else {
+                    <button class="btn sm ghost" (click)="openEdit(r)">Editar</button>
                   }
                   <button class="btn sm ghost" (click)="withdraw(r)">Retirar</button>
+                } @else if (r.status === 'withdrawn' && hasBracket(r.category_id)) {
+                  <button class="btn sm ghost" (click)="afterWithdraw(r)" title="Regenerar la llave o dar walkover en sus combates pendientes">Resolver llave</button>
                 }
               </td>
             </tr>
@@ -186,9 +199,46 @@ import { TournamentContext } from '../tournament-context';
           }
           <div class="form-actions">
             <button class="btn" (click)="regOpen.set(false)">Cerrar</button>
-            <button class="btn primary" [disabled]="!chosen().size || busy()" (click)="register()">Inscribir en {{ chosen().size }} categoría(s)</button>
+            <button class="btn primary" [disabled]="!chosen().size || busy()" (click)="register()">Inscribir en {{ chosen().size | plural: 'categoría' : 'categorías' }}</button>
           </div>
         }
+      </app-modal>
+    }
+
+    @if (editReg(); as r) {
+      <app-modal [title]="'Editar inscripción · ' + r.person_name" (closed)="editReg.set(null)">
+        <p class="hint">Cambiar de categoría solo es posible mientras la categoría actual no tenga llave. Si hay advertencias (edad, grado, peso), se pedirá un motivo.</p>
+        <form (ngSubmit)="saveEdit(r)">
+          <div class="grid-2">
+            <label class="field" style="grid-column: 1 / -1">
+              <span>Categoría</span>
+              <select name="cat" [(ngModel)]="edit.category_id">
+                @for (c of editCategories(r); track c.id) {
+                  <option [ngValue]="c.id">{{ c.name }}</option>
+                }
+              </select>
+            </label>
+            <label class="field"><span>Categoría de peso declarada</span><input name="w" [(ngModel)]="edit.weight_class" placeholder="Ej.: -60" /></label>
+            <label class="field">
+              <span>Grado</span>
+              <select name="g" [(ngModel)]="edit.grade">
+                <option [ngValue]="null">Sin grado</option>
+                @for (g of grades; track g) {
+                  <option [value]="g">{{ g }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Cabeza de serie</span>
+              <input name="seed" type="number" min="1" [(ngModel)]="edit.seed" placeholder="Sin sembrar" />
+              <span class="hint">1 = primer cabeza de serie; se separan en la llave.</span>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn" (click)="editReg.set(null)">Cancelar</button>
+            <button class="btn primary" [disabled]="busy()">Guardar cambios</button>
+          </div>
+        </form>
       </app-modal>
     }
 
@@ -507,19 +557,35 @@ export class RegistrationsTab {
     const p = this.person();
     if (!p) return;
     this.busy.set(true);
-    let ok = 0;
+    const ok: string[] = [];
+    const failed: Array<{ name: string; reason: string }> = [];
     for (const cid of this.chosen()) {
-      const r = await this.mut.post<Registration>(`/tournaments/${this.ctx.id()}/registrations`, {
-        person_id: p.id,
-        category_id: cid,
-        weight_class: this.weight || null,
-        grade: this.grade,
-      });
-      if (r) ok++;
+      const name = this.catName(cid);
+      let reason = 'cancelado';
+      // Un error por categoría no interrumpe las demás: se junta todo en un solo resumen al final.
+      const r = await this.mut.post<Registration>(
+        `/tournaments/${this.ctx.id()}/registrations`,
+        {
+          person_id: p.id,
+          category_id: cid,
+          weight_class: this.weight || null,
+          grade: this.grade,
+        },
+        {
+          onError: (err) => {
+            reason = err.fullMessage;
+            return true;
+          },
+        },
+      );
+      if (r) ok.push(name);
+      else failed.push({ name, reason });
     }
     this.busy.set(false);
-    if (ok) {
-      this.toast.ok(`${ok} inscripción(es) creada(s)`);
+    const text = registrationSummary(ok, failed);
+    if (failed.length) this.toast.error(text);
+    else if (ok.length) this.toast.ok(text);
+    if (ok.length) {
       this.load();
       this.ctx.loadCategories();
       this.person.set(null);
@@ -600,6 +666,60 @@ export class RegistrationsTab {
     this.ctx.loadCategories();
   }
 
+  // --- Editar inscripción ---
+  readonly editReg = signal<Registration | null>(null);
+  edit = { category_id: 0, weight_class: '', grade: null as string | null, seed: null as number | null };
+
+  hasBracket(cid: number): boolean {
+    const c = this.ctx.categoryById().get(cid);
+    return !!c && ['ready', 'in_progress'].includes(c.status);
+  }
+
+  /** Categorías a las que puede pasar: misma modalidad de equipo, abiertas, más la actual. */
+  editCategories(r: Registration) {
+    const cur = this.ctx.categoryById().get(r.category_id);
+    return this.ctx
+      .categories()
+      .filter(
+        (c) =>
+          c.id === r.category_id ||
+          (c.is_team === !!cur?.is_team && ['open', 'empty'].includes(c.status)),
+      );
+  }
+
+  openEdit(r: Registration): void {
+    this.edit = {
+      category_id: r.category_id,
+      weight_class: r.weight_class ?? '',
+      grade: r.grade,
+      seed: r.seed,
+    };
+    this.editReg.set(r);
+  }
+
+  async saveEdit(r: Registration): Promise<void> {
+    const body: Record<string, unknown> = { version: r.version };
+    if (this.edit.category_id !== r.category_id) body['category_id'] = this.edit.category_id;
+    if ((this.edit.weight_class || null) !== r.weight_class) body['weight_class'] = this.edit.weight_class || null;
+    if (this.edit.grade !== r.grade) body['grade'] = this.edit.grade;
+    const seed = this.edit.seed ? Number(this.edit.seed) : null;
+    if (seed !== r.seed) body['seed'] = seed;
+    if (Object.keys(body).length === 1) {
+      this.editReg.set(null);
+      return;
+    }
+    this.busy.set(true);
+    const res = await this.mut.patch<Registration>(`/registrations/${r.id}`, body, {
+      success: 'Inscripción actualizada',
+      onConflict: () => this.load(),
+    });
+    this.busy.set(false);
+    if (!res) return;
+    this.editReg.set(null);
+    this.load();
+    this.ctx.loadCategories();
+  }
+
   async withdraw(r: Registration): Promise<void> {
     const reason = await this.dialog.prompt({
       title: 'Retirar inscripción',
@@ -613,15 +733,67 @@ export class RegistrationsTab {
     if (!res) return;
     this.load();
     this.ctx.loadCategories();
-    if (res.options.length) {
-      const opts = res.options.map((o) =>
-        o === 'regenerate' ? 'Regenerar la llave (no hay combates iniciados)' : 'Dar walkover al rival en sus combates pendientes',
+    if (res.options.length) await this.resolveBracket(r, res.options, res.pending_match_ids.length);
+  }
+
+  /** Retirada con llave ya generada: regenerar la llave o dar walkover (lo que permita el servidor). */
+  async afterWithdraw(r: Registration): Promise<void> {
+    const c = this.ctx.categoryById().get(r.category_id);
+    const options = c?.status === 'ready' ? ['regenerate', 'walkover'] : ['walkover'];
+    await this.resolveBracket(r, options, null);
+  }
+
+  private async resolveBracket(r: Registration, options: string[], pending: number | null): Promise<void> {
+    const cat = this.catName(r.category_id);
+    const choice = await this.dialog.choose({
+      title: 'La categoría ya tiene llave',
+      message:
+        pending === null
+          ? `${r.person_name} está retirado de ${cat}. ¿Qué hacemos con la llave?`
+          : `${r.person_name} deja ${plural(pending, 'combate pendiente', 'combates pendientes')} en ${cat}. ¿Qué hacemos con la llave?`,
+      choices: [
+        ...(options.includes('regenerate')
+          ? [
+              {
+                value: 'regenerate',
+                label: 'Regenerar la llave',
+                hint: 'Nuevo sorteo sin esta inscripción. Solo si aún no empezó ningún combate.',
+                primary: true,
+              },
+            ]
+          : []),
+        {
+          value: 'walkover',
+          label: 'Dar walkover en sus combates pendientes',
+          hint: 'Su rival gana cada combate pendiente por walkover; la llave sigue igual.',
+          primary: !options.includes('regenerate'),
+        },
+      ],
+      cancelText: 'Decidir después',
+    });
+    if (choice === 'regenerate') {
+      const res = await this.mut.post(
+        `/categories/${r.category_id}/bracket`,
+        { reason: `Retiro de ${r.person_name}` },
+        { success: 'Llave regenerada sin la inscripción retirada' },
       );
-      this.dialog.alert(
-        'La categoría ya tiene llave',
-        `Combates pendientes afectados: ${res.pending_match_ids.length}. El organizador decide:`,
-        opts,
+      if (res) this.ctx.loadCategories();
+    } else if (choice === 'walkover') {
+      const res = await this.mut.post<WalkoverResult>(`/registrations/${r.id}/walkover`, {
+        reason: r.withdrawn_reason ? `Retiro: ${r.withdrawn_reason}` : null,
+      });
+      if (!res) return;
+      const done = res.walkover_matches.length;
+      const waiting = res.waiting_matches.length;
+      const text = done
+        ? `Walkover registrado en ${plural(done, 'combate', 'combates')} (${res.walkover_matches.join(', ')})`
+        : 'No había combates listos para dar walkover';
+      this.toast.ok(
+        waiting
+          ? `${text}. ${plural(waiting, 'combate espera', 'combates esperan')} rival: vuelve a «Resolver llave» cuando se defina.`
+          : text,
       );
+      this.ctx.loadCategories();
     }
   }
 }

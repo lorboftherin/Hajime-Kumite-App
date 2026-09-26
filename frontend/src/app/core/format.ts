@@ -293,6 +293,9 @@ export const AUDIT_ACTION: Record<string, string> = {
   lineup_extra: 'Combate extra agregado',
   undecide: 'Enfrentamiento sin decidir (corrección)',
   take_table: 'Tablet tomó la mesa',
+  walkover: 'Walkover por retiro',
+  queue: 'Cola del tatami',
+  edit_row: 'Fila de importación corregida',
 };
 
 export const AUDIT_ENTITY: Record<string, string> = {
@@ -309,4 +312,5 @@ export const AUDIT_ENTITY: Record<string, string> = {
   template: 'Plantilla',
   team: 'Equipo',
   referee_assignment: 'Asignación de árbitro',
+  tatami: 'Tatami',
 };

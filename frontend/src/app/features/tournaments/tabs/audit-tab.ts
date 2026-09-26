@@ -1,16 +1,56 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../core/api.service';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '../../../core/format';
 import { AuditEntry } from '../../../core/models';
 import { Icon } from '../../../shared/icon';
 import { LimaPipe } from '../../../shared/pipes';
+import { FieldChange, auditChanges, auditValue } from '../organizer-logic';
 import { TournamentContext } from '../tournament-context';
+
+/** Nombres legibles de los campos más comunes de la auditoría. */
+const FIELD_LABEL: Record<string, string> = {
+  name: 'Nombre',
+  status: 'Estado',
+  version: 'Versión',
+  winner: 'Ganador (inscripción)',
+  method: 'Método',
+  aka_score: 'Puntos AKA',
+  ao_score: 'Puntos AO',
+  score: 'Marcador',
+  event: 'Evento',
+  tatami_id: 'Tatami',
+  queue_position: 'Posición en la cola',
+  categories: 'Categorías (en orden)',
+  category_id: 'Categoría',
+  seed: 'Cabeza de serie',
+  weight_class: 'Peso',
+  grade: 'Grado',
+  dojo_id: 'Dojo',
+  sex: 'Sexo',
+  age_min: 'Edad mín.',
+  age_max: 'Edad máx.',
+  grade_min: 'Grado mín.',
+  grade_max: 'Grado máx.',
+  format: 'Formato',
+  duration_seconds: 'Duración (s)',
+  matches: 'Combates',
+  waiting: 'En espera de rival',
+  device: 'Tablet',
+  first_names: 'Nombres',
+  last_names: 'Apellidos',
+  birth_date: 'Fecha de nacimiento',
+  start_date: 'Fecha de inicio',
+  end_date: 'Fecha de fin',
+  venue: 'Sede',
+  city: 'Ciudad',
+  is_test: 'De prueba',
+  public_token: 'Enlace público',
+};
 
 @Component({
   selector: 'app-audit-tab',
-  imports: [FormsModule, JsonPipe, LimaPipe, Icon],
+  imports: [FormsModule, LimaPipe, Icon],
   template: `
     <div class="toolbar">
       <div class="search">
@@ -34,17 +74,22 @@ import { TournamentContext } from '../tournament-context';
               <td><span class="badge plain" [attr.title]="a.action">{{ actionLabel(a.action) }}</span></td>
               <td class="small">{{ a.reason }}</td>
               <td>
-                @if (a.before || a.after) {
+                @let ch = changes(a);
+                @if (ch.length) {
                   <details>
-                    <summary class="small">ver</summary>
-                    @if (a.before) {
-                      <div class="small muted">Antes</div>
-                      <pre class="json">{{ a.before | json }}</pre>
-                    }
-                    @if (a.after) {
-                      <div class="small muted">Después</div>
-                      <pre class="json">{{ a.after | json }}</pre>
-                    }
+                    <summary class="small">{{ ch.length === 1 ? '1 cambio' : ch.length + ' cambios' }}</summary>
+                    <table class="diff">
+                      <thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+                      <tbody>
+                        @for (c of ch; track c.field) {
+                          <tr>
+                            <th scope="row">{{ fieldLabel(c.field) }}</th>
+                            <td class="old">{{ value(c.before) }}</td>
+                            <td class="new">{{ value(c.after) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   </details>
                 }
               </td>
@@ -55,6 +100,37 @@ import { TournamentContext } from '../tournament-context';
         </tbody>
       </table>
     </div>
+  `,
+  styles: `
+    .diff {
+      margin-top: 0.35rem;
+      border-collapse: collapse;
+      font-size: var(--fs-12);
+      th,
+      td {
+        padding: 0.2rem 0.5rem;
+        border-bottom: 1px solid var(--kasumi);
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      thead th {
+        color: var(--nezumi-ink);
+        font-weight: 500;
+      }
+      tbody th {
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .old {
+        color: var(--nezumi-ink);
+        text-decoration: line-through;
+        text-decoration-color: color-mix(in srgb, var(--shu) 60%, transparent);
+      }
+      .new {
+        color: var(--sumi);
+      }
+    }
   `,
 })
 export class AuditTab {
@@ -74,6 +150,21 @@ export class AuditTab {
 
   constructor() {
     this.load();
+  }
+
+  changes(a: AuditEntry): FieldChange[] {
+    return auditChanges(
+      a.before as Record<string, unknown> | null,
+      a.after as Record<string, unknown> | null,
+    );
+  }
+
+  fieldLabel(f: string): string {
+    return FIELD_LABEL[f] ?? f.replace(/_/g, ' ');
+  }
+
+  value(v: unknown): string {
+    return auditValue(v);
   }
 
   actionLabel(code: string): string {

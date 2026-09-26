@@ -1,8 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../../core/api-error';
-import { ApiService } from '../../../core/api.service';
+import { ApiService, LONG_TIMEOUT_MS } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
 import { DUPLICATE_REASON, IMPORT_BATCH_STATUS, plural } from '../../../core/format';
@@ -18,6 +19,22 @@ interface Decision {
   person_id: number | null;
   category_ids: Set<number>;
 }
+
+/** Columnas editables de una fila (mismas claves que la plantilla). */
+const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = [
+  { key: 'nombres', label: 'Nombres' },
+  { key: 'apellidos', label: 'Apellidos' },
+  { key: 'fecha_nacimiento', label: 'Fecha de nacimiento', placeholder: 'dd/mm/aaaa' },
+  { key: 'sexo', label: 'Sexo (M/F)' },
+  { key: 'grado', label: 'Grado', placeholder: '8 kyu, 1 dan…' },
+  { key: 'categoria_peso', label: 'Peso', placeholder: '-45' },
+  { key: 'dojo', label: 'Dojo' },
+  { key: 'tipo_documento', label: 'Tipo de documento', placeholder: 'DNI, CE, PASSPORT' },
+  { key: 'numero_documento', label: 'Número de documento' },
+  { key: 'modalidades', label: 'Modalidades', placeholder: 'kumite, kata' },
+  { key: 'rol', label: 'Rol', placeholder: 'competidor, árbitro, sensei' },
+];
+const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: 'árbitro', sensei: 'sensei' };
 
 @Component({
   selector: 'app-import-tab',
@@ -97,6 +114,11 @@ interface Decision {
                     @for (e of r.errors; track $index) {
                       <div class="error-text">{{ e }}</div>
                     }
+                    @if (b.status === 'preview' && editing() !== r.id) {
+                      <button class="btn sm mt-xs" [class.primary]="r.status === 'error'" [class.ghost]="r.status !== 'error'" (click)="startEdit(r)">
+                        {{ r.status === 'error' ? 'Corregir' : 'Editar datos' }}
+                      </button>
+                    }
                     @for (dup of r.duplicates; track $index) {
                       <div class="small">
                         @if (dup['person_id']) {
@@ -129,14 +151,44 @@ interface Decision {
                   </td>
                   <td class="small">
                     @if (d && r.status !== 'error') {
-                      @for (cid of r.suggested_category_ids; track cid) {
+                      @for (cid of rowCats(r); track cid) {
                         <label class="field inline"><input type="checkbox" [checked]="d.category_ids.has(cid)" [disabled]="d.action === 'skip'" (change)="toggleCat(r, cid)" /> {{ catName(cid) }}</label>
                       } @empty {
-                        <span class="muted">Sin sugerencias</span>
+                        <span class="muted">Sin sugerencias: elige una categoría.</span>
+                      }
+                      @if (d.action !== 'skip' && isCompetitor(r)) {
+                        <select class="cell-input mt-xs" [ngModel]="0" (ngModelChange)="addCat(r, $event)" [attr.aria-label]="'Otra categoría para la fila ' + r.row_number">
+                          <option [ngValue]="0">{{ rowCats(r).length ? '+ Otra categoría…' : 'Elegir categoría…' }}</option>
+                          @for (c of manualCategories(); track c.id) {
+                            @if (!d.category_ids.has(c.id)) {
+                              <option [ngValue]="c.id">{{ c.name }}</option>
+                            }
+                          }
+                        </select>
                       }
                     }
                   </td>
                 </tr>
+                @if (editing() === r.id) {
+                  <tr class="edit-row">
+                    <td colspan="6">
+                      <form class="row-form" (ngSubmit)="saveRow(b, r)">
+                        <div class="row-fields">
+                          @for (f of rowFields; track f.key) {
+                            <label class="field">
+                              <span>{{ f.label }}</span>
+                              <input [name]="f.key" [(ngModel)]="rowForm[f.key]" [placeholder]="f.placeholder ?? ''" />
+                            </label>
+                          }
+                        </div>
+                        <div class="row">
+                          <button type="button" class="btn sm" (click)="editing.set(null)">Cancelar</button>
+                          <button class="btn sm primary" [disabled]="busy()">Guardar y revalidar</button>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -174,6 +226,38 @@ interface Decision {
         font-weight: 400;
         margin: 0 0.35rem;
       }
+    }
+    /* En el celular la tabla se desplaza de lado con la fila y la persona fijas a la izquierda. */
+    .preview-table th:nth-child(-n + 2),
+    .preview-table td:nth-child(-n + 2) {
+      position: sticky;
+      z-index: 1;
+      background: var(--kinu);
+    }
+    .preview-table th:first-child,
+    .preview-table td:first-child {
+      left: 0;
+    }
+    .preview-table th:nth-child(2),
+    .preview-table td:nth-child(2) {
+      left: 3.25rem;
+      box-shadow: 1px 0 0 var(--kasumi);
+    }
+    .preview-table tr.edit-row td {
+      position: static;
+      box-shadow: none;
+      background: var(--washi);
+    }
+    .row-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-width: calc(100vw - 3rem);
+    }
+    .row-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+      gap: 0.5rem 0.75rem;
     }
     /* Anchos fijos: Persona y Categorías no se parten en muchas líneas. */
     .preview-table {
@@ -229,6 +313,8 @@ export class ImportTab {
 
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private files = inject(FilesService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -263,6 +349,83 @@ export class ImportTab {
 
   constructor() {
     if (!this.ctx.categories().length) this.ctx.loadCategories();
+    // Al recargar la página se retoma la vista previa del lote (?lote=<id>).
+    const bid = Number(this.route.snapshot.queryParamMap.get('lote'));
+    if (bid) this.resume(bid);
+  }
+
+  private async resume(bid: number): Promise<void> {
+    try {
+      const b = await firstValueFrom(this.api.get<ImportBatch>(`/imports/${bid}`));
+      if (b.tournament_id === this.ctx.id() && b.status === 'preview') this.setBatch(b);
+      else this.setLote(null);
+    } catch {
+      this.setLote(null);
+    }
+  }
+
+  /** Guarda el lote en la URL para poder recargar sin perder la vista previa. */
+  private setLote(bid: number | null): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { lote: bid },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  // --- Corrección de filas y categoría manual ---
+  readonly rowFields = ROW_FIELDS;
+  readonly editing = signal<number | null>(null);
+  rowForm: Record<string, string> = {};
+
+  /** Categorías que se pueden elegir a mano (individuales y abiertas a inscripción). */
+  readonly manualCategories = computed(() =>
+    this.ctx.categories().filter((c) => !c.is_team && ['open', 'empty'].includes(c.status)),
+  );
+
+  isCompetitor(r: ImportRow): boolean {
+    const roles = r.data['rol'];
+    return !Array.isArray(roles) || roles.includes('competitor');
+  }
+
+  /** Sugeridas más las elegidas a mano, sin repetir. */
+  rowCats(r: ImportRow): number[] {
+    const d = this.decisions()[r.id];
+    return [...new Set([...r.suggested_category_ids, ...(d ? [...d.category_ids] : [])])];
+  }
+
+  addCat(r: ImportRow, cid: number): void {
+    if (!cid) return;
+    this.patch(r, (d) => ({ ...d, category_ids: new Set([...d.category_ids, cid]) }));
+  }
+
+  startEdit(r: ImportRow): void {
+    const text = (k: string): string => {
+      const v = r.data[k];
+      if (Array.isArray(v)) return v.map((x) => (k === 'rol' ? (ROLE_WORD[x] ?? x) : x)).join(', ');
+      return v === null || v === undefined ? '' : String(v);
+    };
+    this.rowForm = Object.fromEntries(ROW_FIELDS.map((f) => [f.key, text(f.key)]));
+    this.editing.set(r.id);
+  }
+
+  async saveRow(b: ImportBatch, r: ImportRow): Promise<void> {
+    this.busy.set(true);
+    const res = await this.mut.patch<ImportBatch>(`/imports/${b.id}/rows/${r.id}`, { data: this.rowForm });
+    this.busy.set(false);
+    if (!res) return;
+    const row = res.rows.find((x) => x.id === r.id);
+    this.editing.set(null);
+    // Solo cambia la fila corregida: las decisiones de las demás se conservan.
+    this.batch.set(res);
+    if (row) this.decisions.update((all) => ({ ...all, [row.id]: this.defaultDecision(row) }));
+    this.toast.show(
+      row?.status === 'error'
+        ? `Fila ${r.row_number}: sigue con errores`
+        : `Fila ${r.row_number} corregida`,
+      row?.status === 'error' ? 'warn' : 'ok',
+    );
   }
 
   catName(id: number): string {
@@ -287,6 +450,7 @@ export class ImportTab {
     try {
       const b = await firstValueFrom(this.api.upload<ImportBatch>(`/tournaments/${this.ctx.id()}/imports`, file));
       this.setBatch(b);
+      this.setLote(b.id);
     } catch (e) {
       this.toast.error(ApiError.from(e).fullMessage);
     } finally {
@@ -294,17 +458,19 @@ export class ImportTab {
     }
   }
 
+  private defaultDecision(r: ImportRow): Decision {
+    const dups = this.personDups(r);
+    return {
+      // Un posible duplicado de BD se propone como "usar existente"; el operador decide.
+      action: r.status === 'error' ? 'skip' : dups.length ? 'use_existing' : 'create',
+      person_id: dups[0]?.['person_id'] ?? null,
+      category_ids: new Set(r.suggested_category_ids),
+    };
+  }
+
   private setBatch(b: ImportBatch): void {
     const d: Record<number, Decision> = {};
-    for (const r of b.rows) {
-      const dups = this.personDups(r);
-      d[r.id] = {
-        // Un posible duplicado de BD se propone como "usar existente"; el operador decide.
-        action: r.status === 'error' ? 'skip' : dups.length ? 'use_existing' : 'create',
-        person_id: dups[0]?.['person_id'] ?? null,
-        category_ids: new Set(r.suggested_category_ids),
-      };
-    }
+    for (const r of b.rows) d[r.id] = this.defaultDecision(r);
     this.decisions.set(d);
     this.batch.set(b);
   }
@@ -345,11 +511,19 @@ export class ImportTab {
         };
       });
     this.busy.set(true);
-    const res = await this.mut.post<Record<string, unknown>>(`/imports/${b.id}/confirm`, { decisions }, { success: 'Importación confirmada' });
+    // Confirmar crea personas e inscripciones en una transacción: puede tardar más que una petición normal.
+    const res = await this.mut.run<Record<string, unknown>>(
+      (override) =>
+        this.api.post(`/imports/${b.id}/confirm`, override ? { decisions, override } : { decisions }, undefined, {
+          timeoutMs: LONG_TIMEOUT_MS,
+        }),
+      { success: 'Importación confirmada' },
+    );
     this.busy.set(false);
     if (res) {
       this.result.set(res);
       this.batch.set(null);
+      this.setLote(null);
       this.ctx.loadCategories();
     }
   }
@@ -360,6 +534,9 @@ export class ImportTab {
     const ok = await this.dialog.confirm({ title: 'Cancelar importación', message: 'No se guardará nada de este archivo.', danger: true, confirmText: 'Cancelar importación' });
     if (!ok) return;
     const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), { success: 'Importación cancelada' });
-    if (res !== undefined) this.batch.set(null);
+    if (res !== undefined) {
+      this.batch.set(null);
+      this.setLote(null);
+    }
   }
 }
