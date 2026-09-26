@@ -175,6 +175,9 @@ def create_team(db: Session, user: User, tid: int, data: s.TeamCreate) -> Regist
     people.get_dojo(db, data.dojo_id)
     _, ws = _validate_members(db, None, data.members, c, t, data.dojo_id)
     ws += _team_warnings(db, c, t, data.name, None)
+    from app.services.registrations import capacity_warnings
+
+    ws += capacity_warnings(db, c)
     team = Team(tournament_id=tid, dojo_id=data.dojo_id, name=data.name.strip(), updated_by_id=user.id)
     db.add(team)
     db.flush()

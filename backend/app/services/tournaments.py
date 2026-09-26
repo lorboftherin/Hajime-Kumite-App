@@ -458,6 +458,169 @@ def undo_merge(db: Session, user: User, target_id: int) -> Category:
 
 
 # ---------------------------------------------------------------------------
+# División de categorías (reversible como la fusión)
+# ---------------------------------------------------------------------------
+
+SPLIT_FIELDS = ("name", "code", "weight_min_kg", "weight_max_kg", "grade_min", "grade_max")
+
+
+def _weight_key(r: Registration) -> tuple[int, float]:
+    lo, hi = parse_weight_range(r.weight_class)
+    value = hi if hi is not None else lo
+    return (0, float(value)) if value is not None else (1, 0.0)
+
+
+def split_category(db: Session, user: User, cid: int, data: s.CategorySplitIn) -> Category:
+    """Divide una categoría en dos: la original conserva la primera mitad y
+    una categoría nueva recibe la segunda.
+
+    * ``weight``: por peso declarado (los más livianos en la primera); el
+      rango en kg de cada mitad se ajusta al corte.
+    * ``grade``: por grado (los de menor grado en la primera); el rango de
+      grados se ajusta al corte.
+    * ``draw``: por sorteo reproducible, separando dojos entre las mitades.
+
+    Sin combates iniciados; una llave generada se descarta (con advertencia).
+    """
+    import random
+
+    from app.domain.brackets import Entrant, split_groups
+    from app.services.brackets import discard_bracket  # evitar ciclo
+
+    c = get_category(db, cid)
+    if c.status in ("merged", "cancelled", "in_progress", "finished"):
+        raise InvalidState(f"No se divide una categoría en estado {c.status}")
+    if _has_started_matches(db, c.id):
+        raise InvalidState("La categoría ya tiene combates iniciados")
+    regs = list(
+        db.scalars(
+            select(Registration)
+            .where(Registration.category_id == c.id, Registration.status == "active")
+            .order_by(Registration.id)
+        ).all()
+    )
+    if len(regs) < 2:
+        raise InvalidState("Se necesitan al menos 2 inscritos para dividir", code="SPLIT_TOO_FEW")
+    ws = []
+    if c.status == "ready":
+        ws.append({"code": "BRACKET_DISCARDED", "message": "La llave actual se descarta; hay que generar las dos"})
+    if data.criterion == "weight" and any(_weight_key(r)[0] for r in regs):
+        ws.append({"code": "WEIGHT_UNKNOWN", "message": "Hay inscritos sin peso declarado: van a la segunda mitad"})
+    if data.criterion == "grade" and any(r.grade_ordinal is None for r in regs):
+        ws.append({"code": "GRADE_UNKNOWN", "message": "Hay inscritos sin grado: van a la primera mitad"})
+    apply_warnings(db, user, ws, data.override.reason if data.override else None, "category", lambda: c.id)
+
+    half = len(regs) // 2
+    first: list[Registration]
+    second: list[Registration]
+    if data.criterion == "weight":
+        ordered = sorted(regs, key=lambda r: (_weight_key(r), r.id))
+        first, second = ordered[:half], ordered[half:]
+    elif data.criterion == "grade":
+        ordered = sorted(regs, key=lambda r: (r.grade_ordinal or 0, r.id))
+        first, second = ordered[:half], ordered[half:]
+    else:
+        seed = data.seed if data.seed is not None else random.SystemRandom().randrange(1, 2**31)
+        groups = split_groups([Entrant(str(r.id), str(r.dojo_id)) for r in regs], 2, random.Random(seed))
+        by_id = {str(r.id): r for r in regs}
+        first, second = [by_id[e.id] for e in groups[0]], [by_id[e.id] for e in groups[1]]
+
+    discard_bracket(db, c)
+    before = snapshot(c, list(SPLIT_FIELDS))
+    fields = {f: getattr(c, f) for f in CATEGORY_FIELDS}
+    names = data.names or [f"{c.name} (A)", f"{c.name} (B)"]
+    fields["name"] = names[1]
+    fields["code"] = f"{c.code}-B"[:40]
+    c.name = names[0]
+    c.code = f"{c.code}-A"[:40]
+    if data.criterion == "weight":
+        cut = [_weight_key(r) for r in first if _weight_key(r)[0] == 0]
+        if cut:
+            boundary = max(v for _, v in cut)
+            c.weight_max_kg = boundary
+            fields["weight_min_kg"] = boundary
+    if data.criterion == "grade":
+        g1 = [r.grade_ordinal for r in first if r.grade_ordinal is not None]
+        g2 = [r.grade_ordinal for r in second if r.grade_ordinal is not None]
+        if g1:
+            c.grade_max = max(g1)
+        if g2:
+            fields["grade_min"] = min(g2)
+    new = Category(tournament_id=c.tournament_id, status="open", is_manual=True, **fields, updated_by_id=user.id)
+    db.add(new)
+    db.flush()
+    for r in second:
+        r.category_id = new.id
+        bump(r, user)
+    db.add(
+        CategorySplit(
+            source_category_id=c.id,
+            new_category_id=new.id,
+            criterion=data.criterion,
+            moved_registration_ids=[r.id for r in second],
+            before=before,
+            reason=data.reason,
+            created_by_id=user.id,
+        )
+    )
+    bump(c, user)
+    db.flush()
+    refresh_category_status(db, c)
+    refresh_category_status(db, new)
+    audit(
+        db,
+        user,
+        "category",
+        c.id,
+        "split",
+        before,
+        {**snapshot(c, list(SPLIT_FIELDS)), "new_category_id": new.id, "moved": [r.id for r in second]},
+        reason=data.reason or (data.override.reason if data.override else None),
+        tournament_id=c.tournament_id,
+    )
+    db.commit()
+    db.refresh(new)
+    return new
+
+
+def undo_split(db: Session, user: User, cid: int) -> Category:
+    """Deshace las divisiones de ``cid`` (la categoría original): vuelven sus
+    inscritos, se restauran nombre y rangos y la categoría nueva se cancela.
+    Sin combates iniciados en ninguna de las dos."""
+    from app.services.brackets import discard_bracket  # evitar ciclo
+
+    c = get_category(db, cid)
+    splits = db.scalars(
+        select(CategorySplit).where(CategorySplit.source_category_id == c.id, CategorySplit.undone_at.is_(None))
+    ).all()
+    if not splits:
+        raise InvalidState("La categoría no tiene divisiones activas")
+    for sp in splits:
+        new = get_category(db, sp.new_category_id)
+        if _has_started_matches(db, new.id) or _has_started_matches(db, c.id):
+            raise InvalidState("No se puede deshacer: ya hay combates iniciados")
+        discard_bracket(db, new)
+        discard_bracket(db, c)
+        for r in db.scalars(select(Registration).where(Registration.category_id == new.id)).all():
+            r.category_id = c.id
+            bump(r, user)
+        for f, v in sp.before.items():
+            setattr(c, f, v)
+        new.status, new.cancel_reason = "cancelled", "División deshecha"
+        bump(new, user)
+        sp.undone_at = utcnow()
+        audit(db, user, "category", c.id, "unsplit", after={"from": new.id}, tournament_id=c.tournament_id)
+    bump(c, user)
+    db.flush()
+    if c.status == "ready":
+        c.status = "open"
+    refresh_category_status(db, c)
+    db.commit()
+    db.refresh(c)
+    return c
+
+
+# ---------------------------------------------------------------------------
 # Configuración efectiva (herencia torneo → categoría)
 # ---------------------------------------------------------------------------
 

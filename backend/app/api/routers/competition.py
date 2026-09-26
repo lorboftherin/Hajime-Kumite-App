@@ -13,7 +13,12 @@ from app.services import brackets as svc
 from app.services import operation, referees, reports, teams
 from app.services.tournaments import get_category
 
+from . import sports
+
 router = APIRouter()
+# Reglas deportivas (llave generada, divisiones, kata): router aparte para no
+# tocar el registro de routers de la app.
+router.include_router(sports.router)
 
 
 def _ensure_match_operator(db, user, mid: int) -> None:

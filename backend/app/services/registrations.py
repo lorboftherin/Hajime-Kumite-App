@@ -69,6 +69,23 @@ def _warnings(p: Person, grade_ord: int | None, weight: str | None, c: Category,
     return ws
 
 
+def capacity_warnings(db: Session, c: Category) -> list[dict[str, str]]:
+    """Cupo de la categoría (``max_entrants``): al superarlo se advierte."""
+    if not c.max_entrants:
+        return []
+    from app.services.tournaments import entrant_count
+
+    n = entrant_count(db, c.id)
+    if n < c.max_entrants:
+        return []
+    return [
+        {
+            "code": "CATEGORY_FULL",
+            "message": f"La categoría ya tiene {n} inscritos para un cupo de {c.max_entrants}: considera dividirla",
+        }
+    ]
+
+
 def registration_out(r: Registration) -> s.RegistrationOut:
     from app.services.teams import members_out
 
@@ -133,7 +150,7 @@ def create_registration(
         updated_by_id=user.id,
     )
     db.add(r)
-    ws = _warnings(p, grade_ord, data.weight_class, c, t)
+    ws = _warnings(p, grade_ord, data.weight_class, c, t) + capacity_warnings(db, c)
     apply_warnings(db, user, ws, data.override.reason if data.override else None, "registration", lambda: r.id)
     db.flush()
     refresh_category_status(db, c)
@@ -164,8 +181,12 @@ def update_registration(db: Session, user: User, rid: int, data: s.RegistrationU
             raise InvalidState("Categoría destino inválida")
         if new_cat.is_team != old_cat.is_team:
             raise InvalidState("No se mueve una inscripción entre categorías individuales y por equipos")
-        if old_cat.status in ("ready", "in_progress", "finished"):
-            raise InvalidState("La categoría actual ya tiene llave; retira la inscripción o regenera la llave")
+        if old_cat.status == "finished":
+            raise InvalidState("La categoría actual ya terminó; no se mueve la inscripción")
+        if new_cat.status == "finished":
+            raise InvalidState("La categoría destino ya terminó")
+        if r.status != "active":
+            raise InvalidState("La inscripción está retirada")
         if r.person_id and db.scalar(
             select(Registration.id).where(
                 Registration.category_id == new_cat.id,
@@ -175,14 +196,27 @@ def update_registration(db: Session, user: User, rid: int, data: s.RegistrationU
             )
         ):
             raise InvalidState("La persona ya está inscrita en esa categoría", code="ALREADY_REGISTERED")
-        r.category_id = new_cat.id
+    ws: list[dict[str, str]] = []
+    move_ws: list[dict[str, str]] = []
+    if new_cat is not old_cat:
+        from app.services import bracket_changes
+
+        # Cambio de categoría el día del torneo: con llave generada se sale de
+        # la llave de origen (bye o walkover) y se entra a la de destino (bye
+        # libre). Se advierte y requiere override.
+        move_ws = bracket_changes.move_warnings(db, old_cat, new_cat)
     if r.person:
-        ws = [
-            w
-            for w in _warnings(r.person, r.grade_ordinal, r.weight_class, new_cat, t)
-            if w["code"] != "REGISTRATION_CLOSED"
-        ]
-        apply_warnings(db, user, ws, data.override.reason if data.override else None, "registration", lambda: r.id)
+        skip = {"REGISTRATION_CLOSED"} | ({"CATEGORY_NOT_OPEN"} if move_ws else set())
+        ws = [w for w in _warnings(r.person, r.grade_ordinal, r.weight_class, new_cat, t) if w["code"] not in skip]
+    apply_warnings(
+        db, user, ws + move_ws, data.override.reason if data.override else None, "registration", lambda: r.id
+    )
+    if new_cat is not old_cat:
+        if move_ws:
+            reason = data.override.reason if data.override else "Cambio de categoría"
+            bracket_changes.move_between_brackets(db, user, r, old_cat, new_cat, reason)
+        else:
+            r.category_id = new_cat.id
     bump(r, user)
     refresh_category_status(db, old_cat)
     refresh_category_status(db, new_cat)

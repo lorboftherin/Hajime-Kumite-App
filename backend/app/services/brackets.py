@@ -684,11 +684,17 @@ def _rr_table(
 ) -> tuple[list[bd.RRStanding], bool]:
     """Clasificación de un todos contra todos (round robin o un grupo).
 
-    Quien se retiró o fue quitado de la llave no se clasifica y sus
-    resultados no cuentan para los demás (sus combates pendientes ya se
-    anularon al quitarlo)."""
+    Quien salió de la llave sin completar sus combates no se clasifica y sus
+    resultados no cuentan para los demás (sus combates pendientes se anularon
+    al quitarlo). Si ya había disputado todos, su tabla no cambia."""
     results = []
-    gone = _withdrawn_ids(db, c, [x for x in slots if x])
+    members = [x for x in slots if x]
+    finished_by: dict[int, int] = {}
+    for m in rows:
+        if m.status == "finished":
+            for rid in (v.slots[int(m.aka_source.split(":")[1])], v.slots[int(m.ao_source.split(":")[1])]):
+                finished_by[rid] = finished_by.get(rid, 0) + 1
+    gone = {x for x in _withdrawn_ids(db, c, members) if finished_by.get(x, 0) < len(members) - 1}
     for m in rows:
         a, b = v.slots[int(m.aka_source.split(":")[1])], v.slots[int(m.ao_source.split(":")[1])]
         m.aka_registration_id, m.ao_registration_id = a, b
@@ -1146,6 +1152,8 @@ def _domain_events(rows: list[MatchEventRow]) -> list[MatchEvent]:
             target_id=e.target_id,
             method=e.method,
             reason=e.reason,
+            infraction=e.infraction,
+            ladder=e.ladder,
         )
         for e in rows
     ]
@@ -1831,6 +1839,8 @@ def record_kata_match_scores(db: Session, user: User, mid: int, data: s.KataMatc
 
 
 def _queue_key(m: Match, final_round: int) -> tuple:
+    if m.kind == "group":  # grupos + eliminación: la fase de grupos va primero
+        return (0, m.round, m.position)
     if m.kind == "main" and m.round == final_round:
         return (final_round + 2, m.position)
     if m.kind != "main":
