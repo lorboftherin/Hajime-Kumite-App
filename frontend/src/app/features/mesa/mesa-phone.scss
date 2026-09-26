@@ -41,7 +41,7 @@
     }
     > .side-top {
       grid-area: aka-top;
-      min-height: 34px;
+      min-height: 44px;
       padding: 4px 10px 0;
       border-radius: 12px 12px 0 0;
       box-shadow: none;
@@ -97,7 +97,8 @@
     letter-spacing: 0.22em;
   }
   .stage:not(.kata) .more-btn {
-    min-height: 30px;
+    min-height: 44px;
+    min-width: 44px;
     padding: 0 10px;
     font-size: 0.8125rem;
   }
@@ -150,15 +151,23 @@
     gap: 2px;
   }
   .stage:not(.kata) .mark {
-    min-height: 46px;
+    min-height: 48px;
     padding: 4px 0 2px;
   }
   .stage:not(.kata) .ink-mark {
     height: 22px;
   }
+  // En el celular la sanción se rotula con su abreviatura (C1, HC, H…) a un tamaño legible;
+  // el nombre completo está en la etiqueta accesible y en el título.
   .stage:not(.kata) .mlabel {
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
     line-height: 1.1;
+    .full {
+      display: none;
+    }
+    .abbr {
+      display: inline;
+    }
   }
   // Centro: reloj y HAJIME/YAME lado a lado; deshacer y finalizar debajo.
   .stage:not(.kata) .center {
@@ -196,7 +205,7 @@
   .stage:not(.kata) .adjust {
     grid-area: adjust;
     button {
-      min-height: 36px;
+      min-height: 44px;
       font-size: 0.875rem;
     }
   }
@@ -287,11 +296,14 @@
     overscroll-behavior: none;
   }
   .hdr {
-    min-height: 40px;
-    padding: 4px 8px;
+    min-height: 48px;
+    padding: 2px 8px;
   }
   .hbtn {
-    min-height: 32px;
+    min-height: 44px;
+  }
+  .hbtn.icon {
+    width: 44px;
   }
   .stage {
     gap: 6px;
@@ -304,13 +316,14 @@
     border-radius: 12px;
   }
   .side-top {
-    min-height: 26px;
+    min-height: 44px;
   }
   .clabel {
     font-size: 0.8125rem;
   }
   .more-btn {
-    min-height: 26px;
+    min-height: 44px;
+    min-width: 44px;
     padding: 0 8px;
     font-size: 0.75rem;
   }
@@ -336,14 +349,21 @@
     gap: 2px;
   }
   .mark {
-    min-height: 34px;
+    min-height: 44px;
     padding: 2px 0;
   }
   .ink-mark {
     height: 18px;
   }
   .mlabel {
-    font-size: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.1;
+    .full {
+      display: none;
+    }
+    .abbr {
+      display: inline;
+    }
   }
   .pbtn {
     min-height: 46px;
@@ -376,7 +396,7 @@
     }
   }
   .adjust button {
-    min-height: 30px;
+    min-height: 44px;
     font-size: 0.8125rem;
   }
   .slot {

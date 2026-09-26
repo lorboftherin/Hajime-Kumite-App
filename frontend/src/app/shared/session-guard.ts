@@ -7,6 +7,9 @@ import { Modal } from './modal';
 
 /**
  * Aviso no bloqueante antes de que venza la sesión + diálogo de reingreso en el mismo lugar.
+ * Con token de renovación la sesión se renueva sola y el aviso no aparece; solo se
+ * muestra si no hay token de renovación (sesión iniciada con una versión anterior)
+ * o si la renovación silenciosa falló (p. ej. la tablet quedó sin conexión).
  * Va una sola vez en App: no se pierde la página ni su estado (p. ej. la cola de la mesa).
  */
 @Component({
@@ -15,7 +18,13 @@ import { Modal } from './modal';
   template: `
     @if (auth.isLoggedIn() && auth.expiringSoon() && !auth.reloginOpen() && !dismissed()) {
       <div class="session-warn alert warn" role="status">
-        <span>Tu sesión vence en {{ auth.minutesLeft() }} min.</span>
+        <span>
+          @if (auth.refreshFailed()) {
+            No se pudo renovar la sesión (¿sin conexión?); vence en {{ auth.minutesLeft() }} min.
+          } @else {
+            Tu sesión vence en {{ auth.minutesLeft() }} min.
+          }
+        </span>
         <button type="button" class="btn sm primary" (click)="auth.requestRelogin()">Volver a iniciar sesión</button>
         <button type="button" class="btn sm ghost icon-only" (click)="dismissed.set(true)" aria-label="Ocultar"><app-icon name="close" /></button>
       </div>

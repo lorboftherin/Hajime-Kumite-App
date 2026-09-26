@@ -21,7 +21,12 @@ def main() -> None:
     dialect = mssql.dialect()
     dialect.server_version_info = (16, 0)  # SQL Server 2022 / Azure SQL
     dialect._setup_version_attributes()
-    parts = ["-- Generado por backend/scripts/export_ddl.py. No editar a mano.", "SET XACT_ABORT ON;", "BEGIN TRAN;", ""]
+    parts = [
+        "-- Generado por backend/scripts/export_ddl.py. No editar a mano.",
+        "SET XACT_ABORT ON;",
+        "BEGIN TRAN;",
+        "",
+    ]
     deferred = []
     for table in Base.metadata.sorted_tables:
         parts.append(str(CreateTable(table).compile(dialect=dialect)).strip() + ";\n")

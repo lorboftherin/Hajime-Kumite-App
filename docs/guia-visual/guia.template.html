@@ -299,7 +299,7 @@
         <p>Con Docker Desktop instalado. Las tablets se conectan por Wi‑Fi a la laptop.</p>
         <div class="cmd"><button class="copy" type="button">Copiar</button>git clone https://github.com/lorboftherin/Hajime-Kumite-App.git
 cd Hajime-Kumite-App
-git checkout claude/gracious-feynman-qtapgx
+git checkout main
 HAJIME_ADMIN_PASSWORD='tu-clave' \
   docker compose up -d --build</div>
         <p>Abre <code>http://localhost:8000</code>. Desde una tablet: <code>http://&lt;IP-de-la-laptop&gt;:8000</code>.</p>
@@ -308,7 +308,7 @@ HAJIME_ADMIN_PASSWORD='tu-clave' \
         <span class="tag">Sin instalar nada</span>
         <h3>En GitHub Codespaces</h3>
         <ol>
-          <li>En el repositorio, cambia a la rama <code>claude/gracious-feynman-qtapgx</code>.</li>
+          <li>En el repositorio, cambia a la rama <code>main</code>.</li>
           <li><strong>Code → Codespaces → Create codespace</strong>.</li>
           <li>En la terminal, ejecuta el mismo <code>docker compose</code> de la izquierda.</li>
           <li>Pestaña <strong>Ports</strong>: abre el enlace del puerto 8000.</li>
@@ -321,7 +321,7 @@ HAJIME_ADMIN_PASSWORD='tu-clave' \
         <div class="cmd"><button class="copy" type="button">Copiar</button>docker run -d -p 8000:8000 \
   -e HAJIME_ADMIN_PASSWORD='tu-clave' \
   -v hajime-data:/data \
-  ghcr.io/lorboftherin/hajime-kumite-app:claude-gracious-feynman-qtapgx</div>
+  ghcr.io/lorboftherin/hajime-kumite-app:latest</div>
       </div>
     </div>
     <div class="login-note">
@@ -443,7 +443,7 @@ HAJIME_ADMIN_PASSWORD='tu-clave' \
 
   <footer>
     <div class="brand">{{ENSO}}{{WORD}}</div>
-    <span>Código: github.com/lorboftherin/Hajime-Kumite-App · rama claude/gracious-feynman-qtapgx</span>
+    <span>Código: github.com/lorboftherin/Hajime-Kumite-App · rama main</span>
   </footer>
 </div>
 

@@ -9,6 +9,7 @@ import { METHOD_LABEL, newId } from '../../core/format';
 import { Color, TeamBout, TeamMatch, TeamMember } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
+import { PluralPipe, plural } from '../../shared/plural';
 
 interface DraftRow {
   aka: number | null;
@@ -24,7 +25,7 @@ interface DraftRow {
  */
 @Component({
   selector: 'app-team-match',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PluralPipe],
   template: `
     @if (team(); as t) {
       @let d = t.decision;
@@ -45,7 +46,7 @@ interface DraftRow {
                   <span class="n">{{ d.wins.aka }}</span><span class="dash">–</span><span class="n">{{ d.wins.ao }}</span>
                 </div>
                 <span class="tsub">victorias</span>
-                <span class="tsub">puntos {{ d.points.aka }}–{{ d.points.ao }}@if (d.draws) { · {{ d.draws }} empate(s) }</span>
+                <span class="tsub">puntos {{ d.points.aka }}–{{ d.points.ao }}@if (d.draws) { · {{ d.draws | plural: 'empate' : 'empates' }} }</span>
               </div>
             }
           }
@@ -211,7 +212,7 @@ export class TeamMatchPanel {
     if (!t.bouts.length) return `Define la alineación: ${t.settings.bouts} combates por enfrentamiento.`;
     if (d.needs_extra_bout) return d.reason ?? 'Empate: combate extra';
     if (d.extra_bout_needs_hantei) return d.reason ?? 'Combate extra empatado: decide por hantei';
-    if (d.pending_bouts) return `Faltan ${d.pending_bouts} combate(s). Gana el equipo con más victorias.`;
+    if (d.pending_bouts) return `${d.pending_bouts === 1 ? 'Falta' : 'Faltan'} ${plural(d.pending_bouts, 'combate', 'combates')}. Gana el equipo con más victorias.`;
     return 'Combate extra en curso';
   });
 

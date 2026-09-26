@@ -2,15 +2,17 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DialogRequest, DialogService } from '../core/dialog.service';
 import { ToastService } from '../core/toast.service';
+import { FocusTrap } from './focus-trap';
 
 /** Dibuja los diálogos de DialogService y los toasts. Va una sola vez en App. */
 @Component({
   selector: 'app-dialog-host',
-  imports: [FormsModule],
+  imports: [FormsModule, FocusTrap],
+  host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
     @if (top(); as d) {
-      <div class="modal-backdrop" (keydown.escape)="cancel(d)">
-        <div class="modal" role="dialog" aria-modal="true" [attr.aria-label]="d.title">
+      <div class="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true" [attr.aria-label]="d.title" appFocusTrap>
           <h2>{{ d.title }}</h2>
           @switch (d.kind) {
             @case ('confirm') {
@@ -33,6 +35,29 @@ import { ToastService } from '../core/toast.service';
               }
               <div class="form-actions">
                 <button class="btn primary" (click)="d.resolve(true)" autofocus>Entendido</button>
+              </div>
+            }
+            @case ('choice') {
+              <p>{{ d.message }}</p>
+              @if (d.items?.length) {
+                <ul>
+                  @for (it of d.items; track $index) {
+                    <li>{{ it }}</li>
+                  }
+                </ul>
+              }
+              <div class="choices">
+                @for (c of d.choices; track c.value; let first = $first) {
+                  <button type="button" class="btn choice" [class.primary]="c.primary" [class.danger]="c.danger" (click)="d.resolve(c.value)" [attr.autofocus]="first ? '' : null">
+                    <span class="choice-label">{{ c.label }}</span>
+                    @if (c.hint) {
+                      <span class="choice-hint">{{ c.hint }}</span>
+                    }
+                  </button>
+                }
+              </div>
+              <div class="form-actions">
+                <button class="btn" (click)="d.resolve(null)">{{ d.cancelText || 'Decidir después' }}</button>
               </div>
             }
             @case ('prompt') {
@@ -87,7 +112,10 @@ import { ToastService } from '../core/toast.service';
     }
     <div class="toasts" aria-live="polite">
       @for (t of toast.toasts(); track t.id) {
-        <div class="alert toast {{ t.kind }}" (click)="toast.dismiss(t.id)">{{ t.text }}</div>
+        <div class="alert toast {{ t.kind }}" [attr.role]="t.kind === 'danger' ? 'alert' : 'status'" (click)="toast.dismiss(t.id)">
+          <span class="toast-text">{{ t.text }}</span>
+          <button type="button" class="toast-x" (click)="toast.dismiss(t.id); $event.stopPropagation()" aria-label="Cerrar aviso">✕</button>
+        </div>
       }
     </div>
   `,
@@ -105,10 +133,57 @@ import { ToastService } from '../core/toast.service';
     .toast {
       cursor: pointer;
       margin: 0;
-      padding-right: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    .toast-text {
+      flex: 1;
+    }
+    .toast-x {
+      flex: none;
+      display: inline-grid;
+      place-items: center;
+      min-width: 2rem;
+      min-height: 2rem;
+      margin: -0.35rem -0.1rem -0.35rem 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      opacity: 0.75;
+      &:hover {
+        opacity: 1;
+        background: var(--hover);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--ai);
+      }
     }
     .modal > p {
       color: var(--sumi-2);
+    }
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .choice {
+      flex-direction: column;
+      align-items: flex-start;
+      height: auto;
+      min-height: 2.75rem;
+      padding: 0.6rem 0.9rem;
+      text-align: left;
+      white-space: normal;
+    }
+    .choice-hint {
+      font-size: var(--fs-12);
+      font-weight: 400;
+      opacity: 0.85;
     }
     @media (max-width: 767px) {
       .toasts {
@@ -143,6 +218,12 @@ export class DialogHost {
     } else if (d.kind === 'warnings') {
       if (v.length >= 3) d.resolve(v);
     }
+  }
+
+  /** Escape cancela el diálogo de arriba, salvo en acciones críticas (se decide con los botones). */
+  onEscape(): void {
+    const d = this.top();
+    if (d && !d.critical) this.cancel(d);
   }
 
   cancel(d: DialogRequest): void {

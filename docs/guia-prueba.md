@@ -11,14 +11,14 @@ Se necesita una laptop con [Docker Desktop](https://www.docker.com/products/dock
 La laptop hace de servidor; tablets y celulares se conectan por Wi‑Fi.
 
 **Opción A: imagen ya compilada (recomendada).** La publica el CI en cada
-cambio. Si el repositorio es privado, primero `docker login ghcr.io` con tu
+cambio de `main` (`:latest`; una versión fija: `:0.2.0`). Si la imagen es privada, primero `docker login ghcr.io` con tu
 usuario de GitHub y un token con permiso `read:packages`.
 
 ```bash
 docker run -d --name hajime -p 8000:8000 \
   -e HAJIME_ADMIN_PASSWORD='una-clave-segura' \
   -v hajime-data:/data \
-  ghcr.io/lorboftherin/hajime-kumite-app:claude-gracious-feynman-qtapgx
+  ghcr.io/lorboftherin/hajime-kumite-app:latest
 ```
 
 **Opción B: compilar desde el código.**
@@ -52,21 +52,50 @@ Abrir <http://localhost:8000> y entrar con `admin` y la clave elegida.
 4. **Inscripciones:** descargar la plantilla Excel (*Importar Excel*),
    llenarla con los alumnos del entrenamiento, subirla y revisar la vista
    previa fila por fila. Sin documento se puede; queda como "identidad
-   incompleta".
+   incompleta". Las filas con error se **corrigen en pantalla** (*Corregir* →
+   *Guardar y revalidar*) y, si una fila no tiene categoría sugerida, se elige
+   a mano en su columna *Categorías*. Si se recarga la página, la vista previa
+   se retoma (el lote queda en la dirección, `?lote=<id>`).
+   Para corregir una inscripción ya hecha (categoría, peso, grado o cabeza de
+   serie): *Inscripciones* → *Editar*.
 5. **Categorías:** revisar las que tienen pocos inscritos (la app sugiere
-   fusionar, final directa o round robin). Asignar cada categoría al tatami
-   y su orden en la cola.
-6. **Llaves:** generar e imprimir (*PDF*). Imprimir también la
-   **planilla de mesa** del tatami (*Tatamis* → *Planilla PDF*, o
-   `/api/v1/tatamis/<id>/scoresheet.pdf`): es el registro oficial en papel.
+   fusionar, final directa o round robin). Para cambiar nombre, sexo, edades,
+   grados, peso, duración o formato: menú *Más* → *Editar categoría*.
+6. **Llaves:** en *Categorías*, *Generar todas las llaves (N)* genera de una
+   vez las que faltan (pide confirmación con la lista). Imprimir cada llave
+   (*PDF*) y la **planilla de mesa** del tatami (*Tatamis* → *Planilla PDF*,
+   o `/api/v1/tatamis/<id>/scoresheet.pdf`): es el registro oficial en papel.
+7. **Colas de los tatamis:** *Tatamis* → *Organizar colas*. Marcar las
+   categorías sin tatami y *Asignar a Tatami N*; en cada tatami, ordenar con
+   ↑ ↓ (o quitar con ✕) y *Guardar cola*. Cada categoría muestra los combates
+   estimados.
+8. **Iniciar torneo** (*Resumen*): antes de iniciar, la app lista lo que falta
+   (categorías con inscritos sin llave o sin tatami, con un solo inscrito,
+   tatamis sin operador, menores sin consentimiento de datos). Se puede
+   resolver cada punto desde su enlace o *Iniciar igual* (con una confirmación
+   extra si hay problemas importantes).
 
 ## 3. Durante el mock
 
 - **Mesa oficial (papel):** cronómetro y planilla impresa. Anota marcador y
   ganador de cada combate por su número (`T1-001`, `T1-002`…).
 - **Operador de la app:** *Tatamis* → *Abrir mesa* del combate en curso. El
-  número del combate en la app es el mismo de la planilla.
+  número del combate en la app es el mismo de la planilla. Un operador de mesa
+  con ámbito *Por tatami* entra directo a **Mi tatami**: combate en curso,
+  los siguientes y un botón grande *Abrir combate en curso / siguiente*. Al
+  cerrar un combate, *Siguiente combate →* abre el próximo del mismo tatami.
+- **Avisos de tiempo:** la mesa pita corto a los 15 s (atoshi baraku) y largo
+  en 0:00, vibra y hace parpadear el reloj. El primer toque en la mesa activa
+  el sonido. En el botón 🔔 del encabezado: silenciar este dispositivo, *Probar
+  sonido* y *Detener el reloj automáticamente al terminar* (yame automático).
+  Ambas opciones se recuerdan en cada tablet.
 - **Si la app falla, el torneo sigue en papel.** Anotar la hora y qué pasó.
+- **Sin señal al cerrar un combate:** la hoja de cierre avisa «Anota el
+  resultado en la planilla; se cerrará cuando vuelva la señal» y el botón
+  pasa a *Dejar el cierre en cola*. Al volver la red, la cola se envía sola
+  (primero los eventos, luego el cierre), una sola vez.
+- **Sesión vencida:** la mesa no se cierra. Aparece *Inicia sesión para seguir
+  enviando*; al ingresar, la cola pendiente se envía.
 
 ### Guion de casos difíciles (sección 27)
 
@@ -78,13 +107,16 @@ Provocar cada caso a propósito y marcar el resultado.
 | ☐ | Override | Inscribir a un alumno de grado alto en categoría de principiantes | Aparece la advertencia; aceptar con motivo; queda en *Auditoría* |
 | ☐ | Fusión | Fusionar dos categorías de 2 inscritos | Categoría nueva con 4; las de origen quedan "Fusionada" |
 | ☐ | Mismo dojo | Categoría con 4 de 8 del mismo dojo | La llave muestra "Cruces mismo dojo: 0" |
-| ☐ | Retiro | Retirar a un competidor con la llave ya publicada | La app ofrece walkover o regenerar |
+| ☐ | Retiro | Retirar a un competidor con la llave ya publicada | Diálogo con *Regenerar la llave* (si no empezó ningún combate) o *Dar walkover en sus combates pendientes*; la acción se ejecuta y queda en *Auditoría* |
 | ☐ | Empate | Terminar un combate empatado | Sugiere hantei (o punto de oro, según la regla) |
 | ☐ | Error de mesa | Marcar un punto al color equivocado | *Deshacer último*: el marcador se corrige y el evento queda tachado |
 | ☐ | Corrección tardía | Cambiar el ganador de un combate cuyo ganador ya avanzó | La app lista los combates afectados y pide motivo |
 | ☐ | Reapertura | Cerrar el torneo, reabrirlo (Admin) y corregir un resultado | Auditoría con motivo; medallero actualizado |
 | ☐ | Kata | Ronda de kata por puntuación con 5 jueces y un empate | Se desempata por la nota mínima descartada |
-| ☐ | Sin conexión | Apagar el Wi‑Fi de la tablet, marcar 2 puntos, volver a encenderlo | Indicador "Sin conexión · 2 pendientes"; al volver se envían solos, sin duplicarse |
+| ☐ | Sin conexión | Apagar el Wi‑Fi de la tablet, marcar 2 puntos, volver a encenderlo | Indicador "Sin conexión · 2 pendientes"; al volver se envían solos al instante, sin duplicarse |
+| ☐ | Cierre sin señal | Con el Wi‑Fi apagado, *Finalizar combate* → *Dejar el cierre en cola*; luego encender | Aviso «Cierre en cola» y controles bloqueados; al volver la red el combate queda cerrado una sola vez |
+| ☐ | Dos tablets | Abrir el mismo combate en dos tablets | La segunda queda en *Solo lectura* (marcador en vivo, botones deshabilitados); con *Tomar la mesa* pasa a registrar y la primera queda en lectura |
+| ☐ | Fin del tiempo | Dejar correr el reloj hasta 0:00 con el yame automático activado | Pitido a los 15 s y tono largo en 0:00; el reloj se detiene solo justo en 0:00 |
 | ☐ | Equipo con suplente | *Inscripciones* → *Equipo*: tres titulares y un suplente de un dojo, más una persona de otro dojo | Advierte "pertenece a otro dojo"; la tabla muestra el equipo con sus integrantes |
 | ☐ | Enfrentamiento por equipos | Abrir la mesa de un enfrentamiento de kumite por equipos, confirmar la alineación y operar los 3 combates | Cada combate se opera en la mesa normal; al cerrar el 2.º ganado por el mismo equipo, el enfrentamiento se decide y la llave avanza |
 | ☐ | Hikiwake y combate extra | Empatar en victorias y en puntos (un combate en hikiwake) | La mesa pide un combate extra; al cerrarlo gana ese equipo por "Combate extra" |
@@ -97,8 +129,9 @@ Provocar cada caso a propósito y marcar el resultado.
    a su tatami con el puesto (*Árbitro central*, *Juez 1*…). También se pueden importar con la columna *Rol* del Excel.
    En kata, la mesa los propone para anotar qué juez dio cada bandera o nota.
 3. **Durante el torneo**, la pestaña *Tatamis* muestra el avance de cada tatami, el marcador del combate en curso,
-   quién está operando ahora y sus árbitros. Si dos tablets abren el mismo combate, ambas ven un aviso: registren desde
-   una sola.
+   quién está operando ahora y sus árbitros. Si dos tablets abren el mismo combate, solo la primera registra; la otra
+   queda en solo lectura hasta que alguien pulse *Tomar la mesa*. En el menú, quien no es organizador no ve
+   Personas, Dojos ni Plantillas.
 4. **Ensayo antes del torneo.** Con el servidor encendido, simula varios tatamis operados a la vez (crea un torneo de
    prueba, que no cuenta en historiales ni estadísticas):
 

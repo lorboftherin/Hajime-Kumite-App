@@ -17,6 +17,8 @@ import { ApiService } from '../../core/api.service';
 import { apiBase } from '../../core/server';
 import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
+import { homePath, isStaff } from '../../core/roles';
+import { SessionExpiredService } from '../../core/session-expired.service';
 import {
   EVENT_LABEL,
   MATCH_STATUS,
@@ -41,18 +43,32 @@ import {
 } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { ToastService } from '../../core/toast.service';
+import { FocusTrap } from '../../shared/focus-trap';
 import { LabelPipe } from '../../shared/pipes';
+import { PluralPipe, plural } from '../../shared/plural';
 import {
+  CLOCK_EVENTS,
+  FinishData,
   Pending,
   SeqGuard,
+  TimerCue,
+  TimerCues,
+  enqueueFinish,
   foldClock,
+  isFinish,
   loadPending,
+  methodsFor,
+  pendingPath,
+  pendingPayload,
   retryDecision,
   retryDelay,
+  sanctionAbbr,
   savePending,
+  timeUpAt,
 } from './mesa-logic';
 import { KataMatchScores } from './kata-match-scores';
 import { HanteiSheet, InfractionSheet } from './rules-sheets';
+import { Beeper, MESA_PREFS, VIBRATION, readFlag, writeFlag } from './mesa-sound';
 import { TeamMatchPanel } from './team-match';
 
 interface LogRow {
@@ -66,8 +82,10 @@ interface LogRow {
 }
 
 const PRESENCE_MS = 15000;
+/** Con la mesa en solo lectura el marcador se refresca más seguido (marcador en vivo). */
+const READONLY_REFRESH_MS = 3000;
 
-/** Identificador estable de esta tablet (para avisar si otra abre el mismo combate). */
+/** Identificador estable de esta tablet (la que lleva la mesa y las que solo miran). */
 function deviceId(): string {
   try {
     let id = localStorage.getItem('hajime.device');
@@ -81,18 +99,6 @@ function deviceId(): string {
   }
 }
 
-const METHODS = [
-  'points',
-  'point_gap',
-  'senshu',
-  'hantei',
-  'golden_point',
-  'hansoku',
-  'kiken',
-  'shikkaku',
-  'walkover',
-  'decision',
-];
 const UNDO_SKIP = new Set(['annul', 'finish']);
 
 /**
@@ -111,15 +117,7 @@ function buzz(pattern: number | number[]): void {
 
 @Component({
   selector: 'app-mesa',
-  imports: [
-    FormsModule,
-    RouterLink,
-    LabelPipe,
-    TeamMatchPanel,
-    KataMatchScores,
-    InfractionSheet,
-    HanteiSheet,
-  ],
+  imports: [FormsModule, RouterLink, LabelPipe, PluralPipe, TeamMatchPanel, FocusTrap, KataMatchScores, InfractionSheet, HanteiSheet],
   templateUrl: './mesa.html',
   styleUrls: [
     './mesa.scss',
@@ -127,6 +125,7 @@ function buzz(pattern: number | number[]): void {
     './mesa-center.scss',
     './mesa-kata.scss',
     './mesa-sheet.scss',
+    './mesa-alerts.scss',
     './mesa-phone.scss',
   ],
 })
@@ -137,13 +136,14 @@ export class MesaPage {
   private toast = inject(ToastService);
   private router = inject(Router);
   private auth = inject(AuthService);
+  readonly session = inject(SessionExpiredService);
 
   readonly matchId = input.required<string>();
   readonly tatami = input<string | undefined>(undefined);
 
   readonly methodLabel = METHOD_LABEL;
   readonly matchStatus = MATCH_STATUS;
-  readonly methods = METHODS;
+  readonly sanctionAbbr = sanctionAbbr;
   readonly colors: Color[] = ['aka', 'ao'];
 
   readonly id = computed(() => Number(this.matchId()));
@@ -162,6 +162,10 @@ export class MesaPage {
   // Cola de eventos pendientes (en memoria + localStorage).
   readonly pending = signal<Pending[]>([]);
   readonly offline = signal(false);
+  /** Estado de la red según el navegador (eventos online/offline de window). */
+  readonly online = signal(typeof navigator === 'undefined' ? true : navigator.onLine !== false);
+  /** Sin señal: el navegador no tiene red o el último envío falló por red. */
+  readonly noSignal = computed(() => this.offline() || !this.online());
   /** Evento que agotó sus reintentos (5xx): bloquea la cola hasta que el operador decida. */
   readonly stuck = signal<Pending | null>(null);
   /** 401: la cola se conserva y se reanuda tras volver a iniciar sesión. */
@@ -198,17 +202,31 @@ export class MesaPage {
   private flagsId = newId();
 
   readonly isKata = computed(() => this.category()?.modality === 'kata');
+  /** Métodos de victoria de la hoja de cierre según la modalidad (kata: banderas, decisión…). */
+  readonly methods = computed(() => methodsFor(this.category()?.modality));
 
-  /** Otras tablets con este mismo combate abierto (aviso; no bloquea). */
+  /** Otras tablets con este mismo combate abierto. */
   readonly others = signal<PresenceOut['others']>([]);
   private readonly device = deviceId();
+  /** Cabecera que identifica a esta tablet: el servidor rechaza eventos de la que no lleva la mesa. */
+  private readonly deviceOpts = { headers: { 'X-Device-Id': this.device } };
+  /** Esta tablet lleva la mesa (dueña). Si otra la tomó, esta queda en solo lectura. */
+  readonly primary = signal(true);
+  readonly owner = signal<PresenceOut['owner']>(null);
+  readonly readOnly = computed(() => !this.primary());
+  readonly taking = signal(false);
+  readonly ownerText = computed(() => {
+    const o = this.owner();
+    if (!o) return 'otra tablet';
+    return o.same_user ? 'otra tablet con tu usuario' : `la tablet de ${o.user}`;
+  });
   readonly othersText = computed(() => {
     const o = this.others();
-    if (!o.length) return '';
+    if (!o.length || this.readOnly()) return '';
     const names = [...new Set(o.map((x) => (x.same_user ? 'otra sesión tuya' : x.user)))].join(
       ' y ',
     );
-    return `Este combate también está abierto en: ${names}. Registren desde una sola tablet para no duplicar puntos.`;
+    return `Este combate también está abierto en: ${names}. Esta tablet lleva la mesa; la otra solo ve el marcador.`;
   });
 
   /** Kata: qué juez dio cada bandera (opcional, sección 20). */
@@ -261,9 +279,17 @@ export class MesaPage {
       !['pending', 'bye', 'void'].includes(m.status)
     );
   });
-  readonly locked = computed(() => !this.playable() || (this.finished() && !this.unlocked()));
-
   readonly pendingHere = computed(() => this.pending().filter((p) => p.matchId === this.id()));
+  /** Cierre dejado en cola sin señal: el combate se cerrará al volver la conexión. */
+  readonly finishQueued = computed(() => this.pendingHere().find((p) => isFinish(p)) ?? null);
+
+  readonly locked = computed(
+    () =>
+      !this.playable() ||
+      this.readOnly() ||
+      !!this.finishQueued() ||
+      (this.finished() && !this.unlocked()),
+  );
 
   /** Cronómetro: estado del servidor + eventos aún pendientes, con las mismas reglas que el servidor. */
   readonly clock = computed(() =>
@@ -409,35 +435,78 @@ export class MesaPage {
     const majority = this.majority();
     if (aka >= majority) return { tone: 'aka', text: `Gana AKA · ${aka} de ${n} banderas` };
     if (ao >= majority) return { tone: 'ao', text: `Gana AO · ${ao} de ${n} banderas` };
-    if (missing) return { tone: 'wait', text: `Faltan ${missing} voto(s) · sin mayoría todavía` };
+    if (missing)
+      return {
+        tone: 'wait',
+        text: `${missing === 1 ? 'Falta' : 'Faltan'} ${plural(missing, 'voto', 'votos')} · sin mayoría todavía`,
+      };
     return { tone: 'tie', text: 'Sin mayoría: decide el juez principal' };
   });
 
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 200);
     const presence = setInterval(() => this.heartbeat(), PRESENCE_MS);
+    let ticks = 0;
     const refresh = setInterval(() => {
+      // En solo lectura el marcador se sigue en vivo (cada 3 s); si no, cada 15 s.
+      ticks++;
+      if (!this.readOnly() && ticks % 5 !== 0) return;
       // No se refresca mientras hay envíos en curso o pendientes: un GET lento no debe pisar un POST.
       if (!this.pending().length && !this.sending() && !this.finishOpen()) this.reload(true);
-    }, 15000);
+    }, READONLY_REFRESH_MS);
     this.keepAwake();
     document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('online', this.onOnline);
+    window.addEventListener('offline', this.onOffline);
+    // Políticas de audio del navegador: el sonido se desbloquea con el primer toque en la mesa.
+    document.addEventListener('pointerdown', this.unlockAudio, { capture: true });
+    document.addEventListener('keydown', this.unlockAudio, { capture: true });
+    // La mesa se encarga del reingreso si vence la sesión (no se sale a /login a mitad de combate).
+    const releaseSession = this.session.hold();
+    const u = this.auth.user();
+    if (u) this.reloginUser.set(u.username);
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
       document.removeEventListener('visibilitychange', this.onVisibility);
+      window.removeEventListener('online', this.onOnline);
+      window.removeEventListener('offline', this.onOffline);
+      document.removeEventListener('pointerdown', this.unlockAudio, { capture: true });
+      document.removeEventListener('keydown', this.unlockAudio, { capture: true });
+      releaseSession();
+      this.beeper.close();
       this.wakeLock?.release().catch(() => {});
       clearInterval(tick);
       clearInterval(refresh);
       clearInterval(presence);
+      if (this.flashTimer) clearTimeout(this.flashTimer);
       this.leave(this.id());
       if (this.retryTimer) clearTimeout(this.retryTimer);
       this.retryTimer = null;
+    });
+    // Avisos de tiempo: 15 s (atoshi baraku) y fin (0:00), con sonido, vibración y parpadeo.
+    effect(() => {
+      const r = this.remaining();
+      const running = this.clock().running;
+      const d = this.duration();
+      const active = !this.isKata() && this.playable() && !this.finished() && !!this.sb();
+      untracked(() => {
+        if (!active) {
+          this.cues.reset();
+          return;
+        }
+        const cue = this.cues.update(r, running, d);
+        if (cue) this.onCue(cue);
+      });
     });
     // Persistencia de la cola por combate.
     effect(() => savePending(this.pending(), this.savedKeys));
     effect(() => {
       const id = this.id();
       untracked(() => {
+        this.cues.reset();
+        this.flash.set(null);
+        this.primary.set(true);
+        this.owner.set(null);
         this.unlocked.set(false);
         this.needsHead.set(false);
         this.headVote.set(null);
@@ -450,7 +519,7 @@ export class MesaPage {
       });
     });
     effect(() => {
-      const t = this.tatami();
+      const t = this.tatamiId();
       const id = this.id();
       untracked(() => {
         this.tatamiInfo.set(null);
@@ -475,13 +544,55 @@ export class MesaPage {
     }
   }
 
+  // --- Avisos de tiempo (sonido, vibración, parpadeo) y yame automático ---
+  private readonly beeper = new Beeper();
+  private readonly cues = new TimerCues();
+  /** Parpadeo del reloj tras un aviso. */
+  readonly flash = signal<TimerCue | null>(null);
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Preferencias guardadas en este dispositivo. */
+  readonly muted = signal(readFlag(MESA_PREFS.mute));
+  readonly autoYame = signal(readFlag(MESA_PREFS.autoYame));
+  readonly optsOpen = signal(false);
+
+  private readonly unlockAudio = () => this.beeper.unlock();
+
+  private onCue(cue: TimerCue): void {
+    if (!this.muted()) this.beeper.play(cue);
+    buzz(VIBRATION[cue]);
+    this.flash.set(cue);
+    if (this.flashTimer) clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => this.flash.set(null), cue === 'end' ? 6000 : 2400);
+    // Yame automático: solo la tablet que lleva la mesa detiene el reloj, con la hora exacta del fin.
+    if (cue === 'end' && this.autoYame() && this.clock().running && !this.locked()) {
+      const at = timeUpAt(Date.now(), this.clock().elapsed, this.duration());
+      this.send('pause', { at: new Date(at).toISOString() });
+    }
+  }
+
+  toggleMute(): void {
+    this.muted.update((v) => !v);
+    writeFlag(MESA_PREFS.mute, this.muted());
+    if (!this.muted()) this.testSound();
+  }
+
+  toggleAutoYame(): void {
+    this.autoYame.update((v) => !v);
+    writeFlag(MESA_PREFS.autoYame, this.autoYame());
+  }
+
+  testSound(): void {
+    this.beeper.unlock();
+    this.beeper.play('warn');
+  }
+
   /** Aviso del navegador al cerrar/recargar con eventos sin enviar (la cola igual queda guardada). */
   @HostListener('window:beforeunload', ['$event'])
   onBeforeUnload(ev: BeforeUnloadEvent): string | undefined {
     const n = this.pending().length;
     if (!n) return undefined;
     ev.preventDefault();
-    const msg = `Hay ${n} evento(s) sin enviar`;
+    const msg = `Hay ${plural(n, 'evento', 'eventos')} sin enviar`;
     ev.returnValue = msg;
     return msg;
   }
@@ -508,20 +619,57 @@ export class MesaPage {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.dialog.stack().length) return;
-    if (this.moreOpen()) this.moreOpen.set(null);
+    if (this.moreOpen()) this.closeMore(true);
+    else if (this.optsOpen()) this.optsOpen.set(false);
     else if (this.finishOpen() && !this.finishing()) this.finishOpen.set(false);
   }
 
-  /** Un toque fuera del menú «Más» lo cierra. */
+  /** Un toque fuera del menú «Más» (o de las opciones de aviso) lo cierra. */
   @HostListener('document:pointerdown', ['$event'])
   onDocPointer(ev: PointerEvent): void {
-    if (!this.moreOpen()) return;
     const t = ev.target as HTMLElement | null;
-    if (!t?.closest?.('.more')) this.moreOpen.set(null);
+    if (this.moreOpen() && !t?.closest?.('.more')) this.moreOpen.set(null);
+    if (this.optsOpen() && !t?.closest?.('.opts')) this.optsOpen.set(false);
   }
 
   toggleMore(c: Color): void {
     this.moreOpen.update((v) => (v === c ? null : c));
+    // Con el menú abierto, el foco pasa al primer ítem (se recorre con las flechas).
+    if (this.moreOpen()) setTimeout(() => this.moreItems()[0]?.focus());
+  }
+
+  private moreItems(): HTMLElement[] {
+    const menu = document.querySelector<HTMLElement>('app-mesa .more-menu');
+    return menu
+      ? Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])'))
+      : [];
+  }
+
+  private closeMore(returnFocus = false): void {
+    const c = this.moreOpen();
+    this.moreOpen.set(null);
+    if (returnFocus && c) {
+      document.querySelector<HTMLElement>(`app-mesa .side.${c} .more-btn`)?.focus();
+    }
+  }
+
+  /** Flechas, Inicio y Fin recorren el menú «Más»; Tab lo cierra. */
+  onMoreKey(ev: KeyboardEvent): void {
+    const items = this.moreItems();
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (ev.key === 'ArrowDown') next = (i + 1) % items.length;
+    else if (ev.key === 'ArrowUp') next = (i - 1 + items.length) % items.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = items.length - 1;
+    else if (ev.key === 'Tab') {
+      this.moreOpen.set(null);
+      return;
+    }
+    if (next < 0) return;
+    ev.preventDefault();
+    items[next].focus();
   }
 
   rare(type: 'senshu_cancel' | 'kiken' | 'shikkaku' | 'walkover' | 'hantei', c: Color): void {
@@ -613,9 +761,60 @@ export class MesaPage {
       const r = await firstValueFrom(
         this.api.post<PresenceOut>(`/matches/${id}/presence`, { device_id: this.device }),
       );
-      if (!this.destroyed && id === this.id()) this.others.set(r.others);
+      if (this.destroyed || id !== this.id()) return;
+      this.others.set(r.others);
+      this.applyPresence(r);
     } catch {
-      /* solo informativo */
+      /* sin señal: se sigue como estaba */
+    }
+  }
+
+  /** El servidor dice quién lleva la mesa (un servidor anterior no lo informa: se asume esta). */
+  private applyPresence(r: PresenceOut): void {
+    if (r.primary === undefined) return;
+    const was = this.primary();
+    this.primary.set(r.primary);
+    this.owner.set(r.primary ? null : (r.owner ?? null));
+    if (!was && r.primary) {
+      this.toast.show('Esta tablet vuelve a llevar la mesa');
+      this.flush();
+    }
+  }
+
+  /** Otra tablet lleva la mesa: esta pasa a solo lectura; la cola se conserva. */
+  private toReadOnly(): void {
+    if (this.primary()) this.toast.warn('Otra tablet tomó la mesa: esta queda en solo lectura.');
+    this.primary.set(false);
+    this.moreOpen.set(null);
+    this.heartbeat();
+  }
+
+  /** «Tomar la mesa»: esta tablet pasa a registrar; la otra queda en solo lectura. */
+  async takeTable(): Promise<void> {
+    if (this.taking()) return;
+    const ok = await this.dialog.confirm({
+      title: 'Tomar la mesa',
+      message: `Esta tablet pasará a registrar el combate y ${this.ownerText()} quedará en solo lectura. Háganlo solo si la otra tablet ya no se usa.`,
+      confirmText: 'Tomar la mesa',
+    });
+    if (!ok) return;
+    this.taking.set(true);
+    try {
+      const r = await firstValueFrom(
+        this.api.post<PresenceOut>(`/matches/${this.id()}/presence/take`, {
+          device_id: this.device,
+        }),
+      );
+      this.others.set(r.others);
+      this.primary.set(true);
+      this.owner.set(null);
+      this.toast.ok('Esta tablet lleva la mesa');
+      await this.reload(true);
+      this.flush();
+    } catch (e) {
+      this.toast.error(ApiError.from(e).fullMessage);
+    } finally {
+      this.taking.set(false);
     }
   }
 
@@ -697,39 +896,69 @@ export class MesaPage {
       const have = new Set(q.map((p) => p.body.id));
       return [...q, ...saved.filter((p) => !have.has(p.body.id))];
     });
-    this.toast.show(`Se recuperaron ${saved.length} evento(s) sin enviar`);
+    this.toast.show(
+      saved.length === 1
+        ? 'Se recuperó 1 evento sin enviar'
+        : `Se recuperaron ${plural(saved.length, 'evento', 'eventos')} sin enviar`,
+    );
     this.flush();
   }
 
   send(type: string, extra: Partial<EventIn> = {}): void {
-    if (!this.sb()) return;
+    if (!this.sb() || this.readOnly()) return;
     const body: EventIn = { id: newId(), type, at: new Date().toISOString(), ...extra };
     this.pending.update((q) => [...q, { matchId: this.id(), body, attempts: 0 }]);
     this.flush();
   }
 
   private async flush(): Promise<void> {
-    if (this.sending() || this.destroyed || this.stuck() || this.authBlocked()) return;
+    if (
+      this.sending() ||
+      this.destroyed ||
+      this.stuck() ||
+      this.authBlocked() ||
+      this.session.expired() ||
+      this.readOnly()
+    )
+      return;
     this.sending.set(true);
     try {
       while (this.pending().length && !this.destroyed) {
         const p = this.pending()[0];
         const seq = this.seq.next();
         try {
-          const sb = await firstValueFrom(
-            this.api.post<Scoreboard>(`/matches/${p.matchId}/events`, p.body),
+          // Eventos y cierre van con el MISMO id en cada reintento: el servidor no duplica.
+          const res = await firstValueFrom(
+            this.api.post<Scoreboard | FinishOut>(
+              pendingPath(p),
+              pendingPayload(p),
+              undefined,
+              this.deviceOpts,
+            ),
           );
           if (this.destroyed) return;
+          const finish = isFinish(p);
+          const sb = finish ? (res as FinishOut).scoreboard : (res as Scoreboard);
           this.pending.update((q) => q.filter((x) => x !== p));
           this.offline.set(false);
+          if (finish) this.toast.ok('Combate cerrado: el cierre en cola se envió');
           if (p.matchId === this.id()) {
             this.setScoreboard(sb, seq);
+            if (finish) this.unlocked.set(false);
             if (p.body.type === 'annul') {
               const t = sb.events.find((x) => x.id === p.body.target_id);
               this.toast.show(`Deshecho: ${t ? this.describe(t, sb) : 'evento'}`);
             }
             // Si la pantalla se abrió sin conexión, completa la carga (categoría, torneo).
             if (this.loadError() || !this.category()) this.load(this.id());
+          }
+          const affected = finish ? (res as FinishOut).affected_matches : [];
+          if (affected?.length) {
+            await this.dialog.alert(
+              'Combates siguientes afectados',
+              'La corrección cambia el ganador de un combate que ya avanzó en la llave. Revisa estos combates:',
+              affected,
+            );
           }
         } catch (e) {
           if (this.destroyed) return;
@@ -771,6 +1000,12 @@ export class MesaPage {
             this.authBlocked.set(true);
             return;
           }
+          if (decision === 'device') {
+            // Otra tablet lleva la mesa: la cola se conserva hasta «Tomar la mesa».
+            p.attempts = 0;
+            this.toReadOnly();
+            return;
+          }
           // Rechazo de negocio: se descarta ese evento y se informa.
           this.pending.update((q) => q.filter((x) => x !== p));
           this.toast.error(`${EVENT_LABEL[p.body.type] ?? p.body.type}: ${err.fullMessage}`);
@@ -796,13 +1031,57 @@ export class MesaPage {
     this.flush();
   }
 
+  // --- Red: al volver la señal se reintenta al instante ---
+  private readonly onOnline = () => {
+    this.online.set(true);
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    this.heartbeat();
+    if (this.pending().length) this.flush();
+    else this.reload(true);
+  };
+  private readonly onOffline = () => this.online.set(false);
+
+  // --- Sesión vencida: panel de ingreso dentro de la mesa ---
+  readonly reloginUser = signal('');
+  readonly reloginPass = signal('');
+  readonly reloginBusy = signal(false);
+  readonly reloginError = signal('');
+  /** Hay que volver a ingresar: la cola se conserva y se reanuda al hacerlo. */
+  readonly needsLogin = computed(() => this.authBlocked() || this.session.expired());
+
+  async relogin(): Promise<void> {
+    if (this.reloginBusy()) return;
+    this.reloginBusy.set(true);
+    this.reloginError.set('');
+    try {
+      await this.auth.login(this.reloginUser().trim(), this.reloginPass());
+      this.reloginPass.set('');
+      this.session.resolved();
+      this.authBlocked.set(false);
+      this.toast.ok('Sesión iniciada: se reanuda el envío');
+      this.heartbeat();
+      if (this.pending().length) this.retryNow();
+      else this.reload(true);
+    } catch (e) {
+      this.reloginError.set(ApiError.from(e).fullMessage);
+    } finally {
+      this.reloginBusy.set(false);
+    }
+  }
+
   /** Descarta el evento bloqueado (con confirmación) y sigue con el resto de la cola. */
   async discardStuck(): Promise<void> {
     const p = this.stuck();
     if (!p) return;
+    const clockNote = CLOCK_EVENTS.has(p.body.type)
+      ? ' Atención: es un evento del reloj; al descartarlo, el tiempo de esta tablet y el del servidor dejarán de coincidir. Revisa el reloj y corrígelo con los ajustes de ±1 s y ±10 s.'
+      : '';
     const ok = await this.dialog.confirm({
       title: 'Descartar este evento',
-      message: `Se descartará "${this.stuckText()}" y no quedará registrado en el combate. Los demás eventos pendientes se seguirán enviando.`,
+      message: `Se descartará "${this.stuckText()}" y no quedará registrado en el combate. Los demás eventos pendientes se seguirán enviando.${clockNote}`,
       danger: true,
       confirmText: 'Descartar',
     });
@@ -902,10 +1181,13 @@ export class MesaPage {
         (this.finished() ? (s.winner ?? (s.method === 'draw' ? 'draw' : null)) : sug.winner) ??
         null,
       method:
-        (this.finished() ? s.method : sug.method) ?? (sug.needs === 'hantei' ? 'hantei' : 'points'),
+        (this.finished() ? s.method : sug.method) ??
+        (this.isKata() ? 'flags' : sug.needs === 'hantei' ? 'hantei' : 'points'),
       reason: '',
       time_over: this.timeOver(),
     };
+    // El método debe existir en la lista de la modalidad (un kata no se cierra «por puntos»).
+    if (!this.methods().includes(this.finishForm.method)) this.finishForm.method = this.methods()[0];
     this.timeEndPick = null;
     if (this.finishForm.time_over) this.applyTimeEnd();
     this.finishId = newId();
@@ -954,17 +1236,28 @@ export class MesaPage {
     this.timeEndPick = t.winner;
   }
 
+  /**
+   * Sin señal (o con eventos aún sin enviar) el cierre se deja en cola: el servidor lo acepta
+   * una sola vez por `id`, así que se envía al volver la conexión, después de los eventos.
+   */
+  readonly finishWillQueue = computed(() => this.noSignal() || this.pending().length > 0);
+
+  private queueFinish(f: FinishData): void {
+    this.pending.update((q) => enqueueFinish(q, this.id(), f));
+    this.finishOpen.set(false);
+    this.toast.warn(
+      'Cierre en cola: anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.',
+    );
+    this.flush();
+  }
+
   async confirmFinish(): Promise<void> {
-    if (this.pending().length) {
-      this.toast.warn('Hay eventos pendientes de enviar. Espera la conexión antes de cerrar.');
-      return;
-    }
     const f = this.finishForm;
     if (!f.winner) {
       this.toast.warn('Elige el ganador antes de confirmar.');
       return;
     }
-    const body = {
+    const data: FinishData = {
       id: this.finishId,
       at: new Date().toISOString(),
       winner: f.winner,
@@ -972,18 +1265,44 @@ export class MesaPage {
       reason: f.reason.trim() || null,
       time_over: f.time_over,
     };
+    if (this.finishWillQueue()) {
+      this.queueFinish(data);
+      return;
+    }
+    const body = { ...data };
     this.finishing.set(true);
     const seq = this.seq.next();
+    let queued = false;
     const res = await this.mut.run<FinishOut>(
       (override) =>
         this.api.post<FinishOut>(
           `/matches/${this.id()}/finish`,
           override ? { ...body, override } : body,
+          undefined,
+          this.deviceOpts,
         ),
-      { success: 'Combate cerrado', onConflict: () => this.reload() },
+      {
+        success: 'Combate cerrado',
+        onConflict: () => this.reload(),
+        onError: (err) => {
+          if (err.isNetwork || err.code === 'TIMEOUT') {
+            // Se cortó la señal al cerrar: el mismo cierre (mismo id) queda en cola.
+            this.offline.set(true);
+            queued = true;
+            this.queueFinish(data);
+            return true;
+          }
+          if (err.code === 'CONFLICT_DEVICE') {
+            this.finishOpen.set(false);
+            this.toReadOnly();
+            return true;
+          }
+          return false;
+        },
+      },
     );
     this.finishing.set(false);
-    if (!res) return;
+    if (!res || queued) return;
     this.finishOpen.set(false);
     this.unlocked.set(false);
     this.setScoreboard(res.scoreboard, seq);
@@ -1017,12 +1336,27 @@ export class MesaPage {
       at: new Date().toISOString(),
     };
     this.flagsBusy.set(true);
-    // mut.post reenvía el MISMO cuerpo con override={reason} si el servidor responde 409 WARNINGS.
-    const res = await this.mut.post<{
+    // mut.run reenvía el MISMO cuerpo con override={reason} si el servidor responde 409 WARNINGS.
+    const res = await this.mut.run<{
       winner: Color | null;
       needs_head_judge: boolean;
       affected?: string[];
-    }>(`/matches/${this.id()}/flags`, body);
+    }>(
+      (override) =>
+        this.api.post(
+          `/matches/${this.id()}/flags`,
+          override ? { ...body, override } : body,
+          undefined,
+          this.deviceOpts,
+        ),
+      {
+        onError: (err) => {
+          if (err.code !== 'CONFLICT_DEVICE') return false;
+          this.toReadOnly();
+          return true;
+        },
+      },
+    );
     this.flagsBusy.set(false);
     if (!res) return;
     if (res.needs_head_judge) {
@@ -1044,8 +1378,16 @@ export class MesaPage {
   }
 
   // --- Navegación ---
-  async nextMatch(): Promise<void> {
+  /** Tatami del combate: el de la URL (?tatami=) o, si no viene, el de su categoría. */
+  readonly tatamiId = computed(() => {
     const t = this.tatami();
+    if (t) return t;
+    const c = this.category()?.tatami_id;
+    return c ? String(c) : undefined;
+  });
+
+  async nextMatch(): Promise<void> {
+    const t = this.tatamiId();
     if (!t) return;
     try {
       const q = await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${t}/queue`));
@@ -1063,13 +1405,16 @@ export class MesaPage {
   }
 
   tatamiParams(): Record<string, string> {
-    const t = this.tatami();
+    const t = this.tatamiId();
     return t ? { tatami: t } : {};
   }
 
   backLink(): unknown[] {
     const bout = this.sb()?.bout;
     if (bout) return ['/mesa', bout.parent_match_id];
+    // El operador de un tatami (sin rol de organizador) vuelve a «Mi tatami».
+    const u = this.auth.user();
+    if (!isStaff(u) && homePath(u) === '/mi-tatami') return ['/mi-tatami'];
     const c = this.category();
     if (this.tatami() && c) return ['/torneos', c.tournament_id, 'tatamis'];
     if (c) return ['/categorias', c.id, 'llave'];

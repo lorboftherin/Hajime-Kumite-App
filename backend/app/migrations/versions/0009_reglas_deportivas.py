@@ -7,8 +7,8 @@ en las sanciones; notas atléticas y grupos en kata.
 Las categorías y plantillas existentes reciben su rango de peso a partir de
 la etiqueta ("-45" = hasta 45 kg, "+84" = más de 84 kg, "45-50").
 
-Revision ID: 0005_reglas_deportivas
-Revises: 0004
+Revision ID: 0009_reglas_deportivas
+Revises: 0008_mesa_principal
 Create Date: 2026-09-26 16:44:39.562930
 """
 
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0005_reglas_deportivas"
-down_revision = "0004"
+revision = "0009_reglas_deportivas"
+down_revision = "0008_mesa_principal"
 branch_labels = None
 depends_on = None
 

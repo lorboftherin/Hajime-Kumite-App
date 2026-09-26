@@ -480,11 +480,10 @@ export class RulesForm {
   get showKata(): boolean {
     return this.modality !== 'kumite';
   }
+  /** Las reglas de llaves aplican a todas las modalidades. */
+  readonly showCompetition = true;
   get showTeam(): boolean {
     return this.mode === 'tournament' || this.isTeam;
-  }
-  get showCompetition(): boolean {
-    return true;
   }
 
   /** Valor por defecto del sistema como pista del campo vacío. */

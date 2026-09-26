@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
@@ -13,6 +13,16 @@ import { PageHead } from '../../shared/page-head';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
+const INCLUDE_TEST_KEY = 'hajime.torneos.incluir-prueba';
+
+function readIncludeTest(): boolean {
+  try {
+    return localStorage.getItem(INCLUDE_TEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 @Component({
   selector: 'app-tournament-list',
   imports: [FormsModule, RouterLink, StatusBadge, Modal, PageHead, Icon, Enso],
@@ -24,7 +34,7 @@ const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', '
             <span>{{ tournaments().length }} {{ tournaments().length === 1 ? 'torneo' : 'torneos' }}</span>
           }
         </div>
-        <label class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="load()" /> Incluir torneos de prueba</label>
+        <label class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="onIncludeTest()" /> Incluir torneos de prueba</label>
         <button class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo torneo</button>
       </app-page-head>
       @if (loading()) {
@@ -247,7 +257,8 @@ export class TournamentListPage {
   readonly loading = signal(true);
   readonly showNew = signal(false);
   readonly busy = signal(false);
-  includeTest = true;
+  /** Los torneos de prueba se ocultan por defecto; la elección se recuerda en el dispositivo. */
+  includeTest = readIncludeTest();
   form = this.blank();
 
   constructor() {
@@ -280,6 +291,15 @@ export class TournamentListPage {
       default_format: 'single_elimination',
       default_third_place_rule: 'two_bronzes',
     };
+  }
+
+  onIncludeTest(): void {
+    try {
+      localStorage.setItem(INCLUDE_TEST_KEY, this.includeTest ? '1' : '0');
+    } catch {
+      /* sin almacenamiento */
+    }
+    this.load();
   }
 
   load(): void {

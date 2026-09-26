@@ -93,7 +93,7 @@ def test_upgrade_keeps_existing_data(tmp_path):
 
 
 def test_weight_labels_become_numeric_ranges(tmp_path):
-    """La migración 0005 deduce el rango en kg de las etiquetas de peso existentes."""
+    """La migración 0009 deduce el rango en kg de las etiquetas de peso existentes."""
     from alembic import command
     from sqlalchemy import text
 
@@ -104,7 +104,7 @@ def test_weight_labels_become_numeric_ranges(tmp_path):
     cfg = alembic_config()
     with engine.begin() as conn:
         cfg.attributes["connection"] = conn
-        command.upgrade(cfg, "0004")
+        command.upgrade(cfg, "0008_mesa_principal")
     with engine.begin() as conn:
         tid = _fill(conn, "tournaments")
         ids = {

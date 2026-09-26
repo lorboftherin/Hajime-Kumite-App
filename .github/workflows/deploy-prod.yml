@@ -1,0 +1,75 @@
+name: Desplegar a producción
+
+# Promueve a hajime-prod una imagen YA PROBADA: la misma `sha-xxxxxxx-azure`
+# que CI publicó (y desplegó en pruebas), o la de una versión `X.Y.Z-azure`.
+# Nunca construye nada nuevo.
+#
+# Pasos (infra/azure/promover.sh):
+#   1. comprueba que la imagen exista en GHCR;
+#   2. corre las migraciones con el Container Apps Job hajime-prod-migrar
+#      (mismo contenedor; su comando se fija en crear-ambiente.sh con
+#      COMANDO_MIGRACION, por defecto `python -m app.prepare`);
+#   3. crea la nueva revisión de la app y espera /health/ready;
+#   4. prueba de humo (interfaz y API pública); si falla, vuelve sola a la
+#      revisión anterior (infra/azure/rollback.sh).
+#
+# El entorno «prod» de GitHub exige aprobación manual (Settings → Environments
+# → prod → Required reviewers) y guarda sus propias variables AZURE_* (la
+# identidad de producción, distinta de la de pruebas). Ver docs/acciones-del-duenio.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Qué desplegar: SHA corto del commit (p. ej. 1a2b3c4) o versión (p. ej. 0.2.0)"
+        required: true
+        type: string
+      migrar:
+        description: "Correr migraciones antes de actualizar la app"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: ${{ steps.promover.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    env:
+      VERSION_PEDIDA: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: La imagen existe en GHCR (solo se promueve lo ya publicado por CI o Release)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGEN=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          ETIQUETA="$(bash infra/azure/promover.sh --solo-etiqueta "$VERSION_PEDIDA")"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx imagetools inspect "$IMAGEN:$ETIQUETA" > /dev/null \
+            || { echo "No existe $IMAGEN:$ETIQUETA (¿pasó CI para ese commit?)" >&2; exit 1; }
+          echo "Promoviendo \`$IMAGEN:$ETIQUETA\`" >> "$GITHUB_STEP_SUMMARY"
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Migrar, actualizar y probar
+        id: promover
+        env:
+          IMAGEN_BASE: ghcr.io/${{ github.repository }}
+          SIN_MIGRAR: ${{ !inputs.migrar && '1' || '' }}
+          ROLLBACK_AUTOMATICO: "1"
+        run: bash infra/azure/promover.sh prod "$VERSION_PEDIDA"

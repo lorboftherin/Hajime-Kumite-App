@@ -2,6 +2,14 @@
 SET XACT_ABORT ON;
 BEGIN TRAN;
 
+CREATE TABLE login_attempts (
+	[key] VARCHAR(160) NOT NULL, 
+	failures INTEGER NOT NULL, 
+	window_start DATETIME2 NOT NULL, 
+	locked_until DATETIME2 NULL, 
+	PRIMARY KEY ([key])
+);
+
 CREATE TABLE users (
 	id INTEGER NOT NULL IDENTITY, 
 	username VARCHAR(80) NOT NULL, 
@@ -98,6 +106,26 @@ CREATE TABLE rule_overrides (
 	FOREIGN KEY(user_id) REFERENCES users (id)
 );
 
+CREATE INDEX ix_rule_overrides_entity ON rule_overrides (entity, entity_id);
+CREATE TABLE user_sessions (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
+	previous_token_hash VARCHAR(64) NULL, 
+	rotated_at DATETIME2 NULL, 
+	created_at DATETIME2 NOT NULL, 
+	last_used_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	revoked_at DATETIME2 NULL, 
+	user_agent NVARCHAR(255) NOT NULL, 
+	ip VARCHAR(45) NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
+);
+
+CREATE INDEX ix_user_sessions_previous_token_hash ON user_sessions (previous_token_hash);
+CREATE INDEX ix_user_sessions_user_id ON user_sessions (user_id);
 CREATE TABLE branches (
 	id INTEGER NOT NULL IDENTITY, 
 	dojo_id INTEGER NOT NULL, 
@@ -189,6 +217,7 @@ CREATE TABLE person_roles (
 );
 
 CREATE INDEX ix_person_roles_person_id ON person_roles (person_id);
+CREATE INDEX ix_person_roles_scope ON person_roles (role, scope_type, scope_id);
 CREATE TABLE template_categories (
 	id INTEGER NOT NULL IDENTITY, 
 	template_id INTEGER NOT NULL, 
@@ -252,7 +281,7 @@ CREATE TABLE tournaments (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
-CREATE INDEX ix_tournaments_public_token ON tournaments (public_token);
+CREATE UNIQUE INDEX uq_tournaments_public_token ON tournaments (public_token) WHERE public_token IS NOT NULL;
 CREATE TABLE dojo_memberships (
 	id INTEGER NOT NULL IDENTITY, 
 	person_id INTEGER NOT NULL, 
@@ -286,6 +315,18 @@ CREATE TABLE import_batches (
 );
 
 CREATE INDEX ix_import_batches_tournament_id ON import_batches (tournament_id);
+CREATE TABLE public_snapshots (
+	tournament_id INTEGER NOT NULL, 
+	kind VARCHAR(40) NOT NULL, 
+	payload NVARCHAR(max) NULL, 
+	etag VARCHAR(40) NULL, 
+	computed_at DATETIME2 NULL, 
+	dirty BIT NOT NULL DEFAULT 0, 
+	lease_until DATETIME2 NULL, 
+	PRIMARY KEY (tournament_id, kind), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id)
+);
+
 CREATE TABLE referee_assignments (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 
@@ -376,6 +417,7 @@ CREATE TABLE categories (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE INDEX ix_categories_tatami ON categories (tatami_id, status, queue_position);
 CREATE INDEX ix_categories_tournament ON categories (tournament_id, status);
 CREATE TABLE import_rows (
 	id INTEGER NOT NULL IDENTITY, 
@@ -484,6 +526,7 @@ CREATE TABLE registrations (
 );
 
 CREATE INDEX ix_registrations_category ON registrations (category_id, status);
+CREATE INDEX ix_registrations_dojo_id ON registrations (dojo_id);
 CREATE INDEX ix_registrations_person_id ON registrations (person_id);
 CREATE INDEX ix_registrations_team_id ON registrations (team_id);
 CREATE INDEX ix_registrations_tournament_id ON registrations (tournament_id);
@@ -519,6 +562,7 @@ CREATE TABLE category_results (
 );
 
 CREATE INDEX ix_category_results_category_id ON category_results (category_id);
+CREATE INDEX ix_category_results_registration_id ON category_results (registration_id);
 CREATE TABLE matches (
 	id INTEGER NOT NULL IDENTITY, 
 	category_id INTEGER NOT NULL, 
@@ -560,7 +604,10 @@ CREATE TABLE matches (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE INDEX ix_matches_aka_registration ON matches (aka_registration_id);
+CREATE INDEX ix_matches_ao_registration ON matches (ao_registration_id);
 CREATE INDEX ix_matches_category ON matches (category_id, status);
+CREATE INDEX ix_matches_category_current ON matches (category_id, is_current);
 CREATE INDEX ix_matches_parent_match_id ON matches (parent_match_id);
 CREATE TABLE judge_votes (
 	id INTEGER NOT NULL IDENTITY, 
@@ -601,6 +648,7 @@ CREATE TABLE kata_performances (
 );
 
 CREATE INDEX ix_kata_performances_category_id ON kata_performances (category_id);
+CREATE INDEX ix_kata_performances_registration_id ON kata_performances (registration_id);
 CREATE TABLE match_events (
 	id VARCHAR(36) NOT NULL, 
 	match_id INTEGER NOT NULL, 
@@ -628,6 +676,7 @@ CREATE TABLE match_presence (
 	user_id INTEGER NULL, 
 	first_seen DATETIME2 NOT NULL, 
 	last_seen DATETIME2 NOT NULL, 
+	is_primary BIT NOT NULL, 
 	PRIMARY KEY (id), 
 	UNIQUE (match_id, device_id), 
 	FOREIGN KEY(match_id) REFERENCES matches (id), 

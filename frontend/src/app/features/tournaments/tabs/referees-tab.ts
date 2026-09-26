@@ -6,6 +6,7 @@ import { ApiService } from '../../../core/api.service';
 import { Bracket, Person, RefereeAssignment, RefereeOverview } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { Icon } from '../../../shared/icon';
+import { PluralPipe } from '../../../shared/plural';
 import { TournamentContext } from '../tournament-context';
 
 const TARGET_LABEL: Record<string, string> = { tatami: 'Tatami', category: 'Categoría', match: 'Combate' };
@@ -17,7 +18,7 @@ const TARGET_LABEL: Record<string, string> = { tatami: 'Tatami', category: 'Cate
  */
 @Component({
   selector: 'app-referees-tab',
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, PluralPipe],
   template: `
     <p class="hint intro">
       Opcional: registrar árbitros nunca impide operar el torneo. Un árbitro no necesita dojo. Si se asignan a un tatami,
@@ -30,7 +31,7 @@ const TARGET_LABEL: Record<string, string> = { tatami: 'Tatami', category: 'Cate
           @for (r of data()?.referees ?? []; track r.person_id) {
             <li>
               <a [routerLink]="['/personas', r.person_id]">{{ r.name }}</a>
-              <span class="muted small">{{ r.assignments ? r.assignments + ' asignación(es)' : 'sin asignar' }}</span>
+              <span class="muted small">{{ r.assignments ? (r.assignments | plural: 'asignación' : 'asignaciones') : 'sin asignar' }}</span>
             </li>
           } @empty {
             <li class="muted small">Todavía no hay árbitros registrados.</li>

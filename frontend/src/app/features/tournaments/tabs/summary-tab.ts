@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { AuthService } from '../../../core/auth.service';
 import { DialogService } from '../../../core/dialog.service';
@@ -13,8 +14,36 @@ import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { MoreMenu } from '../../../shared/more-menu';
 import { DatePipe, LabelPipe } from '../../../shared/pipes';
+import { plural } from '../../../shared/plural';
 import { TournamentContext } from '../tournament-context';
 import { TournamentRules } from '../tournament-rules';
+
+/** Verificación previa al inicio (GET /tournaments/{tid}/readiness). */
+interface ReadinessIssue {
+  code: string;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  items: string[];
+}
+interface Readiness {
+  ready: boolean;
+  issues: ReadinessIssue[];
+}
+
+const SEVERITY_LABEL: Record<ReadinessIssue['severity'], string> = {
+  error: 'Importante',
+  warning: 'Revisar',
+  info: 'Aviso',
+};
+/** Dónde se resuelve cada problema. */
+const ISSUE_LINK: Record<string, { path: string; label: string }> = {
+  NO_BRACKET: { path: '../categorias', label: 'Ir a Categorías' },
+  SINGLE_ENTRANT: { path: '../categorias', label: 'Ir a Categorías' },
+  NO_TATAMI: { path: '../tatamis', label: 'Organizar colas' },
+  TATAMI_WITHOUT_CATEGORIES: { path: '../tatamis', label: 'Organizar colas' },
+  NO_TATAMIS: { path: '../tatamis', label: 'Ir a Tatamis' },
+  MINOR_WITHOUT_CONSENT: { path: '../inscripciones', label: 'Ir a Inscripciones' },
+};
 
 interface Transition {
   to: string;
@@ -213,6 +242,44 @@ const HINT: Record<string, string> = {
       </app-modal>
     }
 
+    @if (check(); as ck) {
+      <app-modal title="Antes de iniciar el torneo" [wide]="true" (closed)="closeCheck(false)">
+        @if (ck.data.issues.length) {
+          <p class="small">
+            @if (ck.data.ready) {
+              No hay nada que impida iniciar, pero conviene revisar:
+            } @else {
+              Hay cosas que conviene resolver antes de iniciar: sin ellas, algunos combates no llegarán a las mesas.
+            }
+          </p>
+          <ul class="list-plain issues">
+            @for (i of ck.data.issues; track i.code) {
+              <li class="issue {{ i.severity }}">
+                <span class="badge" [class.shu]="i.severity === 'error'" [class.yamabuki]="i.severity === 'warning'" [class.plain]="i.severity === 'info'">{{ severityLabel[i.severity] }}</span>
+                <div class="grow">
+                  <div>{{ i.message }}</div>
+                  @if (i.items.length) {
+                    <div class="small muted">{{ i.items.slice(0, 8).join(' · ') }}@if (i.items.length > 8) { · y {{ i.items.length - 8 }} más }</div>
+                  }
+                </div>
+                @if (issueLink[i.code]; as l) {
+                  <a class="btn sm ghost" [routerLink]="l.path" (click)="closeCheck(false)">{{ l.label }}</a>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p>Todo en orden: categorías con llave y tatami, y tatamis con operador.</p>
+        }
+        <div class="form-actions">
+          <button class="btn" (click)="closeCheck(false)">Revisar primero</button>
+          <button class="btn" [class.danger]="!ck.data.ready" [class.primary]="ck.data.ready" (click)="closeCheck(true)">
+            {{ ck.data.issues.length ? 'Iniciar igual' : 'Iniciar torneo' }}
+          </button>
+        </div>
+      </app-modal>
+    }
+
     @if (genOpen()) {
       <app-modal title="Generar categorías" (closed)="genOpen.set(false)">
         <p class="small muted">Copia las categorías de una plantilla al torneo. Luego puedes editarlas, fusionarlas o cancelarlas.</p>
@@ -232,6 +299,27 @@ const HINT: Record<string, string> = {
     }
   `,
   styles: `
+    .issues {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.5rem 0 0.25rem;
+    }
+    .issue {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--kasumi);
+      border-radius: var(--radius-sm);
+      background: var(--kinu);
+      &.error {
+        border-color: color-mix(in srgb, var(--shu) 45%, var(--kasumi));
+      }
+      .badge {
+        flex: none;
+      }
+    }
     .overview {
       display: grid;
       grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -455,10 +543,46 @@ export class SummaryTab {
     });
   }
 
+  // --- Verificación previa a «Iniciar torneo» ---
+  readonly severityLabel = SEVERITY_LABEL;
+  readonly issueLink = ISSUE_LINK;
+  readonly check = signal<{ data: Readiness; resolve: (go: boolean) => void } | null>(null);
+
+  closeCheck(go: boolean): void {
+    const c = this.check();
+    this.check.set(null);
+    c?.resolve(go);
+  }
+
+  /** Muestra la verificación previa; true = iniciar. Si falla la consulta, se confirma como siempre. */
+  private async readinessOk(t: Tournament): Promise<boolean | null> {
+    let data: Readiness;
+    try {
+      data = await firstValueFrom(this.api.get<Readiness>(`/tournaments/${t.id}/readiness`));
+    } catch {
+      return null;
+    }
+    const go = await new Promise<boolean>((resolve) => this.check.set({ data, resolve }));
+    if (!go || data.ready) return go;
+    // Hay problemas importantes: se confirma una vez más, explícitamente.
+    const errors = data.issues.filter((i) => i.severity === 'error').length;
+    return this.dialog.confirm({
+      title: 'Iniciar con problemas pendientes',
+      message: `Quedan ${plural(errors, 'problema importante', 'problemas importantes')} sin resolver. ¿Iniciar el torneo de todos modos?`,
+      danger: true,
+      confirmText: 'Iniciar de todos modos',
+      critical: true,
+    });
+  }
+
   async changeStatus(tr: Transition): Promise<void> {
     const t = this.ctx.tournament()!;
     let reason: string | null = null;
-    if (tr.reopen) {
+    const checked = tr.to === 'in_progress' && !tr.reopen ? await this.readinessOk(t) : null;
+    if (checked === false) return;
+    if (checked === true) {
+      // Ya se confirmó en la verificación previa.
+    } else if (tr.reopen) {
       reason = await this.dialog.prompt({
         title: 'Reabrir torneo',
         message: 'Reabrir un torneo finalizado queda auditado (quién, cuándo y por qué).',
@@ -531,7 +655,7 @@ export class SummaryTab {
     if (res) {
       this.genOpen.set(false);
       this.ctx.loadCategories();
-      this.dialog.alert('Categorías generadas', `Se crearon ${res.created} categorías.`);
+      this.dialog.alert('Categorías generadas', res.created === 1 ? 'Se creó 1 categoría.' : `Se crearon ${plural(res.created, 'categoría', 'categorías')}.`);
     }
   }
 }

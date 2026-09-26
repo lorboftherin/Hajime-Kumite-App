@@ -56,7 +56,28 @@ class UserOut(ORM):
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # Token opaco para renovar el de acceso sin volver a pedir la contraseña.
+    refresh_token: str | None = None
+    expires_in: int | None = None  # segundos de vida del token de acceso
     user: UserOut
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=10, max_length=200)
+
+
+class LogoutIn(BaseModel):
+    refresh_token: str | None = None
+
+
+class SessionOut(ORM):
+    id: int
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    user_agent: str
+    ip: str
+    current: bool = False
 
 
 class PasswordChange(BaseModel):
@@ -280,6 +301,13 @@ class CategoryCreate(CategoryFields):
 class CategoryUpdate(BaseModel):
     version: int
     name: str | None = None
+    # Datos básicos editables desde la pestaña Categorías (quién entra en la categoría).
+    sex: CategorySex | None = None
+    age_min: int | None = None
+    age_max: int | None = None
+    grade_min: int | None = None
+    grade_max: int | None = None
+    weight_class: str | None = None
     format: Literal["single_elimination", "round_robin", "kata_rounds", "groups_knockout"] | None = None
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     duration_seconds: int | None = None
@@ -289,7 +317,6 @@ class CategoryUpdate(BaseModel):
     kata_judges: int | None = None
     tatami_id: int | None = None
     queue_position: int | None = None
-    weight_class: str | None = None
     max_entrants: int | None = None
     weight_min_kg: float | None = None
     weight_max_kg: float | None = None

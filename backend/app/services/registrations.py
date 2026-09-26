@@ -3,17 +3,18 @@ from __future__ import annotations
 import io
 import itertools
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
 from app.api.errors import AppError, InvalidState, NotFound, WarningsRequireOverride
+from app.db.base import utcnow
 from app.db.models import (
     Category,
     DojoMembership,
@@ -35,6 +36,7 @@ from app.domain.categories import (
     registration_warnings,
     suggest_categories,
 )
+from app.domain.errors import DomainError
 from app.services import people
 from app.services.audit import apply_warnings, audit, bump, check_version, snapshot
 from app.services.tournaments import get_category, get_tournament, refresh_category_status
@@ -371,7 +373,7 @@ def _parse_date(v: Any) -> date | None:
             return datetime.strptime(txt, fmt).date()
         except ValueError:
             continue
-    raise ValueError(f"Fecha inválida: {txt}")
+    raise DomainError(f"Fecha inválida: {txt}")
 
 
 def _cell(v: Any) -> str:
@@ -664,6 +666,7 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
         if row_warnings and not override:
             raise WarningsRequireOverride(row_warnings, "La importación tiene advertencias")
         batch.status = "confirmed"
+        purge_batch_rows(batch)
         audit(
             db,
             user,
@@ -686,5 +689,48 @@ def cancel_import(db: Session, user: User, bid: int) -> None:
     if batch.status != "preview":
         raise InvalidState("La importación ya no está en vista previa")
     batch.status = "cancelled"
+    purge_batch_rows(batch)
     audit(db, user, "import", batch.id, "cancel", tournament_id=batch.tournament_id)
     db.commit()
+
+
+# Datos sensibles de las filas de importación: solo hacen falta mientras la
+# vista previa está abierta (detectar duplicados y crear personas).
+SENSITIVE_ROW_FIELDS = ("tipo_documento", "numero_documento", "fecha_nacimiento")
+IMPORT_RETENTION_DAYS = 30
+
+
+def purge_batch_rows(batch: ImportBatch) -> None:
+    """Quita DNI y fecha de nacimiento de las filas al confirmar o cancelar.
+
+    Las filas se conservan (nombre, dojo, estado y decisión tomada) para que el
+    organizador vea el resultado de la importación; los datos sensibles ya
+    viven, si corresponde, en la ficha de la persona.
+    """
+    for row in batch.rows:
+        if row.data and not row.data.get("redacted"):
+            row.data = {**{k: v for k, v in row.data.items() if k not in SENSITIVE_ROW_FIELDS}, "purged": True}
+        if row.duplicates:
+            row.duplicates = [{k: v for k, v in d.items() if k != "birth_date"} for d in row.duplicates]
+
+
+def purge_old_imports(db: Session, days: int = IMPORT_RETENTION_DAYS) -> dict[str, int]:
+    """Borra las filas de las importaciones de hace más de ``days`` días.
+
+    Una vista previa abandonada tanto tiempo se da por cancelada. El lote
+    (nombre del archivo, estado) y su auditoría se conservan.
+    """
+    limit = utcnow() - timedelta(days=days)
+    old = db.scalars(select(ImportBatch).where(ImportBatch.created_at < limit)).all()
+    ids = [b.id for b in old]
+    expired = 0
+    for b in old:
+        if b.status == "preview":
+            b.status = "cancelled"
+            audit(db, None, "import", b.id, "expire", tournament_id=b.tournament_id)
+            expired += 1
+    rows = 0
+    if ids:
+        rows = db.execute(delete(ImportRow).where(ImportRow.batch_id.in_(ids))).rowcount or 0
+    db.commit()
+    return {"batches": len(ids), "rows": rows, "expired_previews": expired}

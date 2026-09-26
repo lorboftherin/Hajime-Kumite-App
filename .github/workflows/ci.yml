@@ -1,31 +1,108 @@
 name: CI
 
+# Cada cambio: pruebas del backend y del frontend, contratos (DDL, OpenAPI,
+# versión), auditoría de dependencias, imagen Docker probada y escaneada, y
+# publicación en GHCR. En la rama de pruebas (AZURE_TEST_BRANCH, por defecto
+# main) además se despliega solo en el ambiente de pruebas de Azure.
+# Producción no se toca aquí: ver deploy-prod.yml (manual y con aprobación).
+#
+# Las acciones van fijadas por SHA (con su versión en el comentario);
+# Dependabot las actualiza (.github/dependabot.yml).
+
 on:
   push:
     branches: [main, "claude/**"]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # En PR solo importa la última corrida; en ramas se deja terminar cada push
+  # (cada imagen sha-xxxx debe existir para poder promoverla).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  cambios:
+    # Qué partes cambiaron: la app de Android solo se compila si cambió frontend/.
+    runs-on: ubuntu-latest
+    outputs:
+      movil: ${{ steps.filtro.outputs.movil }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: filtro
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE_PR: ${{ github.event.pull_request.base.sha }}
+          ANTES: ${{ github.event.before }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ]; then echo "movil=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$EVENTO" = "pull_request" ]; then DESDE="$BASE_PR"; else DESDE="$ANTES"; fi
+          # Rama nueva (before = 000…) o historia reescrita: se asume que cambió todo.
+          if [ -z "$DESDE" ] || ! git cat-file -e "$DESDE^{commit}" 2>/dev/null; then
+            echo "movil=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if git diff --name-only "$DESDE" HEAD | grep -qE '^(frontend/|VERSION$)'; then
+            echo "movil=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "movil=false" >> "$GITHUB_OUTPUT"
+          fi
+
   backend:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: ruff check app tests
-      - run: ruff format --check app tests
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Instalar dependencias (lockfile con hashes)
+        run: |
+          pip install --require-hashes -r requirements-dev.txt
+          pip install --no-deps -e .
+      - run: ruff check app tests scripts
+      - run: ruff format --check app tests scripts
       - run: pytest -q
       - name: Las migraciones cubren todos los cambios del modelo
         run: HAJIME_DATABASE_URL=sqlite:///ci.db alembic upgrade head && HAJIME_DATABASE_URL=sqlite:///ci.db alembic check
-      - name: El DDL de SQL Server está al día
+
+  contratos:
+    # Archivos generados que se versionan: deben estar al día con el código.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Instalar la API
+        working-directory: backend
+        run: |
+          pip install --require-hashes -r requirements.txt
+          pip install --no-deps .
+      - name: La versión es la misma en VERSION, pyproject y package.json
+        run: python scripts/version.py --check
+      - name: Scripts de operación sin errores (shellcheck)
+        # --severity=warning: los avisos «info» cambian entre versiones de shellcheck
+        # (el runner trae una más antigua que la de desarrollo) y no son errores.
+        run: shellcheck -x -P SCRIPTDIR --severity=warning infra/azure/*.sh scripts/*.sh
+      - name: El DDL de SQL Server está al día (sql/001_schema.sql)
+        working-directory: backend
         run: |
           python scripts/export_ddl.py
           git diff --exit-code ../sql/001_schema.sql
+      - name: El contrato de la API está al día (docs/openapi.json)
+        working-directory: backend
+        run: python scripts/exportar_openapi.py --check
 
   frontend:
     runs-on: ubuntu-latest
@@ -33,124 +110,213 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npx ng build
+      - run: npm ci --no-audit --no-fund
+      - name: ESLint (angular-eslint)
+        run: npm run lint
+      - name: Pruebas unitarias (Vitest)
+        run: npx ng test --watch=false
+      - name: Compilar
+        run: npx ng build
+
+  formato:
+    # Prettier sobre el frontend. Mientras el código no esté formateado de una
+    # vez (commit «Aplicar Prettier»), este job solo avisa: quitar
+    # continue-on-error en cuanto `npm run format:check` pase en main.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+
+  auditoria:
+    # Vulnerabilidades conocidas en las dependencias que llegan a producción.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: pip-audit (backend, con el driver de SQL Server)
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit --require-hashes --disable-pip -r backend/requirements-mssql.txt
+      - name: npm audit (frontend, sin dependencias de desarrollo)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    # Construye la imagen "todo en uno" (SQLite) y la variante para Azure (con
+    # el driver de SQL Server), las prueba, las escanea y las publica en GHCR.
+    # Caché de capas en GitHub Actions: la etapa del frontend se comparte entre
+    # las dos variantes y entre corridas.
+    needs: [backend, contratos, frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLICAR: ${{ github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Nombres de la imagen
+        id: nombres
+        run: |
+          IMAGEN=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          RAMA=$(echo "$GITHUB_REF_NAME" | tr '/' '-')
+          {
+            echo "imagen=$IMAGEN"
+            echo "rama=$RAMA"
+            echo "sha=sha-${GITHUB_SHA::7}"
+            echo "version=$(cat VERSION)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Construir imagen (SQLite)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: hajime:ci
+          labels: |
+            org.opencontainers.image.version=${{ steps.nombres.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=hajime
+          cache-to: type=gha,scope=hajime,mode=max
+      - name: Prueba de humo (dos procesos, base vacía)
+        run: bash scripts/humo-contenedor.sh hajime:ci
+      - name: Construir imagen para Azure (driver de SQL Server)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: hajime:azure
+          build-args: WITH_MSSQL=true
+          labels: |
+            org.opencontainers.image.version=${{ steps.nombres.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: |
+            type=gha,scope=hajime
+            type=gha,scope=hajime-azure
+          cache-to: type=gha,scope=hajime-azure,mode=max
+      - name: Prueba de humo de la imagen para Azure
+        run: PUERTO=8001 bash scripts/humo-contenedor.sh hajime:azure --mssql
+      - name: Trivy (falla con vulnerabilidades CRITICAL que tengan arreglo)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: hajime:azure
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+      - name: Publicar en GitHub Container Registry
+        if: env.PUBLICAR == 'true'
+        env:
+          IMAGEN: ${{ steps.nombres.outputs.imagen }}
+          RAMA: ${{ steps.nombres.outputs.rama }}
+          SHA: ${{ steps.nombres.outputs.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          publicar() { docker tag "$1" "$IMAGEN:$2" && docker push -q "$IMAGEN:$2"; }
+          publicar hajime:ci "$RAMA"
+          publicar hajime:ci "$SHA"
+          publicar hajime:azure "$RAMA-azure"
+          publicar hajime:azure "$SHA-azure"
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            publicar hajime:ci latest
+            publicar hajime:azure azure
+          fi
+          {
+            echo "Imagen: \`$IMAGEN:$SHA\` (y \`:$RAMA\`)"
+            echo "Imagen Azure: \`$IMAGEN:$SHA-azure\` — promover a producción con el workflow «Desplegar a producción» y la versión \`${GITHUB_SHA::7}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   android:
     # App de Android de prueba (APK instalable sin Google Play): la misma
     # interfaz empaquetada con Capacitor. Se descarga desde los artefactos de
-    # la corrida (ver docs/app-celular.md).
-    needs: [frontend]
-    if: github.event_name == 'push'
+    # la corrida (ver docs/app-celular.md). Solo si cambió frontend/ (o a mano).
+    needs: [cambios, frontend]
+    if: github.event_name != 'pull_request' && needs.cambios.outputs.movil == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       - run: npm run build:mobile
       - run: npx cap sync android
       - name: Compilar el APK de prueba
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon --quiet
       - name: Nombrar el APK
         run: |
+          APK="hajime-$(cat ../VERSION)-${GITHUB_SHA::7}.apk"
           mkdir -p ../apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk "../apk/hajime-${GITHUB_SHA::7}.apk"
-          echo "APK de prueba: hajime-${GITHUB_SHA::7}.apk (en los artefactos de esta corrida)" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+          cp android/app/build/outputs/apk/debug/app-debug.apk "../apk/$APK"
+          echo "APK de prueba: $APK (en los artefactos de esta corrida)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: hajime-android-apk
           path: apk/*.apk
           retention-days: 30
 
-  docker:
-    # Construye la imagen "todo en uno", la prueba y la publica en GHCR.
-    needs: [backend, frontend]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Construir imagen
-        run: docker build -t hajime:ci .
-      - name: Prueba de humo del contenedor
-        run: |
-          docker run -d --name hajime -p 8000:8000 -e HAJIME_ADMIN_PASSWORD=ci-password-123 hajime:ci
-          for i in $(seq 1 30); do curl -sf localhost:8000/health && break; sleep 2; done
-          curl -sf localhost:8000/ | grep -qi "<app-root"
-          curl -sf localhost:8000/mesa/1 | grep -qi "<app-root"
-          TOKEN=$(curl -sf localhost:8000/api/v1/auth/login -H 'content-type: application/json' \
-            -d '{"username":"admin","password":"ci-password-123"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-          curl -sf localhost:8000/api/v1/templates -H "Authorization: Bearer $TOKEN" | python3 -c \
-            'import sys,json; t=json.load(sys.stdin); assert t and len(t[0]["items"]) > 0, t; print("plantilla:", len(t[0]["items"]), "categorías")'
-          docker logs hajime | tail -20
-      - name: Publicar en GitHub Container Registry
-        if: github.event_name == 'push'
-        run: |
-          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker tag hajime:ci "$IMAGE:$BRANCH"
-          docker tag hajime:ci "$IMAGE:sha-${GITHUB_SHA::7}"
-          docker push "$IMAGE:$BRANCH"
-          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
-          if [ "$GITHUB_REF_NAME" = "main" ]; then docker tag hajime:ci "$IMAGE:latest" && docker push "$IMAGE:latest"; fi
-          echo "Imagen publicada: $IMAGE:$BRANCH" >> "$GITHUB_STEP_SUMMARY"
-      - name: Imagen para Azure (con el driver de SQL Server)
-        if: github.event_name == 'push'
-        run: |
-          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
-          docker build --build-arg WITH_MSSQL=true -t hajime:azure .
-          docker run --rm hajime:azure python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers(), pyodbc.drivers()"
-          docker tag hajime:azure "$IMAGE:$BRANCH-azure"
-          docker tag hajime:azure "$IMAGE:sha-${GITHUB_SHA::7}-azure"
-          docker push "$IMAGE:$BRANCH-azure"
-          docker push "$IMAGE:sha-${GITHUB_SHA::7}-azure"
-          if [ "$GITHUB_REF_NAME" = "main" ]; then docker tag hajime:azure "$IMAGE:azure" && docker push "$IMAGE:azure"; fi
-          echo "Imagen Azure: $IMAGE:sha-${GITHUB_SHA::7}-azure" >> "$GITHUB_STEP_SUMMARY"
-
   deploy-test:
-    # Publica cada versión en el ambiente de pruebas de Azure. Se activa sola
-    # cuando existen las variables del repositorio AZURE_CLIENT_ID,
-    # AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID (ver infra/azure/conectar-github.sh).
+    # Publica cada versión en el ambiente de pruebas de Azure: corre las
+    # migraciones (job hajime-test-migrar), actualiza la app y espera a que
+    # responda sana (infra/azure/promover.sh). Se activa sola cuando existen
+    # las variables AZURE_CLIENT_ID, AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID
+    # (ver infra/azure/conectar-github.sh).
     needs: [docker]
     if: >-
       github.event_name == 'push' && vars.AZURE_CLIENT_ID != '' &&
       github.ref_name == (vars.AZURE_TEST_BRANCH || 'main')
     runs-on: ubuntu-latest
+    # Sin `environment:` a propósito: la credencial federada de pruebas está
+    # atada a la rama (conectar-github.sh test <rama>); la de producción, al
+    # entorno «prod» de GitHub (deploy-prod.yml).
+    concurrency:
+      group: deploy-test
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: azure/login@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Actualizar la app de pruebas
-        run: |
-          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          az extension add --name containerapp --upgrade --only-show-errors
-          az containerapp update -g hajime-test -n hajime-test --image "$IMAGE:sha-${GITHUB_SHA::7}-azure" -o none
-          FQDN=$(az containerapp show -g hajime-test -n hajime-test --query properties.configuration.ingress.fqdn -o tsv)
-          for i in $(seq 1 30); do curl -sf "https://$FQDN/health" && break; sleep 10; done
-          echo "Publicado en pruebas: https://$FQDN" >> "$GITHUB_STEP_SUMMARY"
+      - name: Migrar y actualizar la app de pruebas
+        env:
+          IMAGEN_BASE: ghcr.io/${{ github.repository }}
+        run: bash infra/azure/promover.sh test "${GITHUB_SHA::7}"

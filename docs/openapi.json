@@ -3,7 +3,7 @@
  "info": {
   "title": "Hajime — API de torneos de karate",
   "description": "API First: toda acción es un endpoint. Errores con formato uniforme; advertencias de negocio con código WARNINGS que se aceptan reenviando `override`.",
-  "version": "0.1.0"
+  "version": "0.2.0"
  },
  "paths": {
   "/api/v1/auth/login": {
@@ -47,13 +47,214 @@
     }
    }
   },
+  "/api/v1/auth/refresh": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Refresh",
+    "description": "Renueva el token de acceso. El token de renovación se rota: guarda el nuevo.",
+    "operationId": "refresh_api_v1_auth_refresh_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RefreshIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Logout",
+    "description": "Cierra esta sesión. Sirve con el token de acceso, con el de renovación o con ambos\n(el de acceso puede haber vencido).",
+    "operationId": "logout_api_v1_auth_logout_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/LogoutIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Data"
+       }
+      }
+     }
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/sessions": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "My Sessions",
+    "description": "Sesiones abiertas de la propia cuenta (dispositivo, IP y último uso).",
+    "operationId": "my_sessions_api_v1_auth_sessions_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SessionOut"
+         },
+         "type": "array",
+         "title": "Response My Sessions Api V1 Auth Sessions Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/sessions/{session_id}": {
+   "delete": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Close Session",
+    "operationId": "close_session_api_v1_auth_sessions__session_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "session_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Session Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{user_id}/sessions": {
+   "delete": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Close User Sessions",
+    "description": "El Admin cierra todas las sesiones de una cuenta (p. ej. tablet perdida).",
+    "operationId": "close_user_sessions_api_v1_users__user_id__sessions_delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/auth/change-password": {
    "post": {
     "tags": [
      "auth"
     ],
     "summary": "Change Password",
-    "description": "Cambia la contraseña propia. Invalida las demás sesiones y devuelve un token nuevo.",
+    "description": "Cambia la contraseña propia. Cierra todas las sesiones y abre una nueva en este dispositivo.",
     "operationId": "change_password_api_v1_auth_change_password_post",
     "requestBody": {
      "content": {
@@ -75,6 +276,46 @@
         }
        }
       }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/delete-account": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Delete Account",
+    "description": "Borra la propia cuenta de acceso (Google Play y App Store lo exigen).\n\nLa cuenta queda desactivada y sin datos identificativos, y se cierran sus\nsesiones. La persona ligada y su historial deportivo no se tocan: son\ndel torneo y del dojo (sección 11); borrarlos es «anonimizar persona».",
+    "operationId": "delete_account_api_v1_auth_delete_account_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AccountDelete"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -664,6 +905,7 @@
      "persons"
     ],
     "summary": "List Persons",
+    "description": "Lista y búsqueda de personas: solo Admin y organizadores (sección 11).",
     "operationId": "list_persons_api_v1_persons_get",
     "security": [
      {
@@ -902,6 +1144,7 @@
      "persons"
     ],
     "summary": "Get Person",
+    "description": "Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos).",
     "operationId": "get_person_api_v1_persons__person_id__get",
     "security": [
      {
@@ -1439,6 +1682,7 @@
      "audit"
     ],
     "summary": "Audit Log",
+    "description": "Sin ``tournament_id``: solo el Admin. Con él: los organizadores de ese torneo.",
     "operationId": "audit_log_api_v1_audit_get",
     "security": [
      {
@@ -1534,6 +1778,7 @@
      "audit"
     ],
     "summary": "Overrides",
+    "description": "Advertencias aceptadas de una entidad: organizadores de su torneo (o el Admin).",
     "operationId": "overrides_api_v1_overrides_get",
     "security": [
      {
@@ -1588,6 +1833,7 @@
      "tournaments"
     ],
     "summary": "List Tournaments",
+    "description": "Solo los torneos que el usuario puede ver (todos para el Admin o un rol global).",
     "operationId": "list_tournaments_api_v1_tournaments_get",
     "security": [
      {
@@ -1978,6 +2224,66 @@
       "content": {
        "application/json": {
         "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Set Queue",
+    "description": "Reemplaza la cola de categorías del tatami en una sola transacción (auditada).",
+    "operationId": "set_queue_api_v1_tatamis__tatami_id__queue_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiQueueIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryOut"
+         },
+         "title": "Response Set Queue Api V1 Tatamis  Tatami Id  Queue Put"
+        }
        }
       }
      },
@@ -2882,6 +3188,22 @@
        ],
        "title": "Modality"
       }
+     },
+     {
+      "name": "weight_class",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Weight Class"
+      }
      }
     ],
     "responses": {
@@ -3251,6 +3573,54 @@
     }
    }
   },
+  "/api/v1/imports/purge": {
+   "post": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Purge Imports",
+    "description": "Borra las filas (con DNI y fechas de nacimiento) de importaciones antiguas.",
+    "operationId": "purge_imports_api_v1_imports_purge_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "default": 30,
+       "title": "Days"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/imports/{bid}": {
    "get": {
     "tags": [
@@ -3391,6 +3761,443 @@
       }
      }
     }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Add Entrant",
+    "description": "Inscripción tardía: ocupa un bye de primera ronda aún no disputado (el\nque mejor separa dojos); en round robin agrega sus combates.",
+    "operationId": "add_entrant_api_v1_categories__cid__bracket_entrants_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants/remove": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Remove Entrant",
+    "description": "Quita a un competidor de la llave (bye si su combate no empezó; si no,\nwalkover en el pendiente) y retira su inscripción.",
+    "operationId": "remove_entrant_api_v1_categories__cid__bracket_entrants_remove_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/disqualify": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Disqualify",
+    "description": "Shikkaku con alcance de torneo: retira todas sus inscripciones (con confirmación).",
+    "operationId": "disqualify_api_v1_registrations__rid__disqualify_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DisqualifyIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/split": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Split Category",
+    "description": "Divide la categoría en dos (por peso, grado o sorteo). Devuelve la nueva.",
+    "operationId": "split_category_api_v1_categories__cid__split_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategorySplitIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/unsplit": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Undo Split",
+    "operationId": "undo_split_api_v1_categories__cid__unsplit_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/kata-order": {
+   "put": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Order",
+    "description": "Orden de salida de la ronda de kata (lista completa).",
+    "operationId": "kata_order_api_v1_categories__cid__kata_order_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataOrderIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/kata-scores": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Match Scores",
+    "description": "Kata por puntuación en llave: nota del panel para aka y ao; gana la mayor.",
+    "operationId": "kata_match_scores_api_v1_matches__mid__kata_scores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataMatchScoreIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/kata-catalog": {
+   "get": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Catalog",
+    "description": "Catálogo de katas de los cuatro estilos principales (para autocompletar).",
+    "operationId": "kata_catalog_api_v1_kata_catalog_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/rules/defaults": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Rules Defaults",
+    "description": "Valores por defecto de cada opción configurable (para los formularios).",
+    "operationId": "rules_defaults_api_v1_rules_defaults_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
    }
   },
   "/api/v1/categories/{cid}/bracket": {
@@ -3777,6 +4584,23 @@
        "type": "integer",
        "title": "Mid"
       }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
+      }
      }
     ],
     "requestBody": {
@@ -3819,6 +4643,7 @@
      "matches"
     ],
     "summary": "Finish",
+    "description": "Idempotente por ``id``: la mesa puede dejar el cierre en cola sin señal y reenviarlo.",
     "operationId": "finish_api_v1_matches__mid__finish_post",
     "security": [
      {
@@ -3833,6 +4658,23 @@
       "schema": {
        "type": "integer",
        "title": "Mid"
+      }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
       }
      }
     ],
@@ -4067,7 +4909,7 @@
      "matches"
     ],
     "summary": "Presence",
-    "description": "Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate.",
+    "description": "Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate y si\nesta tablet lleva la mesa (solo puede llevarla quien puede operar el combate).",
     "operationId": "presence_api_v1_matches__mid__presence_post",
     "security": [
      {
@@ -4164,6 +5006,62 @@
     }
    }
   },
+  "/api/v1/matches/{mid}/presence/take": {
+   "post": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Take Table",
+    "description": "«Tomar la mesa»: esta tablet pasa a registrar y las demás quedan en solo lectura.",
+    "operationId": "take_table_api_v1_matches__mid__presence_take_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PresenceIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/matches/{mid}/official-result": {
    "post": {
     "tags": [
@@ -4239,6 +5137,23 @@
       "schema": {
        "type": "integer",
        "title": "Mid"
+      }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
       }
      }
     ],
@@ -4597,6 +5512,175 @@
       "content": {
        "application/json": {
         "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/walkover": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Walkover",
+    "description": "Da walkover al rival en todos los combates pendientes de una inscripción retirada.",
+    "operationId": "walkover_api_v1_registrations__rid__walkover_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WalkoverIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/readiness": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Readiness",
+    "description": "Verificación previa a «Iniciar torneo»: problemas con severidad (error, warning, info).",
+    "operationId": "readiness_api_v1_tournaments__tid__readiness_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/{bid}/rows/{row_id}": {
+   "patch": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Update Import Row",
+    "description": "Corrige una fila de la vista previa y la vuelve a validar.",
+    "operationId": "update_import_row_api_v1_imports__bid__rows__row_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     },
+     {
+      "name": "row_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Row Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportRowUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportBatchOut"
+        }
        }
       }
      },
@@ -4989,13 +6073,54 @@
     }
    }
   },
+  "/health/live": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health Live",
+    "description": "El proceso responde. No toca la base: si esta se pausa, el contenedor no se reinicia.",
+    "operationId": "health_live_health_live_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
   "/health": {
    "get": {
     "tags": [
      "meta"
     ],
-    "summary": "Health",
-    "operationId": "health_health_get",
+    "summary": "Health Live",
+    "description": "El proceso responde. No toca la base: si esta se pausa, el contenedor no se reinicia.",
+    "operationId": "health_live_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health/ready": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "summary": "Health Ready",
+    "description": "Lista para atender: la base responde a SELECT 1 en menos de 2 s.",
+    "operationId": "health_ready_health_ready_get",
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -5011,6 +6136,20 @@
  },
  "components": {
   "schemas": {
+   "AccountDelete": {
+    "properties": {
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "password"
+    ],
+    "title": "AccountDelete",
+    "description": "Borrar la propia cuenta (lo exigen las tiendas de apps): confirma con la contraseña."
+   },
    "AnonymizeIn": {
     "properties": {
      "reason": {
@@ -5040,6 +6179,46 @@
     ],
     "title": "Body_upload_import_api_v1_tournaments__tid__imports_post"
    },
+   "BracketEntrantIn": {
+    "properties": {
+     "registration_id": {
+      "type": "integer",
+      "title": "Registration Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_id"
+    ],
+    "title": "BracketEntrantIn",
+    "description": "Inscripción tardía o retiro con la llave ya generada."
+   },
    "BracketGenerateIn": {
     "properties": {
      "format": {
@@ -5048,7 +6227,8 @@
         "type": "string",
         "enum": [
          "single_elimination",
-         "round_robin"
+         "round_robin",
+         "groups_knockout"
         ]
        },
        {
@@ -5188,6 +6368,33 @@
        }
       ],
       "title": "Standings"
+     },
+     "groups": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Groups"
+     },
+     "kata_rounds": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rounds"
      }
     },
     "type": "object",
@@ -5359,7 +6566,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -5452,6 +6660,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -5558,7 +6823,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -5651,6 +6917,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -5811,7 +7134,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -5905,6 +7229,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -5981,6 +7362,22 @@
       "type": "array",
       "title": "Advice",
       "default": []
+     },
+     "split_from_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Split From Id"
+     },
+     "has_split": {
+      "type": "boolean",
+      "title": "Has Split",
+      "default": false
      }
     },
     "type": "object",
@@ -6001,6 +7398,65 @@
     ],
     "title": "CategoryOut"
    },
+   "CategorySplitIn": {
+    "properties": {
+     "criterion": {
+      "type": "string",
+      "enum": [
+       "weight",
+       "grade",
+       "draw"
+      ],
+      "title": "Criterion",
+      "default": "draw"
+     },
+     "names": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array",
+        "maxItems": 2,
+        "minItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Names"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "CategorySplitIn",
+    "description": "Dividir una categoría en dos (reversible como la fusión)."
+   },
    "CategoryUpdate": {
     "properties": {
      "version": {
@@ -6018,6 +7474,77 @@
       ],
       "title": "Name"
      },
+     "sex": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "M",
+         "F",
+         "X"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
      "format": {
       "anyOf": [
        {
@@ -6025,7 +7552,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -6135,6 +7663,63 @@
        }
       ],
       "title": "Queue Position"
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -6215,6 +7800,31 @@
      "scope"
     ],
     "title": "ConsentOut"
+   },
+   "DisqualifyIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "DisqualifyIn",
+    "description": "Shikkaku con alcance de torneo: retira todas las inscripciones de la persona."
    },
    "DocumentIn": {
     "properties": {
@@ -6463,7 +8073,8 @@
        "hantei",
        "kiken",
        "shikkaku",
-       "walkover"
+       "walkover",
+       "golden_point"
       ],
       "title": "Type"
      },
@@ -6519,6 +8130,79 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 30
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "c1",
+         "c2"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
+     },
+     "votes": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "string",
+           "enum": [
+            "aka",
+            "ao"
+           ]
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Votes"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
      },
      "override": {
       "anyOf": [
@@ -6603,6 +8287,28 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
      },
      "device_at": {
       "type": "string",
@@ -6995,6 +8701,187 @@
     ],
     "title": "ImportRowOut"
    },
+   "ImportRowUpdate": {
+    "properties": {
+     "data": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Data"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data"
+    ],
+    "title": "ImportRowUpdate",
+    "description": "Celdas corregidas (mismas claves que la plantilla: nombres, apellidos, sexo…)."
+   },
+   "KataMatchScoreIn": {
+    "properties": {
+     "aka_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Aka Scores"
+     },
+     "ao_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Ao Scores"
+     },
+     "aka_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Athletic"
+     },
+     "ao_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Athletic"
+     },
+     "aka_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Kata Name"
+     },
+     "ao_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Kata Name"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
+     },
+     "head_judge_vote": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "aka",
+         "ao"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Head Judge Vote"
+     },
+     "event_id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Event Id"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "aka_scores",
+     "ao_scores",
+     "event_id",
+     "at"
+    ],
+    "title": "KataMatchScoreIn",
+    "description": "Kata por puntuación en llave: nota del panel para aka y para ao."
+   },
+   "KataOrderIn": {
+    "properties": {
+     "registration_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Registration Ids"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_ids"
+    ],
+    "title": "KataOrderIn"
+   },
    "KataScoreIn": {
     "properties": {
      "registration_id": {
@@ -7007,6 +8894,20 @@
       },
       "type": "array",
       "title": "Scores"
+     },
+     "athletic_scores": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Athletic Scores"
      },
      "judge_person_ids": {
       "anyOf": [
@@ -7040,6 +8941,17 @@
       ],
       "title": "Kata Name"
      },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
      "version": {
       "anyOf": [
        {
@@ -7050,6 +8962,16 @@
        }
       ],
       "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -7149,6 +9071,23 @@
      "password"
     ],
     "title": "LoginIn"
+   },
+   "LogoutIn": {
+    "properties": {
+     "refresh_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh Token"
+     }
+    },
+    "type": "object",
+    "title": "LogoutIn"
    },
    "MatchOut": {
     "properties": {
@@ -7917,6 +9856,21 @@
     ],
     "title": "RefereeIn"
    },
+   "RefreshIn": {
+    "properties": {
+     "refresh_token": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 10,
+      "title": "Refresh Token"
+     }
+    },
+    "type": "object",
+    "required": [
+     "refresh_token"
+    ],
+    "title": "RefreshIn"
+   },
    "RegistrationCreate": {
     "properties": {
      "person_id": {
@@ -8355,6 +10309,49 @@
       "type": "array",
       "title": "Sanction Labels"
      },
+     "sanction_c2": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "integer"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction C2"
+     },
+     "sanction_labels_c2": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction Labels C2"
+     },
+     "infractions": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infractions"
+     },
      "senshu": {
       "anyOf": [
        {
@@ -8365,6 +10362,39 @@
        }
       ],
       "title": "Senshu"
+     },
+     "senshu_lost": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Senshu Lost",
+      "default": []
+     },
+     "golden_point": {
+      "type": "boolean",
+      "title": "Golden Point",
+      "default": false
+     },
+     "period_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Period Seconds"
+     },
+     "hantei_votes": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Hantei Votes",
+      "default": []
      },
      "elapsed_seconds": {
       "type": "number",
@@ -8487,6 +10517,52 @@
      "ao"
     ],
     "title": "ScoreboardOut"
+   },
+   "SessionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "last_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Used At"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     },
+     "user_agent": {
+      "type": "string",
+      "title": "User Agent"
+     },
+     "ip": {
+      "type": "string",
+      "title": "Ip"
+     },
+     "current": {
+      "type": "boolean",
+      "title": "Current",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "created_at",
+     "last_used_at",
+     "expires_at",
+     "user_agent",
+     "ip"
+    ],
+    "title": "SessionOut"
    },
    "SlotSwapIn": {
     "properties": {
@@ -8621,6 +10697,24 @@
      "name"
     ],
     "title": "TatamiOut"
+   },
+   "TatamiQueueIn": {
+    "properties": {
+     "category_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "title": "Category Ids"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_ids"
+    ],
+    "title": "TatamiQueueIn",
+    "description": "Orden completo de la cola: categorías del tatami, de la primera a la última."
    },
    "TeamCreate": {
     "properties": {
@@ -8882,7 +10976,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -8976,6 +11071,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -9040,6 +11192,17 @@
       "type": "string",
       "minLength": 3,
       "title": "Reason"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
      }
     },
     "type": "object",
@@ -9059,6 +11222,28 @@
       "type": "string",
       "title": "Token Type",
       "default": "bearer"
+     },
+     "refresh_token": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh Token"
+     },
+     "expires_in": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires In"
      },
      "user": {
       "$ref": "#/components/schemas/UserOut"
@@ -9127,7 +11312,8 @@
       "type": "string",
       "enum": [
        "single_elimination",
-       "round_robin"
+       "round_robin",
+       "groups_knockout"
       ],
       "title": "Default Format",
       "default": "single_elimination"
@@ -9153,6 +11339,21 @@
       "type": "object",
       "title": "Kata Defaults",
       "default": {}
+     },
+     "competition_rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Competition Rules",
+      "default": {}
+     },
+     "age_mode": {
+      "type": "string",
+      "enum": [
+       "date",
+       "birth_year"
+      ],
+      "title": "Age Mode",
+      "default": "date"
      },
      "template_id": {
       "anyOf": [
@@ -9245,6 +11446,23 @@
       "additionalProperties": true,
       "type": "object",
       "title": "Kata Defaults"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "type": "string",
+      "title": "Age Mode",
+      "default": "date"
      },
      "template_id": {
       "anyOf": [
@@ -9392,6 +11610,22 @@
       ],
       "title": "Age Reference Date"
      },
+     "default_format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "groups_knockout"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Default Format"
+     },
      "default_third_place_rule": {
       "anyOf": [
        {
@@ -9431,6 +11665,33 @@
        }
       ],
       "title": "Kata Defaults"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "date",
+         "birth_year"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Mode"
      }
     },
     "type": "object",
@@ -9647,6 +11908,24 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "WalkoverIn": {
+    "properties": {
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 250
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "title": "WalkoverIn"
    },
    "WithdrawIn": {
     "properties": {

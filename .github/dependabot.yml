@@ -1,0 +1,72 @@
+# Actualizaciones semanales de dependencias (PR por ecosistema).
+# Backend: los lockfiles son backend/requirements*.txt (uv pip compile, con hashes);
+# si una PR solo toca pyproject.toml, regenerar con scripts/bloquear-dependencias.sh.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Lima
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "Dependencias (backend):"
+    groups:
+      backend-menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Lima
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "Dependencias (frontend):"
+    groups:
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*", "@schematics/angular", "angular-eslint", "@angular-eslint/*"]
+      capacitor:
+        patterns: ["@capacitor/*"]
+      herramientas:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Angular y TypeScript suben de versión mayor juntos, a mano (`ng update`).
+      - dependency-name: "@angular/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: gradle
+    directory: /frontend/android
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Lima
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "Dependencias (Android):"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Lima
+    commit-message:
+      prefix: "CI:"
+    groups:
+      acciones:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Lima
+    commit-message:
+      prefix: "Imagen base:"

@@ -2,6 +2,7 @@ import { Component, computed, effect, input, inject, signal, untracked } from '@
 import { ApiService } from '../core/api.service';
 import { METHOD_LABEL, mmss } from '../core/format';
 import { PersonStats } from '../core/models';
+import { PluralPipe } from './plural';
 
 const TECH = [
   { key: 'ippon', label: 'Ippon', pts: 3 },
@@ -18,6 +19,7 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
  */
 @Component({
   selector: 'app-person-stats',
+  imports: [PluralPipe],
   template: `
     @if (stats(); as s) {
       @let k = s.kumite;
@@ -25,7 +27,7 @@ const FORM = { win: { k: '勝', t: 'Ganó' }, loss: { k: '負', t: 'Perdió' }, 
         <div class="head">
           <div>
             <h3>Perfil deportivo</h3>
-            <p class="muted small">Kumite en torneos oficiales · {{ s.tournaments }} torneo(s)</p>
+            <p class="muted small">Kumite en torneos oficiales · {{ s.tournaments | plural: 'torneo' : 'torneos' }}</p>
           </div>
           @if (s.form.length) {
             <div class="form" aria-label="Últimos combates">

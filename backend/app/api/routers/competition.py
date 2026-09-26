@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Header, Response
 from fastapi.responses import JSONResponse
 
 from app.api import schemas as s
-from app.api.deps import DB, CurrentUser, ensure_operator, ensure_organizer
+from app.api.deps import (
+    DB,
+    CategoryReader,
+    CurrentUser,
+    MatchReader,
+    TournamentReader,
+    ensure_operator,
+    ensure_organizer,
+)
 from app.api.errors import NotFound
 from app.db.models import Bracket
 from app.services import brackets as svc
@@ -19,6 +29,9 @@ router = APIRouter()
 # Reglas deportivas (llave generada, divisiones, kata): router aparte para no
 # tocar el registro de routers de la app.
 router.include_router(sports.router)
+
+# Tablet que envía el evento: si otra lleva la mesa del combate, se responde 409 CONFLICT_DEVICE.
+DeviceId = Annotated[str | None, Header(alias="X-Device-Id", max_length=40)]
 
 
 def _ensure_match_operator(db, user, mid: int) -> None:
@@ -41,12 +54,12 @@ def generate_bracket(cid: int, data: s.BracketGenerateIn, db: DB, user: CurrentU
 
 
 @router.get("/categories/{cid}/bracket", response_model=s.BracketOut, tags=["brackets"])
-def get_bracket(cid: int, db: DB, _: CurrentUser):
+def get_bracket(cid: int, db: DB, _: CategoryReader):
     return svc.bracket_out(db, cid)
 
 
 @router.get("/categories/{cid}/bracket/versions", tags=["brackets"])
-def bracket_versions(cid: int, db: DB, _: CurrentUser):
+def bracket_versions(cid: int, db: DB, _: CategoryReader):
     return svc.bracket_versions(db, cid)
 
 
@@ -61,7 +74,7 @@ def swap_slots(bid: int, data: s.SlotSwapIn, db: DB, user: CurrentUser):
 
 
 @router.get("/categories/{cid}/bracket.pdf", tags=["brackets"])
-def bracket_pdf(cid: int, db: DB, _: CurrentUser, blank: bool = False):
+def bracket_pdf(cid: int, db: DB, _: CategoryReader, blank: bool = False):
     pdf = reports.bracket_pdf(db, cid, with_results=not blank)
     return Response(
         pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="llave-{cid}.pdf"'}
@@ -80,27 +93,30 @@ def reopen_category(cid: int, data: s.CategoryCancelIn, db: DB, user: CurrentUse
 
 
 @router.get("/matches/{mid}", response_model=s.ScoreboardOut, tags=["matches"])
-def get_match(mid: int, db: DB, _: CurrentUser):
+def get_match(mid: int, db: DB, _: MatchReader):
     return svc.scoreboard(db, svc.get_match(db, mid))
 
 
 @router.post("/matches/{mid}/events", response_model=s.ScoreboardOut, tags=["matches"])
-def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser):
+def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser, device: DeviceId = None):
     """Idempotente: reenviar el mismo ``id`` devuelve 200 sin duplicar."""
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     sb, created = svc.add_event(db, user, mid, data)
     return JSONResponse(sb.model_dump(mode="json"), status_code=201 if created else 200)
 
 
 @router.post("/matches/{mid}/finish", tags=["matches"])
-def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser):
+def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser, device: DeviceId = None):
+    """Idempotente por ``id``: la mesa puede dejar el cierre en cola sin señal y reenviarlo."""
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     sb, affected = svc.finish(db, user, mid, data)
     return {"scoreboard": sb.model_dump(mode="json"), "affected_matches": affected}
 
 
 @router.get("/matches/{mid}/team", tags=["teams"])
-def team_match(mid: int, db: DB, _: CurrentUser):
+def team_match(mid: int, db: DB, _: MatchReader):
     """Enfrentamiento por equipos: integrantes, alineación, combates y marcador de victorias."""
     return teams.team_match_out(db, svc.get_match(db, mid))
 
@@ -112,25 +128,36 @@ def set_lineup(mid: int, data: s.LineupIn, db: DB, user: CurrentUser):
 
 
 @router.get("/matches/{mid}/referees", tags=["referees"])
-def match_referees(mid: int, db: DB, _: CurrentUser):
+def match_referees(mid: int, db: DB, _: MatchReader):
     """Jueces sugeridos para registrar quién dio cada bandera o nota."""
     return referees.for_match(db, mid)
 
 
 @router.get("/categories/{cid}/referees", tags=["referees"])
-def category_referees(cid: int, db: DB, _: CurrentUser):
+def category_referees(cid: int, db: DB, _: CategoryReader):
     """Jueces sugeridos para una ronda de kata por puntuación."""
     return referees.for_category(db, cid)
 
 
 @router.post("/matches/{mid}/presence", tags=["matches"])
 def presence(mid: int, data: s.PresenceIn, db: DB, user: CurrentUser):
-    """Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate."""
-    return operation.heartbeat(db, user, mid, data.device_id)
+    """Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate y si
+    esta tablet lleva la mesa (solo puede llevarla quien puede operar el combate)."""
+    # Solo quien puede operar el combate late (y por tanto puede llevar la mesa).
+    _ensure_match_operator(db, user, mid)
+    return operation.heartbeat(db, user, mid, data.device_id, can_own=True)
+
+
+@router.post("/matches/{mid}/presence/take", tags=["matches"])
+def take_table(mid: int, data: s.PresenceIn, db: DB, user: CurrentUser):
+    """«Tomar la mesa»: esta tablet pasa a registrar y las demás quedan en solo lectura."""
+    _ensure_match_operator(db, user, mid)
+    return operation.take(db, user, mid, data.device_id)
 
 
 @router.delete("/matches/{mid}/presence", status_code=204, tags=["matches"])
-def leave(mid: int, device_id: str, db: DB, _: CurrentUser):
+def leave(mid: int, device_id: str, db: DB, user: CurrentUser):
+    _ensure_match_operator(db, user, mid)
     operation.leave(db, mid, device_id)
 
 
@@ -145,8 +172,9 @@ def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUse
 
 
 @router.post("/matches/{mid}/flags", tags=["kata"])
-def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser):
+def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser, device: DeviceId = None):
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     return svc.record_flags(db, user, mid, data)
 
 
@@ -167,22 +195,22 @@ def kata_tie_break(cid: int, data: s.TieBreakIn, db: DB, user: CurrentUser):
 
 
 @router.get("/tournaments/{tid}/results", tags=["results"])
-def results(tid: int, db: DB, _: CurrentUser):
+def results(tid: int, db: DB, _: TournamentReader):
     return reports.category_results(db, tid)
 
 
 @router.get("/tournaments/{tid}/medal-table", tags=["results"])
-def medal_table(tid: int, db: DB, _: CurrentUser):
+def medal_table(tid: int, db: DB, _: TournamentReader):
     return reports.medal_table(db, tid)
 
 
 @router.get("/tournaments/{tid}/comparison-report", tags=["shadow"])
-def comparison_report(tid: int, db: DB, _: CurrentUser):
+def comparison_report(tid: int, db: DB, _: TournamentReader):
     return reports.comparison_report(db, tid)
 
 
 @router.get("/tournaments/{tid}/results.xlsx", tags=["results"])
-def results_xlsx(tid: int, db: DB, _: CurrentUser):
+def results_xlsx(tid: int, db: DB, _: TournamentReader):
     return Response(
         reports.results_excel(db, tid),
         media_type=XLSX,
@@ -191,7 +219,7 @@ def results_xlsx(tid: int, db: DB, _: CurrentUser):
 
 
 @router.get("/tournaments/{tid}/results.pdf", tags=["results"])
-def results_pdf(tid: int, db: DB, _: CurrentUser):
+def results_pdf(tid: int, db: DB, _: TournamentReader):
     return Response(
         reports.results_pdf(db, tid),
         media_type="application/pdf",

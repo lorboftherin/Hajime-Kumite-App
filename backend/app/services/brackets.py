@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import random
 import uuid
+from collections import defaultdict
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select, union
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defaultload
 
 from app.api import schemas as s
 from app.api.errors import InvalidState, NotFound
@@ -24,6 +26,7 @@ from app.db.models import (
     BracketVersion,
     Category,
     CategoryResult,
+    Dojo,
     JudgeVote,
     KataPerformance,
     Match,
@@ -31,6 +34,7 @@ from app.db.models import (
     Person,
     Registration,
     Tatami,
+    Team,
     Tournament,
     User,
 )
@@ -57,6 +61,7 @@ from app.domain.kumite import (
     suggest_decision,
 )
 from app.services.audit import apply_warnings, audit, bump, check_version
+from app.services.public_snapshots import invalidate
 from app.services.tournaments import (
     effective_competition,
     effective_format,
@@ -525,101 +530,167 @@ def _swap_kata_order(db: Session, user: User, b: Bracket, cur: BracketVersion, d
 # ---------------------------------------------------------------------------
 
 
-def sync(db: Session, c: Category) -> dict[str, Any]:
+# ``_plan`` calcula en memoria cómo debe quedar la llave (participantes y
+# estado de cada combate, podio y estado de la categoría) sin escribir nada.
+# ``sync`` lo guarda y solo se llama desde escrituras. La lectura de la llave
+# (``bracket_out``) usa el plan sin guardarlo: antes cada GET borraba y volvía
+# a insertar el podio, competía con las mesas y, con dos a la vez, chocaba
+# (IntegrityError).
+
+
+@dataclass
+class _Plan:
+    info: dict[str, Any]
+    rows: list[Match]  # combates vigentes de la llave (sin los individuales de equipos)
+    fields: dict[str, dict[str, Any]] = field(default_factory=dict)  # código → columnas que cambian
+    new: dict[str, bd.MatchSpec] = field(default_factory=dict)  # repechajes que aún no tienen fila
+    places: list[tuple[int, str]] = field(default_factory=list)
+    status: str = ""  # estado que corresponde a la categoría
+    # Rondas de kata: ejecuciones de la ronda siguiente a crear (ronda, orden) y a borrar.
+    kata_create: list[tuple[int, list[int]]] = field(default_factory=list)
+    kata_delete: list[int] = field(default_factory=list)
+
+
+def _plan(db: Session, c: Category) -> _Plan | None:
     b = _bracket(db, c.id)
     if b is None or b.current_version_id is None:
-        return {}
+        return None
     v = db.get(BracketVersion, b.current_version_id)
     assert v is not None
     if v.format == "kata_rounds":
-        return _sync_kata_rounds(db, c, v)
+        return _plan_kata_rounds(db, c, v)
     rows = current_matches(db, c.id)
+    started = _with_activity(db, [m.id for m in rows])
+    if v.format == "round_robin":
+        return _plan_round_robin(db, c, v, rows, started)
+    if v.format == "groups_knockout":
+        return _plan_groups_knockout(db, c, v, rows, started)
+
     by_code = {m.code: m for m in rows}
     winners = {m.code: str(m.winner_registration_id) for m in rows if m.winner_registration_id}
-
-    if v.format == "round_robin":
-        return _sync_round_robin(db, c, v, rows)
-    if v.format == "groups_knockout":
-        return _sync_groups_knockout(db, c, v, rows)
-
     slots = tuple(str(x) if x is not None else None for x in v.slots)
     specs = [_spec(m) for m in rows if m.kind != bd.MatchKind.REPECHAGE]
     res = bd.resolve(slots, specs, winners, bd.ThirdPlaceRule(v.third_place_rule), _repechage_excluded(db, c, rows))
-    # Repechaje: el dominio lo arma cuando hay finalistas; se crean filas nuevas.
+    plan = _Plan(info={"podium": res.podium}, rows=rows)
+    # Repechaje: el dominio lo arma cuando hay finalistas; al guardar se crean filas nuevas.
     for code, rm in res.matches.items():
         if code not in by_code and rm.spec.kind == bd.MatchKind.REPECHAGE:
-            m = Match(
-                category_id=c.id,
-                bracket_version_id=v.id,
-                code=code,
-                kind=rm.spec.kind.value,
-                round=rm.spec.round,
-                position=rm.spec.position,
-                aka_source=_src_to_str(rm.spec.aka),
-                ao_source=_src_to_str(rm.spec.ao),
-            )
-            db.add(m)
-            db.flush()
-            by_code[code] = m
-
-    for code, m in by_code.items():
+            plan.new[code] = rm.spec
+    for code in [*by_code, *plan.new]:
         rm = res.matches.get(code)
         if rm is None:
-            m.status = "void"  # p. ej. repechaje que dejó de existir tras una corrección
+            plan.fields[code] = {"status": "void"}  # p. ej. repechaje que dejó de existir tras una corrección
             continue
-        m.aka_registration_id = _to_int(rm.aka)
-        m.ao_registration_id = _to_int(rm.ao)
-        _update_status(db, m, rm.ready, rm.is_bye, rm.winner)
+        m = by_code.get(code)
+        plan.fields[code] = {
+            "aka_registration_id": _to_int(rm.aka),
+            "ao_registration_id": _to_int(rm.ao),
+            **_status(m, rm.ready, rm.is_bye, rm.winner, m is not None and m.id in started),
+        }
+    complete = res.podium.complete
+    plan.places = res.podium.places() if complete else []
+    statuses = [plan.fields.get(m.code, {}).get("status", m.status) for m in rows]
+    plan.status = _category_status(db, c, complete, any(x in ("in_progress", "finished") for x in statuses))
+    return plan
 
-    places = res.podium.places() if res.podium.complete else []
-    _store_results(db, c, places, complete=res.podium.complete)
-    return {"podium": res.podium}
+
+def sync(db: Session, c: Category) -> dict[str, Any]:
+    """Guarda el plan de la llave. Solo en escrituras (ver ``_plan``)."""
+    # Una escritura a la vez por categoría: dos mesas o un cierre y una
+    # corrección no calculan el podio en paralelo. En SQLite no hace nada (la
+    # base ya admite un solo escritor); en SQL Server bloquea la fila.
+    db.execute(select(Category.id).where(Category.id == c.id).with_for_update())
+    plan = _plan(db, c)
+    if plan is None:
+        return {}
+    b = _bracket(db, c.id)
+    by_code = {m.code: m for m in plan.rows}
+    for code, spec in plan.new.items():
+        m = Match(
+            category_id=c.id,
+            bracket_version_id=b.current_version_id,
+            code=code,
+            kind=spec.kind.value,
+            round=spec.round,
+            position=spec.position,
+            aka_source=_src_to_str(spec.aka),
+            ao_source=_src_to_str(spec.ao),
+        )
+        db.add(m)
+        by_code[code] = m
+    if plan.new:
+        db.flush()
+    for code, values in plan.fields.items():
+        m = by_code[code]
+        for k, value in values.items():
+            if getattr(m, k) != value:
+                setattr(m, k, value)
+    if plan.kata_delete:
+        db.execute(delete(KataPerformance).where(KataPerformance.id.in_(plan.kata_delete)))
+    for round_number, order in plan.kata_create:
+        for i, rid in enumerate(order):
+            db.add(KataPerformance(category_id=c.id, registration_id=rid, order=i + 1, round_number=round_number))
+    if plan.kata_create or plan.kata_delete:
+        db.flush()
+    _store_results(db, c, plan.places)
+    if c.status != plan.status:
+        c.status = plan.status
+    invalidate(db, c.tournament_id)
+    return plan.info
 
 
-def _update_status(db: Session, m: Match, ready: bool, is_bye: bool, winner: str | None) -> None:
-    has_events = db.scalar(select(func.count()).select_from(MatchEventRow).where(MatchEventRow.match_id == m.id))
-    if not has_events:  # enfrentamiento por equipos con alineación: ya empezó
-        has_events = db.scalar(select(func.count()).select_from(Match).where(Match.parent_match_id == m.id))
+def _with_activity(db: Session, ids: list[int]) -> set[int]:
+    """Combates que ya empezaron: con eventos o, en equipos, con alineación
+    (combates individuales). Una consulta para toda la llave."""
+    if not ids:
+        return set()
+    events = select(MatchEventRow.match_id).where(MatchEventRow.match_id.in_(ids))
+    bouts = select(Match.parent_match_id).where(Match.parent_match_id.in_(ids))
+    return set(db.execute(union(events, bouts)).scalars().all())
+
+
+def _status(m: Match | None, ready: bool, is_bye: bool, winner: str | None, started: bool) -> dict[str, Any]:
     if is_bye:
-        m.status = "bye"
-        m.winner_registration_id = _to_int(winner)
-        m.method = "bye"
-    elif m.winner_registration_id is not None:
+        return {"status": "bye", "winner_registration_id": _to_int(winner), "method": "bye"}
+    if m is not None and m.winner_registration_id is not None:
         if winner is not None and int(winner) == m.winner_registration_id:
-            m.status = "finished"
-        else:
-            m.status = "needs_review"  # su ganador ya no es uno de los participantes
-    elif has_events:
-        m.status = "in_progress"
-    else:
-        m.status = "ready" if ready else "pending"
+            return {"status": "finished"}
+        return {"status": "needs_review"}  # su ganador ya no es uno de los participantes
+    if started:
+        return {"status": "in_progress"}
+    return {"status": "ready" if ready else "pending"}
 
 
-def _store_results(db: Session, c: Category, places: list[tuple[int, str]], complete: bool) -> None:
-    """Guarda el podio solo si cambió: una lectura no debe generar escrituras."""
+def _category_status(db: Session, c: Category, complete: bool, started: bool) -> str:
+    if c.status in ("merged", "cancelled"):
+        return c.status
+    if complete and not _reopened_pending(db, c):
+        return "finished"
+    if started or _started(db, c.id):
+        return "in_progress"
+    return "ready"
+
+
+def _store_results(db: Session, c: Category, places: list[tuple[int, str]]) -> None:
+    """Guarda el podio con un diff por inscripción (solo lo que cambió): sin
+    borrar e insertar todo, dos escrituras seguidas no chocan con la clave única."""
     # La sesión no hace autoflush: sin esto, un podio agregado antes en la misma
     # transacción (p. ej. al cerrar el combate que decide la final por equipos)
     # no se ve aquí y se insertaría dos veces.
     db.flush()
     current = {
-        (r.place, r.registration_id)
-        for r in db.scalars(select(CategoryResult).where(CategoryResult.category_id == c.id)).all()
+        r.registration_id: r for r in db.scalars(select(CategoryResult).where(CategoryResult.category_id == c.id)).all()
     }
-    wanted = {(place, int(rid)) for place, rid in places}
-    if current != wanted:
-        db.execute(delete(CategoryResult).where(CategoryResult.category_id == c.id))
-        for place, rid in places:
+    wanted = {int(rid): place for place, rid in places}
+    for rid, row in current.items():
+        if rid not in wanted:
+            db.delete(row)
+        elif row.place != wanted[rid]:
+            row.place = wanted[rid]
+            row.computed_at = utcnow()
+    for place, rid in places:
+        if int(rid) not in current:
             db.add(CategoryResult(category_id=c.id, registration_id=int(rid), place=place))
-    if c.status in ("merged", "cancelled"):
-        return
-    if complete and not _reopened_pending(db, c):
-        new_status = "finished"
-    elif _started(db, c.id):
-        new_status = "in_progress"
-    else:
-        new_status = "ready"
-    if c.status != new_status:
-        c.status = new_status
 
 
 def _reopened_pending(db: Session, c: Category) -> bool:
@@ -659,18 +730,19 @@ def reopen_category(db: Session, user: User, cid: int, reason: str) -> Category:
     return c
 
 
-def _sync_round_robin(db: Session, c: Category, v: BracketVersion, rows: list[Match]) -> dict[str, Any]:
+def _plan_round_robin(db: Session, c: Category, v: BracketVersion, rows: list[Match], started: set[int]) -> _Plan:
     t = get_tournament(db, c.tournament_id)
     comp = effective_competition(c, t)
-    standings, complete = _rr_table(db, c, v, list(v.slots), rows, comp)
+    plan = _Plan(info={}, rows=rows)
+    standings, complete, statuses = _rr_table(db, c, v, list(v.slots), rows, started, comp, plan)
     bronzes = 1
     if int(comp["round_robin_bronzes"]) >= 2 and len(standings) >= int(comp["round_robin_two_bronzes_min"]):
         bronzes = 2
-    places: list[tuple[int, str]] = []
     if complete:
-        places, complete = bd.round_robin_places(standings, bronzes)  # empate sin resolver: decide el organizador
-    _store_results(db, c, places, complete)
-    return {"standings": standings}
+        plan.places, complete = bd.round_robin_places(standings, bronzes)  # empate sin resolver: decide el organizador
+    plan.info = {"standings": standings}
+    plan.status = _category_status(db, c, complete, any(x in ("in_progress", "finished") for x in statuses))
+    return plan
 
 
 def _withdrawn_ids(db: Session, c: Category, ids: list[int]) -> set[int]:
@@ -680,34 +752,49 @@ def _withdrawn_ids(db: Session, c: Category, ids: list[int]) -> set[int]:
 
 
 def _rr_table(
-    db: Session, c: Category, v: BracketVersion, slots: list[int | None], rows: list[Match], comp: dict[str, Any]
-) -> tuple[list[bd.RRStanding], bool]:
-    """Clasificación de un todos contra todos (round robin o un grupo).
+    db: Session,
+    c: Category,
+    v: BracketVersion,
+    slots: list[int | None],
+    rows: list[Match],
+    started: set[int],
+    comp: dict[str, Any],
+    plan: _Plan,
+) -> tuple[list[bd.RRStanding], bool, list[str]]:
+    """Clasificación de un todos contra todos (round robin o un grupo), en
+    memoria: los cambios de cada combate van a ``plan.fields``.
 
     Quien salió de la llave sin completar sus combates no se clasifica y sus
     resultados no cuentan para los demás (sus combates pendientes se anularon
     al quitarlo). Si ya había disputado todos, su tabla no cambia."""
     results = []
+    statuses = []
     members = [x for x in slots if x]
+    values_of: dict[str, dict[str, Any]] = {}
     finished_by: dict[int, int] = {}
     for m in rows:
-        if m.status == "finished":
-            for rid in (v.slots[int(m.aka_source.split(":")[1])], v.slots[int(m.ao_source.split(":")[1])]):
+        a, b = v.slots[int(m.aka_source.split(":")[1])], v.slots[int(m.ao_source.split(":")[1])]
+        winner = str(m.winner_registration_id) if m.winner_registration_id else None
+        values = {"aka_registration_id": a, "ao_registration_id": b, **_status(m, True, False, winner, m.id in started)}
+        values_of[m.code] = values
+        plan.fields[m.code] = values
+        statuses.append(values["status"])
+        if values["status"] == "finished":
+            for rid in (a, b):
                 finished_by[rid] = finished_by.get(rid, 0) + 1
     gone = {x for x in _withdrawn_ids(db, c, members) if finished_by.get(x, 0) < len(members) - 1}
     for m in rows:
-        a, b = v.slots[int(m.aka_source.split(":")[1])], v.slots[int(m.ao_source.split(":")[1])]
-        m.aka_registration_id, m.ao_registration_id = a, b
-        _update_status(db, m, True, False, str(m.winner_registration_id) if m.winner_registration_id else None)
-        if m.status == "finished" and a not in gone and b not in gone and m.winner_registration_id:
+        values = values_of[m.code]
+        a, b = values["aka_registration_id"], values["ao_registration_id"]
+        if values["status"] == "finished" and a not in gone and b not in gone and m.winner_registration_id:
             results.append(
                 bd.RRResult(str(a), str(b), str(m.winner_registration_id), m.aka_score or 0, m.ao_score or 0)
             )
-    complete = all(m.status == "finished" for m in rows)
+    complete = all(x == "finished" for x in statuses)
     criteria = tuple(comp["round_robin_criteria"])
     sanctions = _sanction_totals(db, c, rows) if "fewer_sanctions" in criteria else None
     entrants = [str(x) for x in slots if x and x not in gone]
-    return bd.round_robin_standings(entrants, results, criteria, sanctions, v.seed), complete
+    return bd.round_robin_standings(entrants, results, criteria, sanctions, v.seed), complete, statuses
 
 
 def _sanction_totals(db: Session, c: Category, rows: list[Match]) -> dict[str, int]:
@@ -733,10 +820,11 @@ def _repechage_excluded(db: Session, c: Category, rows: list[Match]) -> set[str]
     return {m.code for m in rows if m.method in methods and m.status == "finished"}
 
 
-def _sync_groups_knockout(db: Session, c: Category, v: BracketVersion, rows: list[Match]) -> dict[str, Any]:
+def _plan_groups_knockout(db: Session, c: Category, v: BracketVersion, rows: list[Match], started: set[int]) -> _Plan:
     """Grupos todos contra todos y, al terminarlos, la fase final por eliminación."""
     t = get_tournament(db, c.tournament_id)
     comp = effective_competition(c, t)
+    plan = _Plan(info={}, rows=rows)
     group_rows: dict[str, list[Match]] = {}
     members: dict[str, list[int]] = {}
     for m in rows:
@@ -751,15 +839,17 @@ def _sync_groups_knockout(db: Session, c: Category, v: BracketVersion, rows: lis
     tables: dict[str, list[bd.RRStanding]] = {}
     qualified: dict[tuple[int, int], str] = {}
     all_done = True
+    statuses: list[str] = []
     for gi, letter in enumerate(sorted(group_rows)):
-        standings, complete = _rr_table(db, c, v, sorted(members[letter]), group_rows[letter], comp)
+        standings, complete, sts = _rr_table(db, c, v, sorted(members[letter]), group_rows[letter], started, comp, plan)
+        statuses += sts
         tables[letter] = standings
         cut_tied = any(st.tied for st in standings if st.rank <= per_group)
         if not complete or cut_tied:
             all_done = False
         for st in standings[:per_group]:
             qualified[(gi, st.rank)] = st.entrant
-    size, layout = bd.knockout_positions(len(group_rows), per_group)
+    _size, layout = bd.knockout_positions(len(group_rows), per_group)
     ko_rows = [m for m in rows if m.kind != "group"]
     by_code = {m.code: m for m in ko_rows}
     res = None
@@ -781,35 +871,31 @@ def _sync_groups_knockout(db: Session, c: Category, v: BracketVersion, rows: lis
         )
         for code, rm in res.matches.items():
             if code not in by_code and rm.spec.kind == bd.MatchKind.REPECHAGE:
-                m = Match(
-                    category_id=c.id,
-                    bracket_version_id=v.id,
-                    code=code,
-                    kind=rm.spec.kind.value,
-                    round=rm.spec.round,
-                    position=rm.spec.position,
-                    aka_source=_src_to_str(rm.spec.aka),
-                    ao_source=_src_to_str(rm.spec.ao),
-                )
-                db.add(m)
-                db.flush()
-                by_code[code] = m
-    for code, m in by_code.items():
+                plan.new[code] = rm.spec
+    for code in [*by_code, *plan.new]:
+        m = by_code.get(code)
         rm = res.matches.get(code) if res else None
         if rm is None:
             if res is not None:
-                m.status = "void"
-                continue
-            m.aka_registration_id = m.ao_registration_id = None
-            if m.winner_registration_id is None:
-                m.status = "pending"
-            continue
-        m.aka_registration_id = _to_int(rm.aka)
-        m.ao_registration_id = _to_int(rm.ao)
-        _update_status(db, m, rm.ready, rm.is_bye, rm.winner)
+                plan.fields[code] = {"status": "void"}
+            elif m is not None:
+                # La fase final se arma al terminar todos los grupos.
+                values: dict[str, Any] = {"aka_registration_id": None, "ao_registration_id": None}
+                if m.winner_registration_id is None:
+                    values["status"] = "pending"
+                plan.fields[code] = values
+        else:
+            plan.fields[code] = {
+                "aka_registration_id": _to_int(rm.aka),
+                "ao_registration_id": _to_int(rm.ao),
+                **_status(m, rm.ready, rm.is_bye, rm.winner, m is not None and m.id in started),
+            }
+        statuses.append(plan.fields.get(code, {}).get("status", m.status if m else "pending"))
     complete = bool(res and res.podium.complete)
-    _store_results(db, c, res.podium.places() if complete and res else [], complete=complete)
-    return {"groups": tables, "podium": res.podium if res else None}
+    plan.places = res.podium.places() if complete and res else []
+    plan.info = {"groups": tables, "podium": res.podium if res else None}
+    plan.status = _category_status(db, c, complete, any(x in ("in_progress", "finished") for x in statuses))
+    return plan
 
 
 def _rank_round(perfs: list[KataPerformance], rules: ScoringRules) -> list[RankedPerformance]:
@@ -835,31 +921,39 @@ def _kata_cuts(cfg: dict[str, Any]) -> list[int]:
     return [int(x) for x in (cfg.get("rounds") or [])]
 
 
-def _sync_kata_rounds(db: Session, c: Category, v: BracketVersion) -> dict[str, Any]:
-    """Rondas de kata por puntuación.
+def _plan_kata_rounds(db: Session, c: Category, v: BracketVersion) -> _Plan:
+    """Rondas de kata por puntuación, en memoria.
 
     Con ``rounds`` vacío (por defecto) hay una ronda única, como antes. Con
     ``rounds = [8, 4]`` pasan los 8 mejores a la 2.ª ronda y los 4 mejores a
     la final. En la primera ronda puede haber grupos (``first_round_groups``):
     pasan los mejores de cada grupo. Las notas no se arrastran entre rondas.
-    La ronda siguiente se arma sola al completarse la anterior, con el orden
-    de salida configurado (``round_order``); si una corrección cambia los
-    clasificados y la ronda siguiente ya tiene notas, se marca para revisión.
+    La ronda siguiente se arma al completarse la anterior (``sync`` crea las
+    filas; el plan solo dice cuáles), con el orden de salida configurado
+    (``round_order``); si una corrección cambia los clasificados y la ronda
+    siguiente ya tiene notas, se marca para revisión.
     """
     t = get_tournament(db, c.tournament_id)
     cfg = effective_kata(c, t)
     rules = _scoring_rules(cfg)
     cuts = _kata_cuts(cfg)
     total_rounds = len(cuts) + 1
-    all_perfs = list(db.scalars(select(KataPerformance).where(KataPerformance.category_id == c.id)).all())
+    all_perfs = list(
+        db.scalars(
+            select(KataPerformance).where(KataPerformance.category_id == c.id, KataPerformance.match_id.is_(None))
+        ).all()
+    )
     by_round: dict[int, list[KataPerformance]] = {}
     for p in all_perfs:
         by_round.setdefault(p.round_number, []).append(p)
+    plan = _Plan(info={}, rows=[])
     info_rounds: list[dict[str, Any]] = []
     needs_review = False
     r = 1
+    current = 1
     ranked: list[RankedPerformance] = []
     while r in by_round:
+        current = r
         perfs = by_round[r]
         groups: dict[int | None, list[KataPerformance]] = {}
         for p in perfs:
@@ -871,42 +965,37 @@ def _sync_kata_rounds(db: Session, c: Category, v: BracketVersion) -> dict[str, 
             ranked.extend(ranked_by_group[g])
         complete = bool(perfs) and all(p.scores for p in perfs)
         entry: dict[str, Any] = {"round": r, "complete": complete, "qualified": [], "cut_tied": False}
-        if r < total_rounds and complete:
-            n = cuts[r - 1]
-            qualified: list[str] = []
-            ok = True
-            share = [n // len(groups) + (1 if i < n % len(groups) else 0) for i in range(len(groups))]
-            for i, g in enumerate(sorted(groups, key=lambda x: x or 0)):
-                q, fine = qualifiers(ranked_by_group[g], share[i])
-                qualified += q
-                ok = ok and fine
-            entry["qualified"] = [int(x) for x in qualified]
-            entry["cut_tied"] = not ok
-            if ok:
-                needs_review |= _ensure_next_round(db, c, v, cfg, r, ranked_by_group, qualified, by_round.get(r + 1))
-                if (r + 1) not in by_round:
-                    by_round[r + 1] = list(
-                        db.scalars(
-                            select(KataPerformance).where(
-                                KataPerformance.category_id == c.id, KataPerformance.round_number == r + 1
-                            )
-                        ).all()
-                    )
         info_rounds.append(entry)
-        if r == total_rounds:
+        if r >= total_rounds or not complete:
+            break
+        n = cuts[r - 1]
+        qualified: list[str] = []
+        ok = True
+        share = [n // len(groups) + (1 if i < n % len(groups) else 0) for i in range(len(groups))]
+        for i, g in enumerate(sorted(groups, key=lambda x: x or 0)):
+            q, fine = qualifiers(ranked_by_group[g], share[i])
+            qualified += q
+            ok = ok and fine
+        entry["qualified"] = [int(x) for x in qualified]
+        entry["cut_tied"] = not ok
+        if not ok:
+            break
+        review = _plan_next_round(plan, cfg, v, r, ranked_by_group, qualified, by_round.get(r + 1))
+        needs_review |= review
+        if (r + 1) not in by_round or plan.kata_create:
+            current = r + 1  # la ronda siguiente se crea al guardar
             break
         r += 1
-    final = by_round.get(total_rounds) or []
     ok = False
-    places: list[tuple[int, str]] = []
-    if final and all(p.scores for p in final) and not needs_review:
+    final = by_round.get(total_rounds) or []
+    if current == total_rounds and final and all(p.scores for p in final) and not needs_review:
         bronzes = 1 if v.third_place_rule == "third_place_match" else 2
         medals = kata_round_medals(ranked, bronzes=bronzes)
-        places = [(place, e) for place, es in medals.items() for e in es]
-        ok = len(places) >= min(len(final), 2 + bronzes)
-    _store_results(db, c, places if ok else [], complete=ok)
-    current = max(by_round) if by_round else 1
-    return {
+        plan.places = [(place, e) for place, es in medals.items() for e in es]
+        ok = len(plan.places) >= min(len(final), 2 + bronzes)
+        if not ok:
+            plan.places = []
+    plan.info = {
         "ranking": ranked,
         "kata_rounds": {
             "current": current,
@@ -916,30 +1005,30 @@ def _sync_kata_rounds(db: Session, c: Category, v: BracketVersion) -> dict[str, 
             "needs_review": needs_review,
         },
     }
+    plan.status = _category_status(db, c, ok, any(p.total is not None for p in all_perfs))
+    return plan
 
 
-def _ensure_next_round(
-    db: Session,
-    c: Category,
-    v: BracketVersion,
+def _plan_next_round(
+    plan: _Plan,
     cfg: dict[str, Any],
+    v: BracketVersion,
     r: int,
     ranked_by_group: dict[int | None, list[RankedPerformance]],
     qualified: list[str],
     existing: list[KataPerformance] | None,
 ) -> bool:
-    """Crea (o rehace, si nadie ejecutó aún) la ronda ``r + 1`` con los
-    clasificados. Devuelve True si la ronda siguiente ya tiene notas y sus
-    participantes no coinciden (necesita revisión del organizador)."""
+    """Qué hace falta para que la ronda ``r + 1`` tenga a los clasificados:
+    se anota en ``plan.kata_create`` / ``plan.kata_delete`` (sin escribir).
+    Devuelve True si la ronda siguiente ya tiene notas y sus participantes no
+    coinciden (necesita revisión del organizador)."""
     wanted = [int(x) for x in qualified]
     if existing:
         if {p.registration_id for p in existing} == set(wanted):
             return False
         if any(p.scores for p in existing):
             return True
-        for p in existing:
-            db.delete(p)
-        db.flush()
+        plan.kata_delete += [p.id for p in existing]
     rank_of: dict[str, int] = {}
     for ranked in ranked_by_group.values():
         for x in ranked:
@@ -950,9 +1039,7 @@ def _ensure_next_round(
         order.reverse()  # el mejor clasificado sale al final (WKF)
     elif mode == "random":
         random.Random(v.seed + r).shuffle(order)
-    for i, rid in enumerate(order):
-        db.add(KataPerformance(category_id=c.id, registration_id=rid, order=i + 1, round_number=r + 1))
-    db.flush()
+    plan.kata_create.append((r + 1, order))
     return False
 
 
@@ -972,12 +1059,16 @@ def _kata_standings(db: Session, cid: int, info: dict[str, Any]) -> tuple[list[d
     de todas las rondas."""
     rounds_info = info.get("kata_rounds")
     current = rounds_info["current"] if rounds_info else 1
-    perfs = list(db.scalars(select(KataPerformance).where(KataPerformance.category_id == cid)).all())
+    perfs = list(
+        db.scalars(
+            select(KataPerformance).where(KataPerformance.category_id == cid, KataPerformance.match_id.is_(None))
+        ).all()
+    )
+    c = get_category(db, cid)
+    rules = _scoring_rules(effective_kata(c, get_tournament(db, c.tournament_id)))
 
     def rows(r: int) -> list[dict[str, Any]]:
         mine = [p for p in perfs if p.round_number == r]
-        c = get_category(db, cid)
-        rules = _scoring_rules(effective_kata(c, get_tournament(db, c.tournament_id)))
         groups: dict[int | None, list[KataPerformance]] = {}
         for p in mine:
             groups.setdefault(p.group_number, []).append(p)
@@ -1015,36 +1106,52 @@ def _kata_standings(db: Session, cid: int, info: dict[str, Any]) -> tuple[list[d
 # ---------------------------------------------------------------------------
 
 
-def participants(db: Session, ids: set[int]) -> dict[int, s.ParticipantOut]:
+# Inscripciones con persona, dojo y equipo en una sola consulta. Sin estas
+# opciones, cada consulta de inscripciones arrastraba otras tres o cuatro
+# (documentos y roles de la persona, integrantes del equipo, sedes del dojo)
+# que aquí no se usan.
+REG_LIGHT = (
+    defaultload(Registration.person).lazyload(Person.documents),
+    defaultload(Registration.person).lazyload(Person.roles),
+    defaultload(Registration.team).lazyload(Team.members),
+    defaultload(Registration.dojo).lazyload(Dojo.branches),
+)
+
+
+def registrations_by_id(db: Session, ids: set[int]) -> dict[int, Registration]:
     if not ids:
         return {}
-    regs = db.scalars(select(Registration).where(Registration.id.in_(ids))).all()
-    out = {}
-    for r in regs:
-        out[r.id] = s.ParticipantOut(
-            registration_id=r.id, name=r.display_name, dojo_id=r.dojo_id, dojo_name=r.dojo.name
-        )
-    return out
+    return {r.id: r for r in db.scalars(select(Registration).where(Registration.id.in_(ids)).options(*REG_LIGHT))}
+
+
+def _participant(r: Registration) -> s.ParticipantOut:
+    return s.ParticipantOut(registration_id=r.id, name=r.display_name, dojo_id=r.dojo_id, dojo_name=r.dojo.name)
+
+
+def participants(db: Session, ids: set[int]) -> dict[int, s.ParticipantOut]:
+    return {rid: _participant(r) for rid, r in registrations_by_id(db, ids).items()}
 
 
 def bracket_out(db: Session, cid: int) -> s.BracketOut:
+    """La llave tal como corresponde según los resultados, calculada en memoria:
+    un GET no escribe (ver ``_plan``)."""
     b = _bracket(db, cid)
     if b is None or b.current_version_id is None:
         raise NotFound("La categoría no tiene llave")
     v = db.get(BracketVersion, b.current_version_id)
     assert v is not None
     c = get_category(db, cid)
-    info = sync(db, c)
-    if db.dirty or db.new or db.deleted:
-        db.commit()
-    rows = current_matches(db, cid)
-    ids = {x for x in v.slots if x} | {x for m in rows for x in (m.aka_registration_id, m.ao_registration_id) if x}
-    podium: dict[str, Any] = {}
-    results = db.scalars(
-        select(CategoryResult).where(CategoryResult.category_id == cid).order_by(CategoryResult.place)
-    ).all()
-    podium["places"] = [{"place": r.place, "registration_id": r.registration_id} for r in results]
-    podium["complete"] = c.status == "finished"
+    plan = _plan(db, c)
+    assert plan is not None
+    info = plan.info
+    matches = [s.MatchOut.model_validate(m).model_copy(update=plan.fields.get(m.code, {})) for m in plan.rows]
+    ids = {x for x in v.slots if x} | {x for m in matches for x in (m.aka_registration_id, m.ao_registration_id) if x}
+    podium: dict[str, Any] = {
+        "places": [
+            {"place": place, "registration_id": int(rid)} for place, rid in sorted(plan.places, key=lambda p: p[0])
+        ],
+        "complete": plan.status == "finished",
+    }
     standings = None
     kata_rounds = None
     if "standings" in info:
@@ -1075,7 +1182,7 @@ def bracket_out(db: Session, cid: int) -> s.BracketOut:
         slots=v.slots,
         same_dojo_first_round=v.same_dojo_first_round,
         participants=participants(db, ids),
-        matches=[s.MatchOut.model_validate(m) for m in rows],
+        matches=matches,
         podium=podium,
         standings=standings,
         groups=groups,
@@ -1350,11 +1457,13 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
     )
     if m.started_at is None:
         m.started_at = _naive_utc(data.at)
+    c = get_category(db, m.category_id)
     if m.status == "ready":
         m.status = "in_progress"
-        c = get_category(db, m.category_id)
         if c.status == "ready":
             c.status = "in_progress"
+    # Los puntos y el reloj no se auditan: aquí se invalida el vivo público.
+    invalidate(db, c.tournament_id)
     try:
         db.flush()
     except IntegrityError:
@@ -1848,71 +1957,113 @@ def _queue_key(m: Match, final_round: int) -> tuple:
     return (m.round, m.position)
 
 
-def tatami_schedule(db: Session, tatami_id: int) -> dict[str, Any]:
-    """Orden completo de combates del tatami con número estable (T1-001…).
+SCHEDULED = ("ready", "in_progress", "finished")
 
-    Incluye combates futuros (aún sin participantes) para que la planilla en
-    papel y la app usen la misma numeración. Excluye byes y combates anulados.
-    """
-    tat = db.get(Tatami, tatami_id)
-    if tat is None:
-        raise NotFound("Tatami no encontrado")
-    cats = db.scalars(
-        select(Category)
-        .where(Category.tatami_id == tatami_id, Category.status.in_(("ready", "in_progress", "finished")))
-        .order_by(Category.queue_position, Category.id)
-    ).all()
-    items: list[dict[str, Any]] = []
-    for c in cats:
-        rows = current_matches(db, c.id)
+
+def schedule_items(
+    tatamis: list[Tatami], categories: list[Category], matches: list[Match]
+) -> dict[int, list[dict[str, Any]]]:
+    """Orden de combates de varios tatamis a partir de filas ya cargadas (sin
+    consultas): ``categories`` en orden de cola y ``matches`` los combates
+    vigentes (los individuales de equipos se ignoran)."""
+    by_cat: dict[int, list[Match]] = defaultdict(list)
+    for m in matches:
+        if m.parent_match_id is None and m.is_current:
+            by_cat[m.category_id].append(m)
+    number = {t.id: t.number for t in tatamis}
+    out: dict[int, list[dict[str, Any]]] = {t.id: [] for t in tatamis}
+    for c in categories:
+        if c.tatami_id not in out or c.status not in SCHEDULED:
+            continue
+        rows = sorted(by_cat[c.id], key=lambda x: (x.round, x.position))
         main = [m for m in rows if m.kind == "main"]
         if not main:
             continue
         final_round = max(m.round for m in main)
+        items = out[c.tatami_id]
         for m in sorted(rows, key=lambda x: _queue_key(x, final_round)):
             if m.status in ("bye", "void"):
                 continue
             items.append(
                 {
-                    "number": f"T{tat.number}-{len(items) + 1:03d}",
+                    "number": f"T{number[c.tatami_id]}-{len(items) + 1:03d}",
                     "category_id": c.id,
                     "category_name": c.name,
-                    "match": s.MatchOut.model_validate(m),
+                    "match": m,
                 }
             )
+    return out
+
+
+def queue_order(categories: list[Category]) -> list[Category]:
+    """Orden de la cola del tatami, igual que ORDER BY queue_position, id (NULL primero)."""
+    return sorted(categories, key=lambda c: (c.queue_position is not None, c.queue_position or 0, c.id))
+
+
+def tatami_schedule(db: Session, tatami_id: int) -> dict[str, Any]:
+    """Orden completo de combates del tatami con número estable (T1-001…).
+
+    Incluye combates futuros (aún sin participantes) para que la planilla en
+    papel y la app usen la misma numeración. Excluye byes y combates anulados.
+    Tres consultas sin importar cuántas categorías tenga el tatami.
+    """
+    tat = db.get(Tatami, tatami_id)
+    if tat is None:
+        raise NotFound("Tatami no encontrado")
+    cats = queue_order(
+        db.scalars(select(Category).where(Category.tatami_id == tatami_id, Category.status.in_(SCHEDULED))).all()
+    )
+    matches = (
+        db.scalars(
+            select(Match).where(
+                Match.category_id.in_([c.id for c in cats]), Match.is_current, Match.parent_match_id.is_(None)
+            )
+        ).all()
+        if cats
+        else []
+    )
+    items = schedule_items([tat], cats, list(matches))[tat.id]
+    for it in items:
+        it["match"] = s.MatchOut.model_validate(it["match"])
     return {"tatami": tat, "items": items}
 
 
 def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
+    """Lo que la mesa pide seguido: cola, participantes, conflictos, avance y
+    personal del tatami. Unas ocho consultas, sin importar el tamaño."""
     sched = tatami_schedule(db, tatami_id)
     tat = sched["tatami"]
     queue = [it for it in sched["items"] if it["match"].status in ("ready", "in_progress", "needs_review")]
     ids = {x for q in queue for x in (q["match"].aka_registration_id, q["match"].ao_registration_id) if x}
-    parts = participants(db, ids)
-    # Advertencia: el mismo competidor con combates pendientes en dos tatamis.
-    conflicts = []
-    person_of = {r.id: r.person_id for r in db.scalars(select(Registration).where(Registration.id.in_(ids))).all()}
-    others = db.scalars(
-        select(Match)
-        .join(Category, Category.id == Match.category_id)
-        .where(
-            Match.is_current,
-            Match.status.in_(("ready", "in_progress")),
-            Category.tatami_id.is_not(None),
-            Category.tatami_id != tatami_id,
-            Category.tournament_id == tat.tournament_id,
+    regs = registrations_by_id(db, ids)
+    parts = {rid: _participant(r) for rid, r in regs.items()}
+    # Advertencia: el mismo competidor con combates pendientes en otro tatami (una consulta).
+    people = {r.person_id for r in regs.values() if r.person_id}
+    busy: set[int] = set()
+    if people:
+        busy = set(
+            db.scalars(
+                select(Registration.person_id)
+                .join(
+                    Match,
+                    or_(Match.aka_registration_id == Registration.id, Match.ao_registration_id == Registration.id),
+                )
+                .join(Category, Category.id == Match.category_id)
+                .where(
+                    Registration.person_id.in_(people),
+                    Match.is_current,
+                    Match.status.in_(("ready", "in_progress")),
+                    Category.tatami_id.is_not(None),
+                    Category.tatami_id != tatami_id,
+                    Category.tournament_id == tat.tournament_id,
+                )
+            ).all()
         )
-    ).all()
-    other_people = set()
-    for om in others:
-        for rid in (om.aka_registration_id, om.ao_registration_id):
-            if rid:
-                r = db.get(Registration, rid)
-                if r and r.person_id:
-                    other_people.add(r.person_id)
-    for rid, pid in person_of.items():
-        if pid and pid in other_people:
-            conflicts.append({"registration_id": rid, "name": parts[rid].name if rid in parts else ""})
+    conflicts = [
+        {"registration_id": rid, "name": parts[rid].name}
+        for rid, r in regs.items()
+        if r.person_id and r.person_id in busy
+    ]
     current = next((q for q in queue if q["match"].status == "in_progress"), None)
     from app.services import operation, referees
 

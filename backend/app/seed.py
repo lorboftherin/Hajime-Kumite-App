@@ -3,6 +3,7 @@
     python -m app.seed admin --username admin --password <clave>
     python -m app.seed template          # plantilla base de categorías (borrador)
     python -m app.seed demo              # torneo mock con datos FICTICIOS
+    python -m app.seed purge-imports     # borra filas de importaciones de más de 30 días
 
 La plantilla es un punto de partida editable: su contenido (edades, pesos,
 grados) es una decisión abierta del documento maestro (sección 30).
@@ -240,6 +241,18 @@ def cmd_demo() -> None:
     print(f"Torneo mock creado (id {t.id}) con {n} inscripciones ficticias")
 
 
+def cmd_purge_imports(days: int) -> None:
+    db = next(get_session())
+    try:
+        r = registrations.purge_old_imports(db, days)
+    finally:
+        db.close()
+    print(
+        f"Importaciones de más de {days} días: {r['batches']} lotes, {r['rows']} filas borradas, "
+        f"{r['expired_previews']} vistas previas vencidas"
+    )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="python -m app.seed")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -249,6 +262,8 @@ def main() -> None:
     a.add_argument("--force", action="store_true", help="Cambiar la contraseña si el usuario ya existe")
     sub.add_parser("template")
     sub.add_parser("demo")
+    pi = sub.add_parser("purge-imports", help="Borra las filas de importaciones antiguas (DNI, fechas)")
+    pi.add_argument("--days", type=int, default=registrations.IMPORT_RETENTION_DAYS)
     args = ap.parse_args()
     ensure_schema()
     if args.cmd == "admin":
@@ -258,6 +273,8 @@ def main() -> None:
         cmd_admin(args.username, password, args.force)
     elif args.cmd == "template":
         cmd_template()
+    elif args.cmd == "purge-imports":
+        cmd_purge_imports(args.days)
     else:
         cmd_demo()
 
