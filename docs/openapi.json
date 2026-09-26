@@ -3,7 +3,7 @@
  "info": {
   "title": "Hajime — API de torneos de karate",
   "description": "API First: toda acción es un endpoint. Errores con formato uniforme; advertencias de negocio con código WARNINGS que se aceptan reenviando `override`.",
-  "version": "0.1.0"
+  "version": "0.2.0"
  },
  "paths": {
   "/api/v1/auth/login": {
