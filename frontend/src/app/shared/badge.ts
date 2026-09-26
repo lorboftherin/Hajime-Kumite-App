@@ -34,6 +34,7 @@ const TONE: Record<string, string> = {
   needs_review: 'yamabuki',
   duplicate: 'yamabuki',
   error: 'shu',
+  rejected: 'shu',
 };
 
 @Component({

@@ -48,6 +48,22 @@ export function fmtDate(v: string | null | undefined): string {
 }
 
 /** Fecha de hoy en Lima como YYYY-MM-DD. */
+/** Lima no tiene horario de verano: UTC−5 todo el año. */
+const LIMA_OFFSET_MS = 5 * 3600 * 1000;
+
+/** UTC de la API («2026-10-01T23:00:00») → valor de un input datetime-local en hora de Lima. */
+export function utcToLimaInput(utc: string | null | undefined): string {
+  if (!utc) return '';
+  const ms = Date.parse(utc.endsWith('Z') || /[+-]\d\d:\d\d$/.test(utc) ? utc : utc + 'Z');
+  if (Number.isNaN(ms)) return '';
+  return new Date(ms - LIMA_OFFSET_MS).toISOString().slice(0, 16);
+}
+
+/** Valor de <input type="datetime-local"> (hora de Lima) → ISO con zona para la API. */
+export function limaInputToIso(v: string): string | null {
+  return v ? `${v}:00-05:00` : null;
+}
+
 export function todayLima(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 }
@@ -90,6 +106,17 @@ export const MATCH_STATUS: Record<string, string> = {
 export const REGISTRATION_STATUS: Record<string, string> = {
   active: 'Activa',
   withdrawn: 'Retirada',
+  pending: 'Pendiente',
+  rejected: 'Rechazada',
+};
+
+export const ORG_ROLE_LABEL: Record<string, string> = { owner: 'Dueño', admin: 'Administrador', member: 'Miembro' };
+export const ORG_KIND_LABEL: Record<string, string> = { league: 'Liga', dojo: 'Dojo', organizer: 'Organizador' };
+export const SUBSCRIPTION_STATUS: Record<string, string> = {
+  trial: 'Prueba',
+  active: 'Activa',
+  past_due: 'Pago pendiente',
+  canceled: 'Cancelada',
 };
 
 export const IMPORT_ROW_STATUS: Record<string, string> = {
@@ -153,7 +180,12 @@ export const ROLE_LABEL: Record<string, string> = {
   sensei: 'Sensei',
 };
 
-export const SCOPE_LABEL: Record<string, string> = { tournament: 'torneo', dojo: 'dojo', tatami: 'tatami' };
+export const SCOPE_LABEL: Record<string, string> = {
+  organization: 'organización',
+  tournament: 'torneo',
+  dojo: 'dojo',
+  tatami: 'tatami',
+};
 
 export const EVENT_LABEL: Record<string, string> = {
   point: 'Punto',
@@ -195,10 +227,12 @@ export function statusTone(status: string): string {
     case 'duplicate':
     case 'registration_closed':
     case 'merged':
+    case 'pending':
       return 'warn';
     case 'cancelled':
     case 'error':
     case 'withdrawn':
+    case 'rejected':
     case 'void':
       return 'danger';
     default:
@@ -296,6 +330,17 @@ export const AUDIT_ACTION: Record<string, string> = {
   walkover: 'Walkover por retiro',
   queue: 'Cola del tatami',
   edit_row: 'Fila de importación corregida',
+  self_registration: 'Inscripción en línea',
+  request: 'Solicitud de inscripción',
+  approve: 'Aprobación',
+  reject: 'Rechazo',
+  cancel_request: 'Solicitud retirada',
+  revoke: 'Revocación',
+  add_member: 'Miembro agregado',
+  update_member: 'Rol de miembro cambiado',
+  remove_member: 'Miembro quitado',
+  mark_paid: 'Pago confirmado',
+  checkout: 'Plan solicitado',
 };
 
 export const AUDIT_ENTITY: Record<string, string> = {
@@ -313,4 +358,8 @@ export const AUDIT_ENTITY: Record<string, string> = {
   team: 'Equipo',
   referee_assignment: 'Asignación de árbitro',
   tatami: 'Tatami',
+  organization: 'Organización',
+  subscription: 'Suscripción',
+  invitation: 'Invitación',
+  dojo_admin_request: 'Pedido de admin de dojo',
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { User } from './models';
-import { homePath, isStaff, tatamiScopes } from './roles';
+import { dojoAdminOf, homePath, isStaff, tatamiScopes } from './roles';
 
 const base: User = { id: 1, username: 'ana', display_name: 'Ana', is_admin: false, person_id: 5 };
 const op = (roles: User['roles']): User => ({ ...base, roles });
@@ -27,5 +27,16 @@ describe('roles', () => {
       ),
     ).toBe('/torneos');
     expect(homePath(null)).toBe('/torneos');
+  });
+
+  it('owner/admin de una organización es staff; el sensei entra a «Mis competidores»', () => {
+    const owner: User = { ...base, organizations: [{ id: 1, name: 'Liga', slug: 'liga', role: 'owner' }] };
+    const member: User = { ...base, organizations: [{ id: 1, name: 'Liga', slug: 'liga', role: 'member' }] };
+    expect(isStaff(owner)).toBe(true);
+    expect(isStaff(member)).toBe(false);
+    const sensei = op([{ id: 1, role: 'dojo_admin', scope_type: 'dojo', scope_id: 4 }]);
+    expect(dojoAdminOf(sensei)).toEqual([4]);
+    expect(homePath(sensei)).toBe('/mis-competidores');
+    expect(homePath(owner)).toBe('/torneos');
   });
 });
