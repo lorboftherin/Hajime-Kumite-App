@@ -31,7 +31,7 @@ BASE="http://localhost:$PUERTO"
 bash "$AQUI/esperar-salud.sh" "$BASE" 45 2
 
 # Los dos procesos terminaron de arrancar (ninguno cayó por la carrera del primer arranque).
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
   LISTOS="$(docker logs "$NOMBRE" 2>&1 | grep -c 'Application startup complete' || true)"
   [ "$LISTOS" -ge 2 ] && break
   sleep 2

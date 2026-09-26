@@ -91,6 +91,8 @@ jobs:
           pip install --no-deps .
       - name: La versión es la misma en VERSION, pyproject y package.json
         run: python scripts/version.py --check
+      - name: Scripts de operación sin errores (shellcheck)
+        run: shellcheck -x -P SCRIPTDIR infra/azure/*.sh scripts/*.sh
       - name: El DDL de SQL Server está al día (sql/001_schema.sql)
         working-directory: backend
         run: |
@@ -315,5 +317,4 @@ jobs:
       - name: Migrar y actualizar la app de pruebas
         env:
           IMAGEN_BASE: ghcr.io/${{ github.repository }}
-          COMANDO_MIGRACION: ${{ vars.HAJIME_COMANDO_MIGRACION }}
         run: bash infra/azure/promover.sh test "${GITHUB_SHA::7}"
