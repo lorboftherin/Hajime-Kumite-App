@@ -98,6 +98,25 @@ CREATE TABLE rule_overrides (
 	FOREIGN KEY(user_id) REFERENCES users (id)
 );
 
+CREATE TABLE user_sessions (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
+	previous_token_hash VARCHAR(64) NULL, 
+	rotated_at DATETIME2 NULL, 
+	created_at DATETIME2 NOT NULL, 
+	last_used_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	revoked_at DATETIME2 NULL, 
+	user_agent NVARCHAR(255) NOT NULL, 
+	ip VARCHAR(45) NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
+);
+
+CREATE INDEX ix_user_sessions_previous_token_hash ON user_sessions (previous_token_hash);
+CREATE INDEX ix_user_sessions_user_id ON user_sessions (user_id);
 CREATE TABLE branches (
 	id INTEGER NOT NULL IDENTITY, 
 	dojo_id INTEGER NOT NULL, 

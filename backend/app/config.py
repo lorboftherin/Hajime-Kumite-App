@@ -10,7 +10,12 @@ class Settings(BaseSettings):
     # SQL Server: mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server
     database_url: str = "sqlite:///./hajime.db"
     jwt_secret: str = "cambiar-en-produccion"
-    jwt_minutes: int = 12 * 60
+    # Secreto anterior durante una rotación: se sigue aceptando para verificar
+    # (no para firmar), así nadie pierde la sesión al cambiar el secreto.
+    jwt_previous_secret: str | None = None
+    # Token de acceso corto; la app lo renueva sola con el token de renovación.
+    access_token_minutes: int = 60
+    refresh_token_days: int = 30
     # Orígenes permitidos: el servidor de desarrollo de Angular y la app del
     # celular (Capacitor sirve la interfaz desde localhost con su propio esquema).
     cors_origins: list[str] = [

@@ -11,9 +11,11 @@ import base64
 import hashlib
 import hmac
 import os
+import secrets
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from typing import NamedTuple
 
 import jwt
 
@@ -39,25 +41,77 @@ def verify_password(password: str, stored: str) -> bool:
     return hmac.compare_digest(dk, base64.b64decode(hash_b64))
 
 
-def create_token(user_id: int, token_version: int = 0) -> str:
+# ---------------------------------------------------------------------------
+# Tokens: acceso (JWT corto) y renovación (opaco, rotado en cada uso)
+# ---------------------------------------------------------------------------
+
+
+class TokenClaims(NamedTuple):
+    user_id: int
+    token_version: int
+    session_id: int | None  # None: token emitido antes de existir las sesiones
+
+
+def key_id(secret: str) -> str:
+    """Identificador público del secreto (``kid`` del JWT): permite rotarlo."""
+    return hashlib.sha256(secret.encode()).hexdigest()[:12]
+
+
+def _verification_secrets(kid: str | None) -> list[str]:
+    """Secreto actual y, durante una rotación, el anterior (``HAJIME_JWT_PREVIOUS_SECRET``)."""
+    s = get_settings()
+    candidates = [x for x in (s.jwt_secret, s.jwt_previous_secret) if x]
+    if kid:
+        by_kid = [x for x in candidates if key_id(x) == kid]
+        return by_kid or candidates
+    return candidates
+
+
+def create_token(user_id: int, token_version: int = 0, session_id: int | None = None) -> str:
+    """Token de acceso: dura ``HAJIME_ACCESS_TOKEN_MINUTES`` y se firma con el secreto actual."""
     s = get_settings()
     now = datetime.now(UTC)
-    payload = {
+    payload: dict[str, object] = {
         "sub": str(user_id),
         "tv": token_version,
         "iat": now,
-        "exp": now + timedelta(minutes=s.jwt_minutes),
+        "exp": now + timedelta(minutes=s.access_token_minutes),
     }
-    return jwt.encode(payload, s.jwt_secret, algorithm="HS256")
+    if session_id is not None:
+        payload["sid"] = session_id
+    return jwt.encode(payload, s.jwt_secret, algorithm="HS256", headers={"kid": key_id(s.jwt_secret)})
 
 
-def decode_token(token: str) -> tuple[int, int] | None:
-    """Devuelve (user_id, token_version) o None si el token no es válido."""
+def decode_token(token: str) -> TokenClaims | None:
+    """Devuelve los datos del token o None si no es válido (firma, vencimiento o forma)."""
     try:
-        payload = jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"])
-        return int(payload["sub"]), int(payload.get("tv", 0))
-    except (jwt.PyJWTError, KeyError, ValueError):
+        kid = jwt.get_unverified_header(token).get("kid")
+    except jwt.PyJWTError:
         return None
+    for secret in _verification_secrets(kid if isinstance(kid, str) else None):
+        try:
+            payload = jwt.decode(token, secret, algorithms=["HS256"])
+        except jwt.InvalidSignatureError:
+            continue
+        except jwt.PyJWTError:
+            return None
+        try:
+            sid = payload.get("sid")
+            return TokenClaims(int(payload["sub"]), int(payload.get("tv", 0)), int(sid) if sid is not None else None)
+        except (KeyError, ValueError, TypeError):
+            return None
+    return None
+
+
+def new_refresh_token() -> tuple[str, str]:
+    """Token de renovación opaco y su hash (lo único que se guarda)."""
+    token = secrets.token_urlsafe(48)
+    return token, hash_refresh_token(token)
+
+
+def hash_refresh_token(token: str) -> str:
+    # El token es aleatorio de 384 bits: basta un hash rápido (no hace falta PBKDF2).
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 # ---------------------------------------------------------------------------

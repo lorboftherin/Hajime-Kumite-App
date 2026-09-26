@@ -5,7 +5,8 @@ from __future__ import annotations
 import secrets
 from datetime import date
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import func, or_, select
 
 from app.api import schemas as s
@@ -14,33 +15,42 @@ from app.api.deps import (
     ROLES,
     AdminUser,
     CurrentUser,
+    StaffUser,
+    _bearer,
     can_view_documents,
     ensure_organizer,
     ensure_staff,
+    forget_roles,
     roles_of,
 )
-from app.api.errors import Conflict, NotFound, TooManyRequests, Unauthorized
+from app.api.errors import Conflict, Forbidden, NotFound, TooManyRequests, Unauthorized
 from app.db.models import (
     AuditEntry,
+    Bracket,
+    Category,
     CategoryTemplate,
     Dojo,
     IdentityDocument,
+    Match,
     Person,
     PersonRole,
+    Registration,
     RuleOverride,
     Tatami,
+    Tournament,
     User,
+    UserSession,
 )
 from app.domain.identity import normalize_document, normalize_name
 from app.security import (
     clear_login_failures,
-    create_token,
+    decode_token,
     hash_password,
     login_locked_for,
     register_login_failure,
     verify_password,
 )
-from app.services import people
+from app.services import people, sessions
 from app.services.audit import audit, bump, check_version, snapshot
 from app.services.tournaments import create_template
 
@@ -62,12 +72,81 @@ def login(data: s.LoginIn, db: DB, request: Request):
         register_login_failure(key)
         raise Unauthorized("Usuario o contraseña incorrectos")
     clear_login_failures(key)
-    return s.TokenOut(access_token=create_token(u.id, u.token_version or 0), user=user_out(db, u))
+    return issue_tokens(db, u, request)
+
+
+def issue_tokens(db, u: User, request: Request | None) -> s.TokenOut:
+    """Abre una sesión (fila en ``user_sessions``) y devuelve sus tokens."""
+    sess, refresh_token = sessions.open_session(db, u, request)
+    db.commit()
+    return sessions.tokens_out(u, sess, refresh_token, user_out(db, u))
+
+
+@router.post("/auth/refresh", response_model=s.TokenOut, tags=["auth"])
+def refresh(data: s.RefreshIn, db: DB, request: Request):
+    """Renueva el token de acceso. El token de renovación se rota: guarda el nuevo."""
+    u, sess, refresh_token = sessions.refresh(db, data.refresh_token, request)
+    return sessions.tokens_out(u, sess, refresh_token, user_out(db, u))
+
+
+@router.post("/auth/logout", status_code=204, tags=["auth"])
+def logout(
+    db: DB,
+    data: s.LogoutIn | None = None,
+    cred: HTTPAuthorizationCredentials | None = Depends(_bearer),
+):
+    """Cierra esta sesión. Sirve con el token de acceso, con el de renovación o con ambos
+    (el de acceso puede haber vencido)."""
+    targets = []
+    claims = decode_token(cred.credentials) if cred else None
+    if claims and claims.session_id is not None:
+        sess = db.get(UserSession, claims.session_id)
+        if sess is not None and sess.user_id == claims.user_id:
+            targets.append(sess)
+    if data and data.refresh_token:
+        sess = sessions.by_refresh_token(db, data.refresh_token)
+        if sess is not None:
+            targets.append(sess)
+    for sess in targets:
+        sessions.revoke(db, sess)
+    db.commit()
+
+
+@router.get("/auth/sessions", response_model=list[s.SessionOut], tags=["auth"])
+def my_sessions(db: DB, user: CurrentUser, request: Request):
+    """Sesiones abiertas de la propia cuenta (dispositivo, IP y último uso)."""
+    current = getattr(request.state, "session_id", None)
+    out = []
+    for sess in sessions.active_sessions(db, user.id):
+        o = s.SessionOut.model_validate(sess)
+        o.current = sess.id == current
+        out.append(o)
+    return out
+
+
+@router.delete("/auth/sessions/{session_id}", status_code=204, tags=["auth"])
+def close_session(session_id: int, db: DB, user: CurrentUser):
+    sess = db.get(UserSession, session_id)
+    if sess is None or sess.user_id != user.id:
+        raise NotFound("Sesión no encontrada")
+    sessions.revoke(db, sess)
+    db.commit()
+
+
+@router.delete("/users/{user_id}/sessions", status_code=204, tags=["auth"])
+def close_user_sessions(user_id: int, db: DB, admin: AdminUser):
+    """El Admin cierra todas las sesiones de una cuenta (p. ej. tablet perdida)."""
+    u = db.get(User, user_id)
+    if u is None:
+        raise NotFound("Usuario no encontrado")
+    n = sessions.revoke_all(db, u.id)
+    audit(db, admin, "user", u.id, "close_sessions", after={"sessions": n})
+    db.commit()
 
 
 @router.post("/auth/change-password", response_model=s.TokenOut, tags=["auth"])
-def change_password(data: s.PasswordChange, db: DB, user: CurrentUser):
-    """Cambia la contraseña propia. Invalida las demás sesiones y devuelve un token nuevo."""
+def change_password(data: s.PasswordChange, db: DB, user: CurrentUser, request: Request):
+    """Cambia la contraseña propia. Cierra todas las sesiones y abre una nueva en este dispositivo."""
     if not verify_password(data.current_password, user.password_hash):
         raise Unauthorized("La contraseña actual no es correcta")
     if data.new_password == data.current_password:
@@ -75,9 +154,9 @@ def change_password(data: s.PasswordChange, db: DB, user: CurrentUser):
     user.password_hash = hash_password(data.new_password)
     user.token_version = (user.token_version or 0) + 1
     user.must_change_password = False
+    sessions.revoke_all(db, user.id)
     audit(db, user, "user", user.id, "change_password")
-    db.commit()
-    return s.TokenOut(access_token=create_token(user.id, user.token_version), user=user_out(db, user))
+    return issue_tokens(db, user, request)
 
 
 def user_out(db, u: User) -> s.UserOut:
@@ -108,6 +187,7 @@ def delete_account(data: s.AccountDelete, db: DB, user: CurrentUser):
     user.person_id = None
     user.is_active = False
     user.token_version = (user.token_version or 0) + 1
+    sessions.revoke_all(db, user.id)
     audit(db, user, "user", user.id, "delete_account", before=before)
     db.commit()
 
@@ -130,16 +210,19 @@ def add_role(person_id: int, data: s.RoleIn, db: DB, admin: AdminUser):
         raise Conflict("Un rol por torneo o por dojo necesita scope_id")
     if data.role not in ROLES:
         raise Conflict("Rol desconocido")
-    if data.scope_type == "tatami":
-        if data.role != "table_operator":
-            raise Conflict("Solo el operador de mesa se asigna a un tatami")
-        if db.get(Tatami, data.scope_id) is None:
-            raise NotFound("Tatami no encontrado")
+    if data.scope_type == "tatami" and data.role != "table_operator":
+        raise Conflict("Solo el operador de mesa se asigna a un tatami")
     if data.role == "sensei" and data.scope_type not in ("dojo", "global"):
         raise Conflict("El sensei se registra en su dojo")
+    scope_model = {"tournament": (Tournament, "Torneo"), "dojo": (Dojo, "Dojo"), "tatami": (Tatami, "Tatami")}
+    if data.scope_type in scope_model:
+        model, label = scope_model[data.scope_type]
+        if db.get(model, data.scope_id) is None:
+            raise NotFound(f"{label} no encontrado")
     r = PersonRole(person_id=person_id, role=data.role, scope_type=data.scope_type, scope_id=data.scope_id)
     db.add(r)
     db.flush()
+    forget_roles(db)
     audit(db, admin, "person", person_id, "add_role", after=data.model_dump())
     db.commit()
     return r
@@ -153,6 +236,7 @@ def remove_role(role_id: int, db: DB, admin: AdminUser):
     audit(db, admin, "person", r.person_id, "remove_role", before={"role": r.role, "scope": r.scope_type})
     db.delete(r)
     db.commit()
+    forget_roles(db)
 
 
 @router.get("/users", response_model=list[s.UserOut], tags=["auth"])
@@ -196,7 +280,8 @@ def update_user(user_id: int, data: s.UserAdminUpdate, db: DB, admin: AdminUser)
         u.password_hash = hash_password(data.reset_password)
         u.must_change_password = True
     if data.reset_password or changes.get("is_active") is False:
-        u.token_version = (u.token_version or 0) + 1  # cierra sus sesiones abiertas
+        u.token_version = (u.token_version or 0) + 1  # invalida los tokens de acceso emitidos
+        sessions.revoke_all(db, u.id)  # y cierra sus sesiones (no podrá renovarlas)
     after = {k: getattr(u, k) for k in ("is_active", "is_admin", "display_name", "person_id")}
     if data.reset_password:
         after["password"] = "reseteada"
@@ -262,11 +347,12 @@ def add_branch(dojo_id: int, data: s.BranchIn, db: DB, user: CurrentUser):
 @router.get("/persons", response_model=list[s.PersonOut], tags=["persons"])
 def list_persons(
     db: DB,
-    user: CurrentUser,
+    user: StaffUser,
     q: str | None = None,
     dojo_id: int | None = None,
     limit: int = Query(50, le=500),
 ):
+    """Lista y búsqueda de personas: solo Admin y organizadores (sección 11)."""
     privileged = can_view_documents(db, user)
     stmt = select(Person).where(Person.merged_into_id.is_(None))
     if q:
@@ -308,7 +394,15 @@ def create_person(data: s.PersonCreate, db: DB, user: CurrentUser):
 
 @router.get("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
 def get_person(person_id: int, db: DB, user: CurrentUser):
-    return people.person_out(db, people.get_person(db, person_id), can_view_documents(db, user))
+    """Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos)."""
+    privileged = can_view_documents(db, user)
+    if not privileged and user.person_id != person_id:
+        raise Forbidden("Solo los organizadores ven fichas de otras personas")
+    p = people.get_person(db, person_id)
+    out = people.person_out(db, p, privileged)
+    if privileged and (out.documents or out.birth_date):
+        people.log_sensitive_view(db, user, p.id)
+    return out
 
 
 @router.patch("/persons/{person_id}", response_model=s.PersonOut, tags=["persons"])
@@ -384,6 +478,12 @@ def get_template(template_id: int, db: DB, _: CurrentUser):
 # --- Auditoría ------------------------------------------------------------------
 
 
+# Entidades cuyas fotos antes/después contienen datos personales: fuera del
+# Admin se muestran sin contenido (queda quién, cuándo y qué acción).
+PERSONAL_ENTITIES = ("person", "registration", "team", "referee_assignment")
+REDACTED = {"redacted": True}
+
+
 @router.get("/audit", tags=["audit"])
 def audit_log(
     db: DB,
@@ -393,13 +493,14 @@ def audit_log(
     entity_id: str | None = None,
     limit: int = Query(200, le=1000),
 ):
+    """Sin ``tournament_id``: solo el Admin. Con él: los organizadores de ese torneo."""
     if tournament_id is not None:
         ensure_organizer(db, user, tournament_id)
-    else:
-        ensure_staff(db, user)
+    elif not user.is_admin:
+        raise Forbidden("Solo el Admin Global ve la auditoría completa")
     stmt = select(AuditEntry).order_by(AuditEntry.id.desc()).limit(limit)
     if not user.is_admin:
-        # Las fotos antes/después de personas contienen datos personales.
+        # Las fotos de personas nunca salen del Admin (ni siquiera redactadas).
         stmt = stmt.where(AuditEntry.entity != "person")
     if tournament_id is not None:
         stmt = stmt.where(AuditEntry.tournament_id == tournament_id)
@@ -407,26 +508,55 @@ def audit_log(
         stmt = stmt.where(AuditEntry.entity == entity)
     if entity_id:
         stmt = stmt.where(AuditEntry.entity_id == entity_id)
-    users = {u.id: u.username for u in db.scalars(select(User)).all()}
-    return [
-        {
-            "id": a.id,
-            "at": a.at,
-            "user": users.get(a.user_id),
-            "entity": a.entity,
-            "entity_id": a.entity_id,
-            "action": a.action,
-            "before": a.before,
-            "after": a.after,
-            "reason": a.reason,
-        }
-        for a in db.scalars(stmt).all()
-    ]
+    rows = db.scalars(stmt).all()
+    ids = {a.user_id for a in rows if a.user_id is not None}
+    users = dict(db.execute(select(User.id, User.username).where(User.id.in_(ids))).all()) if ids else {}
+    out = []
+    for a in rows:
+        hide = not user.is_admin and a.entity in PERSONAL_ENTITIES
+        out.append(
+            {
+                "id": a.id,
+                "at": a.at,
+                "user": users.get(a.user_id),
+                "entity": a.entity,
+                "entity_id": a.entity_id,
+                "action": a.action,
+                "before": REDACTED if hide and a.before is not None else a.before,
+                "after": REDACTED if hide and a.after is not None else a.after,
+                "reason": a.reason,
+            }
+        )
+    return out
+
+
+def _override_tournament(db, entity: str, entity_id: int) -> int | None:
+    """Torneo dueño de la entidad con advertencias aceptadas (None si no se conoce)."""
+    if entity == "registration":
+        return db.scalar(select(Registration.tournament_id).where(Registration.id == entity_id))
+    if entity == "category":
+        return db.scalar(select(Category.tournament_id).where(Category.id == entity_id))
+    if entity == "match":
+        return db.scalar(
+            select(Category.tournament_id).join(Match, Match.category_id == Category.id).where(Match.id == entity_id)
+        )
+    if entity == "bracket":
+        return db.scalar(
+            select(Category.tournament_id)
+            .join(Bracket, Bracket.category_id == Category.id)
+            .where(Bracket.id == entity_id)
+        )
+    return None
 
 
 @router.get("/overrides", tags=["audit"])
 def overrides(db: DB, user: CurrentUser, entity: str, entity_id: int):
-    ensure_staff(db, user)
+    """Advertencias aceptadas de una entidad: organizadores de su torneo (o el Admin)."""
+    if not user.is_admin:
+        tid = _override_tournament(db, entity, entity_id)
+        if tid is None:
+            raise Forbidden("Solo el Admin Global ve estas advertencias")
+        ensure_organizer(db, user, tid)
     rows = db.scalars(
         select(RuleOverride).where(RuleOverride.entity == entity, RuleOverride.entity_id == entity_id)
     ).all()
