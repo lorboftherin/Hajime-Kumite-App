@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
 from .brackets import AKA, AO
+from .errors import DomainError
 
 
-class KataError(ValueError):
+class KataError(DomainError):
     pass
 
 

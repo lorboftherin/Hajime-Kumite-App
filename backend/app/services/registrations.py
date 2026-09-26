@@ -35,6 +35,7 @@ from app.domain.categories import (
     registration_warnings,
     suggest_categories,
 )
+from app.domain.errors import DomainError
 from app.services import people
 from app.services.audit import apply_warnings, audit, bump, check_version, snapshot
 from app.services.tournaments import get_category, get_tournament, refresh_category_status
@@ -330,7 +331,7 @@ def _parse_date(v: Any) -> date | None:
             return datetime.strptime(txt, fmt).date()
         except ValueError:
             continue
-    raise ValueError(f"Fecha inválida: {txt}")
+    raise DomainError(f"Fecha inválida: {txt}")
 
 
 def _cell(v: Any) -> str:

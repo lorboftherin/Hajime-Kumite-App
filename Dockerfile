@@ -27,7 +27,11 @@ COPY backend/pyproject.toml ./
 COPY backend/app ./app
 COPY backend/scripts ./scripts
 COPY backend/alembic.ini ./
-RUN pip install --no-cache-dir . && if [ "$WITH_MSSQL" = "true" ]; then pip install --no-cache-dir ".[mssql]"; fi
+COPY backend/docker-entrypoint.sh ./
+# La imagen para Azure trae además Azure Monitor (se activa solo con
+# APPLICATIONINSIGHTS_CONNECTION_STRING).
+RUN pip install --no-cache-dir . && if [ "$WITH_MSSQL" = "true" ]; then pip install --no-cache-dir ".[mssql,azure]"; fi \
+    && chmod 755 /app/docker-entrypoint.sh
 COPY --from=frontend /src/dist/hajime/browser ./static
 
 RUN useradd --create-home --uid 1000 hajime && mkdir -p /data && chown hajime /data
@@ -39,7 +43,10 @@ ENV HAJIME_ENVIRONMENT=test \
     HAJIME_STATIC_DIR=/app/static
 VOLUME ["/data"]
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-# Varios procesos: cada uno atiende pocas peticiones a la vez (ver worker_threads en config.py);
+HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')" || exit 1
+# El entrypoint prepara la base una sola vez y luego reemplaza al shell por
+# uvicorn (forma exec: recibe SIGTERM y apaga ordenadamente). Varios procesos:
+# cada uno atiende pocas peticiones a la vez (ver worker_threads en config.py);
 # con dos, la app responde el doble de rápido bajo carga y usa ~400 MB.
-CMD uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --workers "${HAJIME_WORKERS:-2}"
+# Variables: HAJIME_WORKERS (2), HAJIME_FORWARDED_ALLOW_IPS (*), PORT (8000).
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
