@@ -79,7 +79,7 @@ function keepAwake(destroy: DestroyRef): void {
                 <span class="nm">{{ m.aka?.name ?? '—' }}</span>
                 <span class="dj">{{ m.aka?.dojo }}</span>
               </div>
-              <div class="pts">{{ m.score[0] }}</div>
+              <div class="pts" data-testid="pantalla-puntos-aka">{{ m.score[0] }}</div>
               <div class="marks">
                 @if (m.senshu === 'aka') {
                   <span class="senshu">先 Senshu</span>
@@ -94,7 +94,7 @@ function keepAwake(destroy: DestroyRef): void {
                 <span class="nm">{{ m.ao?.name ?? '—' }}</span>
                 <span class="dj">{{ m.ao?.dojo }}</span>
               </div>
-              <div class="pts">{{ m.score[1] }}</div>
+              <div class="pts" data-testid="pantalla-puntos-ao">{{ m.score[1] }}</div>
               <div class="marks">
                 @if (m.senshu === 'ao') {
                   <span class="senshu">先 Senshu</span>

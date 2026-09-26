@@ -82,6 +82,13 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   compartido por torneo y proceso, latido cada 15 s, límite de conexiones
   (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
   propagación de un punto.
+- **Pruebas de extremo a extremo** con Playwright (`frontend/e2e/`,
+  `npm run e2e`) contra el servidor real (API con SQLite temporal sirviendo el
+  frontend compilado): ingreso con cambio de clave y recuperación por correo,
+  torneo de punta a punta, mesa de kumite en tablet y sin red, importación
+  Excel, kata por banderas y por puntaje, vivo público y pantalla grande,
+  autoinscripción, acreditación, accesibilidad con axe-core y teléfono sin
+  scroll horizontal. Ver «Pruebas de extremo a extremo» en `CONTRIBUTING.md`.
 
 ### Corregido
 
@@ -145,6 +152,9 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Operación
 
+- CI: job `e2e` (después de `backend` y `frontend`) con Chromium de
+  Playwright; un reintento con traza y el reporte como artefacto
+  `playwright-report` si falla.
 - Migración `0014_pagos`: tablas `payments`, `invoices` y `coupons`; columnas
   opcionales o con valor por defecto en `organizations` (datos fiscales),
   `plans` (`trial_days`) y `subscriptions` (periodo, pasarela, gracia, cupón,
