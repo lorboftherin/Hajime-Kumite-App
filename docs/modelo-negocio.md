@@ -72,7 +72,9 @@ Además, la base de los niveles ya está construida (ver
    - *Reclamar perfil*: un adulto reclama el suyo; un padre o apoderado reclama el de su hijo o hija, validado por el dojo o sensei, o con el documento.
    - Historial completo, estadísticas básicas y avisos del propio perfil, gratis.
    - Competidor Plus opcional con los *insights* adicionales.
-4. **Cobros (membresía de dojo y Competidor Plus).**
+4. **Cobros (membresía de dojo y Competidor Plus).** *Hecho en el código:
+   Mercado Pago y Culqi, comprobantes con Nubefact, cupones y prueba gratis
+   (ver [cobros.md](cobros.md)); falta que el dueño cree las cuentas.*
    - Pasarela local con pagos recurrentes: Culqi, Mercado Pago o Izipay.
    - Comprobantes electrónicos para SUNAT (boleta y factura) mediante un proveedor OSE/PSE.
    - Periodo de prueba y cupones: por ejemplo, el primer torneo gratis para un dojo organizador.

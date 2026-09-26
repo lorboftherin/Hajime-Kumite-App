@@ -88,8 +88,55 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 - De los rivales, quien no es organizador ve solo el nombre abreviado en el
   historial. Los últimos dígitos del documento de un reclamo no se guardan.
 
+- **Cobros con pasarela real** (`HAJIME_PAYMENT_PROVIDER`): Mercado Pago
+  (Checkout Pro para pagos únicos y `preapproval` para el mensual automático,
+  avisos con firma `x-signature`) y Culqi (Culqi Checkout en el navegador,
+  cargo con token, suscripciones con planes de Culqi). El estado siempre se
+  consulta a la API de la pasarela; avisos idempotentes; tabla `payments`.
+  Pago rechazado o vencido: `past_due` con gracia configurable
+  (`HAJIME_BILLING_GRACE_DAYS`). Cancelación por el titular y reembolso por el
+  Admin (llamando a la pasarela). Ver `docs/cobros.md`.
+- **Comprobantes electrónicos (SUNAT)** detrás de `invoicing.Provider`
+  (`HAJIME_INVOICING_PROVIDER`): Nubefact emite factura a la organización con
+  RUC y boleta en los demás casos (DNI opcional para Competidor Plus) al
+  aprobarse un pago; tabla `invoices` con serie, número, estado y enlaces
+  PDF/XML. Datos fiscales en «Organización».
+- **Periodo de prueba y cupones:** `plans.trial_days` (30 días para Dojo y
+  Organizador), tabla `coupons` (porcentaje o monto, planes, usos, vencimiento,
+  solo primer periodo) y el cupón de ejemplo `PRIMER-TORNEO` sembrado
+  desactivado.
+- **Correos de cobro** por la bandeja de salida con la plantilla de la marca:
+  pago recibido (monto, plan, periodo, enlace al comprobante), pago no
+  completado, periodo de gracia y «tu plan vence» 7 y 1 días antes, a los
+  dueños de la organización o al titular de Competidor Plus. Revisión cada
+  hora desde el despachador de correo y `python -m app.billing_reminders`,
+  sin repetir avisos.
+- **Competidor Plus por persona:** el titular puede ser un perfil (el propio
+  o el de un menor a cargo con tutela aprobada); los derechos quedan en esa
+  persona.
+- **Nota de crédito** automática (SUNAT 07, anulación) al reembolsar un pago
+  con boleta o factura emitida, con reserva de número y reintento.
+- **Interfaz de cobro:** «Suscribirse» en «Planes» (mensual/anual, cupón),
+  pago con Culqi embebido o redirección a Mercado Pago, páginas de retorno
+  (`/pago/exito|pendiente|error`), historial de pagos y comprobantes con
+  Renovar/Cancelar en «Organización», pantalla «Pagos» del Admin (búsqueda,
+  reembolso, comprobantes, cupones) y aviso «tu plan vence en N días» en el
+  encabezado. Competidor Plus con el mismo flujo, con la cuenta como titular.
+
+### Seguridad
+
+- Ningún dato de tarjeta pasa por el servidor; de las respuestas de la
+  pasarela se guarda solo una lista blanca de campos. Secretos de pasarelas y
+  de Nubefact solo por variables de entorno (`SecretStr`, nunca en logs).
+  Avisos sin sesión pero con firma o autenticación y cuerpo limitado
+  (`HAJIME_WEBHOOK_MAX_BYTES`).
+
 ### Operación
 
+- Migración `0014_pagos`: tablas `payments`, `invoices` y `coupons`; columnas
+  opcionales o con valor por defecto en `organizations` (datos fiscales),
+  `plans` (`trial_days`) y `subscriptions` (periodo, pasarela, gracia, cupón,
+  titular de la boleta). Variables nuevas en `docs/despliegue.md`.
 - Migración `0009_organizaciones`: crea la «Organización principal» y le
   asigna todos los torneos existentes antes de volver obligatoria
   `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.

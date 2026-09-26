@@ -2,6 +2,23 @@
 SET XACT_ABORT ON;
 BEGIN TRAN;
 
+CREATE TABLE coupons (
+	id INTEGER NOT NULL IDENTITY, 
+	code VARCHAR(40) NOT NULL, 
+	description NVARCHAR(300) NOT NULL, 
+	percent_off INTEGER NULL, 
+	amount_off_pen INTEGER NULL, 
+	plan_codes NVARCHAR(max) NOT NULL, 
+	max_redemptions INTEGER NULL, 
+	times_redeemed INTEGER NOT NULL DEFAULT 0, 
+	expires_at DATETIME2 NULL, 
+	first_period_only BIT NOT NULL DEFAULT 1, 
+	active BIT NOT NULL DEFAULT 1, 
+	created_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	UNIQUE (code)
+);
+
 CREATE TABLE login_attempts (
 	[key] VARCHAR(160) NOT NULL, 
 	failures INTEGER NOT NULL, 
@@ -36,6 +53,7 @@ CREATE TABLE plans (
 	price_pen_year NUMERIC(10, 2) NULL, 
 	features NVARCHAR(max) NOT NULL, 
 	sort_order INTEGER NOT NULL, 
+	trial_days INTEGER NOT NULL DEFAULT 0, 
 	PRIMARY KEY (code)
 );
 
@@ -100,6 +118,10 @@ CREATE TABLE organizations (
 	timezone VARCHAR(60) NOT NULL DEFAULT 'America/Lima', 
 	currency VARCHAR(3) NOT NULL DEFAULT 'PEN', 
 	logo NVARCHAR(500) NULL, 
+	tax_id VARCHAR(11) NULL, 
+	legal_name NVARCHAR(200) NULL, 
+	tax_address NVARCHAR(300) NULL, 
+	billing_email VARCHAR(200) NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -341,6 +363,17 @@ CREATE TABLE subscriptions (
 	notes NVARCHAR(500) NOT NULL, 
 	created_at DATETIME2 NOT NULL, 
 	created_by_id INTEGER NULL, 
+	period VARCHAR(10) NULL, 
+	provider VARCHAR(20) NULL, 
+	provider_subscription_id VARCHAR(120) NULL, 
+	grace_until DATETIME2 NULL, 
+	cancel_at_period_end BIT NOT NULL DEFAULT 0, 
+	coupon_code VARCHAR(40) NULL, 
+	amount_cents INTEGER NULL, 
+	billing_doc VARCHAR(15) NULL, 
+	billing_name NVARCHAR(200) NULL, 
+	billing_email VARCHAR(200) NULL, 
+	reminder_key VARCHAR(40) NULL, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
 	FOREIGN KEY(person_id) REFERENCES persons (id), 
@@ -351,6 +384,7 @@ CREATE TABLE subscriptions (
 
 CREATE INDEX ix_subscriptions_organization_id ON subscriptions (organization_id);
 CREATE INDEX ix_subscriptions_person_id ON subscriptions (person_id);
+CREATE INDEX ix_subscriptions_provider_subscription_id ON subscriptions (provider_subscription_id);
 CREATE INDEX ix_subscriptions_user_id ON subscriptions (user_id);
 CREATE TABLE branches (
 	id INTEGER NOT NULL IDENTITY, 
@@ -365,6 +399,28 @@ CREATE TABLE branches (
 );
 
 CREATE INDEX ix_branches_dojo_id ON branches (dojo_id);
+CREATE TABLE payments (
+	id INTEGER NOT NULL IDENTITY, 
+	provider VARCHAR(20) NOT NULL, 
+	provider_ref VARCHAR(120) NOT NULL, 
+	subscription_id INTEGER NULL, 
+	amount_pen INTEGER NOT NULL, 
+	currency VARCHAR(3) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	period VARCHAR(10) NULL, 
+	coupon_code VARCHAR(40) NULL, 
+	idempotency_key VARCHAR(64) NULL, 
+	applied BIT NOT NULL DEFAULT 0, 
+	raw NVARCHAR(max) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	UNIQUE (provider_ref), 
+	FOREIGN KEY(subscription_id) REFERENCES subscriptions (id)
+);
+
+CREATE INDEX ix_payments_idempotency_key ON payments (idempotency_key);
+CREATE INDEX ix_payments_subscription_id ON payments (subscription_id);
 CREATE TABLE profile_claims (
 	id INTEGER NOT NULL IDENTITY, 
 	user_id INTEGER NOT NULL, 
@@ -539,6 +595,34 @@ CREATE TABLE import_batches (
 );
 
 CREATE INDEX ix_import_batches_tournament_id ON import_batches (tournament_id);
+CREATE TABLE invoices (
+	id INTEGER NOT NULL IDENTITY, 
+	payment_id INTEGER NOT NULL, 
+	provider VARCHAR(20) NOT NULL, 
+	doc_type VARCHAR(12) NOT NULL, 
+	refers_to_id INTEGER NULL, 
+	serie VARCHAR(4) NOT NULL, 
+	numero INTEGER NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	customer_doc_type VARCHAR(2) NOT NULL, 
+	customer_doc VARCHAR(15) NOT NULL, 
+	customer_name NVARCHAR(200) NOT NULL, 
+	total_pen INTEGER NOT NULL, 
+	pdf_url VARCHAR(500) NULL, 
+	xml_url VARCHAR(500) NULL, 
+	cdr_url VARCHAR(500) NULL, 
+	message NVARCHAR(500) NOT NULL, 
+	raw NVARCHAR(max) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	updated_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_invoice_serie_numero UNIQUE (doc_type, serie, numero), 
+	CONSTRAINT uq_invoice_payment_doc UNIQUE (payment_id, doc_type), 
+	FOREIGN KEY(payment_id) REFERENCES payments (id), 
+	FOREIGN KEY(refers_to_id) REFERENCES invoices (id)
+);
+
+CREATE INDEX ix_invoices_payment_id ON invoices (payment_id);
 CREATE TABLE public_snapshots (
 	tournament_id INTEGER NOT NULL, 
 	kind VARCHAR(40) NOT NULL, 

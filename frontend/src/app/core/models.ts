@@ -978,6 +978,19 @@ export interface Subscription {
   created_at: string;
   /** Vigente: da acceso hoy. */
   is_current: boolean;
+  period?: 'month' | 'year' | null;
+  provider?: string | null;
+  /** Se renueva sola en la pasarela. */
+  recurring?: boolean;
+  /** Cancelada por el titular: conserva el acceso hasta el fin del periodo. */
+  cancel_at_period_end?: boolean;
+  grace_until?: string | null;
+  /** Con acceso solo por la gracia (pago rechazado o vencido). */
+  in_grace?: boolean;
+  access_until?: string | null;
+  coupon_code?: string | null;
+  /** Próximo cobro esperado, en céntimos. */
+  amount_cents?: number | null;
 }
 
 export interface Organization {
@@ -989,6 +1002,11 @@ export interface Organization {
   timezone: string;
   currency: string;
   logo: string | null;
+  /** Datos fiscales (factura electrónica). */
+  tax_id?: string | null;
+  legal_name?: string | null;
+  tax_address?: string | null;
+  billing_email?: string | null;
   version: number;
   created_at: string;
   my_role: OrgRole | null;
@@ -1013,6 +1031,114 @@ export interface Plan {
   price_pen_month: number | null;
   price_pen_year: number | null;
   features: string[];
+  /** Días de prueba gratis al contratar por primera vez. */
+  trial_days?: number;
+}
+
+// --- Cobros (docs/cobros.md) ---
+
+export type BillingPeriod = 'month' | 'year';
+
+export interface BillingConfig {
+  mode: 'marcha_blanca' | 'enforced';
+  provider: 'manual' | 'mercadopago' | 'culqi';
+  culqi_public_key: string | null;
+  invoicing: 'none' | 'nubefact';
+  grace_days: number;
+}
+
+export interface CheckoutOut {
+  provider: 'manual' | 'mercadopago' | 'culqi' | 'coupon';
+  subscription_id: number;
+  url: string | null;
+  instructions: string;
+  amount_cents: number;
+  currency: string;
+  description: string;
+  recurring: boolean;
+  public_key: string | null;
+  status: Subscription['status'];
+}
+
+export interface QuoteOut {
+  plan_code: string;
+  plan_name: string;
+  period: BillingPeriod;
+  list_cents: number;
+  discount_cents: number;
+  first_cents: number;
+  recurring_cents: number;
+  coupon_code: string | null;
+  trial_days: number;
+}
+
+export interface InvoiceOut {
+  id: number;
+  doc_type: 'boleta' | 'factura' | 'nota_credito';
+  serie: string;
+  numero: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'error';
+  customer_name: string;
+  total_pen: number;
+  pdf_url: string | null;
+  xml_url: string | null;
+  cdr_url: string | null;
+  message: string;
+  created_at: string;
+}
+
+export interface PaymentOut {
+  id: number;
+  provider: string;
+  provider_ref: string;
+  subscription_id: number | null;
+  /** Céntimos de sol. */
+  amount_pen: number;
+  currency: string;
+  status: 'pending' | 'approved' | 'rejected' | 'refunded';
+  period: BillingPeriod | null;
+  coupon_code: string | null;
+  created_at: string;
+  updated_at: string;
+  plan_code: string | null;
+  plan_name: string | null;
+  organization_id: number | null;
+  organization_name: string | null;
+  user_id: number | null;
+  username: string | null;
+  /** Competidor Plus de un perfil (propio o de un menor a cargo). */
+  person_id?: number | null;
+  person_name?: string | null;
+  invoice: InvoiceOut | null;
+  /** Nota de crédito que anula el comprobante (pago reembolsado). */
+  credit_note?: InvoiceOut | null;
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  description: string;
+  percent_off: number | null;
+  amount_off_pen: number | null;
+  plan_codes: string[];
+  max_redemptions: number | null;
+  times_redeemed: number;
+  expires_at: string | null;
+  first_period_only: boolean;
+  active: boolean;
+  created_at: string;
+}
+
+export interface BillingAlert {
+  subscription_id: number;
+  organization_id: number | null;
+  organization_name: string | null;
+  plan_name: string;
+  status: Subscription['status'];
+  days_left: number;
+  in_grace: boolean;
+  recurring: boolean;
+  access_until: string | null;
 }
 
 export interface PlansOut {

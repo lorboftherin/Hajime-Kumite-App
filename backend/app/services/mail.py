@@ -394,7 +394,14 @@ class MailDispatcher:
             self._thread.join(timeout)
 
     def _run(self) -> None:
+        from app.services import billing_mail
+
         while not self._stop.is_set():
+            try:
+                # Avisos de vencimiento de planes (a lo sumo una vez por hora; sin repetir).
+                billing_mail.run_if_due(self.session_factory)
+            except Exception:  # noqa: BLE001 - no debe detener el envío de correos
+                log.exception("Los avisos de vencimiento de planes fallaron")
             try:
                 dispatch_once(self.session_factory, s=self.s)
             except Exception:  # noqa: BLE001 - p. ej. la base pausada: se reintenta en la próxima vuelta

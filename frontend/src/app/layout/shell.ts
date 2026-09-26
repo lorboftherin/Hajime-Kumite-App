@@ -1,9 +1,12 @@
-import { Component, ElementRef, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { alertText } from '../core/billing';
+import { BillingAlert } from '../core/models';
 import { canReviewClaims, dojoAdminOf, hasOrganizations, isCompetitorOnly, isStaff, tatamiScopes } from '../core/roles';
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
@@ -25,6 +28,8 @@ const NAV: NavItem[] = [
   { path: '/ranking', kanji: '番付', label: 'Ranking' },
 ];
 const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
+/** Admin Global: pagos, reembolsos, comprobantes y cupones. */
+const PAYMENTS: NavItem = { path: '/pagos', kanji: '会計', label: 'Pagos' };
 /** Cuenta de competidor o de padre, madre o apoderado: sus perfiles deportivos. */
 const MY_PROFILES: NavItem = { path: '/mis-perfiles', kanji: '選手', label: 'Mis perfiles' };
 /** Dojo, organizadores y Admin: solicitudes para reclamar perfiles. */
@@ -87,6 +92,16 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     </header>
 
     <main class="main">
+      @for (a of alerts(); track a.subscription_id) {
+        <div class="plan-alert no-print" [class.grace]="a.in_grace" role="status">
+          <span>{{ alertMessage(a) }}</span>
+          @if (a.organization_id) {
+            <a [routerLink]="['/organizacion', a.organization_id]">Renovar</a>
+          } @else {
+            <a routerLink="/planes">Renovar</a>
+          }
+        </div>
+      }
       <router-outlet />
     </main>
 
@@ -136,6 +151,25 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
       display: grid;
       grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
       min-height: 100vh;
+    }
+
+    /* ---- Aviso «tu plan vence en N días» (dueños y administradores) ---- */
+    .plan-alert {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 1rem;
+      font-size: var(--fs-14);
+      background: color-mix(in srgb, var(--warn) 18%, var(--washi));
+      border-bottom: 1px solid var(--kasumi);
+      &.grace {
+        background: color-mix(in srgb, var(--danger) 14%, var(--washi));
+      }
+      a {
+        font-weight: 600;
+      }
     }
 
     /* ---- Barra lateral (columna completa; el contenido queda fijo al desplazar) ---- */
@@ -488,9 +522,22 @@ export class Shell {
     const mine = [...(tatamiScopes(u).length ? [MY_TATAMI] : []), ...(dojoAdminOf(u).length ? [MY_DOJO] : [])];
     const org = hasOrganizations(u) ? [ORGANIZATION] : [];
     const claims = canReviewClaims(u) ? [CLAIMS] : [];
-    return [...mine, ...base, ...org, ...claims, ...(this.auth.isAdmin() ? [ADMIN] : [])];
+    return [...mine, ...base, ...org, ...claims, ...(this.auth.isAdmin() ? [ADMIN, PAYMENTS] : [])];
   });
   readonly competitorOnly = computed(() => isCompetitorOnly(this.auth.user()));
+  /** Planes por vencer o en gracia de las organizaciones que administra (o de su cuenta). */
+  readonly alerts = signal<BillingAlert[]>([]);
+  private readonly api = inject(ApiService);
+  private readonly loadAlerts = effect(() => {
+    if (!this.auth.user()) return;
+    this.api.get<BillingAlert[]>('/billing/alerts').subscribe({
+      next: (a) => this.alerts.set(a),
+      error: () => this.alerts.set([]),
+    });
+  });
+  alertMessage(a: BillingAlert): string {
+    return alertText(a);
+  }
   readonly name = computed(() => {
     const u = this.auth.user();
     return u?.display_name || u?.username || '';

@@ -5,12 +5,12 @@ Ver docs/organizaciones-y-planes.md.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
 from app.api import schemas as s
 from app.api.deps import DB, AdminUser, CurrentUser, is_org_admin, is_org_member
-from app.api.errors import Forbidden, InvalidState, NotFound
-from app.db.models import Organization, Plan, Subscription
+from app.api.errors import Forbidden, NotFound
+from app.db.models import Organization, Subscription
 from app.services import entitlements, payments
 from app.services import organizations as svc
 from app.services.audit import audit
@@ -109,12 +109,20 @@ def update_plan_prices(code: str, data: s.PlanPriceUpdate, db: DB, admin: AdminU
     p = entitlements.get_plan(db, code)
     if p is None:
         raise NotFound("Plan no encontrado")
-    before = {"month": float(p.price_pen_month or 0), "year": float(p.price_pen_year or 0)}
+
+    def foto() -> dict:
+        return {
+            "month": float(p.price_pen_month or 0),
+            "year": float(p.price_pen_year or 0),
+            "trial_days": p.trial_days,
+        }
+
+    before = foto()
     for k, v in data.model_dump(exclude_unset=True).items():
+        if k == "trial_days" and v is None:
+            continue
         setattr(p, k, v)
-    audit(
-        db, admin, "plan", code, "update_prices", before, {"month": data.price_pen_month, "year": data.price_pen_year}
-    )
+    audit(db, admin, "plan", code, "update_prices", before, foto())
     db.commit()
     db.refresh(p)
     return p
@@ -158,51 +166,3 @@ def mark_paid(sid: int, data: s.MarkPaidIn, db: DB, admin: AdminUser):
     db.commit()
     db.refresh(sub)
     return svc.subscription_out(db, sub)
-
-
-@router.post("/organizations/{oid}/checkout", response_model=s.CheckoutOut, tags=["billing"])
-def checkout(oid: int, data: s.CheckoutIn, db: DB, user: CurrentUser):
-    """Pide un plan para la organización: crea la suscripción pendiente y el cobro del proveedor."""
-    _ensure_manager(db, user, oid)
-    plan: Plan | None = entitlements.get_plan(db, data.plan_code)
-    if plan is None or plan.audience == "person" or plan.code == "marcha_blanca":
-        raise InvalidState("Ese plan no se contrata para una organización")
-    sub = Subscription(
-        organization_id=oid,
-        plan_code=plan.code,
-        status="past_due",  # sin pagar todavía: no da acceso
-        source="payment",
-        notes=f"Pedido por {user.username} ({data.period})",
-        created_by_id=user.id,
-    )
-    db.add(sub)
-    db.flush()
-    co = payments.provider().create_checkout(db, sub, data.period)
-    sub.reference = co.reference
-    audit(db, user, "subscription", sub.id, "checkout", after={"plan": plan.code, "period": data.period})
-    db.commit()
-    return s.CheckoutOut(provider=co.provider, subscription_id=sub.id, url=co.url, instructions=co.instructions)
-
-
-@router.post("/payments/webhook/{provider_name}", tags=["billing"])
-async def payment_webhook(provider_name: str, request: Request):
-    """Aviso de la pasarela de pagos. El proveedor verifica la firma; el manual no recibe avisos."""
-    import anyio.to_thread
-
-    from app.db.base import get_session
-
-    body = await request.body()
-    headers = {k.lower(): v for k, v in request.headers.items()}
-
-    def _handle():
-        gen = get_session()
-        db = next(gen)
-        try:
-            result = payments.provider(provider_name).handle_webhook(db, body, headers)
-            sub = payments.apply_webhook(db, result)
-            db.commit()
-            return {"ok": True, "subscription_id": sub.id if sub else None}
-        finally:
-            gen.close()
-
-    return await anyio.to_thread.run_sync(_handle)

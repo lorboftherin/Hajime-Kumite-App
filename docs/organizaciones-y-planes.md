@@ -130,20 +130,26 @@ Todo queda en la auditoría (`entity = subscription`).
 
 ### Cobros
 
-`app/services/payments.py` define la interfaz `Provider`:
+Ver **[cobros.md](cobros.md)**: pasarelas reales detrás de la interfaz
+`payments.Provider` (`HAJIME_PAYMENT_PROVIDER`: `manual` por defecto,
+`mercadopago` o `culqi`), comprobantes de SUNAT con Nubefact
+(`HAJIME_INVOICING_PROVIDER`), cupones, 30 días de prueba para Dojo y
+Organizador, gracia tras un pago rechazado (`HAJIME_BILLING_GRACE_DAYS`) y la
+lista de lo que el dueño tiene que crear en cada pasarela.
 
-- `create_checkout(db, suscripción, periodo)` → `Checkout` (URL de pago o
-  instrucciones). La usa `POST /organizations/{id}/checkout`, que crea la
-  suscripción en `past_due` (sin acceso hasta que se pague).
-- `handle_webhook(db, cuerpo, cabeceras)` → `WebhookResult` ya verificado. Lo
-  recibe `POST /payments/webhook/{proveedor}` y `apply_webhook` activa,
-  marca vencida o cancela la suscripción.
-
-Hoy solo existe `manual` (`HAJIME_PAYMENT_PROVIDER=manual`): el checkout
-devuelve instrucciones y el Admin marca pagado; no recibe webhooks. Para
-Culqi, Mercado Pago o Izipay se implementa `Provider`, se registra en
-`PROVIDERS` y sus credenciales van en la configuración del ambiente (nunca en
-el código). Los comprobantes electrónicos (SUNAT) quedan fuera por ahora.
+- «Planes» → **«Suscribirse»** (mensual o anual, cupón): Mercado Pago redirige
+  a su página; Culqi abre su Checkout en `/pago/culqi/:id`; el proveedor
+  `manual` sigue mostrando instrucciones y el Admin marca pagado.
+- «Organización»: datos fiscales (RUC, razón social, domicilio), estado del
+  plan con **Renovar** y **Cancelar suscripción**, y el historial de **pagos y
+  comprobantes** (PDF/XML) para dueños y administradores.
+- «Pagos» (Admin Global): búsqueda, reembolsos, reemisión de comprobantes y
+  cupones.
+- Competidor Plus: el mismo flujo con la cuenta del usuario o un perfil como
+  titular (`POST /me/checkout`, `person_id` del propio perfil o de un menor a
+  cargo), con DNI opcional para la boleta.
+- Correos de pago recibido, rechazado, gracia y «tu plan vence» (7 y 1 días)
+  a los dueños; nota de crédito automática al reembolsar.
 
 ## Autoinscripción por dojo
 
@@ -176,7 +182,8 @@ El aviso por correo al sensei queda para el servicio de correo:
 
 ## Pendientes
 
-- Cobro con pasarela y comprobantes (otro trabajo).
+- Otra pasarela (Izipay) y notas de crédito parciales (ver
+  [cobros.md](cobros.md#pendientes)).
 - Crear plantillas de una organización desde la interfaz (la columna existe;
   hoy las crea el Admin como globales).
 - Definir si la membresía de dojo incluye Competidor Plus para sus alumnos y

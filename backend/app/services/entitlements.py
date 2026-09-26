@@ -14,7 +14,7 @@ El Admin Global no se bloquea nunca (opera la plataforma). Ver
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import or_, select
@@ -58,6 +58,7 @@ class PlanSpec:
     price_pen_year: Decimal | None
     features: tuple[str, ...]
     sort_order: int
+    trial_days: int = 0
 
 
 # Catálogo inicial. Los precios son PROVISIONALES y se cambian en la tabla
@@ -70,9 +71,16 @@ CATALOG = (
     PlanSpec(
         "competidor_plus", "Competidor Plus", "person", Decimal("9.90"), Decimal("49.00"), tuple(PERSON_FEATURES), 3
     ),
-    PlanSpec("dojo", "Dojo", "organization", Decimal("69.00"), Decimal("690.00"), tuple(ORG_FEATURES), 4),
+    PlanSpec("dojo", "Dojo", "organization", Decimal("69.00"), Decimal("690.00"), tuple(ORG_FEATURES), 4, 30),
     PlanSpec(
-        "organizador", "Organizador", "organization", Decimal("149.00"), Decimal("1490.00"), tuple(ORG_FEATURES), 5
+        "organizador",
+        "Organizador",
+        "organization",
+        Decimal("149.00"),
+        Decimal("1490.00"),
+        tuple(ORG_FEATURES),
+        5,
+        30,
     ),
 )
 # Estados de suscripción que dan acceso (con el periodo vigente).
@@ -99,6 +107,7 @@ def ensure_plans(db: Session) -> None:
                 price_pen_year=p.price_pen_year,
                 features=list(p.features),
                 sort_order=p.sort_order,
+                trial_days=p.trial_days,
             )
         )
     try:
@@ -117,11 +126,49 @@ def get_plan(db: Session, code: str) -> Plan | None:
     return db.get(Plan, code)
 
 
-def is_current(sub: Subscription, now: datetime | None = None) -> bool:
-    """Vigente: en prueba o activa y sin periodo vencido."""
-    if sub.status not in VALID_STATUSES:
+def auto_renews(sub: Subscription) -> bool:
+    """Se renueva sola en la pasarela (y el titular no la canceló)."""
+    return bool(sub.provider_subscription_id) and not sub.cancel_at_period_end and sub.status == "active"
+
+
+def access_until(sub: Subscription) -> datetime | None:
+    """Hasta cuándo da acceso la suscripción, con la gracia si corresponde.
+
+    ``None`` si no vence (activa sin fecha de fin) o si no da acceso (ver
+    :func:`is_current`). La gracia (``HAJIME_BILLING_GRACE_DAYS``) cubre el
+    cobro recurrente que llega tarde o fue rechazado: el titular no pierde el
+    acceso el mismo día.
+    """
+    if sub.status in VALID_STATUSES:
+        if sub.current_period_end is None:
+            return None
+        if auto_renews(sub):
+            return sub.current_period_end + timedelta(days=get_settings().billing_grace_days)
+        return sub.current_period_end
+    if sub.status == "past_due":
+        return sub.grace_until
+    return None
+
+
+def in_grace(sub: Subscription, now: datetime | None = None) -> bool:
+    """Con acceso solo por la gracia (pago rechazado o periodo vencido)."""
+    now = now or utcnow()
+    if not is_current(sub, now):
         return False
-    return sub.current_period_end is None or sub.current_period_end > (now or utcnow())
+    return sub.status == "past_due" or (sub.current_period_end is not None and sub.current_period_end <= now)
+
+
+def is_current(sub: Subscription, now: datetime | None = None) -> bool:
+    """Vigente: en prueba o activa sin periodo vencido, o en su periodo de gracia."""
+    now = now or utcnow()
+    if sub.status in VALID_STATUSES:
+        if sub.current_period_end is None:
+            return True
+        end = access_until(sub)
+        return end is not None and end > now
+    if sub.status == "past_due":
+        return sub.grace_until is not None and sub.grace_until > now
+    return False
 
 
 def _subscriptions(db: Session, subject: Organization | Person | User) -> list[Subscription]:

@@ -12,6 +12,7 @@ from app import __version__
 from app.api.errors import install_handlers
 from app.api.routers import (
     accounts,
+    billing,
     certificates,
     checkin,
     competition,
@@ -134,6 +135,7 @@ def create_app() -> FastAPI:
         history.router,
         horarios.router,
         organizations.router,
+        billing.router,
         dojo_portal.router,
         public_profiles.router,
         public.router,
