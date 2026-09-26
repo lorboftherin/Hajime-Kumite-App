@@ -373,6 +373,7 @@ CREATE TABLE subscriptions (
 	billing_doc VARCHAR(15) NULL, 
 	billing_name NVARCHAR(200) NULL, 
 	billing_email VARCHAR(200) NULL, 
+	reminder_key VARCHAR(40) NULL, 
 	PRIMARY KEY (id), 
 	FOREIGN KEY(organization_id) REFERENCES organizations (id), 
 	FOREIGN KEY(person_id) REFERENCES persons (id), 
@@ -598,7 +599,8 @@ CREATE TABLE invoices (
 	id INTEGER NOT NULL IDENTITY, 
 	payment_id INTEGER NOT NULL, 
 	provider VARCHAR(20) NOT NULL, 
-	doc_type VARCHAR(10) NOT NULL, 
+	doc_type VARCHAR(12) NOT NULL, 
+	refers_to_id INTEGER NULL, 
 	serie VARCHAR(4) NOT NULL, 
 	numero INTEGER NOT NULL, 
 	status VARCHAR(20) NOT NULL, 
@@ -614,11 +616,13 @@ CREATE TABLE invoices (
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	PRIMARY KEY (id), 
-	CONSTRAINT uq_invoice_serie_numero UNIQUE (serie, numero), 
-	UNIQUE (payment_id), 
-	FOREIGN KEY(payment_id) REFERENCES payments (id)
+	CONSTRAINT uq_invoice_serie_numero UNIQUE (doc_type, serie, numero), 
+	CONSTRAINT uq_invoice_payment_doc UNIQUE (payment_id, doc_type), 
+	FOREIGN KEY(payment_id) REFERENCES payments (id), 
+	FOREIGN KEY(refers_to_id) REFERENCES invoices (id)
 );
 
+CREATE INDEX ix_invoices_payment_id ON invoices (payment_id);
 CREATE TABLE public_snapshots (
 	tournament_id INTEGER NOT NULL, 
 	kind VARCHAR(40) NOT NULL, 

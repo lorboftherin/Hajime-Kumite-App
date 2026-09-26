@@ -9584,7 +9584,7 @@
      "billing"
     ],
     "summary": "My Checkout",
-    "description": "Competidor Plus: el titular es la cuenta del usuario.",
+    "description": "Competidor Plus. Titular: la cuenta del usuario o, con ``person_id``, un perfil: el\npropio o el de un menor a su cargo (tutela aprobada).",
     "operationId": "my_checkout_api_v1_me_checkout_post",
     "requestBody": {
      "content": {
@@ -10045,7 +10045,7 @@
      "billing"
     ],
     "summary": "Emit Invoice",
-    "description": "Emite o reintenta el comprobante de un pago aprobado (Admin Global).",
+    "description": "Emite o reintenta el comprobante de un pago (Admin Global); si se reembolsó, su nota de crédito.",
     "operationId": "emit_invoice_api_v1_payments__pid__invoice_post",
     "security": [
      {
@@ -14060,6 +14060,17 @@
        }
       ],
       "title": "Billing Name"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
      }
     },
     "type": "object",
@@ -18021,7 +18032,39 @@
       ],
       "title": "Username"
      },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "person_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Name"
+     },
      "invoice": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/InvoiceOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "credit_note": {
       "anyOf": [
        {
         "$ref": "#/components/schemas/InvoiceOut"

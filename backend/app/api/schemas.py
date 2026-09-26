@@ -1108,6 +1108,8 @@ class CheckoutIn(BaseModel):
     # Titular de la boleta (Competidor Plus): DNI opcional y nombre.
     billing_doc: str | None = Field(default=None, pattern=r"^(\d{8})?$")
     billing_name: str | None = Field(default=None, max_length=200)
+    # Competidor Plus de un perfil (propio o de un menor a cargo); vacío = la cuenta.
+    person_id: int | None = None
 
 
 class CheckoutOut(BaseModel):
@@ -1158,7 +1160,7 @@ class CulqiChargeIn(BaseModel):
 
 class InvoiceOut(ORM):
     id: int
-    doc_type: str
+    doc_type: str  # boleta | factura | nota_credito
     serie: str
     numero: int
     status: str
@@ -1189,7 +1191,11 @@ class PaymentOut(ORM):
     organization_name: str | None = None
     user_id: int | None = None
     username: str | None = None
+    person_id: int | None = None
+    person_name: str | None = None
     invoice: InvoiceOut | None = None
+    # Nota de crédito que anula el comprobante (pago reembolsado).
+    credit_note: InvoiceOut | None = None
 
 
 class RefundIn(BaseModel):

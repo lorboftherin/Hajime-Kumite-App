@@ -141,9 +141,8 @@ class Settings(BaseSettings):
     payment_provider: Literal["manual", "mercadopago", "culqi"] = "manual"
     # Días que una suscripción con pago rechazado o vencido conserva el acceso.
     billing_grace_days: int = 7
-    # URL pública de la app (https://…): retornos de la pasarela y URL de avisos.
-    # Sin configurar se usa la URL con la que llegó la petición.
-    public_url: str | None = None
+    # Retornos de la pasarela y URL de avisos: usan public_url (arriba); sin
+    # configurar, la URL con la que llegó la petición.
     # Tiempo máximo de cada llamada a la pasarela o al proveedor de comprobantes.
     payment_http_timeout: float = 15.0
     # Tamaño máximo del cuerpo de un aviso (webhook) de la pasarela.
@@ -170,6 +169,10 @@ class Settings(BaseSettings):
     nubefact_token: SecretStr | None = None
     nubefact_serie_boleta: str = "BBB1"
     nubefact_serie_factura: str = "FFF1"
+    # Notas de crédito: serie que empieza con la letra del comprobante que anulan
+    # (F para facturas, B para boletas); la numeración es propia del tipo.
+    nubefact_serie_nc_boleta: str = "BBB1"
+    nubefact_serie_nc_factura: str = "FFF1"
 
     def allowed_cors_origins(self) -> list[str]:
         if self.cors_origins is not None:

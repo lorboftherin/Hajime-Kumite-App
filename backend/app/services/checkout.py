@@ -89,18 +89,22 @@ def _check_plan(db: Session, plan_code: str, audience: str) -> Plan:
     return plan
 
 
-def _subject_filter(organization_id: int | None, user_id: int | None):
+def _subject_filter(organization_id: int | None, user_id: int | None, person_id: int | None = None):
     if organization_id is not None:
         return Subscription.organization_id == organization_id
+    if person_id is not None:
+        return Subscription.person_id == person_id
     return Subscription.user_id == user_id
 
 
-def _reusable(db: Session, organization_id: int | None, user_id: int | None, plan_code: str) -> Subscription | None:
+def _reusable(
+    db: Session, organization_id: int | None, user_id: int | None, plan_code: str, person_id: int | None = None
+) -> Subscription | None:
     """Suscripción del mismo plan que se renueva en vez de crear otra (vigente o pendiente)."""
     return db.scalar(
         select(Subscription)
         .where(
-            _subject_filter(organization_id, user_id),
+            _subject_filter(organization_id, user_id, person_id),
             Subscription.plan_code == plan_code,
             Subscription.status != "canceled",
         )
@@ -125,17 +129,23 @@ def start_checkout(
     billing_doc: str | None,
     billing_name: str | None,
     request_base: str,
+    person_id: int | None = None,
 ) -> tuple[Subscription, payments.Checkout, Quote]:
-    """Crea (o reutiliza) la suscripción pendiente y el cobro de la pasarela."""
+    """Crea (o reutiliza) la suscripción pendiente y el cobro de la pasarela.
+
+    Titular: la organización, la persona (Competidor Plus de un perfil, p. ej.
+    el hijo que paga su padre) o la cuenta del usuario.
+    """
     plan = _check_plan(db, plan_code, "organization" if organization_id is not None else "person")
     q = quote(db, plan, period, coupon_code)
-    sub = _reusable(db, organization_id, user_id, plan.code)
+    sub = _reusable(db, organization_id, user_id, plan.code, person_id)
     if sub is not None and entitlements.auto_renews(sub):
         raise InvalidState("Esta suscripción ya se renueva automáticamente; no hace falta pagarla otra vez")
     if sub is None:
         sub = Subscription(
             organization_id=organization_id,
             user_id=user_id,
+            person_id=person_id,
             plan_code=plan.code,
             status="past_due",  # sin pagar todavía: no da acceso
             source="payment",
@@ -235,7 +245,36 @@ def can_manage_subscription(db: Session, user: User, sub: Subscription) -> bool:
         return True
     if sub.organization_id is not None:
         return is_org_admin(db, user, sub.organization_id)
-    return sub.user_id == user.id or (sub.person_id is not None and sub.person_id == user.person_id)
+    if sub.user_id is not None and sub.user_id == user.id:
+        return True
+    return sub.person_id is not None and can_pay_for_person(db, user, sub.person_id)
+
+
+def can_pay_for_person(db: Session, user: User, person_id: int) -> bool:
+    """La propia persona o su padre, madre o apoderado aprobado (tutela verificada)."""
+    from app.services.claims import is_guardian
+
+    return user.person_id == person_id or is_guardian(db, user, person_id)
+
+
+def person_ids_of(db: Session, user: User) -> list[int]:
+    """Perfiles por los que el usuario puede pagar Competidor Plus: el propio y los tutelados."""
+    from app.db.models import Guardianship
+
+    ids = list(db.scalars(select(Guardianship.person_id).where(Guardianship.user_id == user.id)).all())
+    if user.person_id is not None:
+        ids.insert(0, user.person_id)
+    return ids
+
+
+def my_subscriptions_query(db: Session, user: User):
+    """Suscripciones personales del usuario: su cuenta, sus perfiles y las que pagó."""
+    conds = [Subscription.user_id == user.id]
+    pids = person_ids_of(db, user)
+    if pids:
+        conds.append(Subscription.person_id.in_(pids))
+    conds.append((Subscription.created_by_id == user.id) & Subscription.organization_id.is_(None))
+    return select(Subscription).where(or_(*conds))
 
 
 def cancel(db: Session, user: User, sub: Subscription) -> Subscription:

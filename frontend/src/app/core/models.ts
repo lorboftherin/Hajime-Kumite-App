@@ -1074,7 +1074,7 @@ export interface QuoteOut {
 
 export interface InvoiceOut {
   id: number;
-  doc_type: 'boleta' | 'factura';
+  doc_type: 'boleta' | 'factura' | 'nota_credito';
   serie: string;
   numero: number;
   status: 'pending' | 'accepted' | 'rejected' | 'error';
@@ -1106,7 +1106,12 @@ export interface PaymentOut {
   organization_name: string | null;
   user_id: number | null;
   username: string | null;
+  /** Competidor Plus de un perfil (propio o de un menor a cargo). */
+  person_id?: number | null;
+  person_name?: string | null;
   invoice: InvoiceOut | null;
+  /** Nota de crédito que anula el comprobante (pago reembolsado). */
+  credit_note?: InvoiceOut | null;
 }
 
 export interface Coupon {

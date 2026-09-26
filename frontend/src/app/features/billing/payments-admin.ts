@@ -69,7 +69,7 @@ import { PageHead } from '../../shared/page-head';
             @for (p of payments(); track p.id) {
               <tr>
                 <td class="nowrap small">{{ dt(p.created_at) }}</td>
-                <td>{{ p.organization_name ?? p.username ?? '—' }}</td>
+                <td>{{ p.organization_name ?? p.person_name ?? p.username ?? '—' }}</td>
                 <td class="small">
                   {{ p.plan_name ?? '—' }}
                   @if (p.coupon_code) {
@@ -93,6 +93,20 @@ import { PageHead } from '../../shared/page-head';
                     <br /><span [class.danger-text]="inv.status === 'error'">{{
                       invStatus(inv.status)
                     }}</span>
+                    @if (p.credit_note; as nc) {
+                      <br />Nota de crédito
+                      @if (nc.pdf_url) {
+                        <a [href]="nc.pdf_url" target="_blank" rel="noopener">{{
+                          num(nc.serie, nc.numero)
+                        }}</a>
+                      } @else {
+                        {{ num(nc.serie, nc.numero) }}
+                      }
+                      ·
+                      <span [class.danger-text]="nc.status === 'error'">{{
+                        invStatus(nc.status)
+                      }}</span>
+                    }
                   } @else {
                     —
                   }
@@ -106,6 +120,9 @@ import { PageHead } from '../../shared/page-head';
                     @if (!p.invoice || p.invoice.status === 'error') {
                       <button class="btn sm" (click)="invoice(p)">Emitir comprobante</button>
                     }
+                  }
+                  @if (p.status === 'refunded' && p.credit_note?.status === 'error') {
+                    <button class="btn sm" (click)="invoice(p)">Reintentar nota de crédito</button>
                   }
                   @if (p.status === 'approved') {
                     <button class="btn sm ghost" (click)="refund(p)">Reembolsar</button>

@@ -13,9 +13,14 @@ Al aprobarse un pago se emite:
 * **boleta** en los demás casos: a la persona con DNI si lo indicó
   (Competidor Plus), o sin documento («clientes varios»).
 
+Al reembolsarse un pago con comprobante se emite la **nota de crédito**
+(código SUNAT 07; en Nubefact ``tipo_de_comprobante`` 3) por anulación de la
+operación, que referencia la boleta o factura.
+
 Los precios de los planes incluyen IGV (18 %). La numeración es correlativa
-por serie y se reserva en la base antes de llamar al proveedor: un reintento
-usa el mismo número (no quedan huecos ni duplicados).
+por tipo y serie y se reserva en la base antes de llamar al proveedor: un
+reintento usa el mismo número y primero consulta si ya se emitió (no quedan
+huecos ni duplicados).
 """
 
 from __future__ import annotations
@@ -32,12 +37,17 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import InvalidState
 from app.config import get_settings
-from app.db.models import Invoice, Organization, Payment, Subscription, User
+from app.db.models import Invoice, Organization, Payment, Person, Subscription, User
 from app.services import entitlements
 from app.services.gateway_http import GatewayError, request_json, sanitize
 
 log = logging.getLogger("hajime.comprobantes")
 IGV = Decimal("0.18")
+CREDIT_NOTE = "nota_credito"
+# tipo_de_comprobante de Nubefact: 1 factura, 2 boleta, 3 nota de crédito (SUNAT 01, 03, 07).
+NUBEFACT_TYPE = {"factura": 1, "boleta": 2, CREDIT_NOTE: 3}
+# tipo_de_nota_de_credito 1 = «Anulación de la operación» (catálogo 09 de SUNAT).
+CREDIT_NOTE_REASON = 1
 
 
 class Provider(Protocol):
@@ -64,7 +74,7 @@ class NubefactProvider:
             s.nubefact_url.get_secret_value(),
             headers={"Authorization": f'Token token="{s.nubefact_token.get_secret_value()}"'},
             body=body,
-            retries=0,  # sin clave de idempotencia: el reintento lo hace emit_for_payment con el mismo número
+            retries=0,  # sin clave de idempotencia: el reintento lo hace _send con el mismo número
         )
 
     def emit(self, invoice: Invoice, payload: dict[str, Any]) -> dict[str, Any]:
@@ -74,7 +84,7 @@ class NubefactProvider:
         return self._call(
             {
                 "operacion": "consultar_comprobante",
-                "tipo_de_comprobante": 1 if invoice.doc_type == "factura" else 2,
+                "tipo_de_comprobante": NUBEFACT_TYPE[invoice.doc_type],
                 "serie": invoice.serie,
                 "numero": invoice.numero,
             }
@@ -116,6 +126,9 @@ def customer_for(db: Session, sub: Subscription) -> tuple[str, str, str, str, st
         name = (org.legal_name or org.name) if org else "CLIENTES VARIOS"
         return "boleta", "-", "-", name, "", (org.billing_email if org else None) or sub.billing_email or ""
     name = sub.billing_name
+    if not name and sub.person_id is not None:
+        p = db.get(Person, sub.person_id)
+        name = f"{p.first_names} {p.last_names}".strip() if p else None
     if not name and sub.user_id is not None:
         u = db.get(User, sub.user_id)
         name = (u.display_name or u.username) if u else None
@@ -124,18 +137,26 @@ def customer_for(db: Session, sub: Subscription) -> tuple[str, str, str, str, st
     return "boleta", "-", "-", name or "CLIENTES VARIOS", "", sub.billing_email or ""
 
 
-def _next_number(db: Session, serie: str) -> int:
-    return int(db.scalar(select(func.max(Invoice.numero)).where(Invoice.serie == serie)) or 0) + 1
+def _next_number(db: Session, doc_type: str, serie: str) -> int:
+    return (
+        int(
+            db.scalar(select(func.max(Invoice.numero)).where(Invoice.doc_type == doc_type, Invoice.serie == serie)) or 0
+        )
+        + 1
+    )
+
+
+def _today() -> str:
+    return datetime.now(ZoneInfo(get_settings().timezone)).strftime("%d-%m-%Y")
 
 
 def build_payload(db: Session, inv: Invoice, pay: Payment, sub: Subscription, address: str, email: str) -> dict:
     plan = entitlements.get_plan(db, sub.plan_code)
     period = "anual" if (pay.period or sub.period) == "year" else "mensual"
-    base, igv, total = _split(pay.amount_pen)
-    today = datetime.now(ZoneInfo(get_settings().timezone)).strftime("%d-%m-%Y")
-    return {
+    base, igv, total = _split(inv.total_pen)
+    body: dict[str, Any] = {
         "operacion": "generar_comprobante",
-        "tipo_de_comprobante": 1 if inv.doc_type == "factura" else 2,
+        "tipo_de_comprobante": NUBEFACT_TYPE[inv.doc_type],
         "serie": inv.serie,
         "numero": inv.numero,
         "sunat_transaction": 1,
@@ -144,7 +165,7 @@ def build_payload(db: Session, inv: Invoice, pay: Payment, sub: Subscription, ad
         "cliente_denominacion": inv.customer_name,
         "cliente_direccion": address,
         "cliente_email": email,
-        "fecha_de_emision": today,
+        "fecha_de_emision": _today(),
         "moneda": 1,  # soles
         "porcentaje_de_igv": 18.00,
         "total_gravada": float(base),
@@ -152,7 +173,7 @@ def build_payload(db: Session, inv: Invoice, pay: Payment, sub: Subscription, ad
         "total": float(total),
         "enviar_automaticamente_a_la_sunat": True,
         "enviar_automaticamente_al_cliente": bool(email),
-        "codigo_unico": f"hajime-pago-{pay.id}",
+        "codigo_unico": f"hajime-{'nc' if inv.doc_type == CREDIT_NOTE else 'pago'}-{pay.id}",
         "items": [
             {
                 "unidad_de_medida": "ZZ",  # servicio
@@ -169,6 +190,19 @@ def build_payload(db: Session, inv: Invoice, pay: Payment, sub: Subscription, ad
             }
         ],
     }
+    if inv.doc_type == CREDIT_NOTE:
+        orig = db.get(Invoice, inv.refers_to_id) if inv.refers_to_id else None
+        assert orig is not None
+        body.update(
+            {
+                "documento_que_se_modifica_tipo": NUBEFACT_TYPE[orig.doc_type],
+                "documento_que_se_modifica_serie": orig.serie,
+                "documento_que_se_modifica_numero": orig.numero,
+                "tipo_de_nota_de_credito": CREDIT_NOTE_REASON,
+                "observaciones": "Anulación por reembolso del pago",
+            }
+        )
+    return body
 
 
 def _apply_response(inv: Invoice, r: dict[str, Any]) -> None:
@@ -183,46 +217,32 @@ def _apply_response(inv: Invoice, r: dict[str, Any]) -> None:
     inv.raw = {k: v for k, v in r.items() if k not in ("cadena_para_codigo_qr", "codigo_hash", "xml_zip_base64")}
 
 
-def emit_for_payment(db: Session, pay: Payment) -> Invoice | None:
-    """Emite (o reintenta) el comprobante de un pago aprobado. Idempotente por pago."""
-    prov = provider()
-    if prov is None or pay.status != "approved" or pay.amount_pen <= 0 or pay.subscription_id is None:
-        return None
-    inv = db.scalar(select(Invoice).where(Invoice.payment_id == pay.id))
-    if inv is not None and inv.status in ("accepted", "pending"):
-        return inv
-    sub = db.get(Subscription, pay.subscription_id)
-    if sub is None:
-        return None
-    doc_type, doc_kind, doc, name, address, email = customer_for(db, sub)
-    s = get_settings()
-    if inv is None:
-        serie = s.nubefact_serie_factura if doc_type == "factura" else s.nubefact_serie_boleta
-        for _ in range(3):
-            inv = Invoice(
-                payment_id=pay.id,
-                provider=prov.name,
-                doc_type=doc_type,
-                serie=serie,
-                numero=_next_number(db, serie),
-                customer_doc_type=doc_kind,
-                customer_doc=doc,
-                customer_name=name[:200],
-                total_pen=pay.amount_pen,
-            )
-            try:
-                with db.begin_nested():
-                    db.add(inv)
-                break
-            except IntegrityError:  # otro proceso tomó el número: se pide el siguiente
-                inv = None
-        if inv is None:
-            raise RuntimeError("No se pudo reservar el número del comprobante")
+def _reserve(db: Session, prov: Provider, pay: Payment, doc_type: str, serie: str, **fields: Any) -> Invoice:
+    """Reserva el siguiente número de la serie (reintenta si otro proceso lo tomó) y confirma."""
+    for _ in range(3):
+        inv = Invoice(
+            payment_id=pay.id,
+            provider=prov.name,
+            doc_type=doc_type,
+            serie=serie,
+            numero=_next_number(db, doc_type, serie),
+            **fields,
+        )
+        try:
+            with db.begin_nested():
+                db.add(inv)
+        except IntegrityError:  # otro proceso tomó el número: se pide el siguiente
+            continue
         db.commit()  # el número queda reservado aunque el proveedor falle
+        return inv
+    raise RuntimeError("No se pudo reservar el número del comprobante")
+
+
+def _send(db: Session, prov: Provider, inv: Invoice, pay: Payment, sub: Subscription, address: str, email: str):
+    """Envía el comprobante; si antes falló, consulta primero si ya existe con ese número."""
     try:
         r: dict[str, Any] | None = None
         if inv.status == "error":
-            # Quizá sí llegó la primera vez: se consulta antes de reenviar con el mismo número.
             try:
                 r = prov.query(inv)
                 if not r or r.get("errors"):
@@ -240,7 +260,97 @@ def emit_for_payment(db: Session, pay: Payment) -> Invoice | None:
         inv.message = str(body.get("errors") or f"El proveedor respondió {e.status}")[:500]
         inv.raw = {"error": sanitize(body) or {}}
         log.warning("Comprobante %s-%s con error: %s", inv.serie, inv.numero, inv.message)
+
+
+def sale_invoice(db: Session, pay: Payment) -> Invoice | None:
+    """La boleta o factura del pago (no la nota de crédito)."""
+    return db.scalar(select(Invoice).where(Invoice.payment_id == pay.id, Invoice.doc_type != CREDIT_NOTE))
+
+
+def credit_note(db: Session, pay: Payment) -> Invoice | None:
+    return db.scalar(select(Invoice).where(Invoice.payment_id == pay.id, Invoice.doc_type == CREDIT_NOTE))
+
+
+def emit_for_payment(db: Session, pay: Payment) -> Invoice | None:
+    """Emite (o reintenta) el comprobante de un pago aprobado. Idempotente por pago."""
+    prov = provider()
+    if prov is None or pay.status not in ("approved", "refunded") or pay.amount_pen <= 0:
+        return None
+    if pay.subscription_id is None:
+        return None
+    inv = sale_invoice(db, pay)
+    if inv is not None and inv.status in ("accepted", "pending"):
+        return inv
+    if inv is None and pay.status != "approved":
+        return None
+    sub = db.get(Subscription, pay.subscription_id)
+    if sub is None:
+        return None
+    doc_type, doc_kind, doc, name, address, email = customer_for(db, sub)
+    if inv is None:
+        s = get_settings()
+        serie = s.nubefact_serie_factura if doc_type == "factura" else s.nubefact_serie_boleta
+        inv = _reserve(
+            db,
+            prov,
+            pay,
+            doc_type,
+            serie,
+            customer_doc_type=doc_kind,
+            customer_doc=doc,
+            customer_name=name[:200],
+            total_pen=pay.amount_pen,
+        )
+    _send(db, prov, inv, pay, sub, address, email)
     return inv
+
+
+def emit_credit_note(db: Session, pay: Payment) -> Invoice | None:
+    """Nota de crédito (anulación) de un pago reembolsado que tenía boleta o factura.
+
+    Sin comprobante de venta emitido (o con él en error) no hay nada que anular.
+    Idempotente: si la nota ya existe, solo se reintenta cuando quedó con error.
+    """
+    prov = provider()
+    if prov is None or pay.status != "refunded" or pay.subscription_id is None:
+        return None
+    orig = sale_invoice(db, pay)
+    if orig is None or orig.status not in ("accepted", "pending"):
+        return None
+    note = credit_note(db, pay)
+    if note is not None and note.status in ("accepted", "pending"):
+        return note
+    sub = db.get(Subscription, pay.subscription_id)
+    if sub is None:
+        return None
+    _, _, _, _, address, email = customer_for(db, sub)
+    if note is None:
+        s = get_settings()
+        serie = s.nubefact_serie_nc_factura if orig.doc_type == "factura" else s.nubefact_serie_nc_boleta
+        note = _reserve(
+            db,
+            prov,
+            pay,
+            CREDIT_NOTE,
+            serie,
+            refers_to_id=orig.id,
+            customer_doc_type=orig.customer_doc_type,
+            customer_doc=orig.customer_doc,
+            customer_name=orig.customer_name,
+            total_pen=orig.total_pen,
+        )
+    _send(db, prov, note, pay, sub, address, email)
+    return note
+
+
+def after_refund(db: Session, pay: Payment) -> None:
+    """Tras confirmar un reembolso: nota de crédito. Un fallo no deshace el reembolso."""
+    try:
+        emit_credit_note(db, pay)
+        db.commit()
+    except Exception:  # noqa: BLE001 - el reembolso ya está confirmado; se reintenta desde «Pagos»
+        db.rollback()
+        log.exception("No se pudo emitir la nota de crédito del pago %s", pay.id)
 
 
 def refresh(db: Session, inv: Invoice) -> Invoice:

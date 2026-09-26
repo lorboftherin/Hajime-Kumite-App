@@ -14,7 +14,7 @@ from app.api.deps import DB, AdminUser, CurrentUser, is_org_admin, memberships_o
 from app.api.errors import AppError, Forbidden, InvalidState, NotFound
 from app.config import get_settings
 from app.db.base import get_session, utcnow
-from app.db.models import Coupon, Invoice, Organization, Payment, Subscription, User
+from app.db.models import Coupon, Invoice, Organization, Payment, Person, Subscription, User
 from app.services import checkout as svc
 from app.services import entitlements, invoicing, payments
 from app.services import organizations as orgs
@@ -51,8 +51,14 @@ def payment_out(db, pay: Payment) -> s.PaymentOut:
         if sub.user_id:
             u = db.get(User, sub.user_id)
             out.username = u.username if u else None
-    inv = db.scalar(select(Invoice).where(Invoice.payment_id == pay.id))
+        if sub.person_id:
+            p = db.get(Person, sub.person_id)
+            out.person_id = sub.person_id
+            out.person_name = f"{p.first_names} {p.last_names}".strip() if p else None
+    inv = invoicing.sale_invoice(db, pay)
     out.invoice = s.InvoiceOut.model_validate(inv) if inv else None
+    note = invoicing.credit_note(db, pay)
+    out.credit_note = s.InvoiceOut.model_validate(note) if note else None
     return out
 
 
@@ -149,12 +155,16 @@ def organization_trial(oid: int, data: s.TrialIn, db: DB, user: CurrentUser):
 
 @router.post("/me/checkout", response_model=s.CheckoutOut)
 def my_checkout(data: s.CheckoutIn, request: Request, db: DB, user: CurrentUser):
-    """Competidor Plus: el titular es la cuenta del usuario."""
+    """Competidor Plus. Titular: la cuenta del usuario o, con ``person_id``, un perfil: el
+    propio o el de un menor a su cargo (tutela aprobada)."""
+    if data.person_id is not None and not svc.can_pay_for_person(db, user, data.person_id):
+        raise Forbidden("Solo la propia persona o su padre, madre o apoderado aprobado puede pagar su plan")
     sub, co, q = svc.start_checkout(
         db,
         user,
         organization_id=None,
-        user_id=user.id,
+        user_id=None if data.person_id is not None else user.id,
+        person_id=data.person_id,
         plan_code=data.plan_code,
         period=data.period,
         coupon_code=data.coupon_code,
@@ -169,16 +179,16 @@ def my_checkout(data: s.CheckoutIn, request: Request, db: DB, user: CurrentUser)
 
 @router.get("/me/subscriptions", response_model=list[s.SubscriptionOut])
 def my_subscriptions(db: DB, user: CurrentUser):
-    conds = [Subscription.user_id == user.id]
-    if user.person_id is not None:
-        conds.append(Subscription.person_id == user.person_id)
-    stmt = select(Subscription).where(or_(*conds))
+    stmt = svc.my_subscriptions_query(db, user)
     return [orgs.subscription_out(db, x) for x in db.scalars(stmt.order_by(Subscription.id.desc())).all()]
 
 
 @router.get("/me/payments", response_model=list[s.PaymentOut])
 def my_payments(db: DB, user: CurrentUser):
-    rows = db.scalars(svc.payments_query(user_id=user.id).limit(200)).all()
+    sids = select(svc.my_subscriptions_query(db, user).subquery().c.id)
+    rows = db.scalars(
+        select(Payment).where(Payment.subscription_id.in_(sids)).order_by(Payment.id.desc()).limit(200)
+    ).all()
     return [payment_out(db, p) for p in rows]
 
 
@@ -196,7 +206,7 @@ def _can_see(db, user: User, sub: Subscription) -> bool:
         return True
     if sub.organization_id is not None:
         return sub.organization_id in memberships_of(db, user)
-    return sub.user_id == user.id or (sub.person_id is not None and sub.person_id == user.person_id)
+    return sub.created_by_id == user.id or svc.can_manage_subscription(db, user, sub)
 
 
 @router.post("/subscriptions/{sid}/cancel", response_model=s.SubscriptionOut)
@@ -270,12 +280,13 @@ def refund_payment(pid: int, data: s.RefundIn, db: DB, admin: AdminUser):
         raise NotFound("Pago no encontrado")
     svc.refund(db, admin, pay, data.reason, data.cancel_subscription)
     db.commit()
+    invoicing.after_refund(db, pay)  # nota de crédito si había comprobante
     return payment_out(db, pay)
 
 
 @router.post("/payments/{pid}/invoice", response_model=s.PaymentOut)
 def emit_invoice(pid: int, db: DB, admin: AdminUser):
-    """Emite o reintenta el comprobante de un pago aprobado (Admin Global)."""
+    """Emite o reintenta el comprobante de un pago (Admin Global); si se reembolsó, su nota de crédito."""
     pay = db.get(Payment, pid)
     if pay is None:
         raise NotFound("Pago no encontrado")
@@ -283,6 +294,9 @@ def emit_invoice(pid: int, db: DB, admin: AdminUser):
         raise InvalidState("No hay proveedor de comprobantes configurado (HAJIME_INVOICING_PROVIDER)")
     invoicing.emit_for_payment(db, pay)
     db.commit()
+    if pay.status == "refunded":
+        invoicing.emit_credit_note(db, pay)
+        db.commit()
     return payment_out(db, pay)
 
 
@@ -351,13 +365,16 @@ def billing_alerts(db: DB, user: CurrentUser):
     now = utcnow()
     managed = [oid for oid, role in memberships_of(db, user).items() if role in ("owner", "admin")]
     conds = [Subscription.user_id == user.id]
+    pids = svc.person_ids_of(db, user)
+    if pids:
+        conds.append(Subscription.person_id.in_(pids))
     if managed:
         conds.append(Subscription.organization_id.in_(managed))
     subs = db.scalars(select(Subscription).where(or_(*conds), Subscription.status != "canceled")).all()
     seen: set[tuple] = set()
     out: list[s.BillingAlert] = []
     for sub in sorted(subs, key=lambda x: x.id, reverse=True):
-        key = (sub.organization_id, sub.user_id)
+        key = (sub.organization_id, sub.user_id, sub.person_id)
         if key in seen or not entitlements.is_current(sub, now):
             continue
         seen.add(key)

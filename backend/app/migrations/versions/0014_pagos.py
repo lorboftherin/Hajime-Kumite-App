@@ -1,7 +1,7 @@
 """pagos con pasarela, comprobantes electrónicos, cupones y prueba gratis
 
 Tablas ``payments`` (cada pago de la pasarela, único por ``provider_ref``),
-``invoices`` (boletas y facturas de SUNAT) y ``coupons`` (con el cupón de
+``invoices`` (boletas, facturas y notas de crédito de SUNAT) y ``coupons`` (con el cupón de
 ejemplo «PRIMER-TORNEO» sembrado desactivado). Columnas nuevas, todas
 opcionales o con valor por defecto: datos fiscales en ``organizations``,
 ``trial_days`` en ``plans`` (30 para Dojo y Organizador) y el estado del cobro
@@ -76,7 +76,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("payment_id", sa.Integer(), nullable=False),
         sa.Column("provider", sa.String(length=20), nullable=False),
-        sa.Column("doc_type", sa.String(length=10), nullable=False),
+        sa.Column("doc_type", sa.String(length=12), nullable=False),
+        sa.Column("refers_to_id", sa.Integer(), nullable=True),
         sa.Column("serie", sa.String(length=4), nullable=False),
         sa.Column("numero", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
@@ -95,10 +96,17 @@ def upgrade() -> None:
             ["payment_id"],
             ["payments.id"],
         ),
+        sa.ForeignKeyConstraint(
+            ["refers_to_id"],
+            ["invoices.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("payment_id"),
-        sa.UniqueConstraint("serie", "numero", name="uq_invoice_serie_numero"),
+        sa.UniqueConstraint("doc_type", "serie", "numero", name="uq_invoice_serie_numero"),
+        sa.UniqueConstraint("payment_id", "doc_type", name="uq_invoice_payment_doc"),
     )
+    with op.batch_alter_table("invoices", schema=None) as batch_op:
+        batch_op.create_index(batch_op.f("ix_invoices_payment_id"), ["payment_id"], unique=False)
+
     with op.batch_alter_table("organizations", schema=None) as batch_op:
         batch_op.add_column(sa.Column("tax_id", sa.String(length=11), nullable=True))
         batch_op.add_column(sa.Column("legal_name", sa.Unicode(length=200), nullable=True))
@@ -119,6 +127,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("billing_doc", sa.String(length=15), nullable=True))
         batch_op.add_column(sa.Column("billing_name", sa.Unicode(length=200), nullable=True))
         batch_op.add_column(sa.Column("billing_email", sa.String(length=200), nullable=True))
+        batch_op.add_column(sa.Column("reminder_key", sa.String(length=40), nullable=True))
         batch_op.create_index(
             batch_op.f("ix_subscriptions_provider_subscription_id"), ["provider_subscription_id"], unique=False
         )
@@ -151,6 +160,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     with op.batch_alter_table("subscriptions", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_subscriptions_provider_subscription_id"))
+        batch_op.drop_column("reminder_key")
         batch_op.drop_column("billing_email")
         batch_op.drop_column("billing_name")
         batch_op.drop_column("billing_doc")
@@ -171,6 +181,8 @@ def downgrade() -> None:
         batch_op.drop_column("legal_name")
         batch_op.drop_column("tax_id")
 
+    with op.batch_alter_table("invoices", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_invoices_payment_id"))
     op.drop_table("invoices")
     with op.batch_alter_table("payments", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_payments_subscription_id"))

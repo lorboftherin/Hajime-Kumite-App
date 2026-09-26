@@ -145,8 +145,11 @@ lista de lo que el dueño tiene que crear en cada pasarela.
   comprobantes** (PDF/XML) para dueños y administradores.
 - «Pagos» (Admin Global): búsqueda, reembolsos, reemisión de comprobantes y
   cupones.
-- Competidor Plus: el mismo flujo con la cuenta del usuario como titular
-  (`POST /me/checkout`), con DNI opcional para la boleta.
+- Competidor Plus: el mismo flujo con la cuenta del usuario o un perfil como
+  titular (`POST /me/checkout`, `person_id` del propio perfil o de un menor a
+  cargo), con DNI opcional para la boleta.
+- Correos de pago recibido, rechazado, gracia y «tu plan vence» (7 y 1 días)
+  a los dueños; nota de crédito automática al reembolsar.
 
 ## Autoinscripción por dojo
 
@@ -179,7 +182,7 @@ El aviso por correo al sensei queda para el servicio de correo:
 
 ## Pendientes
 
-- Nota de crédito automática al reembolsar y recibo por correo (ver
+- Otra pasarela (Izipay) y notas de crédito parciales (ver
   [cobros.md](cobros.md#pendientes)).
 - Crear plantillas de una organización desde la interfaz (la columna existe;
   hoy las crea el Admin como globales).

@@ -105,6 +105,17 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   Organizador), tabla `coupons` (porcentaje o monto, planes, usos, vencimiento,
   solo primer periodo) y el cupón de ejemplo `PRIMER-TORNEO` sembrado
   desactivado.
+- **Correos de cobro** por la bandeja de salida con la plantilla de la marca:
+  pago recibido (monto, plan, periodo, enlace al comprobante), pago no
+  completado, periodo de gracia y «tu plan vence» 7 y 1 días antes, a los
+  dueños de la organización o al titular de Competidor Plus. Revisión cada
+  hora desde el despachador de correo y `python -m app.billing_reminders`,
+  sin repetir avisos.
+- **Competidor Plus por persona:** el titular puede ser un perfil (el propio
+  o el de un menor a cargo con tutela aprobada); los derechos quedan en esa
+  persona.
+- **Nota de crédito** automática (SUNAT 07, anulación) al reembolsar un pago
+  con boleta o factura emitida, con reserva de número y reintento.
 - **Interfaz de cobro:** «Suscribirse» en «Planes» (mensual/anual, cupón),
   pago con Culqi embebido o redirección a Mercado Pago, páginas de retorno
   (`/pago/exito|pendiente|error`), historial de pagos y comprobantes con

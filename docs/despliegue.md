@@ -46,6 +46,7 @@
 | `HAJIME_INVOICING_PROVIDER` | `none` | Comprobantes de SUNAT: `none` o `nubefact` |
 | `HAJIME_NUBEFACT_URL` / `HAJIME_NUBEFACT_TOKEN` | — | **Secretos.** Ruta y token de la API de Nubefact |
 | `HAJIME_NUBEFACT_SERIE_BOLETA` / `_FACTURA` | `BBB1` / `FFF1` | Series dadas de alta en Nubefact |
+| `HAJIME_NUBEFACT_SERIE_NC_BOLETA` / `_NC_FACTURA` | `BBB1` / `FFF1` | Series de las notas de crédito (reembolsos) |
 | `HAJIME_PAYMENT_HTTP_TIMEOUT` | `15` | Segundos por llamada a la pasarela o a Nubefact |
 | `HAJIME_WEBHOOK_MAX_BYTES` | `65536` | Tamaño máximo del aviso de la pasarela (413 si se pasa) |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | — | Activa Azure Monitor (trazas, errores y métricas). La imagen `-azure` ya trae el paquete; en otra instalación: `pip install '.[azure]'` |

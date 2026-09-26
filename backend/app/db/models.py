@@ -327,6 +327,8 @@ class Subscription(Base):
     billing_doc: Mapped[str | None] = mapped_column(String(15), nullable=True)
     billing_name: Mapped[str | None] = mapped_column(Unicode(200), nullable=True)
     billing_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Último aviso de vencimiento enviado («d7:2026-10-31», «d1:…», «grace:…»): no se repite.
+    reminder_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class Payment(Base):
@@ -357,14 +359,24 @@ class Payment(Base):
 
 
 class Invoice(Base):
-    """Comprobante electrónico (SUNAT) de un pago: boleta o factura."""
+    """Comprobante electrónico (SUNAT) de un pago: boleta, factura o nota de crédito.
+
+    Un pago tiene a lo sumo un comprobante de cada tipo: el de la venta y, si
+    se reembolsó, su nota de crédito (``refers_to_id`` apunta al comprobante
+    que anula). La numeración es correlativa por tipo y serie.
+    """
 
     __tablename__ = "invoices"
-    __table_args__ = (UniqueConstraint("serie", "numero", name="uq_invoice_serie_numero"),)
+    __table_args__ = (
+        UniqueConstraint("doc_type", "serie", "numero", name="uq_invoice_serie_numero"),
+        UniqueConstraint("payment_id", "doc_type", name="uq_invoice_payment_doc"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
-    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), unique=True)
+    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), index=True)
     provider: Mapped[str] = mapped_column(String(20))  # nubefact
-    doc_type: Mapped[str] = mapped_column(String(10))  # boleta | factura
+    doc_type: Mapped[str] = mapped_column(String(12))  # boleta | factura | nota_credito
+    # Nota de crédito: el comprobante que anula.
+    refers_to_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), nullable=True)
     serie: Mapped[str] = mapped_column(String(4))
     numero: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | accepted | rejected | error

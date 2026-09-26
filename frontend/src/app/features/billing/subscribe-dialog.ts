@@ -14,6 +14,7 @@ import {
   QuoteOut,
   Subscription,
 } from '../../core/models';
+import { MyProfile } from '../../core/cuentas';
 import { ToastService } from '../../core/toast.service';
 import { Modal } from '../../shared/modal';
 
@@ -102,6 +103,22 @@ import { Modal } from '../../shared/modal';
             </label>
           }
 
+          @if (!forOrg() && profiles().length) {
+            <label class="field">
+              <span>¿Para quién?</span>
+              <select name="holder" [(ngModel)]="personId" (ngModelChange)="onHolder()">
+                <option [ngValue]="null">Mi cuenta</option>
+                @for (p of profiles(); track p.person_id) {
+                  <option [ngValue]="p.person_id">
+                    {{ p.name }}{{ p.relationship === 'self' ? ' (mi perfil)' : '' }}
+                  </option>
+                }
+              </select>
+              <small class="muted"
+                >El plan queda en el perfil elegido (por ejemplo, el de tu hijo o hija).</small
+              >
+            </label>
+          }
           @if (!forOrg()) {
             <div class="grid-2">
               <label class="field">
@@ -227,13 +244,28 @@ export class SubscribeDialog implements OnInit {
   dni = '';
   billingName = '';
   orgId: number | null = null;
+  /** Competidor Plus: perfil titular (null = la cuenta). */
+  personId: number | null = null;
+  readonly profiles = signal<MyProfile[]>([]);
 
   ngOnInit(): void {
     const p = this.plan();
     this.period = p.price_pen_month ? 'month' : 'year';
     this.orgId = this.orgs()[0]?.id ?? null;
     this.billingName = this.auth.user()?.display_name ?? '';
+    if (!this.forOrg()) {
+      // Perfiles por los que puede pagar: el propio y los de menores a su cargo.
+      this.api.get<MyProfile[]>('/me/profiles').subscribe({
+        next: (l) => this.profiles.set(l),
+        error: () => this.profiles.set([]),
+      });
+    }
     void this.requote();
+  }
+
+  onHolder(): void {
+    const p = this.profiles().find((x) => x.person_id === this.personId);
+    this.billingName = p?.name ?? this.auth.user()?.display_name ?? '';
   }
 
   money(v: number | null): string {
@@ -303,6 +335,7 @@ export class SubscribeDialog implements OnInit {
       payer_email: this.email.trim() || null,
       billing_doc: this.forOrg() ? null : this.dni.trim() || '',
       billing_name: this.forOrg() ? null : this.billingName.trim(),
+      person_id: this.forOrg() ? null : this.personId,
     };
     const path = this.forOrg() ? `/organizations/${this.orgId}/checkout` : '/me/checkout';
     try {

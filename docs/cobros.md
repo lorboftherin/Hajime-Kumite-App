@@ -60,8 +60,32 @@ Reglas que no cambian con la pasarela:
    pagado (`cancel_at_period_end`). Sin periodo pagado, se corta ya.
 6. **Reembolso (Admin Global)**, en «Pagos»: llama a la API de la pasarela
    (`/v1/payments/{id}/refunds` o `/v2/refunds`) y, por defecto, cancela la
-   suscripción. Si hubo comprobante, la **nota de crédito** se emite a mano en
-   el panel de Nubefact (no está automatizada).
+   suscripción. Si el pago tenía boleta o factura emitida, se emite sola la
+   **nota de crédito** por anulación (ver abajo).
+
+### Correos
+
+Van por la bandeja de salida del servicio de correo (`mail.enqueue`, ver
+[cuentas-y-correo.md](cuentas-y-correo.md)) con la plantilla de la marca
+(`app/services/billing_mail.py`):
+
+| Aviso | Cuándo | `kind` |
+| --- | --- | --- |
+| Pago recibido: monto, plan, periodo, vigencia y botón al comprobante (PDF) si ya se emitió | Pago aprobado | `payment_approved` |
+| Pago no completado (con la fecha hasta la que dura la gracia, si la hay) | Pago rechazado | `payment_rejected` |
+| Periodo de gracia: el cobro automático no llegó | Suscripción automática vencida sin cobro, o aviso de la pasarela | `billing_grace` |
+| Tu plan vence en N días / mañana | 7 días y 1 día antes (suscripciones que no se renuevan solas) | `billing_d7`, `billing_d1` |
+
+**Destinatarios:** los dueños (`owner`) de la organización que tienen correo;
+si ninguno tiene, el «correo para comprobantes» de la organización. En
+Competidor Plus, la cuenta titular, la cuenta ligada al perfil y quien pagó
+(p. ej. el padre o la madre).
+
+Los avisos de vencimiento se revisan una vez por hora desde el hilo
+despachador de correo y con `python -m app.billing_reminders` (para un
+Container Apps Job diario si el despachador está apagado). Cada aviso se
+reserva en `subscriptions.reminder_key` con un UPDATE condicional: no se
+repite aunque corran varios procesos. En marcha blanca no se envían.
 
 El encabezado muestra a dueños y administradores «tu plan vence en N días»
 (7 días antes; no aparece si la suscripción se renueva sola) y el aviso de
@@ -200,6 +224,16 @@ error) y los enlaces al PDF, XML y CDR, que el titular descarga en «Pagos y
 comprobantes». Si Nubefact falla, el pago sigue confirmado y el comprobante
 queda «con error»: el Admin lo reintenta en «Pagos» («Emitir comprobante»).
 
+**Nota de crédito.** Al reembolsar un pago cuya boleta o factura se emitió
+(aceptada o enviada), se emite la nota de crédito (código SUNAT 07; en
+Nubefact `tipo_de_comprobante` 3) con motivo **anulación de la operación**
+(`tipo_de_nota_de_credito` 1), por el total, referenciando el comprobante.
+Series: `HAJIME_NUBEFACT_SERIE_NC_FACTURA` (`FFF1`) y
+`HAJIME_NUBEFACT_SERIE_NC_BOLETA` (`BBB1`); deben empezar con la misma letra
+que el comprobante que anulan y tener su propia numeración. Misma reserva de
+número y reintento que los comprobantes («Reintentar nota de crédito» en
+«Pagos»). Si el comprobante de venta no llegó a emitirse, no hay nota.
+
 **Ojo:** SUNAT exige el documento del cliente en boletas desde S/ 700 (p. ej.
 Organizador anual sin RUC): pedir el RUC a esas organizaciones.
 
@@ -221,7 +255,7 @@ Organizador anual sin RUC): pedir el RUC a esas organizaciones.
 | `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan (ver organizaciones-y-planes.md) |
 | `HAJIME_PAYMENT_PROVIDER` | `manual` | `manual`, `mercadopago` o `culqi` |
 | `HAJIME_BILLING_GRACE_DAYS` | `7` | Días de acceso tras un pago rechazado o vencido |
-| `HAJIME_PUBLIC_URL` | URL de la petición | `https://<dominio>`: retornos y URL de aviso de la pasarela |
+| `HAJIME_PUBLIC_URL` | URL de la petición | `https://<dominio>`: retornos y URL de aviso de la pasarela (y enlaces de los correos) |
 | `HAJIME_MP_ACCESS_TOKEN` | — | **Secreto.** Access Token de Mercado Pago |
 | `HAJIME_MP_WEBHOOK_SECRET` | — | **Secreto.** Clave secreta de los avisos de Mercado Pago |
 | `HAJIME_CULQI_SECRET_KEY` | — | **Secreto.** Llave secreta de Culqi (`sk_…`) |
@@ -232,6 +266,7 @@ Organizador anual sin RUC): pedir el RUC a esas organizaciones.
 | `HAJIME_NUBEFACT_URL` | — | **Secreto.** Ruta de la cuenta de Nubefact |
 | `HAJIME_NUBEFACT_TOKEN` | — | **Secreto.** Token de Nubefact |
 | `HAJIME_NUBEFACT_SERIE_BOLETA` / `_FACTURA` | `BBB1` / `FFF1` | Series dadas de alta en Nubefact |
+| `HAJIME_NUBEFACT_SERIE_NC_BOLETA` / `_NC_FACTURA` | `BBB1` / `FFF1` | Series de las notas de crédito |
 | `HAJIME_PAYMENT_HTTP_TIMEOUT` | `15` | Segundos por llamada a la pasarela o a Nubefact |
 | `HAJIME_WEBHOOK_MAX_BYTES` | `65536` | Tamaño máximo del cuerpo de un aviso (413 si se pasa) |
 
@@ -286,11 +321,18 @@ suscripciones quedan registrados.
 - Comprobantes «con error»: reintentar desde «Pagos»; si SUNAT los rechazó,
   corregir los datos fiscales y emitir de nuevo (o anular en Nubefact).
 
+## Competidor Plus por persona
+
+El titular de Competidor Plus puede ser la **cuenta** (`user_id`) o un
+**perfil** (`person_id`): el propio (cuenta ligada a la persona) o el de un
+menor a cargo con tutela aprobada (un padre paga el Plus de su hijo). En el
+diálogo «Suscribirse» se elige «¿Para quién?» entre los perfiles de
+`/me/profiles`; por la API, `POST /me/checkout` con `person_id`. Otra cuenta
+recibe 403. Los derechos (`plus_insights`, `certificates`) quedan en esa
+persona; el pagador ve la suscripción, los pagos y los comprobantes (a nombre
+del perfil, con DNI opcional) y puede cancelarla.
+
 ## Pendientes
 
-- Nota de crédito automática al reembolsar un pago con comprobante.
-- Recibo por correo: `payments.notify_payment` solo registra en el log hasta
-  que exista el servicio de correo (`app.services.mail`).
-- Competidor Plus por persona reclamada: hoy el titular es la cuenta
-  (`user_id`); cuando existan las cuentas de competidor, extender a `person_id`.
 - Izipay u otra pasarela: implementar `payments.Provider` y registrarla.
+- Nota de crédito parcial (hoy se anula el total).

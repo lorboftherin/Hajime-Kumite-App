@@ -209,22 +209,25 @@ def mark_paid(db: Session, user: User | None, sub: Subscription, period: Period,
     )
 
 
-def start_grace(db: Session, sub: Subscription, reason: str) -> None:
+def start_grace(db: Session, sub: Subscription, reason: str) -> bool:
     """Pago rechazado o vencido: ``past_due`` con gracia antes de quitar el acceso.
 
     Si la suscripción nunca dio acceso (checkout sin pagar), queda ``past_due``
-    sin gracia.
+    sin gracia. Devuelve True si la gracia empezó ahora.
     """
     if sub.status == "canceled":
-        return
+        return False
+    started = False
     now = utcnow()
     before = {"status": sub.status, "grace_until": str(sub.grace_until)}
     had_access = sub.status in ("active", "trial") and sub.current_period_end is not None
     if had_access and sub.grace_until is None:
         base = max(now, sub.current_period_end)
         sub.grace_until = base + timedelta(days=get_settings().billing_grace_days)
+        started = True
     sub.status = "past_due"
     audit(db, None, "subscription", sub.id, "past_due", before, {"grace_until": str(sub.grace_until), "why": reason})
+    return started
 
 
 def parse_reference(ref: str | None) -> int | None:
@@ -313,7 +316,10 @@ def record_payment(db: Session, provider_name: str, upd: PaymentUpdate) -> Payme
     if changed and pay.status == "approved" and not pay.applied:
         _approve(db, sub, pay)
     elif changed and pay.status == "rejected":
+        from app.services import billing_mail
+
         start_grace(db, sub, f"pago {pay.provider_ref} rechazado")
+        billing_mail.payment_rejected(db, pay, sub)
     elif changed and pay.status == "refunded":
         audit(db, None, "payment", pay.id, "refunded", after={"provider_ref": pay.provider_ref})
     return pay
@@ -383,7 +389,10 @@ def apply_webhook(db: Session, result: WebhookResult, provider_name: str | None 
     if result.status == "active":
         mark_paid(db, None, sub, result.period or "month", result.reference)
     elif result.status == "past_due":
-        start_grace(db, sub, "aviso de la pasarela")
+        from app.services import billing_mail
+
+        if start_grace(db, sub, "aviso de la pasarela"):
+            billing_mail.grace_started(db, sub)
     elif result.status:
         audit(db, None, "subscription", sub.id, "webhook", {"status": sub.status}, {"status": result.status})
         sub.status = result.status
@@ -414,31 +423,16 @@ def after_commit(db: Session) -> None:
 
 
 def notify_payment(db: Session, pay: Payment) -> None:
-    """Aviso al titular del pago aprobado (recibo).
+    """Recibo por correo del pago aprobado (monto, plan, periodo y enlace al comprobante).
 
-    Todavía no hay servicio de correo en esta base: solo se registra en el log
-    (sin datos personales). Cuando exista ``app.services.mail`` con
-    ``mail.enqueue``, se encola el recibo; un fallo del correo nunca afecta al
-    pago ya confirmado.
+    Va por la bandeja de salida (``mail.enqueue``) y se confirma aparte: un
+    fallo del correo nunca afecta al pago ya confirmado.
     """
-    try:
-        from app.services import mail  # type: ignore[attr-defined]
-    except ImportError:
-        log.info("Pago %s aprobado (suscripción %s): recibo pendiente de correo", pay.id, pay.subscription_id)
-        return
-    try:  # pragma: no cover - depende del servicio de correo
-        sub = db.get(Subscription, pay.subscription_id) if pay.subscription_id else None
-        email = sub.billing_email if sub else None
-        if not email and sub and sub.organization_id:
-            from app.db.models import Organization
+    from app.services import billing_mail
 
-            org = db.get(Organization, sub.organization_id)
-            email = org.billing_email if org else None
-        if email:
-            mail.enqueue(
-                to=email,
-                subject="Hajime: pago recibido",
-                body=f"Recibimos tu pago de S/ {pay.amount_pen / 100:.2f}. Gracias.",
-            )
+    try:
+        billing_mail.payment_approved(db, pay)
+        db.commit()
     except Exception:  # noqa: BLE001
+        db.rollback()
         log.exception("No se pudo encolar el recibo del pago %s", pay.id)

@@ -329,6 +329,12 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                             @if (inv.xml_url) {
                               · <a [href]="inv.xml_url" target="_blank" rel="noopener">XML</a>
                             }
+                            @if (pay.credit_note; as nc) {
+                              <br />Nota de crédito {{ num(nc.serie, nc.numero) }}
+                              @if (nc.pdf_url) {
+                                · <a [href]="nc.pdf_url" target="_blank" rel="noopener">PDF</a>
+                              }
+                            }
                           } @else {
                             —
                           }
