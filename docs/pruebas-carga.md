@@ -6,7 +6,8 @@ núcleo por copia y hasta 3 copias**, y usa Azure SQL en vez de SQLite: los
 números de abajo hay que tomarlos como el rendimiento de **una copia con un
 núcleo**; en Azure, una copia rinde cerca de la mitad y tres copias, cerca de
 1,5 veces. La prueba definitiva se corre contra Azure con
-`backend/scripts/prueba_carga.py` (ver al final).
+`backend/scripts/prueba_carga.py`: el resultado real, mucho peor que estos
+números, está en «Resultado en Azure» más abajo.
 
 ## Resumen
 
@@ -99,9 +100,74 @@ vencido al pasar de 500 entradas).
 - **El vivo se comparte 2 s:** un espectador puede ver un punto hasta 2 s
   después de marcado. Se ajusta con `HAJIME_PUBLIC_CACHE_SECONDS`.
 
+## Resultado en Azure (ambiente de pruebas, 26/09/2026)
+
+`prueba_carga.py --tatamis 8 --espectadores 200` contra
+`https://hajime.lorboftherin.com` con la cuenta `claude-pruebas`, desde un
+contenedor remoto cuyo viaje de ida y vuelta hasta Azure es de **0,5 s**
+(`/health`, que no toca la base, tarda 500 ms; ese medio segundo está sumado
+en todas las latencias de abajo). Dos corridas:
+
+| Corrida | Combates | Duración | Peticiones/s | Mesa: mediana · p95 | Vivo: mediana · p95 | Errores |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 (torneo #3) | 35 en 5 tatamis | 682 s | 2,7 | 683 ms · 20,5 s | 1,6 s · 40,9 s | 3 mesas cayeron (ver abajo) |
+| 2 (torneo #5) | 56 en 8 tatamis | 618 s | 6,1 | 716 ms · 27,9 s | 1,7 s · 21,2 s | 0 |
+
+Los 56 combates de la segunda corrida quedaron cerrados. Pero el ambiente de
+pruebas está **muy lejos** de los números medidos en local (52 s y 71
+peticiones/s para el mismo torneo): un toque de mesa tarda 0,2 s de servidor
+en condiciones normales y, bajo esta carga, el 5 % de los toques esperó más
+de 20 s.
+
+### Por qué
+
+| Medición (sin carga, desde el mismo contenedor) | Secuencial | 16 a la vez |
+| --- | --- | --- |
+| `/health` (sin base de datos) | 512 ms | 16 req/s · mediana 0,9 s |
+| Enlace público inexistente (una consulta a Azure SQL) | 563 ms | 16 req/s · mediana 0,8 s |
+| Vivo público con caché (7 KB) | 1 083 ms | **3,3 req/s · mediana 2,0 s · máx 9,7 s** |
+
+- **El vivo casi nunca sale de la caché.** La caché de 2 s vive en memoria
+  de cada proceso: con 2 procesos por copia y hasta 3 copias hay hasta 6
+  cachés separadas, y cada petición cae en cualquiera. De 20 llamadas
+  seguidas al vivo, solo 4 fueron aciertos (500 ms, puro viaje de red); el
+  resto recalculó todo. Y cuando 4 espectadores piden a la vez y ninguno
+  encuentra la respuesta, los 4 la calculan en paralelo (la caché no agrupa
+  cálculos en curso).
+- **Cada cálculo del vivo cuesta ~0,5 s en Azure.** `public.live` hace
+  decenas de consultas pequeñas (una por inscripción, persona y premio) y cada
+  una es un viaje a Azure SQL; con 0,5 CPU por copia, además compite con las
+  mesas. En local, con SQLite en el mismo proceso, esas consultas son gratis.
+- **Las mesas esperan detrás del vivo.** Cada proceso atiende 4 peticiones a
+  la vez; si las 4 están calculando el vivo, el toque de la mesa espera. De ahí
+  el p95 de 20–28 s en mesa con una mediana de 0,7 s.
+- **Ingreso lento bajo carga:** el login (bcrypt) pasó de 0,6 s a 4,7 s
+  mientras corría la prueba: la CPU de la copia estaba saturada.
+- **Corrida 1:** tres mesas murieron a los pocos segundos porque el servidor
+  devolvió una respuesta que no era JSON (página de error del gateway) y el
+  script no lo toleraba; ya se corrigió (se registra como error y la mesa
+  reintenta la cola hasta 3 veces, como una tablet real). Además quedó un
+  torneo #4 completo creado a las 04:48, un minuto antes de la corrida 2,
+  que no corresponde a ninguna corrida lanzada a propósito; hay que borrarlo
+  junto con #3 y #5 cuando ya no hagan falta.
+
+### Qué haría falta
+
+1. **Que el vivo no se recalcule por cada espectador en Azure:** agrupar las
+   peticiones que llegan mientras se está calculando (una sola calcula, las
+   demás esperan el resultado), subir `HAJIME_PUBLIC_CACHE_SECONDS` a 5 s
+   (igual al refresco de la página) y, sobre todo, reducir las consultas de
+   `public.live` a unas pocas (cargar inscripciones, personas y premios de una
+   vez en lugar de uno por uno).
+2. **Más CPU por copia** para un evento real: pasar de 0,5 a 1 CPU. Cada
+   copia hoy rinde bastante menos de la mitad de lo medido en local.
+3. Repetir esta prueba después de 1 y 2: la meta es que la mesa responda en
+   menos de medio segundo el 95 % de las veces (descontando la red).
+
 ## Cómo repetir la prueba contra Azure
 
-Desde Azure Cloud Shell (pide la contraseña del admin, no se muestra):
+Desde Azure Cloud Shell (pide la contraseña del admin, no se muestra; con
+`--user` se usa otra cuenta administradora, p. ej. `claude-pruebas`):
 
 ```bash
 cd ~/Hajime-Kumite-App && git pull

@@ -63,9 +63,14 @@ class Client:
             self.errors.append(f"{method} {path} -> {type(e).__name__}: {e}")
             return None
         self.lat.append(time.perf_counter() - t0)
-        out = json.loads(raw) if raw else None
+        try:
+            out = json.loads(raw) if raw else None
+        except ValueError:  # página de error del gateway (HTML), no JSON
+            self.errors.append(f"{method} {path} -> {status}: {raw[:200].decode(errors='replace')!r}")
+            return None
         if status not in expect:
             self.errors.append(f"{method} {path} -> {status}: {json.dumps(out, ensure_ascii=False)[:200]}")
+            return None
         return out
 
     def get(self, path):
@@ -142,10 +147,16 @@ def operate_tatami(base: str, op: dict, rng: random.Random, results: dict, stop:
             cli.post(f"/matches/{mid}/events", body)
         time.sleep(rng.uniform(0.2, 0.8))  # ritmo humano entre toques
 
+    fallos = 0
     while not stop.is_set():
         q = cli.get(f"/tatamis/{op['tatami']['id']}/queue")
-        if not q:
-            break
+        if not q:  # como una tablet real: reintenta un par de veces antes de rendirse
+            fallos += 1
+            if fallos >= 3:
+                break
+            time.sleep(2)
+            continue
+        fallos = 0
         pending = [it for it in q["queue"] if it["match"]["status"] in ("ready", "in_progress")]
         if not pending:
             break
