@@ -18,7 +18,8 @@ export type IconName =
   | 'close'
   | 'search'
   | 'open'
-  | 'check';
+  | 'check'
+  | 'bell';
 
 /** Iconos de línea fina (1.6 px) en currentColor. Decorativos: el texto del botón da el nombre. */
 @Component({
@@ -86,6 +87,9 @@ export type IconName =
         }
         @case ('check') {
           <path d="M5 12.5l4.5 4.5L19 7.5" />
+        }
+        @case ('bell') {
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 0 0 4 0" />
         }
       }
     </svg>

@@ -331,6 +331,14 @@
     margin-left: 4px;
   }
 }
+.fighters.hl .fighter {
+  border-color: var(--shu);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shu) 25%, transparent);
+}
+.bell {
+  flex: none;
+  order: 3; // la campana al final de la fila; la estrella sigue a la izquierda
+}
 .star {
   flex: none;
   width: 44px;

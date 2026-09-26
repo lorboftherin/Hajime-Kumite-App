@@ -13,9 +13,13 @@ import { FormsModule } from '@angular/forms';
 import { Meta, Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { toggled } from '../../core/push-logic';
+import { PushService } from '../../core/push.service';
+import { ToastService } from '../../core/toast.service';
 import { PublicLive, PublicMatch } from '../../core/models';
 import { Enso, HajimeWord } from '../../shared/enso';
 import { personLink } from '../../shared/person-link';
+import { PushButton, PushHint } from '../../shared/push-button';
 import { PublicFeed } from './feed';
 import {
   entryText,
@@ -42,7 +46,16 @@ const PEOPLE_REFRESH_MS = 20000;
  */
 @Component({
   selector: 'app-public-live',
-  imports: [Enso, HajimeWord, DatePipe, NgTemplateOutlet, FormsModule, RouterLink],
+  imports: [
+    Enso,
+    HajimeWord,
+    DatePipe,
+    NgTemplateOutlet,
+    FormsModule,
+    RouterLink,
+    PushButton,
+    PushHint,
+  ],
   template: `
     <div class="page">
       <header class="top">
@@ -97,6 +110,13 @@ const PEOPLE_REFRESH_MS = 20000;
               enterkeyhint="search"
             />
           </label>
+          <app-push-hint [always]="false" />
+          @if (highlighted(); as h) {
+            <h3 class="sub">Siguiendo</h3>
+            <ul class="fighters hl" id="seguido">
+              <ng-container *ngTemplateOutlet="fighter; context: { $implicit: h }" />
+            </ul>
+          }
           @if (query().trim().length >= 2) {
             <ul class="fighters" aria-live="polite">
               @for (c of results(); track c.key) {
@@ -122,7 +142,8 @@ const PEOPLE_REFRESH_MS = 20000;
           } @else if (!query()) {
             <p class="idle small">
               Busca a tu competidor y márcalo con ★ para tenerlo siempre arriba (se guarda solo en
-              este dispositivo).
+              este dispositivo). Con la campana te avisamos cuando le toque, su resultado y sus
+              medallas (<a routerLink="/avisos">ajustes de avisos</a>).
             </p>
           }
         </section>
@@ -328,6 +349,14 @@ const PEOPLE_REFRESH_MS = 20000;
         >
           {{ favKeys().has(c.key) ? '★' : '☆' }}
         </button>
+        <app-push-button
+          class="bell"
+          [compact]="true"
+          [on]="pushKeys().has(c.key)"
+          [busy]="pushBusy()"
+          [label]="c.name"
+          (toggled)="toggleAlert(c, $event)"
+        />
         <div class="grow">
           <div class="who">
             <strong>
@@ -358,6 +387,8 @@ export class PublicLivePage {
   /** Enlace secreto (`/vivo/:token`) o dirección fija (`/t/:slug`): uno de los dos. */
   readonly token = input<string | undefined>(undefined);
   readonly slug = input<string | undefined>(undefined);
+  /** `?seguir=<key>`: el enlace de un aviso resalta a ese competidor. */
+  readonly seguir = input<string | undefined>(undefined);
   readonly data = signal<PublicLive | null>(null);
   readonly people = signal<PublicPeople | null>(null);
   readonly error = signal('');
@@ -365,6 +396,12 @@ export class PublicLivePage {
   readonly stale = signal(false);
   readonly query = signal('');
   readonly favKeys = signal<Set<string>>(new Set());
+  /** Competidores con aviso en este dispositivo (en el servidor). */
+  readonly pushKeys = signal<Set<string>>(new Set());
+  readonly pushBusy = signal(false);
+  private push = inject(PushService);
+  private toast = inject(ToastService);
+  private scrolled = false;
 
   readonly catStatus: Record<string, string> = {
     open: 'Inscripciones',
@@ -394,6 +431,11 @@ export class PublicLivePage {
   readonly results = computed(() =>
     searchCompetitors(this.people()?.competitors ?? [], this.query()),
   );
+  readonly highlighted = computed<PublicCompetitor | null>(() => {
+    const key = this.seguir();
+    if (!key) return null;
+    return (this.people()?.competitors ?? []).find((c) => c.key === key) ?? null;
+  });
   readonly favorites = computed<PublicCompetitor[]>(() => {
     const keys = this.favKeys();
     return (this.people()?.competitors ?? []).filter((c) => keys.has(c.key));
@@ -411,6 +453,19 @@ export class PublicLivePage {
     effect(() => {
       const ref = this.favRef();
       untracked(() => this.favKeys.set(loadFavorites(ref)));
+    });
+    // Avisos de este dispositivo en el torneo (si ya está suscrito).
+    effect(() => {
+      const ref = this.favRef();
+      const sub = this.push.subscription();
+      if (!ref || !sub) return;
+      untracked(() => void this.push.state(ref).then((s) => this.pushKeys.set(new Set(s.keys))));
+    });
+    // Llegó desde un aviso: se muestra arriba y se va a «¿Cuándo pelea?».
+    effect(() => {
+      if (!this.highlighted() || this.scrolled) return;
+      this.scrolled = true;
+      setTimeout(() => document.getElementById('cuando')?.scrollIntoView({ block: 'start' }), 50);
     });
   }
 
@@ -463,6 +518,24 @@ export class PublicLivePage {
     const next = toggleFavorite(this.favKeys(), c.key);
     this.favKeys.set(next);
     saveFavorites(this.favRef(), next);
+  }
+
+  /** «Avisarme»: suscribe este dispositivo (si hace falta) y guarda a quién sigue en el torneo. */
+  async toggleAlert(c: PublicCompetitor, on: boolean): Promise<void> {
+    const ref = this.favRef();
+    if (!ref) return;
+    this.pushBusy.set(true);
+    try {
+      const state = await this.push.followPublic(ref, [...toggled(this.pushKeys(), c.key, on)]);
+      if (!state) return;
+      this.pushKeys.set(new Set(state.keys));
+      if (on && !this.favKeys().has(c.key)) this.toggleFav(c);
+      this.toast.ok(on ? `Te avisaremos cuando le toque a ${c.name}` : 'Aviso quitado');
+    } catch {
+      this.toast.error('No se pudo guardar el aviso');
+    } finally {
+      this.pushBusy.set(false);
+    }
   }
 
   winnerName(m: PublicMatch): string {

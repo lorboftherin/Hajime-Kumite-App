@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
@@ -12,10 +12,13 @@ import {
 } from '../../core/cuentas';
 import { DialogService } from '../../core/dialog.service';
 import { fmtDateTime } from '../../core/format';
+import { toggled } from '../../core/push-logic';
+import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
 import { personLink } from '../../shared/person-link';
+import { PushButton, PushHint } from '../../shared/push-button';
 import { shareProfileCard } from '../../shared/profile-share-card';
 import { PersonAwards } from '../persons/person-awards';
 import { PersonHistoryView } from '../persons/person-history';
@@ -28,7 +31,16 @@ import { ClaimForm } from './claim-form';
  */
 @Component({
   selector: 'app-my-profiles',
-  imports: [RouterLink, PageHead, Icon, PersonHistoryView, PersonAwards, ClaimForm],
+  imports: [
+    RouterLink,
+    PageHead,
+    Icon,
+    PersonHistoryView,
+    PersonAwards,
+    ClaimForm,
+    PushButton,
+    PushHint,
+  ],
   template: `
     <div class="container">
       <app-page-head kanji="選手" title="Mis perfiles">
@@ -124,12 +136,19 @@ import { ClaimForm } from './claim-form';
                   Compartir tarjeta
                 </button>
               }
+              <app-push-button
+                [on]="pushPersons().has(p.person_id)"
+                [busy]="pushBusy()"
+                [label]="p.name"
+                (toggled)="togglePush(p, $event)"
+              />
               @if (p.guardianship_id) {
                 <button class="btn sm ghost" type="button" (click)="leave(p)">
                   Dejar de seguir
                 </button>
               }
             </div>
+            <app-push-hint [always]="false" />
             <app-person-history [personId]="p.person_id" [links]="false" />
             <app-person-awards [personId]="p.person_id" [links]="false" />
           }
@@ -219,6 +238,10 @@ export class MyProfilesPage {
   readonly selectedId = signal<number | null>(null);
   readonly claiming = signal(false);
   readonly sharing = signal(false);
+  private push = inject(PushService);
+  /** Perfiles con aviso en este dispositivo («te toca», resultados, medallas). */
+  readonly pushPersons = signal<Set<number>>(new Set());
+  readonly pushBusy = signal(false);
   readonly current = computed<MyProfile | null>(() => {
     const ps = this.profiles() ?? [];
     return ps.find((p) => p.person_id === this.selectedId()) ?? ps[0] ?? null;
@@ -227,6 +250,27 @@ export class MyProfilesPage {
   constructor() {
     this.load();
     void this.auth.refreshMe();
+    effect(() => {
+      if (!this.push.subscription()) return;
+      untracked(
+        () => void this.push.state().then((s) => this.pushPersons.set(new Set(s.person_ids))),
+      );
+    });
+  }
+
+  async togglePush(p: MyProfile, on: boolean): Promise<void> {
+    this.pushBusy.set(true);
+    try {
+      const s = await this.push.followAccount({ person_id: p.person_id }, on);
+      if (!s) return;
+      this.pushPersons.set(new Set(s.person_ids));
+      this.toast.ok(on ? `Te avisaremos de los combates de ${p.name}` : 'Aviso quitado');
+    } catch {
+      this.pushPersons.update((set) => toggled(set, p.person_id, !on));
+      this.toast.error('No se pudo guardar el aviso');
+    } finally {
+      this.pushBusy.set(false);
+    }
   }
 
   load(): void {
