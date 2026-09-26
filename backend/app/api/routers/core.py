@@ -28,7 +28,6 @@ from app.db.models import (
     AuditEntry,
     Bracket,
     Category,
-    CategoryTemplate,
     Dojo,
     IdentityDocument,
     Match,
@@ -46,7 +45,6 @@ from app.security import burn_password_check, decode_token, hash_password, passw
 from app.services import people, sessions
 from app.services.audit import audit, bump, check_version, snapshot
 from app.services.login_guard import clear_login_failures, login_locked_for, register_login_failure
-from app.services.tournaments import create_template
 
 router = APIRouter()
 
@@ -453,27 +451,6 @@ def merge_persons(data: s.PersonMergeIn, db: DB, admin: AdminUser):
 def revert_merge(merge_id: int, db: DB, admin: AdminUser):
     pm = people.revert_merge(db, admin, merge_id)
     return {"id": pm.id, "reverted_at": pm.reverted_at}
-
-
-# --- Plantillas -----------------------------------------------------------------
-
-
-@router.get("/templates", response_model=list[s.TemplateOut], tags=["templates"])
-def list_templates(db: DB, _: CurrentUser):
-    return db.scalars(select(CategoryTemplate).order_by(CategoryTemplate.name)).all()
-
-
-@router.post("/templates", response_model=s.TemplateOut, status_code=201, tags=["templates"])
-def new_template(data: s.TemplateCreate, db: DB, admin: AdminUser):
-    return create_template(db, admin, data)
-
-
-@router.get("/templates/{template_id}", response_model=s.TemplateOut, tags=["templates"])
-def get_template(template_id: int, db: DB, _: CurrentUser):
-    t = db.get(CategoryTemplate, template_id)
-    if t is None:
-        raise NotFound("Plantilla no encontrada")
-    return t
 
 
 # --- Auditoría ------------------------------------------------------------------

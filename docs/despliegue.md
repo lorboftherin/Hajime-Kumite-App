@@ -176,6 +176,11 @@ El día anterior:
 - [ ] Respaldo exportado: `bash infra/azure/respaldar.sh prod` (queda en la lista).
 - [ ] Torneo con la marca `es_prueba` desactivada, y datos con consentimiento registrado.
 - [ ] Llaves impresas desde la app como respaldo en papel.
+- [ ] Credenciales impresas (Torneo → Acreditación → Credenciales, 8 por hoja
+      A4, con QR) y ensobradas por dojo. Ver `docs/acreditacion-y-pesaje.md`.
+- [ ] Decidido si el check-in es obligatorio y la tolerancia de peso (Acreditación
+      → Ajustes), y avisado a los senseis.
+- [ ] Firma de los diplomas cargada (Resultados → Diplomas → Firma y organizador).
 
 El día del torneo:
 
@@ -183,8 +188,16 @@ El día del torneo:
 - [ ] Tablets cargadas y probadas en la red del local, con la app instalada
       (PWA o APK) y la sesión del operador abierta; probar cortar el wifi en la
       mesa y ver que los eventos quedan en cola y se envían al volver.
+- [ ] Tablet de acreditación en la entrada, con la pestaña **Acreditación**
+      abierta, cámara con permiso (para leer el QR) o lector USB, y balanza
+      cerca. Acreditar y pesar antes de generar las llaves: los ausentes se
+      excluyen al sortear.
+- [ ] «Listo para iniciar» sin inscritos sin acreditar (si es obligatorio) ni
+      pesos fuera de rango sin resolver.
 - [ ] Plan B: la mesa sigue en papel (principio "la app nunca detiene un torneo").
 
 Después:
 
 - [ ] Respaldo exportado otra vez (`respaldar.sh prod`) con los resultados finales.
+- [ ] Diplomas por categoría o por dojo (Resultados → Diplomas) y ranking de la
+      temporada revisado (se recalcula solo al cerrar categorías; ver `docs/ranking.md`).

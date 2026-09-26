@@ -136,7 +136,10 @@ def generate(db: Session, user: User, cid: int, data: s.BracketGenerateIn) -> Br
             "Hay combates iniciados: la llave ya no se puede regenerar; edítala manualmente",
             code="BRACKET_STARTED",
         )
-    regs = _active_regs(db, cid)
+    from app.services.checkin import bracket_absent_check  # evitar ciclo
+
+    # Acreditación: advierte de ausentes o los retira («excluir ausentes»).
+    regs, warnings = bracket_absent_check(db, user, t, _active_regs(db, cid), data.exclude_absent)
     if not regs:
         raise InvalidState("La categoría no tiene inscritos")
     fmt = data.format or effective_format(c, t)
@@ -144,7 +147,6 @@ def generate(db: Session, user: User, cid: int, data: s.BracketGenerateIn) -> Br
         fmt = "kata_rounds"
     rule = bd.ThirdPlaceRule(data.third_place_rule) if data.third_place_rule else effective_third_place(c, t)
 
-    warnings: list[dict[str, str]] = []
     if fmt == "round_robin" and len(regs) > 6:
         warnings.append(
             {"code": "ROUND_ROBIN_LARGE", "message": f"Round robin con {len(regs)} inscritos: muchos combates"}

@@ -10,6 +10,30 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Acreditación y pesaje:** pestaña «Acreditación» para la tablet de la
+  entrada (buscador grande, «Presente» de un toque, peso con teclado numérico,
+  filtros por dojo, pendientes y fuera de peso, contadores por categoría).
+  Credenciales imprimibles con QR (`/torneos/:id/credenciales`) y lector QR con
+  la cámara (BarcodeDetector). Tolerancia de peso por torneo; fuera de rango se
+  advierte y se mueve a la categoría sugerida o se acepta con motivo. Ausentes:
+  advertencia y «excluir ausentes» al generar la llave, o walkover si ya existe.
+  Check-in obligatorio opcional por torneo, en la verificación previa.
+- **Plantillas editables:** nombre y descripción, duplicar, borrar (o archivar
+  si un torneo la usó), edición de categorías en tabla e intercambio con Excel.
+- **Diplomas y certificados** en PDF: podio (oro, plata, bronce) y
+  participación, por categoría, por dojo y por persona, con firma y
+  organizador editables por torneo.
+- **Ranking por temporada y liga:** puntos por lugar, multiplicador por torneo,
+  categorías equivalentes entre torneos, «mejor academia», puesto en el perfil
+  de la persona y vista pública `/ranking/:temporada` (menores abreviados).
+
+### Operación
+
+- Migración `0009_checkin_ranking` (columnas nuevas con valor por defecto y
+  tablas `ranking_seasons` y `ranking_entries`; compatible hacia atrás).
+
 ## [0.2.0] - 2026-09-26
 
 Primera versión numerada: reúne el MVP completo usado en el torneo mock y en

@@ -1,23 +1,33 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/api.service';
 import { FilesService } from '../../../core/files.service';
-import { CategoryResult, MedalTable } from '../../../core/models';
+import { CategoryResult, MedalTable, Tournament } from '../../../core/models';
+import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Hanko } from '../../../shared/hanko';
 import { Icon } from '../../../shared/icon';
+import { Modal } from '../../../shared/modal';
+import { MoreMenu } from '../../../shared/more-menu';
 import { TournamentContext } from '../tournament-context';
 
 
 @Component({
   selector: 'app-results-tab',
-  imports: [RouterLink, StatusBadge, Hanko, Icon],
+  imports: [FormsModule, RouterLink, StatusBadge, Hanko, Icon, Modal, MoreMenu],
   template: `
     <div class="toolbar">
       <span class="grow"></span>
       <button class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
       <button class="btn" (click)="files.download('/tournaments/' + ctx.id() + '/results.xlsx', 'resultados-' + ctx.id() + '.xlsx')"><app-icon name="download" /> Excel</button>
       <button class="btn" (click)="files.open('/tournaments/' + ctx.id() + '/results.pdf')"><app-icon name="print" /> PDF</button>
+      <app-more text="Diplomas" label="Diplomas y certificados" [small]="false">
+        <button class="menu-item" (click)="dojoOpen.set(true)">Diplomas por dojo…</button>
+        <button class="menu-item" (click)="files.open('/tournaments/' + ctx.id() + '/diplomas.pdf')">Todos los diplomas del torneo</button>
+        <hr />
+        <button class="menu-item" (click)="openSigner()">Firma y organizador…</button>
+      </app-more>
     </div>
     <div class="layout">
       <section>
@@ -29,6 +39,11 @@ import { TournamentContext } from '../tournament-context';
               <app-status [status]="c.status" />
               @if (['ready', 'in_progress', 'finished'].includes(c.status)) {
                 <a class="btn sm ghost" [routerLink]="['/categorias', c.category_id, 'llave']">Llave</a>
+              }
+              @if (c.status === 'finished') {
+                <button class="btn sm" (click)="files.open('/categories/' + c.category_id + '/diplomas.pdf')" title="Diplomas de podio y certificados de participación">
+                  <app-icon name="print" /> Diplomas de esta categoría
+                </button>
               }
             </header>
             @if (c.places.length) {
@@ -101,6 +116,46 @@ import { TournamentContext } from '../tournament-context';
         <p class="hint legend"><span class="ring kin"></span> Oro <span class="ring gin"></span> Plata <span class="ring dou"></span> Bronce</p>
       </section>
     </div>
+
+    @if (dojoOpen()) {
+      <app-modal title="Diplomas por dojo" (closed)="dojoOpen.set(false)">
+        <div class="stack">
+          <p class="hint">Todos los diplomas y certificados de los competidores del dojo, de las categorías finalizadas.</p>
+          <label class="field">
+            <span>Dojo</span>
+            <select [ngModel]="dojoId()" (ngModelChange)="dojoId.set($event)">
+              <option [ngValue]="0" disabled>Elige un dojo…</option>
+              @for (d of dojoOptions(); track d.id) {
+                <option [ngValue]="d.id">{{ d.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span>Incluir</span>
+            <select [ngModel]="kind()" (ngModelChange)="kind.set($event)">
+              <option value="all">Podio y participación</option>
+              <option value="podium">Solo podio (oro, plata, bronce)</option>
+              <option value="participation">Solo participación</option>
+            </select>
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" [disabled]="!dojoId()" (click)="dojoDiplomas()"><app-icon name="print" /> Abrir PDF</button>
+          </div>
+        </div>
+      </app-modal>
+    }
+
+    @if (signerOpen()) {
+      <app-modal title="Firma de los diplomas" (closed)="signerOpen.set(false)">
+        <form class="stack" (ngSubmit)="saveSigner()">
+          <label class="field"><span>Organizador</span><input name="org" [(ngModel)]="signer.certificate_organizer" placeholder="Liga de Karate de Lima" /></label>
+          <label class="field"><span>Nombre de quien firma</span><input name="sn" [(ngModel)]="signer.certificate_signer_name" /></label>
+          <label class="field"><span>Cargo</span><input name="st" [(ngModel)]="signer.certificate_signer_title" placeholder="Presidente de la liga" /></label>
+          <p class="hint">Aparecen al pie de cada diploma, junto con el torneo, la ciudad y la fecha.</p>
+          <div class="form-actions"><button class="btn primary">Guardar</button></div>
+        </form>
+      </app-modal>
+    }
   `,
   styles: `
     .layout {
@@ -265,6 +320,50 @@ export class ResultsTab {
   readonly ctx = inject(TournamentContext);
   readonly files = inject(FilesService);
   private api = inject(ApiService);
+  private mut = inject(MutationService);
+
+  // --- Diplomas (TODO(entitlements): feature «certificates» del plan) ---
+  readonly dojoOpen = signal(false);
+  readonly dojoId = signal(0);
+  readonly kind = signal<'all' | 'podium' | 'participation'>('all');
+  readonly signerOpen = signal(false);
+  signer = { certificate_organizer: '', certificate_signer_name: '', certificate_signer_title: '' };
+  /** Dojos con algún competidor en el podio o en el medallero. */
+  readonly dojoOptions = computed(() => {
+    const m = new Map<number, string>();
+    for (const c of this.results()) for (const p of c.places) m.set(p.dojo_id, p.dojo_name);
+    for (const r of this.medals()?.rows ?? []) m.set(r.dojo_id, r.dojo_name);
+    return [...m].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  dojoDiplomas(): void {
+    this.files.open(`/tournaments/${this.ctx.id()}/diplomas.pdf`, { dojo_id: this.dojoId(), kind: this.kind() });
+    this.dojoOpen.set(false);
+  }
+
+  openSigner(): void {
+    const t = this.ctx.tournament();
+    this.signer = {
+      certificate_organizer: t?.certificate_organizer ?? '',
+      certificate_signer_name: t?.certificate_signer_name ?? '',
+      certificate_signer_title: t?.certificate_signer_title ?? '',
+    };
+    this.signerOpen.set(true);
+  }
+
+  async saveSigner(): Promise<void> {
+    const t = this.ctx.tournament();
+    if (!t) return;
+    const res = await this.mut.patch<Tournament>(
+      `/tournaments/${t.id}`,
+      { version: t.version, ...this.signer },
+      { success: 'Firma guardada', onConflict: () => this.ctx.reload() },
+    );
+    if (res) {
+      this.ctx.tournament.set(res);
+      this.signerOpen.set(false);
+    }
+  }
 
   readonly results = signal<CategoryResult[]>([]);
   readonly medals = signal<MedalTable | null>(null);

@@ -32,6 +32,7 @@ import { TournamentContext } from './tournament-context';
           <a routerLink="categorias" routerLinkActive="active">Categorías</a>
           <a routerLink="inscripciones" routerLinkActive="active">Inscripciones</a>
           <a routerLink="importar" routerLinkActive="active">Importar Excel</a>
+          <a routerLink="acreditacion" routerLinkActive="active">Acreditación</a>
           <a routerLink="tatamis" routerLinkActive="active">Tatamis</a>
           <a routerLink="arbitros" routerLinkActive="active">Árbitros</a>
           <a routerLink="resultados" routerLinkActive="active">Resultados</a>

@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { path: '/personas', kanji: '人', label: 'Personas', staff: true },
   { path: '/dojos', kanji: '道場', label: 'Dojos', staff: true },
   { path: '/plantillas', kanji: '型', label: 'Plantillas', staff: true },
+  { path: '/ranking', kanji: '番付', label: 'Ranking' },
 ];
 const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
 /** Operador de mesa de un tatami: acceso directo a su cola. */

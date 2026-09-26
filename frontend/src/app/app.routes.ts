@@ -28,6 +28,12 @@ export const routes: Routes = [
     title: 'En vivo · Hajime',
   },
   {
+    // Ranking público de una temporada marcada pública (sin inicio de sesión).
+    path: 'ranking/:temporada',
+    loadComponent: () => import('./features/ranking/public-ranking').then((m) => m.PublicRankingPage),
+    title: 'Ranking · Hajime',
+  },
+  {
     // Overlay para transmisiones (OBS/vMix): fondo transparente.
     path: 'overlay/:token/:tatami',
     loadComponent: () => import('./features/public/overlay').then((m) => m.OverlayPage),
@@ -57,6 +63,17 @@ export const routes: Routes = [
         path: 'torneos',
         loadComponent: () => import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),
         title: 'Torneos · Hajime',
+      },
+      {
+        // Credenciales imprimibles con QR (antes de 'torneos/:id', que tiene pestañas hijas).
+        path: 'torneos/:id/credenciales',
+        loadComponent: () => import('./features/checkin/credentials-page').then((m) => m.CredentialsPage),
+        title: 'Credenciales · Hajime',
+      },
+      {
+        path: 'ranking',
+        loadComponent: () => import('./features/ranking/ranking-page').then((m) => m.RankingPage),
+        title: 'Ranking · Hajime',
       },
       {
         path: 'torneos/:id',

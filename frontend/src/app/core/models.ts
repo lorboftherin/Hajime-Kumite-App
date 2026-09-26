@@ -150,6 +150,11 @@ export interface Template {
   description: string;
   version: number;
   items: TemplateItem[];
+  /** Archivada: no se ofrece para torneos nuevos (algún torneo la usó). */
+  is_archived?: boolean;
+  /** Algún torneo la usó para generar categorías: no se borra, se archiva. */
+  in_use?: boolean;
+  can_edit?: boolean;
 }
 
 export interface Category extends CategoryFields {
@@ -193,6 +198,12 @@ export interface Tournament {
   /** Enlace secreto del seguimiento en vivo público (null = desactivado). */
   public_token?: string | null;
   public_names?: 'short' | 'full';
+  /** Acreditación obligatoria: la verificación previa avisa de los no acreditados. */
+  checkin_required?: boolean;
+  weigh_in_tolerance_kg?: number;
+  certificate_organizer?: string;
+  certificate_signer_name?: string;
+  certificate_signer_title?: string;
 }
 
 // --- Inscripciones ---
@@ -211,6 +222,11 @@ export interface Registration {
   withdrawn_reason: string | null;
   seed: number | null;
   version: number;
+  checkin_status?: CheckinStatus;
+  checked_in_at?: string | null;
+  weight_kg?: number | null;
+  weighed_at?: string | null;
+  weigh_in_result?: WeighInResult | null;
   /** Nombre de la persona o, en categorías por equipos, del equipo. */
   person_name: string;
   dojo_name: string;
@@ -776,4 +792,179 @@ export interface OverlayData {
     winner: Color | null;
     team: { aka: string; ao: string; wins: [number, number]; bout: number; extra: boolean } | null;
   } | null;
+}
+
+// --- Acreditación y pesaje ---
+export type CheckinStatus = 'pending' | 'present' | 'absent';
+export type WeighInResult = 'ok' | 'over' | 'under';
+
+/** Fila de GET /tournaments/{id}/checkin (una por inscripción). */
+export interface CheckinRow {
+  registration_id: number;
+  person_id: number | null;
+  team_id: number | null;
+  name: string;
+  dojo_id: number;
+  dojo_name: string;
+  category_id: number;
+  category_name: string;
+  category_status: string;
+  modality: string;
+  weight_class: string | null;
+  weight_min_kg: number | null;
+  weight_max_kg: number | null;
+  needs_weigh_in: boolean;
+  status: string;
+  checkin_status: CheckinStatus;
+  checked_in_at: string | null;
+  weight_kg: number | null;
+  weighed_at: string | null;
+  weigh_in_result: WeighInResult | null;
+  weigh_in_resolved: boolean;
+  code: string | null;
+  version: number;
+}
+
+export interface CheckinCategoryCount {
+  category_id: number;
+  category_name: string;
+  total: number;
+  present: number;
+  absent: number;
+  pending: number;
+}
+
+export interface CheckinList {
+  tournament_id: number;
+  checkin_required: boolean;
+  weigh_in_tolerance_kg: number;
+  rows: CheckinRow[];
+  categories: CheckinCategoryCount[];
+  totals: { total: number; present: number; absent: number; pending: number };
+}
+
+export interface AbsentWithBracket {
+  registration_id: number;
+  category_id: number;
+  category_name: string;
+  options: string[];
+  message: string;
+}
+
+export interface CheckinResult {
+  changed: number[];
+  registrations: Registration[];
+  absent_with_bracket: AbsentWithBracket[];
+  name?: string;
+  code?: string;
+}
+
+export interface WeightSuggestion {
+  category_id: number;
+  name: string;
+  weight_class: string | null;
+  range: string;
+}
+
+export interface WeighInItem {
+  registration_id: number;
+  category_id: number;
+  category_name: string;
+  result: WeighInResult;
+  range: string;
+  warnings: Array<{ code: string; message: string }>;
+  suggestions: WeightSuggestion[];
+}
+
+export interface WeighInOut {
+  weight_kg: number;
+  results: WeighInItem[];
+}
+
+export interface Credential {
+  name: string;
+  dojo_name: string;
+  code: string | null;
+  person_id: number | null;
+  categories: string[];
+}
+
+// --- Diplomas ---
+export interface PersonCertificates {
+  tournament_id: number;
+  tournament_name: string;
+  start_date: string;
+  is_test: boolean;
+  items: Array<{ category_id: number; category_name: string; place: number | null }>;
+}
+
+// --- Ranking ---
+export interface RankingPoints {
+  gold: number;
+  silver: number;
+  bronze: number;
+  participation: number;
+}
+
+export interface RankingSeason {
+  id: number;
+  name: string;
+  slug: string;
+  year: number;
+  date_from: string | null;
+  date_to: string | null;
+  tournament_ids: number[];
+  points: RankingPoints;
+  multipliers: Record<string, number>;
+  min_entrants_walkover_gold: number;
+  is_public: boolean;
+  computed_at: string | null;
+  version: number;
+  tournaments?: Array<{ id: number; name: string; start_date: string; multiplier: number }>;
+}
+
+export interface RankingRow {
+  rank: number;
+  person_id: number | null;
+  name: string;
+  dojo_id: number | null;
+  dojo_name: string;
+  points: number;
+  golds: number;
+  silvers: number;
+  bronzes: number;
+  participations: number;
+  tournaments: number;
+}
+
+export interface RankingGroup {
+  key: string;
+  label: string;
+  modality: string;
+  competitors?: number;
+  rows?: RankingRow[];
+}
+
+export interface RankingDetail {
+  season: RankingSeason;
+  groups: RankingGroup[];
+  persons: RankingGroup[];
+  dojos: RankingRow[];
+}
+
+export interface PersonRanking {
+  season_id: number;
+  season_name: string;
+  slug: string;
+  year: number;
+  is_public: boolean;
+  group_key: string;
+  group_label: string;
+  modality: string;
+  rank: number;
+  of: number;
+  points: number;
+  golds: number;
+  silvers: number;
+  bronzes: number;
 }
