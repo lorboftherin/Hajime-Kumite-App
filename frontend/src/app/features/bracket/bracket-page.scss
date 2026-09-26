@@ -343,3 +343,40 @@
     margin-right: 0.35rem;
   }
 }
+
+/* Grupos + eliminación: tabla y combates de cada grupo. */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+  .group {
+    margin: 0;
+    h3 {
+      margin-top: 0;
+    }
+  }
+}
+
+/* Rondas de kata: orden de salida y rondas anteriores. */
+.order-btns {
+  display: inline-flex;
+  gap: 0.1rem;
+  margin-left: 0.25rem;
+}
+.rounds-info {
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.prev-round {
+  margin-bottom: 0.75rem;
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  li.qualified {
+    font-weight: 600;
+  }
+}

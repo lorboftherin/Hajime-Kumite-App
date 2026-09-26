@@ -10,11 +10,12 @@ import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { MoreMenu } from '../../../shared/more-menu';
 import { LabelPipe } from '../../../shared/pipes';
+import { CategoryRulesDialog, CategorySplitDialog } from '../category-rules';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-categories-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu, CategoryRulesDialog, CategorySplitDialog],
   template: `
     <div class="toolbar">
       <div class="search">
@@ -74,6 +75,9 @@ import { TournamentContext } from '../tournament-context';
                 @if (c.advice.length && c.status !== 'empty') {
                   <div class="small advice">Sugerencia: {{ adviceText(c.advice) }}</div>
                 }
+                @if (c.split_from_id) {
+                  <div class="small muted">← dividida de {{ catName(c.split_from_id) }}</div>
+                }
               </td>
               <td class="nowrap">
                 {{ c.modality | label: modalityLabel }}
@@ -82,7 +86,12 @@ import { TournamentContext } from '../tournament-context';
                 }
                 <span class="muted">· {{ c.sex | label: sexLabel }}</span>
               </td>
-              <td class="center"><span class="count-cell" [class.zero]="!c.entrant_count">{{ c.entrant_count }}</span></td>
+              <td class="center">
+                <span class="count-cell" [class.zero]="!c.entrant_count" [class.over]="!!c.max_entrants && c.entrant_count > c.max_entrants">{{ c.entrant_count }}</span>
+                @if (c.max_entrants) {
+                  <span class="muted small">/ {{ c.max_entrants }}</span>
+                }
+              </td>
               <td><app-status [status]="c.status" /></td>
               <td class="nowrap">
                 @if (c.tatami_id) {
@@ -99,6 +108,15 @@ import { TournamentContext } from '../tournament-context';
                 }
                 <app-more [label]="'Más acciones · ' + c.name">
                   <button class="menu-item" (click)="openTatami(c)">Asignar tatami</button>
+                  @if (c.status !== 'cancelled' && c.status !== 'merged') {
+                    <button class="menu-item" (click)="rulesCat.set(c)">Reglas y formato…</button>
+                  }
+                  @if (['open', 'ready'].includes(c.status) && c.entrant_count >= 2) {
+                    <button class="menu-item" (click)="splitCat.set(c)">Dividir categoría…</button>
+                  }
+                  @if (c.has_split) {
+                    <button class="menu-item" (click)="unsplit(c)">Deshacer división</button>
+                  }
                   @if (mergeTargets().has(c.id)) {
                     <button class="menu-item" (click)="unmerge(c)">Separar (deshacer fusión)</button>
                   }
@@ -147,6 +165,14 @@ import { TournamentContext } from '../tournament-context';
           <button class="btn primary" (click)="doMerge()">Fusionar</button>
         </div>
       </app-modal>
+    }
+
+    @if (rulesCat(); as c) {
+      <app-category-rules [category]="c" (closed)="rulesCat.set(null)" (saved)="rulesCat.set(null); reload()" />
+    }
+
+    @if (splitCat(); as c) {
+      <app-category-split [category]="c" (closed)="splitCat.set(null)" (done)="splitCat.set(null); reload()" />
     }
 
     @if (tatamiCat(); as c) {
@@ -218,9 +244,11 @@ import { TournamentContext } from '../tournament-context';
                 <option [ngValue]="null">Por defecto del torneo</option>
                 <option value="single_elimination">Eliminación directa</option>
                 <option value="round_robin">Round robin</option>
+                <option value="groups_knockout">Grupos + eliminación</option>
                 <option value="kata_rounds">Rondas de kata</option>
               </select>
             </label>
+            <label class="field"><span>Cupo (máx. inscritos)</span><input type="number" min="2" name="max" [(ngModel)]="nc.max_entrants" placeholder="Sin cupo" /></label>
             <label class="field inline" style="align-self: end; min-height: 2.5rem"><input type="checkbox" name="team" [(ngModel)]="nc.is_team" /> Por equipos</label>
             @if (nc.modality === 'kumite') {
               <label class="field"><span>Duración (seg)</span><input type="number" name="dur" [(ngModel)]="nc.duration_seconds" /></label>
@@ -299,6 +327,9 @@ import { TournamentContext } from '../tournament-context';
         color: var(--nezumi-ink);
         font-weight: 400;
       }
+      &.over {
+        color: var(--yamabuki-ink);
+      }
     }
     .actions {
       white-space: nowrap;
@@ -333,6 +364,8 @@ export class CategoriesTab {
   readonly mergeOpen = signal(false);
   readonly createOpen = signal(false);
   readonly tatamiCat = signal<Category | null>(null);
+  readonly rulesCat = signal<Category | null>(null);
+  readonly splitCat = signal<Category | null>(null);
   merge = { target_id: null as number | null, new_name: '', reason: '' };
   tat = { tatami_id: null as number | null, queue_position: null as number | null };
   nc = this.blankCategory();
@@ -422,6 +455,17 @@ export class CategoriesTab {
     if (res) this.reload();
   }
 
+  async unsplit(c: Category): Promise<void> {
+    const ok = await this.dialog.confirm({
+      title: 'Deshacer división',
+      message: `Los inscritos vuelven a ${c.name}, que recupera su nombre y rangos; la categoría creada al dividir se cancela.`,
+      confirmText: 'Deshacer',
+    });
+    if (!ok) return;
+    const res = await this.mut.post<Category>(`/categories/${c.id}/unsplit`, {}, { success: 'División deshecha' });
+    if (res) this.reload();
+  }
+
   async cancel(c: Category): Promise<void> {
     const reason = await this.dialog.prompt({
       title: 'Cancelar categoría',
@@ -489,6 +533,7 @@ export class CategoriesTab {
       kata_method: null as string | null,
       kata_judges: null as number | null,
       is_team: false,
+      max_entrants: null as number | null,
       team_bouts: 3,
       team_tie_rule: 'points' as 'points' | 'extra_bout',
     };
@@ -504,6 +549,7 @@ export class CategoriesTab {
     const body = {
       ...fields,
       weight_class: fields.weight_class || null,
+      max_entrants: fields.max_entrants || null,
       kumite_rules: fields.is_team && fields.modality === 'kumite' ? { team_bouts, team_tie_rule } : null,
     };
     const res = await this.mut.post<Category>(`/tournaments/${this.ctx.id()}/categories`, body, {

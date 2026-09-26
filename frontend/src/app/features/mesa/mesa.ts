@@ -51,6 +51,8 @@ import {
   retryDelay,
   savePending,
 } from './mesa-logic';
+import { KataMatchScores } from './kata-match-scores';
+import { HanteiSheet, InfractionSheet } from './rules-sheets';
 import { TeamMatchPanel } from './team-match';
 
 interface LogRow {
@@ -109,7 +111,15 @@ function buzz(pattern: number | number[]): void {
 
 @Component({
   selector: 'app-mesa',
-  imports: [FormsModule, RouterLink, LabelPipe, TeamMatchPanel],
+  imports: [
+    FormsModule,
+    RouterLink,
+    LabelPipe,
+    TeamMatchPanel,
+    KataMatchScores,
+    InfractionSheet,
+    HanteiSheet,
+  ],
   templateUrl: './mesa.html',
   styleUrls: [
     './mesa.scss',
@@ -204,11 +214,41 @@ export class MesaPage {
   /** Kata: qué juez dio cada bandera (opcional, sección 20). */
   readonly judgeOptions = signal<SuggestedJudges | null>(null);
   readonly judgeIds = signal<Array<number | null>>([]);
-  readonly judges = computed(() => {
+  /** Kata: configuración efectiva (torneo → categoría, con el preset WKF), igual que el backend. */
+  readonly kataCfg = computed(() => {
     const c = this.category();
-    const d = (this.tournament()?.kata_defaults ?? {}) as Record<string, any>;
-    return Number(c?.kata_judges ?? d['judges'] ?? 3);
+    const explicit = {
+      ...((this.tournament()?.kata_defaults ?? {}) as Record<string, any>),
+      ...((c?.kata_rules ?? {}) as Record<string, any>),
+    };
+    const method = c?.kata_method ?? explicit['method'] ?? 'flags';
+    let judges = Number(c?.kata_judges ?? explicit['judges'] ?? (method === 'scores' ? 5 : 3));
+    let discard = explicit['discard_each_side'];
+    let split = !!explicit['split'];
+    if (explicit['preset'] === 'wkf') {
+      if (!c?.kata_judges && explicit['judges'] === undefined) judges = 7;
+      if (discard === undefined || discard === null) discard = 2;
+      if (explicit['split'] === undefined) split = true;
+    }
+    const d =
+      discard === undefined || discard === null || discard === ''
+        ? judges === 3
+          ? 0
+          : 1
+        : Number(discard);
+    return { method, judges, discard: d, split };
   });
+  /** Kata por puntuación en llave: la mesa registra notas en vez de banderas. */
+  readonly kataScores = computed(() => this.isKata() && this.kataCfg().method === 'scores');
+  readonly judges = computed(() => {
+    const cfg = this.kataCfg();
+    // Banderas en una categoría por puntuación (excepción con override): 3 jueces.
+    return cfg.method === 'flags' ? cfg.judges : 3;
+  });
+
+  // Reglas configurables de kumite: tipo de falta, hantei con votos, shikkaku de torneo.
+  readonly infractionFor = signal<{ color: Color; level: number } | null>(null);
+  readonly hanteiFor = signal<Color | null | undefined>(undefined);
 
   readonly match = computed(() => this.sb()?.match ?? null);
   readonly finished = computed(() => this.match()?.status === 'finished');
@@ -234,7 +274,12 @@ export class MesaPage {
       this.sb()?.rules ?? null,
     ),
   );
-  readonly duration = computed(() => this.sb()?.duration_seconds ?? 0);
+  /** En punto de oro el periodo se alarga (period_seconds; null = sin límite). */
+  readonly duration = computed(() => {
+    const s = this.sb();
+    if (!s) return 0;
+    return s.golden_point ? (s.period_seconds ?? 0) : s.duration_seconds;
+  });
   readonly remaining = computed(() => Math.max(0, this.duration() - this.clock().elapsed));
   readonly timeOver = computed(
     () => this.duration() > 0 && this.clock().elapsed >= this.duration(),
@@ -328,7 +373,7 @@ export class MesaPage {
       case 'over':
         return '¡Tiempo!';
       case 'running':
-        return 'En juego';
+        return this.sb()?.golden_point ? 'Punto de oro' : 'En juego';
       case 'paused':
         return 'Yame';
       default:
@@ -481,7 +526,65 @@ export class MesaPage {
 
   rare(type: 'senshu_cancel' | 'kiken' | 'shikkaku' | 'walkover' | 'hantei', c: Color): void {
     this.moreOpen.set(null);
+    if (type === 'hantei') {
+      this.hanteiFor.set(c); // ganador y, opcionalmente, el voto de cada juez
+      return;
+    }
     this.special(type, c);
+  }
+
+  onHantei(h: { color: Color; votes: Array<Color | null> | null }): void {
+    this.hanteiFor.set(undefined);
+    this.send('hantei', { color: h.color, votes: h.votes });
+  }
+
+  onInfraction(p: { infraction: string; ladder: 'c1' | 'c2' }): void {
+    const f = this.infractionFor();
+    this.infractionFor.set(null);
+    if (!f) return;
+    buzz([12, 40, 12]);
+    this.send('sanction', {
+      color: f.color,
+      value: f.level,
+      infraction: p.infraction,
+      ladder: p.ladder,
+    });
+  }
+
+  /** Punto de oro: empieza el periodo extra; el primer punto sugiere el cierre. */
+  async startGoldenPoint(): Promise<void> {
+    const s = this.sb();
+    const secs = s?.rules?.golden_point_seconds;
+    const ok = await this.dialog.confirm({
+      title: 'Punto de oro',
+      message: `Empieza el periodo extra${secs ? ` de ${secs} s` : ' sin límite de tiempo'}: gana el primero que marque.`,
+      confirmText: 'Iniciar punto de oro',
+    });
+    if (ok) this.send('golden_point');
+  }
+
+  /** Shikkaku con alcance de torneo (si el torneo lo propone): retira sus demás inscripciones. */
+  private async offerDisqualify(color: Color): Promise<void> {
+    const t = this.tournament();
+    const c = this.category();
+    const rules = {
+      ...((t?.competition_rules ?? {}) as Record<string, any>),
+      ...((c?.competition_rules ?? {}) as Record<string, any>),
+    };
+    const rid =
+      color === 'aka' ? this.sb()?.match.aka_registration_id : this.sb()?.match.ao_registration_id;
+    if (!rules['shikkaku_tournament_wide'] || !rid) return;
+    const ok = await this.dialog.confirm({
+      title: 'Descalificar del torneo',
+      message: `${this.name(color)}: ¿descalificar también del torneo completo? Se retiran sus demás inscripciones (bye o walkover en cada llave).`,
+      confirmText: 'Descalificar del torneo',
+      danger: true,
+    });
+    if (!ok) return;
+    const res = await this.mut.post(`/registrations/${rid}/disqualify`, {
+      reason: 'Shikkaku en la mesa',
+    });
+    if (res) this.toast.show('Descalificado del torneo');
   }
 
   /** Gota de tinta desde el punto tocado (solo efecto visual; CSS la desactiva con reduced-motion). */
@@ -718,6 +821,12 @@ export class MesaPage {
   }
 
   sanction(color: Color, level: number): void {
+    const s = this.sb();
+    if (s?.rules?.sanction_preset === 'two_categories' && s.infractions) {
+      // Dos escaleras: el tipo de falta decide a cuál va la sanción.
+      this.infractionFor.set({ color, level });
+      return;
+    }
     buzz([12, 40, 12]);
     this.send('sanction', { color, value: level });
   }
@@ -769,6 +878,7 @@ export class MesaPage {
       confirmText: 'Registrar',
     });
     if (ok) this.send(type, { color });
+    if (ok && type === 'shikkaku') this.offerDisqualify(color);
   }
 
   undo(): void {

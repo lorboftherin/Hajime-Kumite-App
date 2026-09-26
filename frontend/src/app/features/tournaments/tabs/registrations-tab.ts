@@ -58,6 +58,9 @@ import { TournamentContext } from '../tournament-context';
           @for (r of filtered(); track r.id) {
             <tr [class.struck]="r.status === 'withdrawn'">
               <td class="who">
+                @if (r.seed) {
+                  <span class="badge ai" [title]="'Cabeza de serie ' + r.seed">CS {{ r.seed }}</span>
+                }
                 @if (r.person_id) {
                   <a [routerLink]="['/personas', r.person_id]">{{ r.person_name }}</a>
                 } @else {
@@ -92,6 +95,7 @@ import { TournamentContext } from '../tournament-context';
                   @if (r.team_id) {
                     <button class="btn sm ghost" (click)="openTeam(r)">Editar</button>
                   }
+                  <button class="btn sm ghost" (click)="editSeed(r)" title="Cabeza de serie: recibe los byes y queda separada en la llave">Serie</button>
                   <button class="btn sm ghost" (click)="withdraw(r)">Retirar</button>
                 }
               </td>
@@ -598,6 +602,30 @@ export class RegistrationsTab {
     this.teamOpen.set(false);
     this.load();
     this.ctx.loadCategories();
+  }
+
+  /** Cabeza de serie (1 = primera): se usa al generar la llave. Vacío la quita. */
+  async editSeed(r: Registration): Promise<void> {
+    const value = await this.dialog.prompt({
+      title: 'Cabeza de serie',
+      message: `${r.person_name} — ${this.catName(r.category_id)}. 1 = primera cabeza de serie; escribe 0 para quitarla. Se aplica al generar (o regenerar) la llave.`,
+      label: 'Número',
+      minLength: 1,
+      initial: r.seed ? String(r.seed) : '',
+      confirmText: 'Guardar',
+    });
+    if (value === null) return;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0) {
+      this.dialog.alert('Número inválido', 'Usa un número entero (0 para quitar).');
+      return;
+    }
+    const res = await this.mut.patch<Registration>(
+      `/registrations/${r.id}`,
+      { version: r.version, seed: n || null },
+      { success: n ? `Cabeza de serie ${n}` : 'Cabeza de serie quitada', onConflict: () => this.load() },
+    );
+    if (res) this.load();
   }
 
   async withdraw(r: Registration): Promise<void> {

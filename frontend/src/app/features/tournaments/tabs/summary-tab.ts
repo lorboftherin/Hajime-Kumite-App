@@ -14,6 +14,7 @@ import { Modal } from '../../../shared/modal';
 import { MoreMenu } from '../../../shared/more-menu';
 import { DatePipe, LabelPipe } from '../../../shared/pipes';
 import { TournamentContext } from '../tournament-context';
+import { TournamentRules } from '../tournament-rules';
 
 interface Transition {
   to: string;
@@ -53,7 +54,7 @@ const HINT: Record<string, string> = {
 
 @Component({
   selector: 'app-summary-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe, LabelPipe, MoreMenu, Icon],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe, LabelPipe, MoreMenu, Icon, TournamentRules],
   template: `
     @if (ctx.tournament(); as t) {
       <div class="overview">
@@ -126,6 +127,8 @@ const HINT: Record<string, string> = {
           <div><dt>Tatamis</dt><dd class="num">{{ t.tatamis.length }}</dd></div>
         </dl>
       </section>
+
+      <app-tournament-rules />
 
       <section class="card live" aria-labelledby="live-title">
         <div class="general-head">

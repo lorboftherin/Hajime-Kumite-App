@@ -126,7 +126,7 @@ export interface CategoryFields {
   grade_min: number | null;
   grade_max: number | null;
   weight_class: string | null;
-  format: 'single_elimination' | 'round_robin' | 'kata_rounds' | null;
+  format: 'single_elimination' | 'round_robin' | 'kata_rounds' | 'groups_knockout' | null;
   third_place_rule: 'two_bronzes' | 'third_place_match' | 'repechage' | null;
   duration_seconds: number | null;
   kumite_rules: Record<string, unknown> | null;
@@ -134,6 +134,13 @@ export interface CategoryFields {
   kata_structure: 'bracket' | 'rounds' | null;
   kata_judges: number | null;
   sort_order: number;
+  /** Cupo: al superarlo se advierte y se sugiere dividir. */
+  max_entrants?: number | null;
+  weight_min_kg?: number | null;
+  weight_max_kg?: number | null;
+  /** Overrides de la categoría (docs/reglas-configurables.md). */
+  kata_rules?: Record<string, unknown> | null;
+  competition_rules?: Record<string, unknown> | null;
 }
 
 export interface TemplateItem extends CategoryFields {
@@ -160,6 +167,10 @@ export interface Category extends CategoryFields {
   version: number;
   entrant_count: number;
   advice: string[];
+  /** Categoría de la que salió al dividir. */
+  split_from_id?: number | null;
+  /** Tiene divisiones activas (se pueden deshacer). */
+  has_split?: boolean;
 }
 
 // --- Torneos ---
@@ -183,6 +194,9 @@ export interface Tournament {
   default_third_place_rule: string;
   kumite_rules: Record<string, unknown>;
   kata_defaults: Record<string, unknown>;
+  competition_rules?: Record<string, unknown> | null;
+  /** Edad: a la fecha de referencia (date) o por año de nacimiento (birth_year). */
+  age_mode?: 'date' | 'birth_year';
   template_id: number | null;
   version: number;
   tatamis: Tatami[];
@@ -246,6 +260,8 @@ export interface TeamDecision {
   points: Record<Color, number>;
   draws: number;
   needs_extra_bout: boolean;
+  /** Combate extra empatado con la regla «hantei»: se corrige con la decisión de jueces. */
+  extra_bout_needs_hantei?: boolean;
   pending_bouts: number;
   reason: string | null;
 }
@@ -254,7 +270,14 @@ export interface TeamMatch {
   match: Match;
   category_id: number;
   category_name: string;
-  settings: { bouts: number; tie_rule: 'points' | 'extra_bout' };
+  settings: {
+    bouts: number;
+    tie_rule: 'points' | 'extra_bout';
+    extra_bout_tie?: 'hantei' | 'repeat';
+    empty_slot_walkover?: boolean;
+    lock_order?: boolean;
+    min_starters?: number | null;
+  };
   aka: TeamSide | null;
   ao: TeamSide | null;
   bouts: TeamBout[];
@@ -353,6 +376,45 @@ export interface Bracket {
   matches: Match[];
   podium: { places?: Array<{ place: number; registration_id: number }>; complete?: boolean };
   standings: Array<Record<string, any>> | null;
+  /** Grupos + eliminación: tabla de cada grupo. */
+  groups?: Array<{ letter: string; standings: Array<Record<string, any>> }> | null;
+  /** Rondas de kata: ronda en curso, cortes y detalle de cada ronda. */
+  kata_rounds?: KataRounds | null;
+}
+
+export interface KataRounds {
+  current: number;
+  total: number;
+  cuts: number[];
+  needs_review: boolean;
+  rounds: Array<{
+    round: number;
+    complete: boolean;
+    qualified: number[];
+    cut_tied: boolean;
+    standings: Array<Record<string, any>>;
+  }>;
+}
+
+/** Resultado de añadir o quitar a alguien de una llave ya generada. */
+export interface BracketChange {
+  result: { mode: string; position?: number; match?: string; matches_added?: number; matches_voided?: number };
+  bracket: Bracket;
+}
+
+/** Valores por defecto de las reglas configurables (GET /rules/defaults). */
+export interface RulesDefaults {
+  kumite: Record<string, any>;
+  kata: Record<string, any>;
+  competition: Record<string, any>;
+  round_robin_criteria: string[];
+  infractions: Record<string, { label: string; ladder: string | null }>;
+  age_modes: string[];
+}
+
+export interface KataCatalog {
+  styles: Array<{ style: string; katas: string[] }>;
+  katas: string[];
 }
 
 export interface BracketVersion {
@@ -374,6 +436,8 @@ export interface MatchEvent {
   target_id: string | null;
   method: string | null;
   reason: string | null;
+  infraction?: string | null;
+  ladder?: string | null;
   device_at: string;
   received_at: string;
 }
@@ -386,6 +450,11 @@ export interface EventIn {
   value?: number | null;
   target_id?: string | null;
   reason?: string | null;
+  /** Sanción: tipo de falta y escalera (preset de dos categorías). */
+  infraction?: string | null;
+  ladder?: 'c1' | 'c2' | null;
+  /** Hantei: votos de los jueces (opcional). */
+  votes?: Array<Color | null> | null;
   /** Requerido (motivo) para tocar un combate ya cerrado: 409 WARNINGS MATCH_FINISHED. */
   override?: Override | null;
 }
@@ -396,6 +465,9 @@ export interface ScoreboardRules {
   tie_rule?: string;
   lead_victory?: number | null;
   point_values?: number[];
+  sanction_preset?: 'single' | 'two_categories' | string;
+  senshu_auto_loss?: boolean;
+  golden_point_seconds?: number;
 }
 
 export interface Scoreboard {
@@ -405,7 +477,16 @@ export interface Scoreboard {
   score: Record<Color, number>;
   sanction: Record<Color, number>;
   sanction_labels: string[];
+  /** Segunda escalera (preset de dos categorías) y tipos de falta. */
+  sanction_c2?: Record<Color, number> | null;
+  sanction_labels_c2?: string[] | null;
+  infractions?: Record<string, { label: string; ladder: string | null }> | null;
   senshu: Color | null;
+  senshu_lost?: Color[];
+  /** Punto de oro: periodo extra en curso y duración total del periodo. */
+  golden_point?: boolean;
+  period_seconds?: number | null;
+  hantei_votes?: Array<{ judge_number: number; color: Color | null; judge_person_id: number | null }>;
   elapsed_seconds: number;
   duration_seconds: number;
   running: boolean;
