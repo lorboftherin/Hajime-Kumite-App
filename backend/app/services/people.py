@@ -15,12 +15,14 @@ from app.db.models import (
     Dojo,
     DojoMembership,
     GradeRecord,
+    Guardianship,
     IdentityDocument,
     ImportRow,
     JudgeVote,
     Person,
     PersonMerge,
     PersonRole,
+    ProfileClaim,
     RefereeAssignment,
     Registration,
     RuleOverride,
@@ -236,6 +238,9 @@ def anonymize_person(db: Session, user: User, person_id: int, reason: str) -> Pe
     p.anonymized_at = utcnow()
     new_name = f"{p.first_names} {p.last_names}"
     db.execute(delete(IdentityDocument).where(IdentityDocument.person_id == p.id))
+    # Cuentas de competidor: sin tutelas ni la evidencia de los reclamos (el consentimiento se borra abajo).
+    db.execute(update(ProfileClaim).where(ProfileClaim.person_id == p.id).values(consent_id=None, evidence=""))
+    db.execute(delete(Guardianship).where(Guardianship.person_id == p.id))
     db.execute(delete(DataConsent).where(DataConsent.person_id == p.id))
     # La auditoría y las filas de importación conservan la acción, no los datos.
     _redact_entries(
@@ -500,6 +505,8 @@ _MOVABLE = [
     (DataConsent, DataConsent.person_id),
     (PersonRole, PersonRole.person_id),
     (User, User.person_id),
+    (ProfileClaim, ProfileClaim.person_id),
+    (Guardianship, Guardianship.person_id),
     (JudgeVote, JudgeVote.judge_person_id),
 ]
 
@@ -512,7 +519,12 @@ def merge_persons(db: Session, user: User, data: s.PersonMergeIn) -> PersonMerge
         raise InvalidState("Una de las personas ya fue fusionada")
     moved: dict[str, list[int]] = {}
     for model, col in _MOVABLE:
-        ids = list(db.scalars(select(model.id).where(col == gone.id)).all())
+        q = select(model.id).where(col == gone.id)
+        if model is Guardianship:
+            # Quien ya era apoderado de la persona que queda no repite la tutela (clave única).
+            already = select(Guardianship.user_id).where(Guardianship.person_id == keep.id)
+            q = q.where(Guardianship.user_id.not_in(already))
+        ids = list(db.scalars(q).all())
         if ids:
             db.execute(update(model).where(model.id.in_(ids)).values({col.key: keep.id}))
             moved[model.__tablename__] = ids

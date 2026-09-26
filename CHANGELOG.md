@@ -10,6 +10,28 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Correo transaccional** con bandeja de salida en la base (`outbox_emails`),
+  reintentos con espera creciente, reserva entre procesos y proveedores
+  `console`, `smtp` (STARTTLS) y `acs` (Azure Communication Services por REST).
+  Hilo despachador en la API y `python -m app.mail_worker` para un Job.
+- **Correo en las cuentas:** recuperación de contraseña («¿Olvidaste tu
+  contraseña?», enlace de un solo uso por 1 h que cierra todas las sesiones),
+  verificación del correo, correo en «Mi cuenta» y en Usuarios; se entra
+  también con el correo.
+- **Cuentas de competidor** (`HAJIME_OPEN_SIGNUP`): registro abierto, reclamo
+  del propio perfil o del de un hijo o hija, revisión por el dojo u
+  organizador, tutela con consentimiento del apoderado, «Mis perfiles» con
+  historial, estadísticas e insignias.
+- **Perfil público** del competidor en `/competidor/<id>` sin datos sensibles y
+  página de **Privacidad** (texto provisional).
+
+### Seguridad
+
+- De los rivales, quien no es organizador ve solo el nombre abreviado en el
+  historial. Los últimos dígitos del documento de un reclamo no se guardan.
+
 ## [0.2.0] - 2026-09-26
 
 Primera versión numerada: reúne el MVP completo usado en el torneo mock y en

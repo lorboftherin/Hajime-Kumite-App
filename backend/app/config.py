@@ -81,6 +81,41 @@ class Settings(BaseSettings):
     # json (una línea por evento, para Azure / Log Analytics) o text (lectura en consola).
     log_format: str = "json"
 
+    # --- Correo transaccional (ver app/services/mail.py y docs/cuentas-y-correo.md) ---
+    # console (registra en el log y guarda en memoria; dev y pruebas) | smtp | acs
+    mail_provider: str = "console"
+    # Remitente por defecto (SMTP y ACS). Con ACS debe ser un remitente verificado del dominio.
+    mail_from: str = "Hajime <no-responder@localhost>"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    # Remitente propio de SMTP; sin configurar se usa mail_from.
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    smtp_timeout: float = 20.0
+    # Azure Communication Services Email: https://<recurso>.communication.azure.com y su clave de acceso.
+    acs_endpoint: str | None = None
+    acs_access_key: str | None = None
+    acs_sender: str | None = None  # p. ej. DoNotReply@<dominio verificado>
+    # Despachador de la bandeja de salida (outbox_emails): hilo de fondo en cada proceso.
+    # Con un Container Apps Job (python -m app.mail_worker) se puede apagar aquí.
+    mail_dispatcher: bool = True
+    mail_poll_seconds: float = 5.0
+    mail_max_attempts: int = 6
+    # Segundos que un proceso «reserva» un correo mientras lo envía (lease).
+    mail_lease_seconds: int = 120
+    # URL pública de la interfaz para los enlaces de los correos y el logo
+    # (p. ej. https://hajime.example.com). Sin configurar: http://localhost:4200.
+    public_url: str | None = None
+
+    # --- Cuentas de competidor (docs/modelo-negocio.md, «Cuentas de competidor») ---
+    # Registro abierto con correo. Apagado por defecto: se enciende a propósito.
+    open_signup: bool = False
+    # Reclamo de un adulto sobre su propio perfil con los 4 últimos dígitos del
+    # documento que coinciden: se aprueba solo. Los menores siempre los revisa una persona.
+    auto_approve_self_claim: bool = False
+
     def allowed_cors_origins(self) -> list[str]:
         if self.cors_origins is not None:
             return self.cors_origins
@@ -88,6 +123,10 @@ class Settings(BaseSettings):
 
     def docs_enabled(self) -> bool:
         return self.expose_docs if self.expose_docs is not None else self.environment != "prod"
+
+    def frontend_url(self) -> str:
+        """Base de los enlaces que van en los correos (sin barra final)."""
+        return (self.public_url or "http://localhost:4200").rstrip("/")
 
 
 DEFAULT_SECRET = "cambiar-en-produccion"

@@ -80,7 +80,16 @@ def _team_registrations(db: Session, person_id: int) -> tuple[dict[int, str], se
     return roles, counted, mine
 
 
-def person_history(db: Session, person_id: int) -> dict[str, Any]:
+def _short(first: str, last: str) -> str:
+    first_word = (first or "").split()[0] if (first or "").split() else ""
+    initial = (last or "").strip()[:1]
+    return f"{first_word} {initial}." if initial else first_word
+
+
+def person_history(db: Session, person_id: int, short_opponents: bool = False) -> dict[str, Any]:
+    """``short_opponents``: nombres de rivales abreviados («Diego R.»), para quien no es
+    organizador (la propia persona o su padre, madre o apoderado): de los rivales, que
+    pueden ser menores, solo se muestra lo público."""
     p = get_person(db, person_id)
     _, team_regs, bouts = _team_registrations(db, p.id)
     rows = db.execute(
@@ -104,7 +113,7 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
     opps = {r.id: r for r in db.scalars(select(Registration).where(Registration.id.in_(opp_ids or {0}))).all()}
     opp_people = {b.ao_person_id if b.aka_person_id == p.id else b.aka_person_id for b in bouts} - {None}
     people_names = {
-        x.id: f"{x.first_names} {x.last_names}"
+        x.id: _short(x.first_names, x.last_names) if short_opponents else f"{x.first_names} {x.last_names}"
         for x in db.scalars(select(Person).where(Person.id.in_(opp_people or {0}))).all()
     }
     dojos = {d.id: d.name for d in db.scalars(select(Dojo)).all()}
@@ -142,7 +151,7 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
                         "won": m.winner_registration_id == reg.id,
                         "method": m.method,
                         "score": [m.aka_score, m.ao_score] if mine_aka else [m.ao_score, m.aka_score],
-                        "opponent": opp.display_name if opp else None,
+                        "opponent": _opponent_name(opp, short_opponents),
                         "opponent_dojo": dojos.get(opp.dojo_id) if opp else None,
                     }
                 )
@@ -179,6 +188,14 @@ def person_history(db: Session, person_id: int) -> dict[str, Any]:
             "bronze": sum(1 for e in entries if e["place"] == 3),
         },
     }
+
+
+def _opponent_name(opp: Registration | None, short: bool) -> str | None:
+    if opp is None:
+        return None
+    if short and opp.team_id is None and opp.person is not None:
+        return _short(opp.person.first_names, opp.person.last_names)
+    return opp.display_name
 
 
 def dojo_history(db: Session, dojo_id: int) -> dict[str, Any]:

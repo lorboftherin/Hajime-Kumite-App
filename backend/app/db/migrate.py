@@ -19,6 +19,7 @@ LEGACY_MARKERS = (
     ("login_attempts", "0005_intentos_login"),
     ("user_sessions", "0006_sesiones"),
     ("public_snapshots", "0007_vivo_compartido"),
+    ("outbox_emails", "0009_cuentas"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (("tournaments", "public_token", "0003"), ("match_presence", "is_primary", "0008_mesa_principal"))

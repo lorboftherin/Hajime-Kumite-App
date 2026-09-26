@@ -10,6 +10,24 @@ CREATE TABLE login_attempts (
 	PRIMARY KEY ([key])
 );
 
+CREATE TABLE outbox_emails (
+	id INTEGER NOT NULL IDENTITY, 
+	to_address NVARCHAR(254) NOT NULL, 
+	subject NVARCHAR(250) NOT NULL, 
+	html NVARCHAR(max) NOT NULL, 
+	text NVARCHAR(max) NOT NULL, 
+	kind VARCHAR(40) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	attempts INTEGER NOT NULL, 
+	last_error NVARCHAR(1000) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	next_attempt_at DATETIME2 NOT NULL, 
+	locked_until DATETIME2 NULL, 
+	sent_at DATETIME2 NULL, 
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_outbox_emails_pending ON outbox_emails (status, next_attempt_at);
 CREATE TABLE users (
 	id INTEGER NOT NULL IDENTITY, 
 	username VARCHAR(80) NOT NULL, 
@@ -20,6 +38,8 @@ CREATE TABLE users (
 	token_version INTEGER NOT NULL, 
 	must_change_password BIT NOT NULL, 
 	display_name NVARCHAR(200) NOT NULL, 
+	email NVARCHAR(254) NULL, 
+	email_verified_at DATETIME2 NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -28,6 +48,7 @@ CREATE TABLE users (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE UNIQUE INDEX uq_users_email ON users (email) WHERE email IS NOT NULL;
 CREATE TABLE audit_log (
 	id INTEGER NOT NULL IDENTITY, 
 	at DATETIME2 NOT NULL, 
@@ -72,6 +93,34 @@ CREATE TABLE dojos (
 	FOREIGN KEY(updated_by_id) REFERENCES users (id)
 );
 
+CREATE TABLE email_verifications (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	email NVARCHAR(254) NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	used_at DATETIME2 NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
+);
+
+CREATE INDEX ix_email_verifications_user_id ON email_verifications (user_id);
+CREATE TABLE password_resets (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	token_hash VARCHAR(64) NOT NULL, 
+	created_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NOT NULL, 
+	used_at DATETIME2 NULL, 
+	ip VARCHAR(45) NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (token_hash)
+);
+
+CREATE INDEX ix_password_resets_user_id ON password_resets (user_id);
 CREATE TABLE persons (
 	id INTEGER NOT NULL IDENTITY, 
 	first_names NVARCHAR(120) NOT NULL, 
@@ -83,6 +132,7 @@ CREATE TABLE persons (
 	merged_into_id INTEGER NULL, 
 	anonymized_at DATETIME2 NULL, 
 	is_test_data BIT NOT NULL, 
+	public_id VARCHAR(24) NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -93,6 +143,7 @@ CREATE TABLE persons (
 );
 
 CREATE INDEX ix_persons_normalized_name ON persons (normalized_name);
+CREATE UNIQUE INDEX uq_persons_public_id ON persons (public_id) WHERE public_id IS NOT NULL;
 CREATE TABLE rule_overrides (
 	id INTEGER NOT NULL IDENTITY, 
 	entity VARCHAR(40) NOT NULL, 
@@ -308,6 +359,29 @@ CREATE TABLE import_batches (
 );
 
 CREATE INDEX ix_import_batches_tournament_id ON import_batches (tournament_id);
+CREATE TABLE profile_claims (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	relationship VARCHAR(20) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	evidence NVARCHAR(500) NOT NULL, 
+	document_match BIT NULL, 
+	consent_id INTEGER NULL, 
+	created_at DATETIME2 NOT NULL, 
+	reviewed_by_id INTEGER NULL, 
+	reviewed_at DATETIME2 NULL, 
+	reason NVARCHAR(500) NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(consent_id) REFERENCES data_consents (id), 
+	FOREIGN KEY(reviewed_by_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_profile_claims_person_id ON profile_claims (person_id);
+CREATE INDEX ix_profile_claims_status ON profile_claims (status, person_id);
+CREATE INDEX ix_profile_claims_user_id ON profile_claims (user_id);
 CREATE TABLE public_snapshots (
 	tournament_id INTEGER NOT NULL, 
 	kind VARCHAR(40) NOT NULL, 
@@ -407,6 +481,22 @@ CREATE TABLE categories (
 
 CREATE INDEX ix_categories_tatami ON categories (tatami_id, status, queue_position);
 CREATE INDEX ix_categories_tournament ON categories (tournament_id, status);
+CREATE TABLE guardianships (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NOT NULL, 
+	person_id INTEGER NOT NULL, 
+	relationship VARCHAR(20) NOT NULL, 
+	claim_id INTEGER NULL, 
+	verified_at DATETIME2 NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_guardianship UNIQUE (user_id, person_id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(claim_id) REFERENCES profile_claims (id)
+);
+
+CREATE INDEX ix_guardianships_person_id ON guardianships (person_id);
+CREATE INDEX ix_guardianships_user_id ON guardianships (user_id);
 CREATE TABLE import_rows (
 	id INTEGER NOT NULL IDENTITY, 
 	batch_id INTEGER NOT NULL, 

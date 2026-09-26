@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.api.errors import install_handlers
-from app.api.routers import competition, core, history, organizer, public, tournaments
+from app.api.routers import accounts, competition, core, history, organizer, public, public_profiles, tournaments
 from app.config import DEFAULT_SECRET, get_settings
 from app.db.base import get_engine
 from app.observability import RequestContextMiddleware, configure_azure_monitor, configure_logging
@@ -38,7 +38,35 @@ async def lifespan(_: FastAPI):
         # con un candado para que varios no choquen. En el contenedor viene en
         # false: el entrypoint ya lo hizo una vez (python -m app.prepare).
         prepare_database(settings, get_engine())
-    yield
+    dispatcher = _start_mail_dispatcher(settings)
+    try:
+        yield
+    finally:
+        if dispatcher is not None:
+            dispatcher.stop()
+
+
+def _start_mail_dispatcher(settings):
+    """Hilo que envía los correos de la bandeja de salida (ver app/services/mail.py).
+
+    No arranca con una base SQLite en memoria (las pruebas): ahí todos los hilos
+    comparten una sola conexión y el despachador chocaría con las peticiones.
+    """
+    if not settings.mail_dispatcher:
+        return None
+    engine = get_engine()
+    if engine.url.get_backend_name() == "sqlite" and engine.url.database in (None, "", ":memory:"):
+        return None
+    if settings.environment == "prod" and settings.mail_provider == "console":
+        logging.getLogger("hajime.mail").warning(
+            "HAJIME_MAIL_PROVIDER=console en producción: los correos solo quedan en el log"
+        )
+    from app.db.base import session_factory
+    from app.services.mail import MailDispatcher
+
+    dispatcher = MailDispatcher(session_factory(), settings)
+    dispatcher.start()
+    return dispatcher
 
 
 def _ping_database() -> None:
@@ -77,7 +105,8 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID", "Retry-After"],
     )
     install_handlers(app)
-    for r in (core.router, tournaments.router, competition.router, organizer.router, history.router, public.router):
+    routers = (core.router, accounts.router, tournaments.router, competition.router, organizer.router, history.router)
+    for r in (*routers, public_profiles.router, public.router):
         app.include_router(r, prefix="/api/v1")
 
     @app.get("/health/live", tags=["meta"])

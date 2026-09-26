@@ -8,15 +8,16 @@ from sqlalchemy.orm import Session
 from app.api.deps import DB, CurrentUser, MatchReader, StaffUser, TournamentReader, is_staff, roles_of
 from app.api.errors import Forbidden
 from app.db.models import User
-from app.services import history, people, stats
+from app.services import claims, history, people, stats
 
 router = APIRouter(tags=["history"])
 
 
 def ensure_person_access(db: Session, user: User, person_id: int) -> None:
-    """Historial y estadísticas de una persona: Admin, organizadores o la propia persona."""
-    if user.person_id != person_id and not is_staff(db, user):
-        raise Forbidden("Solo los organizadores o la propia persona ven este historial")
+    """Historial y estadísticas de una persona: Admin, organizadores, la propia persona
+    o su padre, madre o apoderado con el perfil reclamado y aprobado (tutela)."""
+    if not claims.can_see_full_profile(db, user, person_id):
+        raise Forbidden("Solo los organizadores, la propia persona o su apoderado ven este historial")
 
 
 def ensure_dojo_access(db: Session, user: User, dojo_id: int) -> None:
@@ -35,7 +36,8 @@ def ensure_dojo_access(db: Session, user: User, dojo_id: int) -> None:
 @router.get("/persons/{person_id}/history")
 def person_history(person_id: int, db: DB, user: CurrentUser):
     ensure_person_access(db, user, person_id)
-    return history.person_history(db, person_id)
+    # De los rivales (pueden ser menores), quien no es organizador ve solo el nombre abreviado.
+    return history.person_history(db, person_id, short_opponents=not is_staff(db, user))
 
 
 @router.get("/dojos/{dojo_id}/history")
