@@ -6,6 +6,7 @@ import anyio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import __version__
 from app.api.errors import install_handlers
 from app.api.routers import competition, core, history, public, tournaments
 from app.config import DEFAULT_SECRET, get_settings
@@ -62,7 +63,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Hajime — API de torneos de karate",
-        version="0.1.0",
+        version=__version__,
         description="API First: toda acción es un endpoint. Errores con formato uniforme; "
         "advertencias de negocio con código WARNINGS que se aceptan reenviando `override`.",
         lifespan=lifespan,

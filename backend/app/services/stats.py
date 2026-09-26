@@ -97,7 +97,7 @@ def _kumite_matches(db: Session, tournament_ids: list[int] | None) -> list[tuple
     )
     if tournament_ids is not None:
         stmt = stmt.where(Category.tournament_id.in_(tournament_ids or [0]))
-    return list(db.execute(stmt).tuples().all())
+    return list(db.execute(stmt).all())
 
 
 def _person_of(m: Match, color: str, regs: dict[int, Registration]) -> int | None:
@@ -168,7 +168,7 @@ def _medals(
     )
     if tournament_ids is not None:
         stmt = stmt.where(Category.tournament_id.in_(tournament_ids or [0]))
-    rows = db.execute(stmt).tuples().all()
+    rows = db.execute(stmt).all()
     credits = _team_credits(db, [r.id for _, r in rows if r.team_id])
     medals: dict[int, dict[str, int]] = defaultdict(lambda: {"gold": 0, "silver": 0, "bronze": 0})
     unbeaten: dict[int, int] = defaultdict(int)

@@ -3,7 +3,7 @@
  "info": {
   "title": "Hajime — API de torneos de karate",
   "description": "API First: toda acción es un endpoint. Errores con formato uniforme; advertencias de negocio con código WARNINGS que se aceptan reenviando `override`.",
-  "version": "0.1.0"
+  "version": "0.2.0"
  },
  "paths": {
   "/api/v1/auth/login": {
@@ -75,6 +75,46 @@
         }
        }
       }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/delete-account": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "summary": "Delete Account",
+    "description": "Borra la propia cuenta de acceso (Google Play y App Store lo exigen).\n\nLa cuenta queda desactivada y sin datos identificativos, y se cierran sus\nsesiones. La persona ligada y su historial deportivo no se tocan: son\ndel torneo y del dojo (sección 11); borrarlos es «anonimizar persona».",
+    "operationId": "delete_account_api_v1_auth_delete_account_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AccountDelete"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -5011,6 +5051,20 @@
  },
  "components": {
   "schemas": {
+   "AccountDelete": {
+    "properties": {
+     "password": {
+      "type": "string",
+      "title": "Password"
+     }
+    },
+    "type": "object",
+    "required": [
+     "password"
+    ],
+    "title": "AccountDelete",
+    "description": "Borrar la propia cuenta (lo exigen las tiendas de apps): confirma con la contraseña."
+   },
    "AnonymizeIn": {
     "properties": {
      "reason": {
