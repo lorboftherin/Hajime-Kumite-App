@@ -67,7 +67,10 @@ export function enqueueFinish(queue: Pending[], matchId: number, f: FinishData):
     reason: f.reason,
     time_over: f.time_over,
   };
-  return [...queue.filter((p) => !(p.matchId === matchId && isFinish(p))), { matchId, body, attempts: 0 }];
+  return [
+    ...queue.filter((p) => !(p.matchId === matchId && isFinish(p))),
+    { matchId, body, attempts: 0 },
+  ];
 }
 
 /** Eventos del reloj: descartarlos desincroniza el reloj de la tablet con el del servidor. */
@@ -111,7 +114,11 @@ export const MAX_SERVER_ATTEMPTS = 5;
  * - otros 4xx: rechazo de negocio, se descarta.
  * `attempts` es el número de intentos ya realizados, incluido el que acaba de fallar.
  */
-export function retryDecision(err: { status: number; code?: string }, attempts: number, maxServer = MAX_SERVER_ATTEMPTS): RetryDecision {
+export function retryDecision(
+  err: { status: number; code?: string },
+  attempts: number,
+  maxServer = MAX_SERVER_ATTEMPTS,
+): RetryDecision {
   if (err.status === 0 || err.code === 'TIMEOUT') return 'retry';
   if (err.status === 401) return 'auth';
   if (err.status === 409 && err.code === 'CONFLICT_DEVICE') return 'device';
@@ -145,7 +152,12 @@ export function autoPauseOnPoint(rules: ClockRules | null | undefined): boolean 
  * Pliega los eventos pendientes (aún no confirmados) sobre el ancla del servidor,
  * con las mismas reglas que compute_scoreboard del backend.
  */
-export function foldClock(anchor: ClockAnchor, pending: Array<Pick<EventIn, 'type' | 'at' | 'value'>>, now: number, rules?: ClockRules | null) {
+export function foldClock(
+  anchor: ClockAnchor,
+  pending: Array<Pick<EventIn, 'type' | 'at' | 'value'>>,
+  now: number,
+  rules?: ClockRules | null,
+) {
   const autoPause = autoPauseOnPoint(rules);
   let elapsed = anchor.elapsed;
   let runSince: number | null = anchor.running ? anchor.at : null;
@@ -177,6 +189,45 @@ export function foldClock(anchor: ClockAnchor, pending: Array<Pick<EventIn, 'typ
   return { elapsed: Math.max(0, elapsed), running: runSince !== null };
 }
 
+/**
+ * Marcador que ve el operador: el confirmado por el servidor más los puntos que
+ * siguen en la cola (sin señal o aún enviándose), con las anulaciones pendientes
+ * («Deshacer último») aplicadas. Sin esto, sin red el marcador se quedaba en el
+ * último valor confirmado aunque el punto ya figurara «pendiente» en el
+ * historial, y el operador podía volver a marcarlo. Mismas reglas que
+ * compute_scoreboard del backend para `point` y `annul`.
+ */
+export function scoreWithPending(
+  score: Record<Color, number>,
+  events: ReadonlyArray<{ id: string; type: string; color?: string | null; value?: number | null }>,
+  annulledIds: ReadonlyArray<string>,
+  pending: ReadonlyArray<Pick<EventIn, 'id' | 'type' | 'color' | 'value' | 'target_id'>>,
+): Record<Color, number> {
+  const out: Record<Color, number> = { aka: score.aka, ao: score.ao };
+  if (!pending.length) return out;
+  const annulled = new Set(annulledIds);
+  const points = new Map<string, { color: Color; value: number }>();
+  for (const e of events) {
+    if (e.type === 'point' && (e.color === 'aka' || e.color === 'ao') && !annulled.has(e.id)) {
+      points.set(e.id, { color: e.color, value: Number(e.value ?? 0) });
+    }
+  }
+  for (const p of pending) {
+    if (p.type === 'point' && (p.color === 'aka' || p.color === 'ao')) {
+      const value = Number(p.value ?? 0);
+      out[p.color] += value;
+      points.set(p.id, { color: p.color, value });
+    } else if (p.type === 'annul' && p.target_id) {
+      const target = points.get(p.target_id);
+      if (target) {
+        out[target.color] = Math.max(0, out[target.color] - target.value);
+        points.delete(p.target_id);
+      }
+    }
+  }
+  return out;
+}
+
 // --- Persistencia de la cola por combate ---
 export const PENDING_KEY_PREFIX = 'hajime.mesa.pending.';
 
@@ -184,14 +235,23 @@ export function pendingKey(matchId: number): string {
   return PENDING_KEY_PREFIX + matchId;
 }
 
-export function loadPending(matchId: number, storage: Pick<Storage, 'getItem'> | null = defaultStorage()): Pending[] {
+export function loadPending(
+  matchId: number,
+  storage: Pick<Storage, 'getItem'> | null = defaultStorage(),
+): Pending[] {
   try {
     const raw = storage?.getItem(pendingKey(matchId));
     if (!raw) return [];
     const list = JSON.parse(raw) as unknown;
     if (!Array.isArray(list)) return [];
     return list
-      .filter((x): x is QueueBody => !!x && typeof x === 'object' && typeof (x as EventIn).id === 'string' && typeof (x as EventIn).type === 'string')
+      .filter(
+        (x): x is QueueBody =>
+          !!x &&
+          typeof x === 'object' &&
+          typeof (x as EventIn).id === 'string' &&
+          typeof (x as EventIn).type === 'string',
+      )
       .map((body) => ({ matchId, body, attempts: 0 }));
   } catch {
     return [];
@@ -199,7 +259,11 @@ export function loadPending(matchId: number, storage: Pick<Storage, 'getItem'> |
 }
 
 /** Guarda la cola agrupada por combate; borra las claves de combates que ya no tienen pendientes. */
-export function savePending(queue: Pending[], known: Set<number>, storage: Pick<Storage, 'setItem' | 'removeItem'> | null = defaultStorage()): void {
+export function savePending(
+  queue: Pending[],
+  known: Set<number>,
+  storage: Pick<Storage, 'setItem' | 'removeItem'> | null = defaultStorage(),
+): void {
   const byMatch = new Map<number, QueueBody[]>();
   for (const p of queue) byMatch.set(p.matchId, [...(byMatch.get(p.matchId) ?? []), p.body]);
   for (const id of known) {
@@ -255,7 +319,12 @@ export class TimerCues {
    * `remaining`: segundos restantes; `running`: el reloj corre; `duration`: duración total.
    * Devuelve el aviso que corresponde disparar ahora, o null.
    */
-  update(remaining: number, running: boolean, duration: number, warnAt = WARN_SECONDS): TimerCue | null {
+  update(
+    remaining: number,
+    running: boolean,
+    duration: number,
+    warnAt = WARN_SECONDS,
+  ): TimerCue | null {
     const prev = this.prev;
     this.prev = remaining;
     if (remaining > warnAt) this.fired.delete('warn');
@@ -266,7 +335,14 @@ export class TimerCues {
       this.fired.add('warn');
       return 'end';
     }
-    if (running && duration > warnAt && remaining <= warnAt && remaining > 0 && prev > warnAt && !this.fired.has('warn')) {
+    if (
+      running &&
+      duration > warnAt &&
+      remaining <= warnAt &&
+      remaining > 0 &&
+      prev > warnAt &&
+      !this.fired.has('warn')
+    ) {
       this.fired.add('warn');
       return 'warn';
     }
@@ -289,7 +365,10 @@ export function timeUpAt(now: number, elapsed: number, duration: number): number
  * «Hansoku» → «H», «Jogai 2» → «J2». El nombre completo queda en el título y la etiqueta accesible.
  */
 export function sanctionAbbr(label: string): string {
-  const parts = label.trim().split(/[\s\-·.]+/).filter(Boolean);
+  const parts = label
+    .trim()
+    .split(/[\s\-·.]+/)
+    .filter(Boolean);
   return parts.map((p) => (/^\d+$/.test(p) ? p : p[0].toUpperCase())).join('') || label;
 }
 

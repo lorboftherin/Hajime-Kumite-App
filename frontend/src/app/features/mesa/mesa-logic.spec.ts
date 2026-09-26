@@ -16,6 +16,7 @@ import {
   retryDelay,
   sanctionAbbr,
   savePending,
+  scoreWithPending,
   timeUpAt,
 } from './mesa-logic';
 
@@ -74,7 +75,10 @@ describe('foldClock', () => {
   it('un punto pendiente pausa el reloj en tiempo efectivo (como el servidor)', () => {
     const anchor = { elapsed: 10, running: true, at: t0 };
     const pending = [{ type: 'point', at: iso(t0 + 5000), value: 1 }];
-    const c = foldClock(anchor, pending, t0 + 20000, { time_mode: 'effective', auto_pause_on_point: true });
+    const c = foldClock(anchor, pending, t0 + 20000, {
+      time_mode: 'effective',
+      auto_pause_on_point: true,
+    });
     expect(c.running).toBe(false);
     expect(c.elapsed).toBeCloseTo(15, 3);
   });
@@ -82,12 +86,24 @@ describe('foldClock', () => {
   it('no pausa en tiempo corrido ni con auto_pause desactivado', () => {
     const anchor = { elapsed: 10, running: true, at: t0 };
     const pending = [{ type: 'point', at: iso(t0 + 5000), value: 1 }];
-    expect(foldClock(anchor, pending, t0 + 20000, { time_mode: 'running', auto_pause_on_point: true })).toEqual({ elapsed: 30, running: true });
-    expect(foldClock(anchor, pending, t0 + 20000, { time_mode: 'effective', auto_pause_on_point: false })).toEqual({ elapsed: 30, running: true });
+    expect(
+      foldClock(anchor, pending, t0 + 20000, { time_mode: 'running', auto_pause_on_point: true }),
+    ).toEqual({ elapsed: 30, running: true });
+    expect(
+      foldClock(anchor, pending, t0 + 20000, {
+        time_mode: 'effective',
+        auto_pause_on_point: false,
+      }),
+    ).toEqual({ elapsed: 30, running: true });
   });
 
   it('sin reglas asume el valor por defecto del servidor (pausa automática)', () => {
-    const c = foldClock({ elapsed: 0, running: true, at: t0 }, [{ type: 'point', at: iso(t0 + 1000), value: 3 }], t0 + 9000, null);
+    const c = foldClock(
+      { elapsed: 0, running: true, at: t0 },
+      [{ type: 'point', at: iso(t0 + 1000), value: 3 }],
+      t0 + 9000,
+      null,
+    );
     expect(c).toEqual({ elapsed: 1, running: false });
   });
 
@@ -109,7 +125,11 @@ describe('persistencia de la cola', () => {
   it('guarda por combate, restaura con attempts=0 y limpia claves vacías', () => {
     const known = new Set<number>();
     const q = [
-      { matchId: 7, body: { id: 'a', type: 'point', at: 'x', color: 'aka' as const, value: 1 }, attempts: 3 },
+      {
+        matchId: 7,
+        body: { id: 'a', type: 'point', at: 'x', color: 'aka' as const, value: 1 },
+        attempts: 3,
+      },
       { matchId: 8, body: { id: 'b', type: 'pause', at: 'y' }, attempts: 0 },
     ];
     savePending(q, known);
@@ -135,7 +155,13 @@ describe('persistencia de la cola', () => {
       },
     };
     expect(loadPending(1, broken)).toEqual([]);
-    expect(() => savePending([{ matchId: 1, body: { id: 'a', type: 'point', at: 'x' }, attempts: 0 }], new Set([2]), broken)).not.toThrow();
+    expect(() =>
+      savePending(
+        [{ matchId: 1, body: { id: 'a', type: 'point', at: 'x' }, attempts: 0 }],
+        new Set([2]),
+        broken,
+      ),
+    ).not.toThrow();
   });
 });
 
@@ -150,7 +176,13 @@ describe('cierre en cola (sin señal)', () => {
   });
 
   it('va después de los eventos pendientes y se envía a /finish con el formato del cierre', () => {
-    const q: Pending[] = [{ matchId: 5, body: { id: 'e1', type: 'point', at: 'x', color: 'ao', value: 2 }, attempts: 0 }];
+    const q: Pending[] = [
+      {
+        matchId: 5,
+        body: { id: 'e1', type: 'point', at: 'x', color: 'ao', value: 2 },
+        attempts: 0,
+      },
+    ];
     const out = enqueueFinish(q, 5, finish('f1'));
     expect(out.map((p) => p.body.id)).toEqual(['e1', 'f1']);
     expect(pendingPath(out[0])).toBe('/matches/5/events');
@@ -257,5 +289,49 @@ describe('presentación de la mesa', () => {
     expect(methodsFor('kata')).not.toContain('senshu');
     expect(methodsFor('kumite')).toContain('senshu');
     expect(methodsFor('kumite')).not.toContain('flags');
+  });
+});
+
+describe('scoreWithPending (marcador sin señal)', () => {
+  const pt = (id: string, color: 'aka' | 'ao', value: number) => ({
+    id,
+    type: 'point',
+    color,
+    value,
+  });
+  const confirmed = [pt('a', 'aka', 2), pt('b', 'ao', 1)];
+
+  it('sin cola es el marcador del servidor', () => {
+    expect(scoreWithPending({ aka: 2, ao: 1 }, confirmed, [], [])).toEqual({ aka: 2, ao: 1 });
+  });
+
+  it('suma los puntos que siguen en la cola', () => {
+    const pending = [pt('c', 'aka', 3), pt('d', 'ao', 1)];
+    expect(scoreWithPending({ aka: 2, ao: 1 }, confirmed, [], pending)).toEqual({ aka: 5, ao: 2 });
+  });
+
+  it('aplica «Deshacer» pendiente sobre un punto pendiente o ya confirmado', () => {
+    const pending = [
+      pt('c', 'ao', 3),
+      { id: 'u1', type: 'annul', target_id: 'c' },
+      { id: 'u2', type: 'annul', target_id: 'a' },
+    ];
+    expect(scoreWithPending({ aka: 2, ao: 1 }, confirmed, [], pending)).toEqual({ aka: 0, ao: 1 });
+  });
+
+  it('no descuenta dos veces un punto que el servidor ya anuló', () => {
+    const pending = [{ id: 'u', type: 'annul', target_id: 'a' }];
+    expect(scoreWithPending({ aka: 0, ao: 1 }, confirmed, ['a'], pending)).toEqual({
+      aka: 0,
+      ao: 1,
+    });
+  });
+
+  it('ignora sanciones y otros eventos', () => {
+    const pending = [
+      { id: 's', type: 'sanction', color: 'ao' as const, value: 1 },
+      { id: 'h', type: 'start' },
+    ];
+    expect(scoreWithPending({ aka: 2, ao: 1 }, confirmed, [], pending)).toEqual({ aka: 2, ao: 1 });
   });
 });

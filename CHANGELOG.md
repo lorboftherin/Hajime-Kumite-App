@@ -83,6 +83,18 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
   propagación de un punto.
 
+### Corregido
+
+- **Mesa sin red:** el marcador se quedaba en el último valor confirmado por el
+  servidor aunque el punto ya figurara «pendiente» en el historial (el
+  operador podía volver a marcarlo). Ahora muestra también los puntos y los
+  «Deshacer» que siguen en la cola, igual que el reloj.
+- Contraste insuficiente (axe, *serious*) en el kanji de la navegación lateral
+  y en el de HAJIME en la mesa.
+- «Nuevo torneo»: si se elegía «Sin plantilla» antes de que llegara la lista
+  de plantillas (red lenta), la app la reemplazaba por la plantilla base y el
+  torneo se creaba con todas sus categorías.
+
 ### Seguridad
 
 - De los rivales, quien no es organizador ve solo el nombre abreviado en el

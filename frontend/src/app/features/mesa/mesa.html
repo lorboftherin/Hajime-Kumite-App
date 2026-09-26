@@ -212,7 +212,7 @@
 
             <div class="score-box">
               <div class="score-wrap">
-                @for (v of [s.score[c]]; track v) {
+                @for (v of [score()[c]]; track v) {
                   <span class="score" [attr.aria-label]="'Puntaje ' + c + ': ' + v">{{ v }}</span>
                 }
                 <span class="senshu" [class.on]="s.senshu === c" [attr.aria-hidden]="s.senshu !== c" title="Senshu (primera ventaja)">
@@ -464,7 +464,7 @@
 
         @if (!isKata()) {
           <div class="sheet-score" aria-label="Marcador">
-            <span class="aka-t">AKA {{ s.score.aka }}</span><span class="dash">–</span><span class="ao-t">{{ s.score.ao }} AO</span>
+            <span class="aka-t">AKA {{ score().aka }}</span><span class="dash">–</span><span class="ao-t">{{ score().ao }} AO</span>
           </div>
         }
         @if (suggestionText()) {
