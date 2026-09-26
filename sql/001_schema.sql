@@ -2,6 +2,14 @@
 SET XACT_ABORT ON;
 BEGIN TRAN;
 
+CREATE TABLE login_attempts (
+	[key] VARCHAR(160) NOT NULL, 
+	failures INTEGER NOT NULL, 
+	window_start DATETIME2 NOT NULL, 
+	locked_until DATETIME2 NULL, 
+	PRIMARY KEY ([key])
+);
+
 CREATE TABLE users (
 	id INTEGER NOT NULL IDENTITY, 
 	username VARCHAR(80) NOT NULL, 

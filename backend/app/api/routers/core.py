@@ -32,16 +32,10 @@ from app.db.models import (
     User,
 )
 from app.domain.identity import normalize_document, normalize_name
-from app.security import (
-    clear_login_failures,
-    create_token,
-    hash_password,
-    login_locked_for,
-    register_login_failure,
-    verify_password,
-)
+from app.security import burn_password_check, create_token, hash_password, password_needs_rehash, verify_password
 from app.services import people
 from app.services.audit import audit, bump, check_version, snapshot
+from app.services.login_guard import clear_login_failures, login_locked_for, register_login_failure
 from app.services.tournaments import create_template
 
 router = APIRouter()
@@ -53,15 +47,22 @@ router = APIRouter()
 @router.post("/auth/login", response_model=s.TokenOut, tags=["auth"])
 def login(data: s.LoginIn, db: DB, request: Request):
     username = data.username.strip().lower()
-    key = f"{username}|{request.client.host if request.client else '-'}"
-    wait = login_locked_for(key)
+    # IP real del cliente: uvicorn la toma de X-Forwarded-For (--forwarded-allow-ips).
+    ip = request.client.host if request.client else "-"
+    wait = login_locked_for(db, username, ip)
     if wait:
         raise TooManyRequests(f"Demasiados intentos fallidos. Intenta de nuevo en {wait // 60 + 1} min.")
     u = db.scalar(select(User).where(User.username == username))
+    if u is None:
+        burn_password_check(data.password)  # mismo tiempo de respuesta que con un usuario real
     if u is None or not u.is_active or not verify_password(data.password, u.password_hash):
-        register_login_failure(key)
+        register_login_failure(db, username, ip)
         raise Unauthorized("Usuario o contraseña incorrectos")
-    clear_login_failures(key)
+    if password_needs_rehash(u.password_hash):
+        # Hash con otro coste (p. ej. de antes de bajar las iteraciones): se rehace ahora
+        # que se conoce la contraseña; el usuario no nota nada.
+        u.password_hash = hash_password(data.password)
+    clear_login_failures(db, username, ip)
     return s.TokenOut(access_token=create_token(u.id, u.token_version or 0), user=user_out(db, u))
 
 
