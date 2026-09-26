@@ -170,14 +170,18 @@ def operate_tatami(base: str, op: dict, rng: random.Random, results: dict, stop:
     results[f"mesa-{op['tatami']['number']}"] = {"matches": done, "lat": cli.lat, "errors": cli.errors}
 
 
-def spectate(base: str, token: str, i: int, results: dict, stop: threading.Event) -> None:
-    """Un espectador: refresca el seguimiento en vivo público como la página «en vivo»."""
+HILOS_VIVO = 25  # hilos que reparten a los espectadores (cada uno hace las peticiones de varios)
+
+
+def spectate(base: str, token: str, i: int, personas: int, results: dict, stop: threading.Event) -> None:
+    """Varios espectadores en un hilo: entre todos refrescan el vivo cada 5 s, como la página «en vivo»."""
     cli = Client(base, None, "vivo")
-    time.sleep(random.uniform(0, REFRESCO_VIVO))  # no todos entran a la vez
+    paso = REFRESCO_VIVO / max(1, personas)
+    time.sleep(random.uniform(0, paso))  # no todos entran a la vez
     while not stop.is_set():
         t0 = time.perf_counter()
         cli.get(f"/public/{token}")
-        time.sleep(max(0.0, REFRESCO_VIVO - (time.perf_counter() - t0)))
+        time.sleep(max(0.0, paso - (time.perf_counter() - t0)))
     results[f"vivo-{i}"] = {"matches": 0, "lat": cli.lat, "errors": cli.errors}
 
 
@@ -220,9 +224,11 @@ def main() -> int:
         threading.Thread(target=operate_tatami, args=(a.url, op, random.Random(a.seed + i), results, stop), daemon=True)
         for i, op in enumerate(ops)
     ]
+    hilos = min(HILOS_VIVO, a.espectadores)
+    reparto = [a.espectadores // hilos + (1 if i < a.espectadores % hilos else 0) for i in range(hilos)]
     threads += [
-        threading.Thread(target=spectate, args=(a.url, t["public_token"], i, results, stop), daemon=True)
-        for i in range(a.espectadores)
+        threading.Thread(target=spectate, args=(a.url, t["public_token"], i, n, results, stop), daemon=True)
+        for i, n in enumerate(reparto)
     ]
     print(f"-> {a.tatamis} mesas operando y {a.espectadores} espectadores mirando el vivo, a la vez…")
     t1 = time.perf_counter()

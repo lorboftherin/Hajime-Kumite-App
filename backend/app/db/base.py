@@ -45,8 +45,12 @@ def make_engine(url: str) -> Engine:
             from sqlalchemy.pool import StaticPool
 
             kwargs["poolclass"] = StaticPool
+        else:
+            # Varias mesas y muchos espectadores a la vez: más conexiones que
+            # hilos atendiendo peticiones, para que nadie espere una libre.
+            kwargs.update(pool_size=20, max_overflow=40)
     else:
-        kwargs["pool_pre_ping"] = True
+        kwargs.update(pool_pre_ping=True, pool_size=20, max_overflow=40, pool_recycle=1800)
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
         file_db = url not in ("sqlite://", "sqlite:///:memory:")
