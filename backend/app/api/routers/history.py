@@ -5,7 +5,16 @@ from __future__ import annotations
 from fastapi import APIRouter
 from sqlalchemy.orm import Session
 
-from app.api.deps import DB, CurrentUser, MatchReader, StaffUser, TournamentReader, is_staff, roles_of
+from app.api.deps import (
+    DB,
+    CurrentUser,
+    StaffUser,
+    TournamentReader,
+    can_read_tournament,
+    is_staff,
+    match_tournament_id,
+    roles_of,
+)
 from app.api.errors import Forbidden
 from app.db.models import User
 from app.services import claims, history, people, stats
@@ -69,6 +78,15 @@ def global_leaders(db: DB, _: StaffUser, year: int | None = None):
 
 
 @router.get("/matches/{mid}/summary", tags=["stats"])
-def match_summary(mid: int, db: DB, _: MatchReader):
-    """Hoja del combate con técnicas por lado y línea de tiempo del marcador."""
-    return stats.match_summary(db, mid)
+def match_summary(mid: int, db: DB, user: CurrentUser):
+    """Hoja del combate con técnicas por lado y línea de tiempo del marcador.
+
+    La leen quienes leen el torneo y, además, la persona que peleó y su padre, madre
+    o apoderado verificado; para ellos el rival va con el nombre abreviado."""
+    tid = match_tournament_id(db, mid)
+    if can_read_tournament(db, user, tid):
+        return stats.match_summary(db, mid)
+    mine = claims.own_person_ids(db, user)
+    if not mine or not (mine & claims.match_person_ids(db, mid)):
+        raise Forbidden("No tienes acceso a este torneo")
+    return stats.match_summary(db, mid, full_names_for=mine)

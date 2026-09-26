@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { DialogRequest, DialogService } from '../core/dialog.service';
 import { ToastService } from '../core/toast.service';
 import { FocusTrap } from './focus-trap';
@@ -7,7 +8,7 @@ import { FocusTrap } from './focus-trap';
 /** Dibuja los diálogos de DialogService y los toasts. Va una sola vez en App. */
 @Component({
   selector: 'app-dialog-host',
-  imports: [FormsModule, FocusTrap],
+  imports: [FormsModule, FocusTrap, RouterLink],
   host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
     @if (top(); as d) {
@@ -114,6 +115,9 @@ import { FocusTrap } from './focus-trap';
       @for (t of toast.toasts(); track t.id) {
         <div class="alert toast {{ t.kind }}" [attr.role]="t.kind === 'danger' ? 'alert' : 'status'" (click)="toast.dismiss(t.id)">
           <span class="toast-text">{{ t.text }}</span>
+          @if (t.link) {
+            <a class="toast-link" [routerLink]="t.link.path" (click)="toast.dismiss(t.id); $event.stopPropagation()">{{ t.link.label }}</a>
+          }
           <button type="button" class="toast-x" (click)="toast.dismiss(t.id); $event.stopPropagation()" aria-label="Cerrar aviso">✕</button>
         </div>
       }
@@ -140,6 +144,14 @@ import { FocusTrap } from './focus-trap';
     }
     .toast-text {
       flex: 1;
+    }
+    .toast-link {
+      flex: none;
+      align-self: center;
+      font-weight: 700;
+      color: inherit;
+      text-decoration: underline;
+      white-space: nowrap;
     }
     .toast-x {
       flex: none;

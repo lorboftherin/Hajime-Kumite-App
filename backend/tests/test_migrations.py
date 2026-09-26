@@ -90,6 +90,43 @@ def test_upgrade_keeps_existing_data(tmp_path):
         assert conn.execute(text("SELECT count(*) FROM match_events")).scalar() == 1
         assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert "parent_match_id" in {c["name"] for c in inspect(conn).get_columns("matches")}
+        # Los torneos existentes quedan en la organización principal (0009).
+        org = conn.execute(text("SELECT organization_id FROM tournaments")).scalar()
+        assert conn.execute(text("SELECT slug FROM organizations WHERE id = :o"), {"o": org}).scalar() == "principal"
+        assert conn.execute(text("SELECT count(*) FROM plans")).scalar() == 6
+
+
+def test_weight_labels_become_numeric_ranges(tmp_path):
+    """La migración 0010 deduce el rango en kg de las etiquetas de peso existentes."""
+    from alembic import command
+    from sqlalchemy import text
+
+    from app.db.base import make_engine
+    from app.db.migrate import alembic_config
+
+    engine = make_engine(f"sqlite:///{tmp_path / 'w.db'}")
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0009_organizaciones")
+    with engine.begin() as conn:
+        tid = _fill(conn, "tournaments")
+        ids = {
+            label: _fill(conn, "categories", tournament_id=tid, weight_class=label)
+            for label in ("-45", "+84", "45-50", "Libre")
+        }
+    upgrade_database(engine)
+    with engine.connect() as conn:
+        got = {
+            label: tuple(
+                None if v is None else float(v)
+                for v in conn.execute(
+                    text("SELECT weight_min_kg, weight_max_kg FROM categories WHERE id = :i"), {"i": cid}
+                ).one()
+            )
+            for label, cid in ids.items()
+        }
+    assert got == {"-45": (None, 45.0), "+84": (84.0, None), "45-50": (45.0, 50.0), "Libre": (None, None)}
 
 
 def test_wait_for_database_retries_until_it_answers(monkeypatch):

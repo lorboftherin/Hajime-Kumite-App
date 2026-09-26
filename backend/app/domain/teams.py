@@ -24,6 +24,18 @@ class TeamTieRule(StrEnum):
     EXTRA_BOUT = "extra_bout"
 
 
+class ExtraBoutTie(StrEnum):
+    """Qué pasa si el combate extra termina empatado.
+
+    * ``hantei`` (por defecto, WKF): el combate extra no admite empate; se
+      decide por los jueces en ese mismo combate.
+    * ``repeat``: se disputa otro combate extra (comportamiento anterior).
+    """
+
+    HANTEI = "hantei"
+    REPEAT = "repeat"
+
+
 DEFAULT_TEAM_BOUTS = 3
 
 
@@ -46,9 +58,15 @@ class TeamDecision:
     needs_extra_bout: bool = False
     pending_bouts: int = 0
     reason: str | None = None
+    extra_bout_needs_hantei: bool = False  # combate extra empatado con la regla «hantei»
 
 
-def decide_team(bouts: list[BoutResult], planned_bouts: int, tie_rule: TeamTieRule) -> TeamDecision:
+def decide_team(
+    bouts: list[BoutResult],
+    planned_bouts: int,
+    tie_rule: TeamTieRule,
+    extra_tie: ExtraBoutTie = ExtraBoutTie.REPEAT,
+) -> TeamDecision:
     """Resultado del enfrentamiento según los combates disputados hasta ahora."""
     regular = [b for b in bouts if not b.is_extra]
     extra = [b for b in bouts if b.is_extra]
@@ -82,6 +100,14 @@ def decide_team(bouts: list[BoutResult], planned_bouts: int, tie_rule: TeamTieRu
     decided = [b for b in extra if b.finished and b.winner in (AKA, AO)]
     if decided:
         return result(decided[-1].winner, "extra_bout")
+    drawn_extra = any(b.finished and b.winner is None for b in extra)
+    if drawn_extra and extra_tie == ExtraBoutTie.HANTEI:
+        return result(
+            None,
+            None,
+            extra_bout_needs_hantei=True,
+            reason="Combate extra empatado: corrígelo con la decisión de los jueces (hantei)",
+        )
     reason = (
         "Empate en victorias y puntos: combate extra"
         if tie_rule == TeamTieRule.POINTS

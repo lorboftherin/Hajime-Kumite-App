@@ -2,8 +2,10 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { ApiError } from '../../core/api-error';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { METHOD_LABEL, POINT_LABEL, fmtDate, mmss } from '../../core/format';
 import { Color, MatchSummary, TimelinePoint } from '../../core/models';
+import { isCompetitorOnly } from '../../core/roles';
 import { ToastService } from '../../core/toast.service';
 import { PageHead } from '../../shared/page-head';
 import { shareMatchCard } from './share-card';
@@ -25,13 +27,19 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
     <div class="container">
     @if (data(); as d) {
       <app-page-head kanji="試合" [title]="'Combate ' + d.match.code">
-        <a back class="back-link" [routerLink]="['/categorias', d.category.id, 'llave']">← {{ d.category.name }}</a>
+        @if (competitor()) {
+          <a back class="back-link" routerLink="/mis-perfiles">← Mis perfiles</a>
+        } @else {
+          <a back class="back-link" [routerLink]="['/categorias', d.category.id, 'llave']">← {{ d.category.name }}</a>
+        }
         <div meta class="small muted">
           @if (d.tournament) {
             {{ d.tournament.name }} · {{ fdate(d.tournament.date) }}
           }
         </div>
-        <a class="btn" [routerLink]="['/mesa', d.match.id]">Abrir en la mesa</a>
+        @if (!competitor()) {
+          <a class="btn" [routerLink]="['/mesa', d.match.id]">Abrir en la mesa</a>
+        }
         <button class="btn primary" (click)="share()" [disabled]="d.match.status !== 'finished'">Compartir resultado</button>
       </app-page-head>
 
@@ -153,6 +161,9 @@ export class MatchSummaryPage {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   readonly id = input.required<string>();
+  /** Cuenta de competidor o apoderado: ve la hoja de sus combates, no la llave ni la mesa. */
+  private auth = inject(AuthService);
+  readonly competitor = computed(() => isCompetitorOnly(this.auth.user()));
   readonly data = signal<MatchSummary | null>(null);
   readonly error = signal('');
   readonly hover = signal<TimelinePoint | null>(null);

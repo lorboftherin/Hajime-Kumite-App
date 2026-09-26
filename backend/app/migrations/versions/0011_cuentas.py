@@ -5,8 +5,8 @@ bandeja de salida de correos, enlaces de recuperación y verificación, reclamos
 de perfil y tutelas de menores, e identificador público no secuencial de las
 personas (se rellena para las existentes).
 
-Revision ID: 0009_cuentas
-Revises: 0008_mesa_principal
+Revision ID: 0011_cuentas
+Revises: 0010_reglas_deportivas
 Create Date: 2026-09-26 17:24:30.334776
 """
 
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0009_cuentas"
-down_revision = "0008_mesa_principal"
+revision = "0011_cuentas"
+down_revision = "0010_reglas_deportivas"
 branch_labels = None
 depends_on = None
 

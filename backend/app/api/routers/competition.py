@@ -20,10 +20,15 @@ from app.api.deps import (
 from app.api.errors import NotFound
 from app.db.models import Bracket
 from app.services import brackets as svc
-from app.services import operation, referees, reports, teams
-from app.services.tournaments import get_category
+from app.services import entitlements, operation, referees, reports, teams
+from app.services.tournaments import get_category, get_tournament
+
+from . import sports
 
 router = APIRouter()
+# Reglas deportivas (llave generada, divisiones, kata): router aparte para no
+# tocar el registro de routers de la app.
+router.include_router(sports.router)
 
 # Tablet que envía el evento: si otra lleva la mesa del combate, se responde 409 CONFLICT_DEVICE.
 DeviceId = Annotated[str | None, Header(alias="X-Device-Id", max_length=40)]
@@ -159,6 +164,8 @@ def leave(mid: int, device_id: str, db: DB, user: CurrentUser):
 @router.post("/matches/{mid}/official-result", tags=["shadow"])
 def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUser):
     _ensure_match_operator(db, user, mid)
+    c = get_category(db, svc.get_match(db, mid).category_id)
+    entitlements.require_for_tournament(db, user, get_tournament(db, c.tournament_id), "shadow_mode")
     sc = reports.set_official_result(db, user, mid, data)
     return {"match_id": sc.match_id, "official_winner_registration_id": sc.official_winner_registration_id}
 

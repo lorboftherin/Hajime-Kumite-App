@@ -99,6 +99,7 @@ def person_history(db: Session, person_id: int, short_opponents: bool = False) -
         .where(
             or_(Registration.person_id == p.id, Registration.id.in_(team_regs or {0})),
             ~Tournament.is_test,
+            Registration.status.notin_(("pending", "rejected")),  # solicitudes sin aprobar
         )
         .order_by(Tournament.start_date.desc())
     ).all()

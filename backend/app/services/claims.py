@@ -22,7 +22,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import is_staff, roles_of
+from app.api.deps import dojo_admin_ids, is_staff, roles_of
 from app.api.errors import Conflict, Forbidden, NotFound, TooManyRequests
 from app.api.schemas_accounts import ClaimOut, ClaimReviewOut, MyProfileOut, ProfileSearchOut
 from app.config import get_settings
@@ -33,7 +33,9 @@ from app.db.models import (
     DojoMembership,
     Guardianship,
     IdentityDocument,
+    Match,
     Person,
+    PersonRole,
     ProfileClaim,
     Registration,
     Tournament,
@@ -92,6 +94,7 @@ def _public_tournaments(db: Session, person_ids: list[int]) -> dict[int, list[st
         .join(Tournament, Tournament.id == Registration.tournament_id)
         .where(
             Registration.person_id.in_(person_ids),
+            Registration.status.notin_(("pending", "rejected")),  # solicitudes sin aprobar
             ~Tournament.is_test,
             Tournament.status.in_(PUBLIC_TOURNAMENT_STATUSES),
         )
@@ -115,8 +118,36 @@ def is_guardian(db: Session, user: User, person_id: int) -> bool:
 
 
 def can_see_full_profile(db: Session, user: User, person_id: int) -> bool:
-    """Historial completo: la propia persona, su padre/madre/apoderado verificado o el staff."""
-    return user.person_id == person_id or is_staff(db, user) or is_guardian(db, user, person_id)
+    """Historial completo: la propia persona, su padre/madre/apoderado verificado, el staff
+    o el administrador del dojo donde la persona tiene membresía vigente (``dojo_admin``,
+    los mismos permisos sobre personas que le da ``app.api.deps``)."""
+    if user.person_id == person_id or is_staff(db, user) or is_guardian(db, user, person_id):
+        return True
+    dojos = dojo_admin_ids(db, user)
+    if not dojos:
+        return False
+    m = people.current_membership(db, person_id)
+    return m is not None and m.dojo_id in dojos
+
+
+def own_person_ids(db: Session, user: User) -> set[int]:
+    """Personas cuyo detalle ve la cuenta como propio: la suya y las de los menores a cargo."""
+    ids = set(db.scalars(select(Guardianship.person_id).where(Guardianship.user_id == user.id)).all())
+    if user.person_id is not None:
+        ids.add(user.person_id)
+    return ids
+
+
+def match_person_ids(db: Session, match_id: int) -> set[int]:
+    """Personas que pelearon un combate: las de cada inscripción y, por equipos, las del combate individual."""
+    m = db.get(Match, match_id)
+    if m is None:
+        raise NotFound("Combate no encontrado")
+    ids = {x for x in (m.aka_person_id, m.ao_person_id) if x}
+    reg_ids = [x for x in (m.aka_registration_id, m.ao_registration_id) if x]
+    if reg_ids:
+        ids |= {x for x in db.scalars(select(Registration.person_id).where(Registration.id.in_(reg_ids))).all() if x}
+    return ids
 
 
 def reviewer_dojo_ids(db: Session, user: User) -> set[int]:
@@ -263,8 +294,54 @@ def create_claim(
     s = get_settings()
     if relation == "self" and not minor and match is True and s.auto_approve_self_claim:
         _approve(db, None, claim, p, user, "Aprobada automáticamente: el documento coincide")
+    else:
+        _notify_reviewers(db, claim, p, minor)
     db.commit()
     return claim
+
+
+def dojo_reviewers(db: Session, dojo_id: int) -> list[User]:
+    """Cuentas activas con rol ``dojo_admin`` o ``sensei`` del dojo."""
+    return list(
+        db.scalars(
+            select(User)
+            .join(PersonRole, PersonRole.person_id == User.person_id)
+            .where(
+                PersonRole.role.in_(("dojo_admin", "sensei")),
+                PersonRole.scope_type == "dojo",
+                PersonRole.scope_id == dojo_id,
+                User.is_active,
+            )
+            .distinct()
+        ).all()
+    )
+
+
+def _notify_reviewers(db: Session, claim: ProfileClaim, p: Person, minor: bool) -> None:
+    """Aviso por correo al dojo de la persona (dojo_admin o sensei con correo) de una solicitud nueva."""
+    dojo_id, dojo = dojo_name(db, p.id)
+    if dojo_id is None:
+        return
+    link = f"{get_settings().frontend_url()}/solicitudes"
+    who = "su padre, madre o apoderado" if claim.relation != "self" else "la propia persona"
+    for u in dojo_reviewers(db, dojo_id):
+        if not u.email or u.id == claim.user_id:
+            continue
+        mail.enqueue(
+            db,
+            u.email,
+            mail.render(
+                "Nueva solicitud de perfil · Hajime",
+                "Nueva solicitud de perfil",
+                [
+                    f"Una cuenta pide el perfil de {short_name(p.first_names, p.last_names)} ({dojo}) como {who}.",
+                    "Revísala en Hajime: solo apruébala si conoces a quien la pide."
+                    + (" Es un menor de edad." if minor else ""),
+                ],
+                ("Revisar solicitudes", link),
+            ),
+            kind="claim_new",
+        )
 
 
 def _approve(db: Session, reviewer: User | None, claim: ProfileClaim, p: Person, claimant: User, reason: str) -> None:

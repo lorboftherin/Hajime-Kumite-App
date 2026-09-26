@@ -63,9 +63,8 @@ versión en texto plano. El texto de cada correo vive en el servicio que lo env�
 | Confirma tu correo | Registro, cambio de correo (propio o por el Admin), reenvío |
 | Ya tienes una cuenta | Registro con un correo que ya existe |
 | Solicitud aprobada / no aprobada | Revisión de un reclamo de perfil |
-
-La notificación de inscripciones por dojo (`notify_registration_decision`) la
-deja el trabajo de organizaciones; usa `mail.enqueue()` igual que estos.
+| Nueva solicitud de perfil | Reclamo nuevo: a los `dojo_admin` y senseis del dojo de la persona que tengan correo (no si se aprobó solo) |
+| Inscripciones revisadas | El organizador aprueba o rechaza en lote las inscripciones pedidas por un sensei: un correo por sensei con las aprobadas y las rechazadas con su motivo (`self_registration.notify_registration_decisions`) |
 
 ## Correo en las cuentas
 
@@ -128,8 +127,14 @@ se aprueba solo. **Los menores siempre los revisa una persona.** Ante la duda
 (sin fecha de nacimiento), el perfil se trata como de menor.
 
 Con el perfil reclamado, `GET /persons/{id}/history` y `/stats` quedan abiertos
-a la propia persona y a su padre, madre o apoderado verificado. De los rivales
-(que pueden ser menores), quien no es organizador ve solo el nombre abreviado.
+a la propia persona y a su padre, madre o apoderado verificado. También los ve
+el `dojo_admin` del dojo donde la persona tiene membresía vigente (los mismos
+permisos sobre personas que le dan las organizaciones). De los rivales (que
+pueden ser menores), quien no es organizador ve solo el nombre abreviado.
+
+La hoja del combate (`GET /matches/{id}/summary`) la leen quienes leen el
+torneo y, además, la persona que peleó y su apoderado verificado; para ellos el
+rival va con el nombre abreviado.
 `GET /me/profiles` lista el propio perfil y los de los menores a cargo;
 `DELETE /me/guardianships/{id}` deja una tutela.
 
@@ -142,7 +147,7 @@ personas mueve reclamos y tutelas a la que queda.
 página `/competidor/<public_id>`:
 
 - `persons.public_id`: identificador aleatorio de 12 caracteres (no secuencial);
-  la migración `0009_cuentas` lo rellena para las personas existentes.
+  la migración `0011_cuentas` lo rellena para las personas existentes.
 - Nombre abreviado («Diego R.») si es menor o no se conoce la edad; completo
   para adultos con fecha de nacimiento.
 - Dojo actual, medallas y torneos **ya disputados** (en curso o terminados):
@@ -174,6 +179,3 @@ cada competidor.
 
 - Validación legal del texto de privacidad (`/privacidad`, marcado como
   provisional) y del consentimiento en línea de padres y apoderados.
-- Avisos por correo a quien revisa cuando llega una solicitud nueva.
-- Hoja del combate (`/matches/{id}/summary`) para la propia persona y su
-  apoderado: hoy solo la ven quienes leen el torneo.

@@ -20,7 +20,7 @@ import { MutationService } from '../core/mutation.service';
       <div class="grid-2">
         <label class="field"><span>Nombres *</span><input name="fn" [(ngModel)]="f.first_names" required /></label>
         <label class="field"><span>Apellidos *</span><input name="ln" [(ngModel)]="f.last_names" required /></label>
-        @if (auth.canViewDocuments()) {
+        @if (showPrivate()) {
           <label class="field"><span>Fecha de nacimiento</span><input type="date" name="bd" [(ngModel)]="f.birth_date" /></label>
         }
         <label class="field">
@@ -30,7 +30,7 @@ import { MutationService } from '../core/mutation.service';
             <option value="F">Femenino</option>
           </select>
         </label>
-        @if (auth.canViewDocuments()) {
+        @if (showPrivate()) {
         <label class="field">
           <span>Documento</span>
           <div class="row nowrap">
@@ -44,6 +44,7 @@ import { MutationService } from '../core/mutation.service';
           </div>
         </label>
         }
+        @if (fixedDojoId() === null) {
         <label class="field">
           <span>Dojo</span>
           <select name="dojo" [(ngModel)]="f.dojo_id" (ngModelChange)="f.branch_id = null; dojoSel.set($event)">
@@ -53,7 +54,8 @@ import { MutationService } from '../core/mutation.service';
             }
           </select>
         </label>
-        @if (branches().length) {
+        }
+        @if (fixedDojoId() === null && branches().length) {
           <label class="field">
             <span>Sede</span>
             <select name="branch" [(ngModel)]="f.branch_id">
@@ -128,6 +130,13 @@ export class PersonForm implements OnInit {
   private dialog = inject(DialogService);
 
   readonly initialName = input('');
+  /** Ruta del alta (el portal del sensei usa la de su dojo). */
+  readonly postPath = input('/persons');
+  /** Dojo fijo (portal del sensei): no se muestra el selector. */
+  readonly fixedDojoId = input<number | null>(null);
+  /** Muestra fecha de nacimiento y documento aunque la cuenta no sea organizadora (el dojo sí los ve). */
+  readonly privateFields = input(false);
+  readonly showPrivate = computed(() => this.privateFields() || this.auth.canViewDocuments());
   readonly created = output<Person>();
   readonly useExisting = output<number>();
 
@@ -175,8 +184,8 @@ export class PersonForm implements OnInit {
       birth_date: f.birth_date || null,
       sex: f.sex,
       document: f.doc_number.trim() ? { doc_type: f.doc_type, number: f.doc_number.trim() } : null,
-      dojo_id: f.dojo_id,
-      branch_id: f.branch_id,
+      dojo_id: this.fixedDojoId() ?? f.dojo_id,
+      branch_id: this.fixedDojoId() === null ? f.branch_id : null,
       grade: f.grade,
       consent: f.has_consent
         ? {
@@ -187,7 +196,7 @@ export class PersonForm implements OnInit {
         : null,
     };
     this.busy.set(true);
-    const p = await this.mut.post<Person>('/persons', body, {
+    const p = await this.mut.post<Person>(this.postPath(), body, {
       success: 'Persona creada',
       onError: (err) => {
         if (err.code === 'DUPLICATE_DOCUMENT') {

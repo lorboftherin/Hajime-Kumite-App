@@ -56,7 +56,9 @@ SELECT (SELECT version_num FROM alembic_version) AS migracion,
        (SELECT COUNT(*) FROM users) AS usuarios,
        (SELECT COUNT(*) FROM tournaments) AS torneos,
        (SELECT COUNT(*) FROM matches) AS combates;" || echo "   Aviso: no se pudo consultar la base restaurada"
-  [ -n "$MI_IP" ] && az sql server firewall-rule delete -g "$RG" -s "$SERVIDOR" -n EnsayoTemporal -o none || true
+  if [ -n "$MI_IP" ]; then
+    az sql server firewall-rule delete -g "$RG" -s "$SERVIDOR" -n EnsayoTemporal -o none || true
+  fi
 else
   echo "   (sin sqlcmd: se omite la revisión del contenido)"
 fi

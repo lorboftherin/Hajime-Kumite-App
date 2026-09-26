@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -115,6 +116,13 @@ class Settings(BaseSettings):
     # Reclamo de un adulto sobre su propio perfil con los 4 últimos dígitos del
     # documento que coinciden: se aprueba solo. Los menores siempre los revisa una persona.
     auto_approve_self_claim: bool = False
+    # --- Planes y cobros (ver docs/organizaciones-y-planes.md) ---
+    # marcha_blanca: toda cuenta tiene acceso completo (pruebas y marcha blanca).
+    # enforced: cada función de pago exige una suscripción vigente de la
+    # organización (o de la persona, para Competidor Plus).
+    billing_mode: Literal["marcha_blanca", "enforced"] = "marcha_blanca"
+    # Proveedor de pagos: por ahora solo «manual» (el Admin marca pagado).
+    payment_provider: str = "manual"
 
     def allowed_cors_origins(self) -> list[str]:
         if self.cors_origins is not None:

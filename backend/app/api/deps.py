@@ -3,13 +3,23 @@
 Roles (fila ``person_roles`` ligada a la persona del usuario):
 
 * ``organizer``: torneos, categorías, llaves, inscripciones, resultados.
-  Ámbito ``global`` o ``tournament``.
+  Ámbito ``global``, ``organization`` (todos los torneos de esa organización)
+  o ``tournament``.
 * ``table_operator``: registrar combates, puntos, faltas, tiempos y kata.
   Sin cambiar configuración. Ámbito ``global``, ``tournament`` o ``tatami``
   (solo los combates de las categorías asignadas a ese tatami).
 * ``referee`` (registro opcional, sección 20): solo lectura del torneo.
-* ``sensei`` (ámbito ``dojo``) y ``dojo_admin`` (Fase 4) no otorgan permisos
-  sobre torneos; sí dejan ver el historial de su dojo.
+* ``dojo_admin`` (ámbito ``dojo``): ve y edita a las personas con membresía
+  vigente en su dojo (con documento y fecha de nacimiento) y las inscribe en
+  torneos con autoinscripción abierta; esas inscripciones quedan pendientes
+  hasta que el organizador las aprueba. No da permisos sobre torneos.
+* ``sensei`` (ámbito ``dojo``) no otorga permisos sobre torneos; sí deja ver
+  el historial de su dojo.
+
+Organizaciones (``organization_members``): ser ``owner`` o ``admin`` de una
+organización equivale a ser organizador de todos sus torneos; ``member`` los
+lee. Crear un torneo exige ser owner/admin de la organización elegida (o
+tener rol de organizador con ámbito global o de esa organización).
 
 El Admin Global (``users.is_admin``) puede todo. Solo el Admin y los
 organizadores ven documentos de identidad y fechas de nacimiento (sección 11).
@@ -33,7 +43,16 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import Forbidden, NotFound, Unauthorized
 from app.db.base import get_session, utcnow
-from app.db.models import Category, Match, PersonRole, Tatami, User, UserSession
+from app.db.models import (
+    Category,
+    Match,
+    OrganizationMember,
+    PersonRole,
+    Tatami,
+    Tournament,
+    User,
+    UserSession,
+)
 from app.security import decode_token
 
 DB = Annotated[Session, Depends(get_session)]
@@ -42,6 +61,9 @@ _bearer = HTTPBearer(auto_error=False)
 ROLES = ("organizer", "table_operator", "dojo_admin", "referee", "sensei")
 # Roles que permiten leer un torneo dentro de su ámbito.
 READER_ROLES = ("organizer", "table_operator", "referee")
+# Roles de organización que administran la organización y todos sus torneos.
+ORG_ADMIN_ROLES = ("owner", "admin")
+ORG_ROLES = ("owner", "admin", "member")
 
 
 def current_user(request: Request, db: DB, cred: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> User:
@@ -84,8 +106,50 @@ def roles_of(db: Session, user: User) -> list[PersonRole]:
 
 
 def forget_roles(db: Session) -> None:
-    """Invalida la caché de :func:`roles_of` (tras agregar o quitar un rol)."""
+    """Invalida la caché de :func:`roles_of` y de :func:`memberships_of` (tras
+    agregar o quitar un rol o un miembro)."""
     db.info.pop("roles_of", None)
+    db.info.pop("memberships_of", None)
+
+
+def memberships_of(db: Session, user: User) -> dict[int, str]:
+    """Organizaciones del usuario: ``{organization_id: rol}`` (caché por petición)."""
+    cache: dict[int, dict[int, str]] = db.info.setdefault("memberships_of", {})
+    if user.id not in cache:
+        rows = db.execute(
+            select(OrganizationMember.organization_id, OrganizationMember.role).where(
+                OrganizationMember.user_id == user.id
+            )
+        ).all()
+        cache[user.id] = {oid: role for oid, role in rows}
+    return cache[user.id]
+
+
+def tournament_org(db: Session, tournament_id: int) -> int | None:
+    """Organización dueña del torneo (caché por petición)."""
+    cache: dict[int, int | None] = db.info.setdefault("tournament_org", {})
+    if tournament_id not in cache:
+        cache[tournament_id] = db.scalar(select(Tournament.organization_id).where(Tournament.id == tournament_id))
+    return cache[tournament_id]
+
+
+def is_org_admin(db: Session, user: User, organization_id: int) -> bool:
+    """Admin Global, owner/admin de la organización u organizador con ámbito en ella."""
+    if user.is_admin or memberships_of(db, user).get(organization_id) in ORG_ADMIN_ROLES:
+        return True
+    return any(
+        r.role == "organizer" and r.scope_type == "organization" and r.scope_id == organization_id
+        for r in roles_of(db, user)
+    )
+
+
+def is_org_member(db: Session, user: User, organization_id: int) -> bool:
+    return user.is_admin or organization_id in memberships_of(db, user) or is_org_admin(db, user, organization_id)
+
+
+def can_create_tournament_in(db: Session, user: User, organization_id: int) -> bool:
+    """Crear torneos: Admin, organizador global (compatibilidad) u owner/admin de la organización."""
+    return _has_role(db, user, "organizer", None) or is_org_admin(db, user, organization_id)
 
 
 def _has_role(db: Session, user: User, role: str, tournament_id: int | None, tatami_id: int | None = None) -> bool:
@@ -100,16 +164,46 @@ def _has_role(db: Session, user: User, role: str, tournament_id: int | None, tat
             return True
         if r.scope_type == "tatami" and tatami_id is not None and r.scope_id == tatami_id:
             return True
+        if (
+            r.scope_type == "organization"
+            and tournament_id is not None
+            and r.scope_id is not None
+            and r.scope_id == tournament_org(db, tournament_id)
+        ):
+            return True
     return False
 
 
 def is_organizer(db: Session, user: User, tournament_id: int | None) -> bool:
-    return user.is_admin or _has_role(db, user, "organizer", tournament_id)
+    if user.is_admin or _has_role(db, user, "organizer", tournament_id):
+        return True
+    if tournament_id is None:
+        return False
+    org = tournament_org(db, tournament_id)
+    return org is not None and memberships_of(db, user).get(org) in ORG_ADMIN_ROLES
 
 
 def is_staff(db: Session, user: User) -> bool:
-    """Admin u organizador de cualquier ámbito: puede administrar personas y dojos."""
-    return user.is_admin or any(r.role == "organizer" for r in roles_of(db, user))
+    """Admin, organizador de cualquier ámbito u owner/admin de una organización:
+    puede administrar personas y dojos."""
+    return (
+        user.is_admin
+        or any(r.role == "organizer" for r in roles_of(db, user))
+        or any(role in ORG_ADMIN_ROLES for role in memberships_of(db, user).values())
+    )
+
+
+def dojo_admin_ids(db: Session, user: User) -> set[int]:
+    """Dojos donde el usuario tiene el rol ``dojo_admin``."""
+    return {
+        r.scope_id
+        for r in roles_of(db, user)
+        if r.role == "dojo_admin" and r.scope_type == "dojo" and r.scope_id is not None
+    }
+
+
+def is_dojo_admin(db: Session, user: User, dojo_id: int) -> bool:
+    return user.is_admin or dojo_id in dojo_admin_ids(db, user)
 
 
 def can_operate(db: Session, user: User, tournament_id: int, tatami_id: int | None = None) -> bool:
@@ -129,6 +223,7 @@ def readable_tournament_ids(db: Session, user: User) -> set[int] | None:
         return None
     ids: set[int] = set()
     tatamis: list[int] = []
+    orgs: set[int] = set(memberships_of(db, user))  # cualquier miembro lee los torneos de su organización
     for r in roles_of(db, user):
         if r.role not in READER_ROLES:
             continue
@@ -138,8 +233,12 @@ def readable_tournament_ids(db: Session, user: User) -> set[int] | None:
             ids.add(r.scope_id)
         elif r.scope_type == "tatami" and r.scope_id is not None:
             tatamis.append(r.scope_id)
+        elif r.scope_type == "organization" and r.scope_id is not None:
+            orgs.add(r.scope_id)
     if tatamis:
         ids.update(db.scalars(select(Tatami.tournament_id).where(Tatami.id.in_(tatamis))).all())
+    if orgs:
+        ids.update(db.scalars(select(Tournament.id).where(Tournament.organization_id.in_(orgs))).all())
     return ids
 
 

@@ -58,7 +58,20 @@ interface DraftRow {
           <div class="panel">
             <div class="panel-head">
               <h3>Alineación</h3>
-              <p>Quién pelea cada combate. Se puede cambiar mientras el combate no haya empezado.</p>
+              <p>
+                Quién pelea cada combate.
+                @if (t.settings.lock_order !== false) {
+                  El orden queda fijo al empezar el primer combate.
+                } @else {
+                  Se puede cambiar mientras el combate no haya empezado.
+                }
+                @if (t.settings.empty_slot_walkover !== false) {
+                  Un puesto vacío es walkover para el rival.
+                }
+                @if (t.settings.min_starters) {
+                  Mínimo {{ t.settings.min_starters }} integrantes por equipo.
+                }
+              </p>
             </div>
             @for (row of draft(); track $index; let i = $index) {
               <div class="lrow" [class.locked]="row.locked">
@@ -198,6 +211,7 @@ export class TeamMatchPanel {
     }
     if (!t.bouts.length) return `Define la alineación: ${t.settings.bouts} combates por enfrentamiento.`;
     if (d.needs_extra_bout) return d.reason ?? 'Empate: combate extra';
+    if (d.extra_bout_needs_hantei) return d.reason ?? 'Combate extra empatado: decide por hantei';
     if (d.pending_bouts) return `${d.pending_bouts === 1 ? 'Falta' : 'Faltan'} ${plural(d.pending_bouts, 'combate', 'combates')}. Gana el equipo con más victorias.`;
     return 'Combate extra en curso';
   });

@@ -67,6 +67,9 @@ interface WalkoverResult {
           @for (r of filtered(); track r.id) {
             <tr [class.struck]="r.status === 'withdrawn'">
               <td class="who">
+                @if (r.seed) {
+                  <span class="badge ai" [title]="'Cabeza de serie ' + r.seed">CS {{ r.seed }}</span>
+                }
                 @if (r.person_id) {
                   <a [routerLink]="['/personas', r.person_id]">{{ r.person_name }}</a>
                 } @else {
@@ -675,7 +678,9 @@ export class RegistrationsTab {
     return !!c && ['ready', 'in_progress'].includes(c.status);
   }
 
-  /** Categorías a las que puede pasar: misma modalidad de equipo, abiertas, más la actual. */
+  /** Categorías a las que puede pasar: misma modalidad de equipo, abiertas o con llave sin
+   * terminar (el servidor advierte y, con confirmación, lo saca de una llave y lo pone en la otra),
+   * más la actual. */
   editCategories(r: Registration) {
     const cur = this.ctx.categoryById().get(r.category_id);
     return this.ctx
@@ -683,7 +688,7 @@ export class RegistrationsTab {
       .filter(
         (c) =>
           c.id === r.category_id ||
-          (c.is_team === !!cur?.is_team && ['open', 'empty'].includes(c.status)),
+          (c.is_team === !!cur?.is_team && ['open', 'empty', 'ready', 'in_progress'].includes(c.status)),
       );
   }
 

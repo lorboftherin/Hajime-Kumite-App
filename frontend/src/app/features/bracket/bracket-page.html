@@ -23,6 +23,11 @@
           <app-more text="Más" label="Más acciones de la llave" [small]="false">
             <button class="menu-item" (click)="printPdf(true)"><app-icon name="print" /> PDF en blanco</button>
             <button class="menu-item" (click)="showVersions()"><app-icon name="history" /> Historial de versiones</button>
+            @if (c.status !== 'finished') {
+              <hr />
+              <button class="menu-item" (click)="openEntrants('add')"><app-icon name="plus" /> Añadir a la llave…</button>
+              <button class="menu-item" (click)="openEntrants('remove')">Quitar de la llave…</button>
+            }
             <hr />
             <button class="menu-item" (click)="openRegen()"><app-icon name="refresh" /> Regenerar llave…</button>
           </app-more>
@@ -79,8 +84,47 @@
       </div>
     }
 
+    <!-- Grupos + eliminación: fase de grupos -->
+    @if (b.format === 'groups_knockout') {
+      <h2 class="section-title">Fase de grupos</h2>
+      <div class="groups">
+        @for (g of groupTables(); track g.letter) {
+          <section class="card tight group">
+            <h3>Grupo {{ g.letter }}</h3>
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>#</th><th>Competidor</th><th class="center">G</th><th class="center">J</th><th class="center">Dif.</th></tr>
+                </thead>
+                <tbody>
+                  @for (s of g.standings; track s['registration_id']) {
+                    <tr>
+                      <td>{{ s['rank'] }} @if (s['tied']) {<span class="badge warn">empate</span>}</td>
+                      <td>{{ pname(s['registration_id']) }}<div class="muted small">{{ pdojo(s['registration_id']) }}</div></td>
+                      <td class="center"><strong>{{ s['wins'] }}</strong></td>
+                      <td class="center">{{ s['played'] }}</td>
+                      <td class="center">{{ s['points_for'] - s['points_against'] }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div class="extras">
+              @for (m of g.matches; track m.id) {
+                <ng-container [ngTemplateOutlet]="matchTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+              }
+            </div>
+          </section>
+        }
+      </div>
+      <h2 class="section-title mt">Fase final</h2>
+      @if (!mainRounds()[0]?.matches?.[0]?.aka_registration_id) {
+        <p class="small muted">Los cruces (A1–B2, B1–A2…) se arman al terminar todos los grupos.</p>
+      }
+    }
+
     <!-- Eliminación directa -->
-    @if (b.format === 'single_elimination') {
+    @if (b.format === 'single_elimination' || b.format === 'groups_knockout') {
       <div class="bracket-scroll">
         <div class="bracket">
           @for (r of mainRounds(); track r.round; let first = $first; let last = $last) {
@@ -149,25 +193,73 @@
 
     <!-- Rondas de kata por puntuación -->
     @if (b.format === 'kata_rounds') {
-      <h3>Orden de ejecución y notas ({{ judges() }} jueces)</h3>
+      @if (b.kata_rounds; as kr) {
+        @if (kr.total > 1) {
+          <div class="alert info rounds-info">
+            <strong>Ronda {{ kr.current }} de {{ kr.total }}</strong>
+            @if (kr.current < kr.total) {
+              · pasan {{ kr.cuts[kr.current - 1] }} a la siguiente ronda
+            } @else {
+              · final
+            }
+            @if (kr.needs_review) {
+              <span class="badge warn">revisar: cambió la clasificación de una ronda anterior</span>
+            }
+          </div>
+        }
+        @for (r of previousRounds(); track r.round) {
+          <details class="card tight prev-round">
+            <summary>Ronda {{ r.round }} · clasificaron {{ r.qualified.length }}</summary>
+            <ol class="small">
+              @for (s of r.standings; track s['registration_id']) {
+                <li [class.qualified]="r.qualified.includes(s['registration_id'])">
+                  {{ pname(s['registration_id']) }} — {{ fmtScore(s['total']) }}
+                  @if (r.qualified.includes(s['registration_id'])) {<span class="badge ai">clasificó</span>}
+                </li>
+              }
+            </ol>
+          </details>
+        }
+      }
+      <h3>Orden de ejecución y notas ({{ judges() }} jueces{{ kataCfg().split ? ', técnico / atlético' : '' }})</h3>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr><th>Orden</th><th>Competidor</th><th>Kata</th><th>Notas</th><th class="center">Total</th><th class="center">Puesto</th><th></th></tr>
+            <!-- Orden de salida: se cambia con ↑ ↓ mientras nadie ejecutó en la ronda. -->
           </thead>
           <tbody>
-            @for (row of kataRows(); track row['registration_id']) {
+            @for (row of kataRows(); track row['registration_id']; let i = $index; let l = $last) {
               <tr>
-                <td>{{ row['order'] }}</td>
+                <td class="nowrap">
+                  {{ row['order'] }}
+                  @if (row['group_number']) {<span class="badge plain">G{{ row['group_number'] }}</span>}
+                  @if (!roundStarted()) {
+                    <span class="order-btns no-print">
+                      <button class="btn sm ghost icon-only" [disabled]="i === 0" (click)="moveOrder(i, -1)" aria-label="Subir en el orden">↑</button>
+                      <button class="btn sm ghost icon-only" [disabled]="l" (click)="moveOrder(i, 1)" aria-label="Bajar en el orden">↓</button>
+                    </span>
+                  }
+                </td>
                 <td>{{ pname(row['registration_id']) }}<div class="muted small">{{ pdojo(row['registration_id']) }}</div></td>
                 @if (scoring() === row['registration_id']) {
-                  <td><input [(ngModel)]="kataName" placeholder="Nombre del kata" /></td>
+                  <td>
+                    <input [(ngModel)]="kataName" placeholder="Nombre del kata" list="kata-catalog" />
+                    <datalist id="kata-catalog">
+                      @for (k of catalog(); track k) {
+                        <option [value]="k"></option>
+                      }
+                    </datalist>
+                  </td>
                   <td colspan="3">
                     <div class="row">
                       @for (s of scoreInputs; track $index) {
                         <label class="field judge">
-                          <span>J{{ $index + 1 }}</span>
+                          <span>J{{ $index + 1 }}{{ kataCfg().split ? ' técnica' : '' }}</span>
                           <input type="number" step="0.1" min="0" max="10" [(ngModel)]="scoreInputs[$index]" />
+                          @if (kataCfg().split) {
+                            <input type="number" step="0.1" min="0" max="10" [(ngModel)]="athleticInputs[$index]" [attr.aria-label]="'Nota atlética del juez ' + ($index + 1)" placeholder="Atlética" />
+                          }
                           @if (judgeOptions(); as jo) {
                             @if (jo.assigned.length || jo.others.length) {
                               <select class="jsel" [(ngModel)]="judgeInputs[$index]" [attr.aria-label]="'Quién es el juez ' + ($index + 1)">
@@ -302,6 +394,7 @@
           <option value="">Por defecto de la categoría</option>
           <option value="single_elimination">Eliminación directa</option>
           <option value="round_robin">Round robin</option>
+          <option value="groups_knockout">Grupos + eliminación</option>
         </select>
       </label>
       <label class="field">
@@ -323,6 +416,39 @@
     <div class="form-actions">
       <button class="btn" (click)="regenOpen.set(false)">Cancelar</button>
       <button class="btn primary" (click)="doRegen()">{{ bracket() ? 'Regenerar' : 'Generar' }}</button>
+    </div>
+  </app-modal>
+}
+
+@if (entrantMode(); as mode) {
+  <app-modal [title]="mode === 'add' ? 'Añadir a la llave' : 'Quitar de la llave'" (closed)="entrantMode.set(null)">
+    <p class="small muted">
+      @if (mode === 'add') {
+        Ocupa un bye de primera ronda que aún no se disputó (el que mejor separa dojos). En round robin se agregan sus
+        combates. Primero inscríbelo en la categoría.
+      } @else {
+        Si su primer combate no empezó, su lugar queda como bye; si ya ganó, pierde por walkover el combate pendiente. La
+        inscripción queda retirada.
+      }
+    </p>
+    <div class="stack">
+      <label class="field">
+        <span>{{ mode === 'add' ? 'Inscrito fuera de la llave' : 'Competidor' }}</span>
+        <select [(ngModel)]="entrant.registration_id">
+          <option [ngValue]="null">— Elige —</option>
+          @for (r of entrantChoices(); track r.id) {
+            <option [ngValue]="r.id">{{ r.person_name }} · {{ r.dojo_name }}</option>
+          }
+        </select>
+        @if (!entrantChoices().length) {
+          <span class="hint">{{ mode === 'add' ? 'No hay inscritos activos fuera de la llave.' : 'No hay competidores activos en la llave.' }}</span>
+        }
+      </label>
+      <label class="field"><span>Motivo</span><input [(ngModel)]="entrant.reason" [placeholder]="mode === 'add' ? 'Ej.: inscripción tardía' : 'Ej.: lesión'" /></label>
+    </div>
+    <div class="form-actions">
+      <button class="btn" (click)="entrantMode.set(null)">Cancelar</button>
+      <button class="btn primary" [disabled]="!entrant.registration_id" (click)="saveEntrant()">{{ mode === 'add' ? 'Añadir' : 'Quitar' }}</button>
     </div>
   </app-modal>
 }

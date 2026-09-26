@@ -114,6 +114,10 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                     @for (e of r.errors; track $index) {
                       <div class="error-text">{{ e }}</div>
                     }
+                    <!-- Avisos que no impiden importar (p. ej. sin peso: confirmar la categoría de kumite). -->
+                    @for (w of r.data['avisos'] ?? []; track $index) {
+                      <div class="small warn-text">{{ w }}</div>
+                    }
                     @if (b.status === 'preview' && editing() !== r.id) {
                       <button class="btn sm mt-xs" [class.primary]="r.status === 'error'" [class.ghost]="r.status !== 'error'" (click)="startEdit(r)">
                         {{ r.status === 'error' ? 'Corregir' : 'Editar datos' }}

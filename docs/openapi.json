@@ -1189,7 +1189,7 @@
      "persons"
     ],
     "summary": "Get Person",
-    "description": "Ficha de una persona: Admin y organizadores, o la propia persona (sin documentos).",
+    "description": "Ficha de una persona: Admin y organizadores, el admin de su dojo actual\n(con documentos), o la propia persona (sin documentos).",
     "operationId": "get_person_api_v1_persons__person_id__get",
     "security": [
      {
@@ -1606,6 +1606,7 @@
      "templates"
     ],
     "summary": "List Templates",
+    "description": "Plantillas globales y las de las organizaciones del usuario (todas para el Admin).",
     "operationId": "list_templates_api_v1_templates_get",
     "responses": {
      "200": {
@@ -2456,6 +2457,22 @@
        "default": true,
        "title": "Include Test"
       }
+     },
+     {
+      "name": "organization_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Organization Id"
+      }
      }
     ],
     "responses": {
@@ -2490,6 +2507,7 @@
      "tournaments"
     ],
     "summary": "Create Tournament",
+    "description": "El torneo pertenece a una organización que el usuario administra (el Admin, cualquiera).",
     "operationId": "create_tournament_api_v1_tournaments_post",
     "security": [
      {
@@ -3379,6 +3397,7 @@
      "registrations"
     ],
     "summary": "List Registrations",
+    "description": "Las solicitudes de autoinscripción (pending/rejected) solo salen pidiéndolas por ``status``.",
     "operationId": "list_registrations_api_v1_tournaments__tid__registrations_get",
     "security": [
      {
@@ -3436,6 +3455,24 @@
        "default": true,
        "title": "Include Withdrawn"
       }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Estados separados por coma (por defecto, todos menos pending y rejected)",
+       "title": "Status"
+      },
+      "description": "Estados separados por coma (por defecto, todos menos pending y rejected)"
      }
     ],
     "responses": {
@@ -3793,6 +3830,22 @@
         }
        ],
        "title": "Modality"
+      }
+     },
+     {
+      "name": "weight_class",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Weight Class"
       }
      }
     ],
@@ -4351,6 +4404,443 @@
       }
      }
     }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Add Entrant",
+    "description": "Inscripción tardía: ocupa un bye de primera ronda aún no disputado (el\nque mejor separa dojos); en round robin agrega sus combates.",
+    "operationId": "add_entrant_api_v1_categories__cid__bracket_entrants_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/bracket/entrants/remove": {
+   "post": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Remove Entrant",
+    "description": "Quita a un competidor de la llave (bye si su combate no empezó; si no,\nwalkover en el pendiente) y retira su inscripción.",
+    "operationId": "remove_entrant_api_v1_categories__cid__bracket_entrants_remove_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BracketEntrantIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/disqualify": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Disqualify",
+    "description": "Shikkaku con alcance de torneo: retira todas sus inscripciones (con confirmación).",
+    "operationId": "disqualify_api_v1_registrations__rid__disqualify_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DisqualifyIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/split": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Split Category",
+    "description": "Divide la categoría en dos (por peso, grado o sorteo). Devuelve la nueva.",
+    "operationId": "split_category_api_v1_categories__cid__split_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategorySplitIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/unsplit": {
+   "post": {
+    "tags": [
+     "categories"
+    ],
+    "summary": "Undo Split",
+    "operationId": "undo_split_api_v1_categories__cid__unsplit_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/categories/{cid}/kata-order": {
+   "put": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Order",
+    "description": "Orden de salida de la ronda de kata (lista completa).",
+    "operationId": "kata_order_api_v1_categories__cid__kata_order_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Cid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataOrderIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BracketOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/matches/{mid}/kata-scores": {
+   "post": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Match Scores",
+    "description": "Kata por puntuación en llave: nota del panel para aka y ao; gana la mayor.",
+    "operationId": "kata_match_scores_api_v1_matches__mid__kata_scores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KataMatchScoreIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/kata-catalog": {
+   "get": {
+    "tags": [
+     "kata"
+    ],
+    "summary": "Kata Catalog",
+    "description": "Catálogo de katas de los cuatro estilos principales (para autocompletar).",
+    "operationId": "kata_catalog_api_v1_kata_catalog_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/rules/defaults": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Rules Defaults",
+    "description": "Valores por defecto de cada opción configurable (para los formularios).",
+    "operationId": "rules_defaults_api_v1_rules_defaults_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
    }
   },
   "/api/v1/categories/{cid}/bracket": {
@@ -6095,7 +6585,7 @@
      "stats"
     ],
     "summary": "Match Summary",
-    "description": "Hoja del combate con técnicas por lado y línea de tiempo del marcador.",
+    "description": "Hoja del combate con técnicas por lado y línea de tiempo del marcador.\n\nLa leen quienes leen el torneo y, además, la persona que peleó y su padre, madre\no apoderado verificado; para ellos el rival va con el nombre abreviado.",
     "operationId": "match_summary_api_v1_matches__mid__summary_get",
     "security": [
      {
@@ -6119,6 +6609,2118 @@
       "content": {
        "application/json": {
         "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/organizations": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "List Organizations",
+    "description": "Las organizaciones del usuario (todas para el Admin Global).",
+    "operationId": "list_organizations_api_v1_organizations_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/OrganizationOut"
+         },
+         "type": "array",
+         "title": "Response List Organizations Api V1 Organizations Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Create Organization",
+    "operationId": "create_organization_api_v1_organizations_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OrganizationCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrganizationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/organizations/{oid}": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Get Organization",
+    "operationId": "get_organization_api_v1_organizations__oid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrganizationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Update Organization",
+    "operationId": "update_organization_api_v1_organizations__oid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OrganizationUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrganizationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/organizations/{oid}/members": {
+   "get": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "List Members",
+    "operationId": "list_members_api_v1_organizations__oid__members_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MemberOut"
+         },
+         "title": "Response List Members Api V1 Organizations  Oid  Members Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Add Member",
+    "description": "Invita a una cuenta existente (por usuario o id) con un rol.",
+    "operationId": "add_member_api_v1_organizations__oid__members_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MemberIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MemberOut"
+         },
+         "title": "Response Add Member Api V1 Organizations  Oid  Members Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/organizations/{oid}/members/{user_id}": {
+   "patch": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Update Member",
+    "operationId": "update_member_api_v1_organizations__oid__members__user_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MemberUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MemberOut"
+         },
+         "title": "Response Update Member Api V1 Organizations  Oid  Members  User Id  Patch"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "organizations"
+    ],
+    "summary": "Remove Member",
+    "operationId": "remove_member_api_v1_organizations__oid__members__user_id__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MemberOut"
+         },
+         "title": "Response Remove Member Api V1 Organizations  Oid  Members  User Id  Delete"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/organizations/{oid}/subscriptions": {
+   "get": {
+    "tags": [
+     "organizations",
+     "billing"
+    ],
+    "summary": "Organization Subscriptions",
+    "operationId": "organization_subscriptions_api_v1_organizations__oid__subscriptions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SubscriptionOut"
+         },
+         "title": "Response Organization Subscriptions Api V1 Organizations  Oid  Subscriptions Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "List Plans",
+    "description": "Niveles y precios (públicos). ``mode``: marcha_blanca (todo gratis) o enforced.",
+    "operationId": "list_plans_api_v1_plans_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlansOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{code}": {
+   "patch": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Update Plan Prices",
+    "description": "Cambia los precios de un plan (son configuración, no código).",
+    "operationId": "update_plan_prices_api_v1_plans__code__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Code"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlanPriceUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlanOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/subscriptions": {
+   "get": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "List Subscriptions",
+    "operationId": "list_subscriptions_api_v1_subscriptions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "organization_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Organization Id"
+      }
+     },
+     {
+      "name": "person_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Person Id"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "User Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SubscriptionOut"
+         },
+         "title": "Response List Subscriptions Api V1 Subscriptions Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Create Subscription",
+    "description": "Suscripción manual: el Admin Global asigna un plan a una organización, persona o cuenta.",
+    "operationId": "create_subscription_api_v1_subscriptions_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SubscriptionCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/subscriptions/{sid}": {
+   "patch": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Update Subscription",
+    "operationId": "update_subscription_api_v1_subscriptions__sid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Sid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SubscriptionUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/subscriptions/{sid}/mark-paid": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Mark Paid",
+    "description": "Proveedor manual: el Admin confirma el pago y la suscripción queda activa un mes o un año.",
+    "operationId": "mark_paid_api_v1_subscriptions__sid__mark_paid_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Sid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MarkPaidIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubscriptionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/organizations/{oid}/checkout": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Checkout",
+    "description": "Pide un plan para la organización: crea la suscripción pendiente y el cobro del proveedor.",
+    "operationId": "checkout_api_v1_organizations__oid__checkout_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "oid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Oid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CheckoutIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CheckoutOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/payments/webhook/{provider_name}": {
+   "post": {
+    "tags": [
+     "billing"
+    ],
+    "summary": "Payment Webhook",
+    "description": "Aviso de la pasarela de pagos. El proveedor verifica la firma; el manual no recibe avisos.",
+    "operationId": "payment_webhook_api_v1_payments_webhook__provider_name__post",
+    "parameters": [
+     {
+      "name": "provider_name",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Provider Name"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/self-registration": {
+   "put": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Set Self Registration",
+    "description": "Abre o cierra la inscripción en línea por dojos (con fecha de cierre opcional).",
+    "operationId": "set_self_registration_api_v1_tournaments__tid__self_registration_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SelfRegistrationIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/invitations": {
+   "get": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "List Invitations",
+    "operationId": "list_invitations_api_v1_tournaments__tid__invitations_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/InvitationOut"
+         },
+         "title": "Response List Invitations Api V1 Tournaments  Tid  Invitations Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Create Invitation",
+    "description": "Enlace de invitación para un dojo (``dojo_id``) o general (sin dojo).",
+    "operationId": "create_invitation_api_v1_tournaments__tid__invitations_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InvitationCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvitationOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/{iid}": {
+   "delete": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Revoke Invitation",
+    "operationId": "revoke_invitation_api_v1_invitations__iid__delete",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "iid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Iid"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/registration-requests": {
+   "get": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Registration Requests",
+    "description": "Solicitudes pendientes: inscripciones de los dojos y pedidos de admin de dojo.",
+    "operationId": "registration_requests_api_v1_tournaments__tid__registration_requests_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationRequestsOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/registration-requests/count": {
+   "get": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Registration Requests Count",
+    "operationId": "registration_requests_count_api_v1_tournaments__tid__registration_requests_count_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/registration-requests/decide": {
+   "post": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Decide Registrations",
+    "description": "Aprueba o rechaza (con motivo) inscripciones pendientes en lote.",
+    "operationId": "decide_registrations_api_v1_tournaments__tid__registration_requests_decide_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RegistrationDecisionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RegistrationDecisionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-admin-requests/{rid}/decide": {
+   "post": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Decide Dojo Admin",
+    "operationId": "decide_dojo_admin_api_v1_dojo_admin_requests__rid__decide_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DecisionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoAdminRequestOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/{token}": {
+   "get": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Invitation Info",
+    "operationId": "invitation_info_api_v1_invitations__token__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvitationInfo"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/invitations/{token}/accept": {
+   "post": {
+    "tags": [
+     "self-registration"
+    ],
+    "summary": "Accept Invitation",
+    "description": "Vincula a la cuenta como admin del dojo (o deja el pedido al organizador).",
+    "operationId": "accept_invitation_api_v1_invitations__token__accept_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InvitationAccept"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvitationAcceptOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "My Dojos",
+    "description": "Dojos que administra la cuenta (rol dojo_admin).",
+    "operationId": "my_dojos_api_v1_dojo_portal_dojos_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/DojoOut"
+         },
+         "type": "array",
+         "title": "Response My Dojos Api V1 Dojo Portal Dojos Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/competitors": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Competitors",
+    "description": "Personas con membresía vigente en el dojo (con documento y fecha de nacimiento).",
+    "operationId": "competitors_api_v1_dojo_portal_dojos__dojo_id__competitors_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PersonOut"
+         },
+         "title": "Response Competitors Api V1 Dojo Portal Dojos  Dojo Id  Competitors Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Create Competitor",
+    "description": "Alta de un competidor del dojo (misma detección de duplicados que el organizador).",
+    "operationId": "create_competitor_api_v1_dojo_portal_dojos__dojo_id__competitors_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PersonCreate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/competitors/{pid}": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Get Competitor",
+    "operationId": "get_competitor_api_v1_dojo_portal_dojos__dojo_id__competitors__pid__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Update Competitor",
+    "operationId": "update_competitor_api_v1_dojo_portal_dojos__dojo_id__competitors__pid__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PersonUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PersonOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/competitors/{pid}/grades": {
+   "post": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Add Competitor Grade",
+    "operationId": "add_competitor_grade_api_v1_dojo_portal_dojos__dojo_id__competitors__pid__grades_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Pid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GradeIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/tournaments": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Open Tournaments",
+    "description": "Torneos con la inscripción en línea abierta.",
+    "operationId": "open_tournaments_api_v1_dojo_portal_tournaments_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/OpenTournamentOut"
+         },
+         "type": "array",
+         "title": "Response Open Tournaments Api V1 Dojo Portal Tournaments Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/tournaments/{tid}/categories": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Open Categories",
+    "description": "Categorías individuales abiertas del torneo (para elegir dónde inscribir).",
+    "operationId": "open_categories_api_v1_dojo_portal_dojos__dojo_id__tournaments__tid__categories_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryOut"
+         },
+         "title": "Response Open Categories Api V1 Dojo Portal Dojos  Dojo Id  Tournaments  Tid  Categories Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/tournaments/{tid}/suggestions": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Suggestions",
+    "description": "Mismas sugerencias de categoría que ve el organizador.",
+    "operationId": "suggestions_api_v1_dojo_portal_dojos__dojo_id__tournaments__tid__suggestions_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     },
+     {
+      "name": "person_id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Person Id"
+      }
+     },
+     {
+      "name": "modality",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Modality"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SuggestionOut"
+         },
+         "title": "Response Suggestions Api V1 Dojo Portal Dojos  Dojo Id  Tournaments  Tid  Suggestions Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/tournaments/{tid}/registrations": {
+   "post": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Submit",
+    "description": "Envía las inscripciones del dojo: quedan pendientes hasta que el organizador las apruebe.",
+    "operationId": "submit_api_v1_dojo_portal_dojos__dojo_id__tournaments__tid__registrations_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DojoRegistrationBatch"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DojoRegistrationOut"
+         },
+         "title": "Response Submit Api V1 Dojo Portal Dojos  Dojo Id  Tournaments  Tid  Registrations Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/registrations": {
+   "get": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Dojo Registrations",
+    "description": "Inscripciones del dojo y su estado (pendiente, activa, rechazada con motivo, retirada).",
+    "operationId": "dojo_registrations_api_v1_dojo_portal_dojos__dojo_id__registrations_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "tournament_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tournament Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DojoRegistrationOut"
+         },
+         "title": "Response Dojo Registrations Api V1 Dojo Portal Dojos  Dojo Id  Registrations Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/dojo-portal/dojos/{dojo_id}/registrations/{rid}/cancel": {
+   "post": {
+    "tags": [
+     "dojo-portal"
+    ],
+    "summary": "Cancel Request",
+    "description": "Retira un pedido que el organizador aún no aprobó.",
+    "operationId": "cancel_request_api_v1_dojo_portal_dojos__dojo_id__registrations__rid__cancel_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dojo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dojo Id"
+      }
+     },
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DojoRegistrationOut"
+        }
        }
       }
      },
@@ -6373,6 +8975,46 @@
     ],
     "title": "Body_upload_import_api_v1_tournaments__tid__imports_post"
    },
+   "BracketEntrantIn": {
+    "properties": {
+     "registration_id": {
+      "type": "integer",
+      "title": "Registration Id"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_id"
+    ],
+    "title": "BracketEntrantIn",
+    "description": "Inscripción tardía o retiro con la llave ya generada."
+   },
    "BracketGenerateIn": {
     "properties": {
      "format": {
@@ -6381,7 +9023,8 @@
         "type": "string",
         "enum": [
          "single_elimination",
-         "round_robin"
+         "round_robin",
+         "groups_knockout"
         ]
        },
        {
@@ -6521,6 +9164,33 @@
        }
       ],
       "title": "Standings"
+     },
+     "groups": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Groups"
+     },
+     "kata_rounds": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rounds"
      }
     },
     "type": "object",
@@ -6692,7 +9362,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -6785,6 +9456,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -6891,7 +9619,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -6984,6 +9713,63 @@
       "type": "integer",
       "title": "Sort Order",
       "default": 0
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -7144,7 +9930,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -7238,6 +10025,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -7314,6 +10158,22 @@
       "type": "array",
       "title": "Advice",
       "default": []
+     },
+     "split_from_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Split From Id"
+     },
+     "has_split": {
+      "type": "boolean",
+      "title": "Has Split",
+      "default": false
      }
     },
     "type": "object",
@@ -7333,6 +10193,65 @@
      "version"
     ],
     "title": "CategoryOut"
+   },
+   "CategorySplitIn": {
+    "properties": {
+     "criterion": {
+      "type": "string",
+      "enum": [
+       "weight",
+       "grade",
+       "draw"
+      ],
+      "title": "Criterion",
+      "default": "draw"
+     },
+     "names": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array",
+        "maxItems": 2,
+        "minItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Names"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "CategorySplitIn",
+    "description": "Dividir una categoría en dos (reversible como la fusión)."
    },
    "CategoryUpdate": {
     "properties": {
@@ -7429,7 +10348,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -7539,6 +10459,63 @@
        }
       ],
       "title": "Queue Position"
+     },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
      }
     },
     "type": "object",
@@ -7546,6 +10523,63 @@
      "version"
     ],
     "title": "CategoryUpdate"
+   },
+   "CheckoutIn": {
+    "properties": {
+     "plan_code": {
+      "type": "string",
+      "title": "Plan Code"
+     },
+     "period": {
+      "type": "string",
+      "enum": [
+       "month",
+       "year"
+      ],
+      "title": "Period",
+      "default": "month"
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan_code"
+    ],
+    "title": "CheckoutIn"
+   },
+   "CheckoutOut": {
+    "properties": {
+     "provider": {
+      "type": "string",
+      "title": "Provider"
+     },
+     "subscription_id": {
+      "type": "integer",
+      "title": "Subscription Id"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     },
+     "instructions": {
+      "type": "string",
+      "title": "Instructions"
+     }
+    },
+    "type": "object",
+    "required": [
+     "provider",
+     "subscription_id",
+     "url",
+     "instructions"
+    ],
+    "title": "CheckoutOut"
    },
    "ClaimIn": {
     "properties": {
@@ -7915,6 +10949,44 @@
     ],
     "title": "ConsentOut"
    },
+   "DecisionIn": {
+    "properties": {
+     "approve": {
+      "type": "boolean",
+      "title": "Approve"
+     }
+    },
+    "type": "object",
+    "required": [
+     "approve"
+    ],
+    "title": "DecisionIn"
+   },
+   "DisqualifyIn": {
+    "properties": {
+     "reason": {
+      "type": "string",
+      "minLength": 3,
+      "title": "Reason"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "reason"
+    ],
+    "title": "DisqualifyIn",
+    "description": "Shikkaku con alcance de torneo: retira todas las inscripciones de la persona."
+   },
    "DocumentIn": {
     "properties": {
      "doc_type": {
@@ -7963,6 +11035,68 @@
      "number"
     ],
     "title": "DocumentOut"
+   },
+   "DojoAdminRequestOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "dojo_name": {
+      "type": "string",
+      "title": "Dojo Name"
+     },
+     "user_id": {
+      "type": "integer",
+      "title": "User Id"
+     },
+     "username": {
+      "type": "string",
+      "title": "Username"
+     },
+     "display_name": {
+      "type": "string",
+      "title": "Display Name"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "current_admins": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Current Admins",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "tournament_id",
+     "dojo_id",
+     "dojo_name",
+     "user_id",
+     "username",
+     "display_name",
+     "status",
+     "created_at"
+    ],
+    "title": "DojoAdminRequestOut"
    },
    "DojoCreate": {
     "properties": {
@@ -8052,6 +11186,263 @@
      "version"
     ],
     "title": "DojoOut"
+   },
+   "DojoRegistrationBatch": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/DojoRegistrationItem"
+      },
+      "type": "array",
+      "maxItems": 300,
+      "minItems": 1,
+      "title": "Items"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "items"
+    ],
+    "title": "DojoRegistrationBatch"
+   },
+   "DojoRegistrationItem": {
+    "properties": {
+     "person_id": {
+      "type": "integer",
+      "title": "Person Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     }
+    },
+    "type": "object",
+    "required": [
+     "person_id",
+     "category_id"
+    ],
+    "title": "DojoRegistrationItem"
+   },
+   "DojoRegistrationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "original_category_id": {
+      "type": "integer",
+      "title": "Original Category Id"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "branch_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch Id"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
+     "age_at_reference": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age At Reference"
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "withdrawn_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Withdrawn Reason"
+     },
+     "rejection_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rejection Reason"
+     },
+     "requested_by_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requested By Id"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "person_name": {
+      "type": "string",
+      "title": "Person Name",
+      "default": ""
+     },
+     "dojo_name": {
+      "type": "string",
+      "title": "Dojo Name",
+      "default": ""
+     },
+     "team_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Team Id"
+     },
+     "team_version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Team Version"
+     },
+     "team_members": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Team Members",
+      "default": []
+     },
+     "tournament_name": {
+      "type": "string",
+      "title": "Tournament Name",
+      "default": ""
+     },
+     "category_name": {
+      "type": "string",
+      "title": "Category Name",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "tournament_id",
+     "category_id",
+     "original_category_id",
+     "person_id",
+     "dojo_id",
+     "branch_id",
+     "grade",
+     "weight_class",
+     "age_at_reference",
+     "status",
+     "withdrawn_reason",
+     "seed",
+     "version"
+    ],
+    "title": "DojoRegistrationOut"
    },
    "DojoUpdate": {
     "properties": {
@@ -8176,7 +11567,8 @@
        "hantei",
        "kiken",
        "shikkaku",
-       "walkover"
+       "walkover",
+       "golden_point"
       ],
       "title": "Type"
      },
@@ -8232,6 +11624,79 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 30
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "c1",
+         "c2"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
+     },
+     "votes": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "string",
+           "enum": [
+            "aka",
+            "ao"
+           ]
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Votes"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
      },
      "override": {
       "anyOf": [
@@ -8316,6 +11781,28 @@
        }
       ],
       "title": "Reason"
+     },
+     "infraction": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infraction"
+     },
+     "ladder": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ladder"
      },
      "device_at": {
       "type": "string",
@@ -8723,6 +12210,376 @@
     "title": "ImportRowUpdate",
     "description": "Celdas corregidas (mismas claves que la plantilla: nombres, apellidos, sexo…)."
    },
+   "InvitationAccept": {
+    "properties": {
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     }
+    },
+    "type": "object",
+    "title": "InvitationAccept"
+   },
+   "InvitationAcceptOut": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "granted",
+       "already_admin",
+       "pending_approval"
+      ],
+      "title": "Status"
+     },
+     "dojo_id": {
+      "type": "integer",
+      "title": "Dojo Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "dojo_id",
+     "tournament_id"
+    ],
+    "title": "InvitationAcceptOut"
+   },
+   "InvitationCreate": {
+    "properties": {
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     }
+    },
+    "type": "object",
+    "title": "InvitationCreate"
+   },
+   "InvitationInfo": {
+    "properties": {
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "tournament_name": {
+      "type": "string",
+      "title": "Tournament Name"
+     },
+     "organization_name": {
+      "type": "string",
+      "title": "Organization Name"
+     },
+     "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "dojo_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Name"
+     },
+     "self_registration_open": {
+      "type": "boolean",
+      "title": "Self Registration Open"
+     },
+     "already_admin": {
+      "type": "boolean",
+      "title": "Already Admin"
+     },
+     "my_dojo_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "My Dojo Ids",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "tournament_id",
+     "tournament_name",
+     "organization_name",
+     "start_date",
+     "dojo_id",
+     "dojo_name",
+     "self_registration_open",
+     "already_admin"
+    ],
+    "title": "InvitationInfo",
+    "description": "Lo que ve quien abre un enlace de invitación."
+   },
+   "InvitationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "tournament_id": {
+      "type": "integer",
+      "title": "Tournament Id"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "dojo_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Name"
+     },
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "revoked_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revoked At"
+     },
+     "uses": {
+      "type": "integer",
+      "title": "Uses"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "tournament_id",
+     "dojo_id",
+     "token",
+     "created_at",
+     "revoked_at",
+     "uses"
+    ],
+    "title": "InvitationOut"
+   },
+   "KataMatchScoreIn": {
+    "properties": {
+     "aka_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Aka Scores"
+     },
+     "ao_scores": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "title": "Ao Scores"
+     },
+     "aka_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Athletic"
+     },
+     "ao_athletic": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Athletic"
+     },
+     "aka_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aka Kata Name"
+     },
+     "ao_kata_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ao Kata Name"
+     },
+     "judge_person_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Person Ids"
+     },
+     "head_judge_vote": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "aka",
+         "ao"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Head Judge Vote"
+     },
+     "event_id": {
+      "type": "string",
+      "maxLength": 36,
+      "minLength": 8,
+      "title": "Event Id"
+     },
+     "at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "At"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "aka_scores",
+     "ao_scores",
+     "event_id",
+     "at"
+    ],
+    "title": "KataMatchScoreIn",
+    "description": "Kata por puntuación en llave: nota del panel para aka y para ao."
+   },
+   "KataOrderIn": {
+    "properties": {
+     "registration_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Registration Ids"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "registration_ids"
+    ],
+    "title": "KataOrderIn"
+   },
    "KataScoreIn": {
     "properties": {
      "registration_id": {
@@ -8735,6 +12592,20 @@
       },
       "type": "array",
       "title": "Scores"
+     },
+     "athletic_scores": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Athletic Scores"
      },
      "judge_person_ids": {
       "anyOf": [
@@ -8768,6 +12639,17 @@
       ],
       "title": "Kata Name"
      },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
+     },
      "version": {
       "anyOf": [
        {
@@ -8778,6 +12660,16 @@
        }
       ],
       "title": "Version"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "type": "object",
@@ -8894,6 +12786,33 @@
     },
     "type": "object",
     "title": "LogoutIn"
+   },
+   "MarkPaidIn": {
+    "properties": {
+     "period": {
+      "type": "string",
+      "enum": [
+       "month",
+       "year"
+      ],
+      "title": "Period",
+      "default": "month"
+     },
+     "reference": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reference"
+     }
+    },
+    "type": "object",
+    "title": "MarkPaidIn"
    },
    "MatchOut": {
     "properties": {
@@ -9095,6 +13014,91 @@
     ],
     "title": "MatchOut"
    },
+   "MemberIn": {
+    "properties": {
+     "username": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     },
+     "user_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Id"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "owner",
+       "admin",
+       "member"
+      ],
+      "title": "Role",
+      "default": "member"
+     }
+    },
+    "type": "object",
+    "title": "MemberIn",
+    "description": "Invitar a un usuario existente, por nombre de usuario o id."
+   },
+   "MemberOut": {
+    "properties": {
+     "user_id": {
+      "type": "integer",
+      "title": "User Id"
+     },
+     "username": {
+      "type": "string",
+      "title": "Username"
+     },
+     "display_name": {
+      "type": "string",
+      "title": "Display Name"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     }
+    },
+    "type": "object",
+    "required": [
+     "user_id",
+     "username",
+     "display_name",
+     "role"
+    ],
+    "title": "MemberOut"
+   },
+   "MemberUpdate": {
+    "properties": {
+     "role": {
+      "type": "string",
+      "enum": [
+       "owner",
+       "admin",
+       "member"
+      ],
+      "title": "Role"
+     }
+    },
+    "type": "object",
+    "required": [
+     "role"
+    ],
+    "title": "MemberUpdate"
+   },
    "MembershipIn": {
     "properties": {
      "dojo_id": {
@@ -9262,6 +13266,362 @@
     },
     "type": "object",
     "title": "OfficialResultIn"
+   },
+   "OpenTournamentOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+     },
+     "end_date": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Date"
+     },
+     "venue": {
+      "type": "string",
+      "title": "Venue"
+     },
+     "city": {
+      "type": "string",
+      "title": "City"
+     },
+     "organization_name": {
+      "type": "string",
+      "title": "Organization Name"
+     },
+     "self_registration_closes_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Self Registration Closes At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "start_date",
+     "end_date",
+     "venue",
+     "city",
+     "organization_name",
+     "self_registration_closes_at"
+    ],
+    "title": "OpenTournamentOut"
+   },
+   "OrganizationCreate": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 2,
+      "title": "Name"
+     },
+     "slug": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80,
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slug"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "league",
+       "dojo",
+       "organizer"
+      ],
+      "title": "Kind",
+      "default": "organizer"
+     },
+     "country": {
+      "type": "string",
+      "maxLength": 2,
+      "minLength": 2,
+      "title": "Country",
+      "default": "PE"
+     },
+     "timezone": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Timezone",
+      "default": "America/Lima"
+     },
+     "currency": {
+      "type": "string",
+      "maxLength": 3,
+      "minLength": 3,
+      "title": "Currency",
+      "default": "PEN"
+     },
+     "logo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Logo"
+     },
+     "owner_user_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Owner User Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "OrganizationCreate"
+   },
+   "OrganizationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "country": {
+      "type": "string",
+      "title": "Country"
+     },
+     "timezone": {
+      "type": "string",
+      "title": "Timezone"
+     },
+     "currency": {
+      "type": "string",
+      "title": "Currency"
+     },
+     "logo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Logo"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "my_role": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "My Role"
+     },
+     "can_manage": {
+      "type": "boolean",
+      "title": "Can Manage",
+      "default": false
+     },
+     "subscription": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SubscriptionOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "features": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Features",
+      "default": []
+     },
+     "tournament_count": {
+      "type": "integer",
+      "title": "Tournament Count",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "slug",
+     "kind",
+     "country",
+     "timezone",
+     "currency",
+     "logo",
+     "version",
+     "created_at"
+    ],
+    "title": "OrganizationOut"
+   },
+   "OrganizationUpdate": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200,
+        "minLength": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "slug": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80,
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slug"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "league",
+         "dojo",
+         "organizer"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "country": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2,
+        "minLength": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Country"
+     },
+     "timezone": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Timezone"
+     },
+     "currency": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 3,
+        "minLength": 3
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Currency"
+     },
+     "logo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Logo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "OrganizationUpdate"
    },
    "Override": {
     "properties": {
@@ -9643,6 +14003,120 @@
     ],
     "title": "PersonUpdate"
    },
+   "PlanOut": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "audience": {
+      "type": "string",
+      "title": "Audience"
+     },
+     "price_pen_month": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Pen Month"
+     },
+     "price_pen_year": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Pen Year"
+     },
+     "features": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Features"
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "name",
+     "audience",
+     "price_pen_month",
+     "price_pen_year",
+     "features"
+    ],
+    "title": "PlanOut"
+   },
+   "PlanPriceUpdate": {
+    "properties": {
+     "price_pen_month": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Pen Month"
+     },
+     "price_pen_year": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Price Pen Year"
+     }
+    },
+    "type": "object",
+    "title": "PlanPriceUpdate"
+   },
+   "PlansOut": {
+    "properties": {
+     "mode": {
+      "type": "string",
+      "title": "Mode"
+     },
+     "plans": {
+      "items": {
+       "$ref": "#/components/schemas/PlanOut"
+      },
+      "type": "array",
+      "title": "Plans"
+     },
+     "features": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Features"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mode",
+     "plans",
+     "features"
+    ],
+    "title": "PlansOut"
+   },
    "PresenceIn": {
     "properties": {
      "device_id": {
@@ -9919,6 +14393,76 @@
     ],
     "title": "RegistrationCreate"
    },
+   "RegistrationDecisionIn": {
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Ids"
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "approve",
+       "reject"
+      ],
+      "title": "Action"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "ids",
+     "action"
+    ],
+    "title": "RegistrationDecisionIn"
+   },
+   "RegistrationDecisionOut": {
+    "properties": {
+     "approved": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Approved",
+      "default": []
+     },
+     "rejected": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Rejected",
+      "default": []
+     },
+     "skipped": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Skipped",
+      "default": []
+     }
+    },
+    "type": "object",
+    "title": "RegistrationDecisionOut"
+   },
    "RegistrationOut": {
     "properties": {
      "id": {
@@ -10011,6 +14555,28 @@
       ],
       "title": "Withdrawn Reason"
      },
+     "rejection_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rejection Reason"
+     },
+     "requested_by_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requested By Id"
+     },
      "seed": {
       "anyOf": [
        {
@@ -10086,6 +14652,35 @@
      "version"
     ],
     "title": "RegistrationOut"
+   },
+   "RegistrationRequestsOut": {
+    "properties": {
+     "registrations": {
+      "items": {
+       "$ref": "#/components/schemas/DojoRegistrationOut"
+      },
+      "type": "array",
+      "title": "Registrations"
+     },
+     "dojo_admin_requests": {
+      "items": {
+       "$ref": "#/components/schemas/DojoAdminRequestOut"
+      },
+      "type": "array",
+      "title": "Dojo Admin Requests"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     }
+    },
+    "type": "object",
+    "required": [
+     "registrations",
+     "dojo_admin_requests",
+     "count"
+    ],
+    "title": "RegistrationRequestsOut"
    },
    "RegistrationUpdate": {
     "properties": {
@@ -10204,6 +14799,7 @@
       "type": "string",
       "enum": [
        "global",
+       "organization",
        "tournament",
        "dojo",
        "tatami"
@@ -10296,6 +14892,49 @@
       "type": "array",
       "title": "Sanction Labels"
      },
+     "sanction_c2": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "integer"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction C2"
+     },
+     "sanction_labels_c2": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sanction Labels C2"
+     },
+     "infractions": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infractions"
+     },
      "senshu": {
       "anyOf": [
        {
@@ -10306,6 +14945,39 @@
        }
       ],
       "title": "Senshu"
+     },
+     "senshu_lost": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Senshu Lost",
+      "default": []
+     },
+     "golden_point": {
+      "type": "boolean",
+      "title": "Golden Point",
+      "default": false
+     },
+     "period_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Period Seconds"
+     },
+     "hantei_votes": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Hantei Votes",
+      "default": []
      },
      "elapsed_seconds": {
       "type": "number",
@@ -10428,6 +15100,31 @@
      "ao"
     ],
     "title": "ScoreboardOut"
+   },
+   "SelfRegistrationIn": {
+    "properties": {
+     "open": {
+      "type": "boolean",
+      "title": "Open"
+     },
+     "closes_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Closes At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "open"
+    ],
+    "title": "SelfRegistrationIn"
    },
    "SessionOut": {
     "properties": {
@@ -10577,6 +15274,250 @@
      "version"
     ],
     "title": "StatusChange"
+   },
+   "SubscriptionCreate": {
+    "properties": {
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "user_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Id"
+     },
+     "plan_code": {
+      "type": "string",
+      "title": "Plan Code"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "trial",
+       "active",
+       "past_due",
+       "canceled"
+      ],
+      "title": "Status",
+      "default": "active"
+     },
+     "current_period_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Period End"
+     },
+     "notes": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Notes",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "plan_code"
+    ],
+    "title": "SubscriptionCreate",
+    "description": "Suscripción manual (Admin Global): a una organización, persona o cuenta."
+   },
+   "SubscriptionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "user_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "User Id"
+     },
+     "plan_code": {
+      "type": "string",
+      "title": "Plan Code"
+     },
+     "plan_name": {
+      "type": "string",
+      "title": "Plan Name",
+      "default": ""
+     },
+     "status": {
+      "type": "string",
+      "title": "Status"
+     },
+     "current_period_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Period End"
+     },
+     "source": {
+      "type": "string",
+      "title": "Source"
+     },
+     "reference": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reference"
+     },
+     "notes": {
+      "type": "string",
+      "title": "Notes"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "is_current": {
+      "type": "boolean",
+      "title": "Is Current",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "organization_id",
+     "person_id",
+     "user_id",
+     "plan_code",
+     "status",
+     "current_period_end",
+     "source",
+     "reference",
+     "notes",
+     "created_at"
+    ],
+    "title": "SubscriptionOut"
+   },
+   "SubscriptionUpdate": {
+    "properties": {
+     "plan_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Code"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "trial",
+         "active",
+         "past_due",
+         "canceled"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "current_period_end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Period End"
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     }
+    },
+    "type": "object",
+    "title": "SubscriptionUpdate"
    },
    "SuggestionOut": {
     "properties": {
@@ -10915,7 +15856,8 @@
         "enum": [
          "single_elimination",
          "round_robin",
-         "kata_rounds"
+         "kata_rounds",
+         "groups_knockout"
         ]
        },
        {
@@ -11009,6 +15951,63 @@
       "title": "Sort Order",
       "default": 0
      },
+     "max_entrants": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Entrants"
+     },
+     "weight_min_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Min Kg"
+     },
+     "weight_max_kg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Max Kg"
+     },
+     "kata_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kata Rules"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
      "id": {
       "type": "integer",
       "title": "Id"
@@ -11042,6 +16041,17 @@
       "type": "integer",
       "title": "Version"
      },
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
+     },
      "items": {
       "items": {
        "$ref": "#/components/schemas/TemplateItemOut"
@@ -11073,6 +16083,17 @@
       "type": "string",
       "minLength": 3,
       "title": "Reason"
+     },
+     "round_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Round Number"
      }
     },
     "type": "object",
@@ -11197,7 +16218,8 @@
       "type": "string",
       "enum": [
        "single_elimination",
-       "round_robin"
+       "round_robin",
+       "groups_knockout"
       ],
       "title": "Default Format",
       "default": "single_elimination"
@@ -11224,6 +16246,21 @@
       "title": "Kata Defaults",
       "default": {}
      },
+     "competition_rules": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Competition Rules",
+      "default": {}
+     },
+     "age_mode": {
+      "type": "string",
+      "enum": [
+       "date",
+       "birth_year"
+      ],
+      "title": "Age Mode",
+      "default": "date"
+     },
      "template_id": {
       "anyOf": [
        {
@@ -11241,6 +16278,17 @@
       "minimum": 1.0,
       "title": "Tatami Count",
       "default": 1
+     },
+     "organization_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Organization Id"
      }
     },
     "type": "object",
@@ -11316,6 +16364,23 @@
       "type": "object",
       "title": "Kata Defaults"
      },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "type": "string",
+      "title": "Age Mode",
+      "default": "date"
+     },
      "template_id": {
       "anyOf": [
        {
@@ -11354,6 +16419,32 @@
       "type": "string",
       "title": "Public Names",
       "default": "short"
+     },
+     "organization_id": {
+      "type": "integer",
+      "title": "Organization Id"
+     },
+     "organization_name": {
+      "type": "string",
+      "title": "Organization Name",
+      "default": ""
+     },
+     "self_registration_open": {
+      "type": "boolean",
+      "title": "Self Registration Open",
+      "default": false
+     },
+     "self_registration_closes_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Self Registration Closes At"
      }
     },
     "type": "object",
@@ -11372,7 +16463,8 @@
      "kumite_rules",
      "kata_defaults",
      "template_id",
-     "version"
+     "version",
+     "organization_id"
     ],
     "title": "TournamentOut"
    },
@@ -11462,6 +16554,22 @@
       ],
       "title": "Age Reference Date"
      },
+     "default_format": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "single_elimination",
+         "round_robin",
+         "groups_knockout"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Default Format"
+     },
      "default_third_place_rule": {
       "anyOf": [
        {
@@ -11501,6 +16609,33 @@
        }
       ],
       "title": "Kata Defaults"
+     },
+     "competition_rules": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Competition Rules"
+     },
+     "age_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "date",
+         "birth_year"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Mode"
      }
     },
     "type": "object",
@@ -11639,6 +16774,34 @@
     ],
     "title": "UserCreate"
    },
+   "UserOrganizationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "slug": {
+      "type": "string",
+      "title": "Slug"
+     },
+     "role": {
+      "type": "string",
+      "title": "Role"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "slug",
+     "role"
+    ],
+    "title": "UserOrganizationOut"
+   },
    "UserOut": {
     "properties": {
      "id": {
@@ -11713,6 +16876,22 @@
        }
       ],
       "title": "Email Verified At"
+     },
+     "organizations": {
+      "items": {
+       "$ref": "#/components/schemas/UserOrganizationOut"
+      },
+      "type": "array",
+      "title": "Organizations",
+      "default": []
+     },
+     "dojo_admin_of": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Dojo Admin Of",
+      "default": []
      }
     },
     "type": "object",

@@ -10,7 +10,18 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.api.errors import install_handlers
-from app.api.routers import accounts, competition, core, history, organizer, public, public_profiles, tournaments
+from app.api.routers import (
+    accounts,
+    competition,
+    core,
+    dojo_portal,
+    history,
+    organizations,
+    organizer,
+    public,
+    public_profiles,
+    tournaments,
+)
 from app.config import DEFAULT_SECRET, get_settings
 from app.db.base import get_engine
 from app.observability import RequestContextMiddleware, configure_azure_monitor, configure_logging
@@ -105,8 +116,19 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID", "Retry-After"],
     )
     install_handlers(app)
-    routers = (core.router, accounts.router, tournaments.router, competition.router, organizer.router, history.router)
-    for r in (*routers, public_profiles.router, public.router):
+    routers = (
+        core.router,
+        accounts.router,
+        tournaments.router,
+        competition.router,
+        organizer.router,
+        history.router,
+        organizations.router,
+        dojo_portal.router,
+        public_profiles.router,
+        public.router,
+    )
+    for r in routers:
         app.include_router(r, prefix="/api/v1")
 
     @app.get("/health/live", tags=["meta"])

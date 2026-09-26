@@ -147,6 +147,32 @@ export const routes: Routes = [
         title: 'Plantillas · Hajime',
       },
       {
+        path: 'organizacion',
+        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        title: 'Organización · Hajime',
+      },
+      {
+        path: 'organizacion/:id',
+        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        title: 'Organización · Hajime',
+      },
+      {
+        path: 'planes',
+        loadComponent: () => import('./features/organizations/plans-page').then((m) => m.PlansPage),
+        title: 'Planes · Hajime',
+      },
+      {
+        path: 'mis-competidores',
+        loadComponent: () => import('./features/dojo-portal/dojo-portal').then((m) => m.DojoPortalPage),
+        title: 'Mis competidores · Hajime',
+      },
+      {
+        // Enlace de invitación a la autoinscripción de un torneo.
+        path: 'invitacion/:token',
+        loadComponent: () => import('./features/dojo-portal/invitation').then((m) => m.InvitationPage),
+        title: 'Invitación · Hajime',
+      },
+      {
         path: 'usuarios',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/login/users').then((m) => m.UsersPage),

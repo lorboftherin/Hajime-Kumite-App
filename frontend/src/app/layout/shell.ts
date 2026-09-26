@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
-import { canReviewClaims, isCompetitorOnly, isStaff, tatamiScopes } from '../core/roles';
+import { canReviewClaims, dojoAdminOf, hasOrganizations, isCompetitorOnly, isStaff, tatamiScopes } from '../core/roles';
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
@@ -27,9 +27,13 @@ const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' }
 /** Cuenta de competidor o de padre, madre o apoderado: sus perfiles deportivos. */
 const MY_PROFILES: NavItem = { path: '/mis-perfiles', kanji: '選手', label: 'Mis perfiles' };
 /** Dojo, organizadores y Admin: solicitudes para reclamar perfiles. */
-const CLAIMS: NavItem = { path: '/solicitudes', kanji: '申請', label: 'Solicitudes' };
+const CLAIMS: NavItem = { path: '/solicitudes', kanji: '申請', label: 'Reclamos' };
 /** Operador de mesa de un tatami: acceso directo a su cola. */
 const MY_TATAMI: NavItem = { path: '/mi-tatami', kanji: '畳', label: 'Mi tatami' };
+/** Sensei (admin de dojo): sus competidores y la inscripción en línea. */
+const MY_DOJO: NavItem = { path: '/mis-competidores', kanji: '門', label: 'Mis competidores' };
+/** Organización: datos, miembros y plan. */
+const ORGANIZATION: NavItem = { path: '/organizacion', kanji: '組', label: 'Organización' };
 
 const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   { mode: 'light', label: 'Claro', icon: 'sun' },
@@ -118,6 +122,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
           @if (!competitorOnly()) {
             <a class="menu-item" routerLink="/mis-perfiles" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="history" /> Mis perfiles</a>
           }
+          <a class="menu-item" routerLink="/planes" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Planes</a>
           <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
           <a class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
           <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
@@ -479,9 +484,10 @@ export class Shell {
     if (isCompetitorOnly(u)) return [MY_PROFILES];
     const staff = isStaff(u);
     const base = NAV.filter((it) => staff || !it.staff);
-    const mine = tatamiScopes(u).length ? [MY_TATAMI] : [];
+    const mine = [...(tatamiScopes(u).length ? [MY_TATAMI] : []), ...(dojoAdminOf(u).length ? [MY_DOJO] : [])];
+    const org = hasOrganizations(u) ? [ORGANIZATION] : [];
     const claims = canReviewClaims(u) ? [CLAIMS] : [];
-    return [...mine, ...base, ...claims, ...(this.auth.isAdmin() ? [ADMIN] : [])];
+    return [...mine, ...base, ...org, ...claims, ...(this.auth.isAdmin() ? [ADMIN] : [])];
   });
   readonly competitorOnly = computed(() => isCompetitorOnly(this.auth.user()));
   readonly name = computed(() => {
@@ -494,7 +500,8 @@ export class Shell {
     if (u?.is_admin) return 'Administrador';
     if (isStaff(u)) return 'Organizador';
     if (isCompetitorOnly(u)) return 'Competidor';
-    return tatamiScopes(u).length ? 'Operador de mesa' : 'Operador';
+    if (tatamiScopes(u).length) return 'Operador de mesa';
+    return dojoAdminOf(u).length ? 'Sensei' : 'Operador';
   });
 
   /** Las llaves (/categorias/…) pertenecen a un torneo: se marca «Torneos» como sección activa. */
