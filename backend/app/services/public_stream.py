@@ -14,8 +14,10 @@ Cómo funciona (por proceso):
   la trae con el mecanismo de siempre (``public_snapshots.get``: un solo
   proceso recalcula, con turno) y la difunde. Con 500 espectadores en un
   proceso sigue siendo una consulta por segundo, no 500.
-* **Escrituras en este mismo proceso** despiertan al hilo al instante
-  (``public_snapshots.on_change``): no espera al siguiente segundo.
+* **Escrituras en este mismo proceso** despiertan al hilo
+  (``public_snapshots.on_change``): no espera al siguiente segundo, pero da a
+  lo sumo una vuelta cada ``public_sse_min_interval`` (0,5 s) para no
+  recalcular en cada punto de cada mesa.
 * **Suscriptores lentos no se atrasan:** por vista se guarda solo el último
   mensaje pendiente; si un celular tarda, recibe directamente el más nuevo.
 * **Latido** (comentario ``: latido``) cada ``public_sse_heartbeat_seconds``
@@ -32,6 +34,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -89,7 +92,8 @@ class Subscriber:
     kinds: frozenset[str]
     loop: asyncio.AbstractEventLoop
     wake: asyncio.Event = field(default_factory=asyncio.Event)
-    sent: dict[str, str] = field(default_factory=dict)  # vista → etag ya enviado
+    sent: dict[str, str] = field(default_factory=dict)  # vista → etag ya entregado a la conexión
+    shown: dict[str, str] = field(default_factory=dict)  # vista → etag ya escrito (para Last-Event-ID)
     pending: dict[str, tuple[str, str]] = field(default_factory=dict)  # vista → (etag, datos)
     gone: bool = False
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -120,8 +124,10 @@ class Subscriber:
                 self.sent[k] = e
         return out
 
-    def last_event_id(self) -> str:
-        return ";".join(f"{k}={e.strip(chr(34))}" for k, e in sorted(self.sent.items()))
+    def last_event_id(self, kind: str, etag: str) -> str:
+        """Id del evento que se escribe: lo que el navegador tiene de cada vista, incluido este."""
+        self.shown[kind] = etag
+        return ";".join(f"{k}={e.strip(chr(34))}" for k, e in sorted(self.shown.items()))
 
 
 def parse_last_event_id(value: str | None) -> dict[str, str]:
@@ -152,8 +158,11 @@ class _Hub:
         return {k for s in self.subs for k in s.kinds}
 
     def _run(self) -> None:
-        interval = max(0.05, get_settings().public_sse_poll_seconds)
+        settings = get_settings()
+        interval = max(0.05, settings.public_sse_poll_seconds)
+        gap = max(0.0, min(settings.public_sse_min_interval, interval))
         while True:
+            started = time.monotonic()
             with _lock:
                 if not self.subs:
                     _hubs.pop(self.token, None)
@@ -171,8 +180,14 @@ class _Hub:
                 return
             except Exception:  # noqa: BLE001 - la base puede fallar un momento: se reintenta
                 log.warning("Sondeo SSE del vivo falló", exc_info=True)
-            self.wake.wait(interval)
+            self.wake.wait(max(0.0, interval - (time.monotonic() - started)))
             self.wake.clear()
+            # Aunque una escritura despierte al hilo, no más de una vuelta cada
+            # ``gap``: con 8 mesas marcando puntos, recalcular y difundir en cada
+            # uno le quita CPU a las mesas sin que el público lo note.
+            rest = gap - (time.monotonic() - started)
+            if rest > 0:
+                time.sleep(rest)
 
     def _poll(self, kinds: set[str], subs: list[Subscriber]) -> None:
         with snapshots._session() as db:

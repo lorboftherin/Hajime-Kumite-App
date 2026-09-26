@@ -1,32 +1,59 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { ApiError } from '../../core/api-error';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Meta, Title } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { PublicLive, PublicMatch } from '../../core/models';
 import { Enso, HajimeWord } from '../../shared/enso';
+import { PublicFeed } from './feed';
+import {
+  entryText,
+  hourText,
+  loadFavorites,
+  saveFavorites,
+  searchCompetitors,
+  toggleFavorite,
+} from './public-logic';
+import { PublicCompetitor, PublicPeople } from './public-models';
+import { setShareMeta } from './share-meta';
 
-// Cada consulta pasa por la caché HTTP del navegador: el servidor responde con
-// ETag y `Cache-Control: max-age` (HAJIME_PUBLIC_CACHE_SECONDS). Si nada cambió,
-// el navegador revalida con If-None-Match, recibe 304 sin cuerpo y entrega la
-// respuesta anterior como un 200 normal: aquí no hace falta manejar el 304.
+// Con SSE la página recibe cada cambio al instante; sin SSE (503, proxy) se
+// consulta cada 5 s. Cada consulta pasa por la caché HTTP del navegador: el
+// servidor responde con ETag y `Cache-Control: max-age`; si nada cambió, 304.
 const REFRESH_MS = 5000;
+const PEOPLE_REFRESH_MS = 20000;
 
 /**
- * Hajime en vivo: la vista pública del torneo para familias y público (como el
+ * Hajime en vivo: la página pública del torneo para familias y público (como el
  * seguimiento en vivo de CricHeroes). Sin inicio de sesión; solo existe si el
- * organizador activó el enlace. Se actualiza sola cada pocos segundos.
+ * organizador activó el público. Se abre por la dirección fija (`/t/:slug`) o
+ * por el enlace secreto (`/vivo/:token`), que muestran lo mismo.
  */
 @Component({
   selector: 'app-public-live',
-  imports: [Enso, HajimeWord, DatePipe, NgTemplateOutlet],
+  imports: [Enso, HajimeWord, DatePipe, NgTemplateOutlet, FormsModule, RouterLink],
   template: `
     <div class="page">
       <header class="top">
-        <div class="brand"><app-enso class="mark" /><app-hajime-word class="word" /><span class="live-tag">en vivo</span></div>
+        <a class="brand" routerLink="/torneos-publicos" aria-label="Torneos públicos"
+          ><app-enso class="mark" /><app-hajime-word class="word" /><span class="live-tag"
+            >en vivo</span
+          ></a
+        >
         @if (data(); as d) {
           <span class="pulse" [class.stale]="stale()" role="status">
-            <i aria-hidden="true"></i>{{ stale() ? 'Reconectando…' : 'Actualizado ' + (updated() | date: 'HH:mm:ss') }}
+            <i aria-hidden="true"></i
+            >{{ stale() ? 'Reconectando…' : 'Actualizado ' + (updated() | date: 'HH:mm:ss') }}
           </span>
         }
       </header>
@@ -34,15 +61,70 @@ const REFRESH_MS = 5000;
       @if (data(); as d) {
         <section class="hero">
           <h1>{{ d.tournament.name }}</h1>
-          <p>{{ d.tournament.start_date | date: 'd MMM y' }}@if (d.tournament.venue) { · {{ d.tournament.venue }}}@if (d.tournament.city) {, {{ d.tournament.city }}}</p>
+          <p>
+            {{ d.tournament.start_date | date: 'd MMM y' }}
+            @if (d.tournament.venue) {
+              · {{ d.tournament.venue }}
+            }
+            @if (d.tournament.city) {
+              , {{ d.tournament.city }}
+            }
+          </p>
         </section>
 
         <nav class="jump" aria-label="Secciones">
+          <a href="#cuando" (click)="go($event, 'cuando')">¿Cuándo pelea?</a>
           <a href="#tatamis" (click)="go($event, 'tatamis')">Tatamis</a>
-          @if (d.awards.length) {<a href="#premios" (click)="go($event, 'premios')">Premios</a>}
+          @if (d.awards.length) {
+            <a href="#premios" (click)="go($event, 'premios')">Premios</a>
+          }
           <a href="#resultados" (click)="go($event, 'resultados')">Resultados</a>
+          <a href="#categorias" (click)="go($event, 'categorias')">Llaves</a>
           <a href="#medallero" (click)="go($event, 'medallero')">Medallero</a>
         </nav>
+
+        <section id="cuando" class="when" aria-labelledby="h-cuando">
+          <h2 id="h-cuando" class="sec">¿Cuándo pelea?</h2>
+          <label class="search">
+            <span class="sr-only">Buscar competidor por nombre o dojo</span>
+            <input
+              type="search"
+              [ngModel]="query()"
+              (ngModelChange)="query.set($event)"
+              placeholder="Nombre o dojo, p. ej. «Diego» o «Kaze»"
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+          </label>
+          @if (query().trim().length >= 2) {
+            <ul class="fighters" aria-live="polite">
+              @for (c of results(); track c.key) {
+                <ng-container *ngTemplateOutlet="fighter; context: { $implicit: c }" />
+              } @empty {
+                <li class="idle">
+                  {{
+                    people()
+                      ? 'Nadie coincide con «' + query().trim() + '».'
+                      : 'Cargando competidores…'
+                  }}
+                </li>
+              }
+            </ul>
+          }
+          @if (favorites().length) {
+            <h3 class="sub">Mis favoritos</h3>
+            <ul class="fighters favs">
+              @for (c of favorites(); track c.key) {
+                <ng-container *ngTemplateOutlet="fighter; context: { $implicit: c }" />
+              }
+            </ul>
+          } @else if (!query()) {
+            <p class="idle small">
+              Busca a tu competidor y márcalo con ★ para tenerlo siempre arriba (se guarda solo en
+              este dispositivo).
+            </p>
+          }
+        </section>
 
         <section id="tatamis" class="tatamis" aria-label="Tatamis">
           @for (t of d.tatamis; track t.id) {
@@ -53,9 +135,15 @@ const REFRESH_MS = 5000;
               </header>
               @if (t.current; as m) {
                 <div class="now">
-                  <div class="kicker"><span class="dot" aria-hidden="true"></span>En curso · {{ m.category }} · {{ m.number }}</div>
+                  <div class="kicker">
+                    <span class="dot" aria-hidden="true"></span>En curso · {{ m.category }} ·
+                    {{ m.number }}
+                  </div>
                   @if (m.bout; as b) {
-                    <div class="teamline">{{ m.aka?.name }} <strong>{{ m.score[0] }}–{{ m.score[1] }}</strong> {{ m.ao?.name }} · combate individual</div>
+                    <div class="teamline">
+                      {{ m.aka?.name }} <strong>{{ m.score[0] }}–{{ m.score[1] }}</strong>
+                      {{ m.ao?.name }} · combate individual
+                    </div>
                     <ng-container *ngTemplateOutlet="board; context: { $implicit: b }" />
                   } @else {
                     <ng-container *ngTemplateOutlet="board; context: { $implicit: m }" />
@@ -71,8 +159,16 @@ const REFRESH_MS = 5000;
                     @for (u of t.upcoming; track u.code + u.category) {
                       <li>
                         <span class="n">{{ u.number }}</span>
-                        <span class="vs"><span class="aka">{{ u.aka?.name ?? 'Por definir' }}</span> vs <span class="ao">{{ u.ao?.name ?? 'Por definir' }}</span></span>
-                        <span class="cat">{{ u.category }}</span>
+                        <span class="vs"
+                          ><span class="aka">{{ u.aka?.name ?? 'Por definir' }}</span> vs
+                          <span class="ao">{{ u.ao?.name ?? 'Por definir' }}</span></span
+                        >
+                        <span class="cat"
+                          >{{ u.category }}
+                          @if (u.eta) {
+                            · ≈ {{ hour(u.eta) }}
+                          }
+                        </span>
                       </li>
                     }
                   </ol>
@@ -80,7 +176,8 @@ const REFRESH_MS = 5000;
               }
               @if (t.last; as l) {
                 <p class="last">
-                  Último: {{ winnerName(l) }} ganó {{ l.score[0] }}–{{ l.score[1] }} · {{ l.category }}
+                  Último: {{ winnerName(l) }} ganó {{ l.score[0] }}–{{ l.score[1] }} ·
+                  {{ l.category }}
                 </p>
               }
             </article>
@@ -105,18 +202,47 @@ const REFRESH_MS = 5000;
         }
 
         <section id="resultados" aria-labelledby="h-res">
-          <h2 id="h-res" class="sec">Resultados <span class="muted">{{ d.results.length }} categoría(s) finalizada(s)</span></h2>
+          <h2 id="h-res" class="sec">
+            Resultados <span class="muted">{{ d.results.length }} categoría(s) finalizada(s)</span>
+          </h2>
           @for (r of d.results; track r.category) {
             <details class="res">
               <summary>{{ r.category }}</summary>
               <ol class="podium">
                 @for (p of r.places; track $index) {
-                  <li><span class="place p{{ p.place }}">{{ p.place }}</span><span class="grow">{{ p.name }}</span><span class="muted">{{ p.dojo }}</span></li>
+                  <li>
+                    <span class="place p{{ p.place }}">{{ p.place }}</span
+                    ><span class="grow">{{ p.name }}</span
+                    ><span class="muted">{{ p.dojo }}</span>
+                  </li>
                 }
               </ol>
+              @if (r.category_id) {
+                <a class="more" [routerLink]="catLink(r.category_id)">Ver la llave completa →</a>
+              }
             </details>
           } @empty {
             <p class="idle">Todavía no hay categorías finalizadas.</p>
+          }
+        </section>
+
+        <section id="categorias" aria-labelledby="h-cat">
+          <h2 id="h-cat" class="sec">Llaves por categoría</h2>
+          @if (d.categories.length) {
+            <ul class="cats">
+              @for (c of d.categories; track c.id ?? c.name) {
+                <li>
+                  @if (c.id) {
+                    <a [routerLink]="catLink(c.id)">{{ c.name }}</a>
+                  } @else {
+                    <span>{{ c.name }}</span>
+                  }
+                  <span class="muted small">{{ statusLabel(c.status) }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="idle">Sin categorías publicadas.</p>
           }
         </section>
 
@@ -124,10 +250,24 @@ const REFRESH_MS = 5000;
           <h2 id="h-med" class="sec">Medallero por dojo</h2>
           @if (d.medal_table.length) {
             <table class="medals">
-              <thead><tr><th>#</th><th>Dojo</th><th title="Oro">Oro</th><th title="Plata">Plata</th><th title="Bronce">Bronce</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Dojo</th>
+                  <th title="Oro">Oro</th>
+                  <th title="Plata">Plata</th>
+                  <th title="Bronce">Bronce</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (m of d.medal_table; track m.dojo_name) {
-                  <tr><td>{{ m.rank }}</td><td>{{ m.dojo_name }}</td><td>{{ m.gold }}</td><td>{{ m.silver }}</td><td>{{ m.bronze }}</td></tr>
+                  <tr>
+                    <td>{{ m.rank }}</td>
+                    <td>{{ m.dojo_name }}</td>
+                    <td>{{ m.gold }}</td>
+                    <td>{{ m.silver }}</td>
+                    <td>{{ m.bronze }}</td>
+                  </tr>
                 }
               </tbody>
             </table>
@@ -136,9 +276,16 @@ const REFRESH_MS = 5000;
           }
         </section>
 
-        <footer class="foot">Datos publicados por la organización del torneo. Hajime · Torneos de karate.</footer>
+        <footer class="foot">
+          Datos publicados por la organización del torneo.
+          <a routerLink="/torneos-publicos">Más torneos</a> · Hajime · Torneos de karate.
+        </footer>
       } @else if (error()) {
-        <section class="hero"><h1>Enlace no disponible</h1><p>{{ error() }}</p></section>
+        <section class="hero">
+          <h1>Enlace no disponible</h1>
+          <p>{{ error() }}</p>
+          <p><a routerLink="/torneos-publicos">Ver torneos públicos</a></p>
+        </section>
       } @else {
         <p class="idle">Cargando…</p>
       }
@@ -147,52 +294,160 @@ const REFRESH_MS = 5000;
     <ng-template #board let-m>
       <div class="board">
         <div class="s aka" [class.won]="m.winner === 'aka'">
-          <span class="nm">{{ m.aka?.name ?? '—' }}</span><span class="dj">{{ m.aka?.dojo }}</span>
+          <span class="nm">{{ m.aka?.name ?? '—' }}</span
+          ><span class="dj">{{ m.aka?.dojo }}</span>
         </div>
-        <div class="sc"><span>{{ m.score[0] }}</span><span class="d">–</span><span>{{ m.score[1] }}</span></div>
+        <div class="sc">
+          <span>{{ m.score[0] }}</span
+          ><span class="d">–</span><span>{{ m.score[1] }}</span>
+        </div>
         <div class="s ao" [class.won]="m.winner === 'ao'">
-          <span class="nm">{{ m.ao?.name ?? '—' }}</span><span class="dj">{{ m.ao?.dojo }}</span>
+          <span class="nm">{{ m.ao?.name ?? '—' }}</span
+          ><span class="dj">{{ m.ao?.dojo }}</span>
         </div>
       </div>
+    </ng-template>
+
+    <ng-template #fighter let-c>
+      <li class="fighter" [class.fav]="favKeys().has(c.key)">
+        <button
+          type="button"
+          class="star"
+          [class.on]="favKeys().has(c.key)"
+          (click)="toggleFav(c)"
+          [attr.aria-pressed]="favKeys().has(c.key)"
+          [attr.aria-label]="
+            (favKeys().has(c.key) ? 'Quitar de favoritos a ' : 'Marcar como favorito a ') + c.name
+          "
+        >
+          {{ favKeys().has(c.key) ? '★' : '☆' }}
+        </button>
+        <div class="grow">
+          <div class="who">
+            <strong>{{ c.name }}</strong> <span class="muted">{{ c.dojo }}</span>
+          </div>
+          @for (e of c.entries; track e.category_id) {
+            <div class="entry {{ e.state }}">
+              <a [routerLink]="catLink(e.category_id)">{{ e.category }}</a>
+              <span class="what">{{ entry(e) }}</span>
+            </div>
+          }
+        </div>
+      </li>
     </ng-template>
   `,
   styleUrl: './live.scss',
 })
 export class PublicLivePage {
   private api = inject(ApiService);
-  readonly token = input.required<string>();
+  private meta = inject(Meta);
+  private title = inject(Title);
+  /** Enlace secreto (`/vivo/:token`) o dirección fija (`/t/:slug`): uno de los dos. */
+  readonly token = input<string | undefined>(undefined);
+  readonly slug = input<string | undefined>(undefined);
   readonly data = signal<PublicLive | null>(null);
+  readonly people = signal<PublicPeople | null>(null);
   readonly error = signal('');
   readonly updated = signal<Date | null>(null);
   readonly stale = signal(false);
+  readonly query = signal('');
+  readonly favKeys = signal<Set<string>>(new Set());
+
+  readonly catStatus: Record<string, string> = {
+    open: 'Inscripciones',
+    ready: 'Llave lista',
+    in_progress: 'En curso',
+    finished: 'Terminada',
+  };
+
+  /** Base de la API y de los enlaces de la página. */
+  readonly ref = computed(() => {
+    const slug = this.slug();
+    if (slug) return { api: `/public/t/${encodeURIComponent(slug)}`, page: `/t/${slug}` };
+    const token = this.token() ?? '';
+    return { api: `/public/${encodeURIComponent(token)}`, page: `/vivo/${token}` };
+  });
+  readonly favRef = computed(
+    () =>
+      this.data()?.tournament.slug ??
+      this.people()?.tournament.slug ??
+      this.slug() ??
+      this.token() ??
+      '',
+  );
+  readonly tz = computed(
+    () => this.data()?.tournament.timezone ?? this.people()?.tournament.timezone ?? 'America/Lima',
+  );
+  readonly results = computed(() =>
+    searchCompetitors(this.people()?.competitors ?? [], this.query()),
+  );
+  readonly favorites = computed<PublicCompetitor[]>(() => {
+    const keys = this.favKeys();
+    return (this.people()?.competitors ?? []).filter((c) => keys.has(c.key));
+  });
+
+  private feed: PublicFeed<PublicLive, PublicPeople> | null = null;
 
   constructor() {
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') this.load();
-    }, REFRESH_MS);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => this.feed?.stop());
     effect(() => {
-      this.token();
-      untracked(() => this.load());
+      const ref = this.ref();
+      untracked(() => this.connect(ref.api));
+    });
+    // Favoritos por torneo (la dirección fija si la hay: los mismos por /t/ y por /vivo/).
+    effect(() => {
+      const ref = this.favRef();
+      untracked(() => this.favKeys.set(loadFavorites(ref)));
     });
   }
 
-  async load(): Promise<void> {
-    try {
-      const d = await firstValueFrom(this.api.get<PublicLive>(`/public/${encodeURIComponent(this.token())}`));
-      this.data.set(d);
-      this.updated.set(new Date());
-      this.stale.set(false);
-      this.error.set('');
-    } catch (e) {
-      const err = ApiError.from(e);
-      if (err.status === 404) {
+  private connect(base: string): void {
+    this.feed?.stop();
+    this.data.set(null);
+    this.people.set(null);
+    this.error.set('');
+    this.feed = new PublicFeed<PublicLive, PublicPeople>(this.api, {
+      base,
+      live: true,
+      people: true,
+      pollMs: REFRESH_MS,
+      peoplePollMs: PEOPLE_REFRESH_MS,
+      onLive: (d) => {
+        this.data.set(d);
+        this.updated.set(new Date());
+        this.stale.set(false);
+        setShareMeta(this.meta, this.title, d.tournament, this.ref().page);
+      },
+      onPeople: (p) => this.people.set(p),
+      onGone: (msg) => {
         this.data.set(null);
-        this.error.set(err.message);
-      } else {
-        this.stale.set(true);
-      }
-    }
+        this.error.set(msg);
+      },
+      onStatus: (ok) => this.stale.set(!ok),
+    });
+    this.feed.start();
+  }
+
+  statusLabel(status: string): string {
+    return this.catStatus[status] ?? status;
+  }
+
+  catLink(id: number): string {
+    return `${this.ref().page}/categoria/${id}`;
+  }
+
+  hour(iso: string | null | undefined): string {
+    return hourText(iso, this.tz());
+  }
+
+  entry(e: PublicCompetitor['entries'][number]): string {
+    return entryText(e, this.tz());
+  }
+
+  toggleFav(c: PublicCompetitor): void {
+    const next = toggleFavorite(this.favKeys(), c.key);
+    this.favKeys.set(next);
+    saveFavorites(this.favRef(), next);
   }
 
   winnerName(m: PublicMatch): string {

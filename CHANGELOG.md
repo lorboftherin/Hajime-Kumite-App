@@ -10,6 +10,27 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ## [Sin publicar]
 
+### Agregado
+
+- **Portal público** (`docs/portal-publico.md`): dirección fija `/t/<slug>`
+  (del nombre y el año, editable; el enlace secreto `/vivo/<token>` sigue
+  funcionando), directorio `/torneos-publicos` con buscador, metadatos para
+  compartir, «¿Cuándo pelea?» con buscador por nombre o dojo y favoritos en el
+  dispositivo, llave de solo lectura por categoría y pantalla grande del
+  coliseo (`/pantalla/<token>/<tatami>` y mosaico `/pantalla/<token>`).
+- **Horarios estimados:** hora planificada por tatami, zona horaria y margen
+  entre combates del torneo; hora estimada de cada combate en el vivo, en
+  «¿Cuándo pelea?», en la cola del tatami y en «Mi tatami».
+- **Actualización en vivo por SSE** (`GET /public/{token}/stream`): un sondeo
+  compartido por torneo y proceso, latido cada 15 s, límite de conexiones
+  (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
+  propagación de un punto.
+
+### Operación
+
+- Migración `0009_portal_publico` (columnas nuevas con valor por defecto o
+  nulas; los torneos con vivo activo reciben su dirección fija).
+
 ## [0.2.0] - 2026-09-26
 
 Primera versión numerada: reúne el MVP completo usado en el torneo mock y en

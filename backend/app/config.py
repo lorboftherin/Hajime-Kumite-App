@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     public_sse_max_connections: int = 500
     # Cada cuánto el sondeo compartido del proceso mira la versión de la instantánea.
     public_sse_poll_seconds: float = 1.0
+    # Mínimo entre dos vueltas del sondeo aunque una escritura lo despierte antes.
+    public_sse_min_interval: float = 0.5
     # Comentario de latido: mantiene viva la conexión a través de proxies.
     public_sse_heartbeat_seconds: float = 15.0
     # Duración máxima de una conexión: el navegador se reconecta solo (EventSource).

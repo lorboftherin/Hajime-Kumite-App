@@ -10,6 +10,7 @@ import { StatusBadge } from '../../shared/badge';
 import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
 import { PluralPipe } from '../../shared/plural';
+import { hourText, zoneOfIso } from '../public/public-logic';
 
 interface View {
   id: number;
@@ -46,7 +47,7 @@ interface View {
               <a class="go" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: q.tatami.id }">
                 <span class="go-kicker">{{ it.match.status === 'in_progress' ? 'Combate en curso' : 'Siguiente combate' }}</span>
                 <span class="go-main">{{ it.match.status === 'in_progress' ? 'Abrir combate en curso' : 'Abrir siguiente combate' }} →</span>
-                <span class="go-sub"><span class="num">{{ it.number }}</span> · {{ it.category_name }}</span>
+                <span class="go-sub"><span class="num">{{ it.number }}</span> · {{ it.category_name }}@if (it.eta && it.match.status !== 'in_progress') { · ≈ {{ hour(it.eta) }}}</span>
                 <span class="go-vs">
                   <span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span>
                   <span class="vs" aria-hidden="true">vs</span>
@@ -70,6 +71,9 @@ interface View {
                         <span class="cat">{{ it.category_name }}</span>
                         <span class="small"><span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span> · <span class="ao">{{ pname(q, it.match.ao_registration_id) }}</span></span>
                       </span>
+                      @if (it.eta) {
+                        <span class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
+                      }
                       @if (it.match.status !== 'ready') {
                         <app-status [status]="it.match.status" type="match" />
                       }
@@ -143,6 +147,12 @@ interface View {
       font-size: var(--fs-28);
       font-weight: 700;
       line-height: 1.15;
+    }
+    .eta {
+      white-space: nowrap;
+      font-weight: 700;
+      color: var(--ai-ink, var(--ai));
+      font-size: var(--fs-14);
     }
     .go-sub {
       font-size: var(--fs-14);
@@ -266,6 +276,11 @@ export class MyTatamiPage {
   rest(q: TatamiQueue): QueueItem[] {
     const n = this.next(q);
     return q.queue.filter((it) => it.match.id !== n?.match.id).slice(0, 8);
+  }
+
+  /** Hora estimada en la hora local del torneo (la cola la trae con su desfase). */
+  hour(iso: string | null | undefined): string {
+    return hourText(iso, zoneOfIso(iso));
   }
 
   pname(q: TatamiQueue, rid: number | null): string {

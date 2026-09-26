@@ -184,9 +184,9 @@ async def _stream(request: Request, resolve: Callable[[], str], live: bool, peop
         public_stream.release()
         raise
     sub = public_stream.Subscriber(frozenset(kinds), asyncio.get_running_loop())
-    sub.sent.update(
-        {k: e for k, e in public_stream.parse_last_event_id(request.headers.get("last-event-id")).items() if k in kinds}
-    )
+    known = public_stream.parse_last_event_id(request.headers.get("last-event-id"))
+    sub.sent.update({k: e for k, e in known.items() if k in kinds})
+    sub.shown.update(sub.sent)
     for k, snap in first.items():
         sub.offer(k, snap.etag, public_stream.event_data(k, snap))
     public_stream.subscribe(token, sub)
@@ -199,8 +199,9 @@ async def _stream(request: Request, resolve: Callable[[], str], live: bool, peop
             yield "retry: 3000\n\n"
             while True:
                 sub.wake.clear()
-                for kind, _, data in sub.take():
-                    yield f"event: {public_stream.event_name(kind)}\nid: {sub.last_event_id()}\ndata: {data}\n\n"
+                for kind, etag, data in sub.take():
+                    event_id = sub.last_event_id(kind, etag)
+                    yield f"event: {public_stream.event_name(kind)}\nid: {event_id}\ndata: {data}\n\n"
                 if sub.gone:
                     yield 'event: gone\ndata: {"message":"El enlace fue desactivado"}\n\n'
                     return

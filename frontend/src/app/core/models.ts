@@ -171,6 +171,8 @@ export interface Tatami {
   id: number;
   number: number;
   name: string;
+  /** Hora planificada de inicio, en la hora local del torneo («2026-10-17T09:00:00»). */
+  planned_start?: string | null;
 }
 
 export interface Tournament {
@@ -193,6 +195,11 @@ export interface Tournament {
   /** Enlace secreto del seguimiento en vivo público (null = desactivado). */
   public_token?: string | null;
   public_names?: 'short' | 'full';
+  /** Dirección fija de la página pública: /t/<slug>. */
+  public_slug?: string | null;
+  /** Horarios estimados: zona horaria y margen entre combates (s). */
+  timezone?: string;
+  match_overhead_seconds?: number;
 }
 
 // --- Inscripciones ---
@@ -438,10 +445,12 @@ export interface QueueItem {
   category_id: number;
   category_name: string;
   match: Match;
+  /** Hora estimada de inicio (ISO con la zona del torneo); solo en la cola. */
+  eta?: string | null;
 }
 
 export interface TatamiQueue {
-  tatami: { id: number; name: string; number: number };
+  tatami: { id: number; name: string; number: number; planned_start?: string | null };
   current: QueueItem | null;
   queue: QueueItem[];
   participants: Record<string, Participant>;
@@ -735,10 +744,22 @@ export interface PublicMatch {
   winner: Color | null;
   method: string | null;
   bout?: PublicMatch;
+  category_id?: number;
+  /** Hora estimada de inicio (ISO con la zona del torneo). */
+  eta?: string | null;
 }
 
 export interface PublicLive {
-  tournament: { name: string; start_date: string; end_date: string | null; venue: string; city: string; status: string };
+  tournament: {
+    name: string;
+    start_date: string;
+    end_date: string | null;
+    venue: string;
+    city: string;
+    status: string;
+    slug?: string | null;
+    timezone?: string;
+  };
   tatamis: Array<{
     id: number;
     number: number;
@@ -749,8 +770,8 @@ export interface PublicLive {
     done: number;
     total: number;
   }>;
-  categories: Array<{ name: string; modality: string; status: string }>;
-  results: Array<{ category: string; places: Array<{ place: number; name: string; dojo: string }> }>;
+  categories: Array<{ id?: number; name: string; modality: string; status: string }>;
+  results: Array<{ category_id?: number; category: string; places: Array<{ place: number; name: string; dojo: string }> }>;
   medal_table: Array<{ rank: number; dojo_name: string; gold: number; silver: number; bronze: number; total: number }>;
   awards: Award[];
   server_time: string;
@@ -760,6 +781,8 @@ export interface OverlayData {
   tournament: string;
   tatami: { number: number; name: string };
   server_time: string;
+  /** Siguiente combate del tatami (pantalla grande). */
+  next?: { number: string; category: string; aka: PublicSide | null; ao: PublicSide | null } | null;
   match: {
     number: string | null;
     code: string;
