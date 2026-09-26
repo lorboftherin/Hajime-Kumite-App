@@ -420,6 +420,10 @@ def _update_status(db: Session, m: Match, ready: bool, is_bye: bool, winner: str
 
 def _store_results(db: Session, c: Category, places: list[tuple[int, str]], complete: bool) -> None:
     """Guarda el podio solo si cambió: una lectura no debe generar escrituras."""
+    # La sesión no hace autoflush: sin esto, un podio agregado antes en la misma
+    # transacción (p. ej. al cerrar el combate que decide la final por equipos)
+    # no se ve aquí y se insertaría dos veces.
+    db.flush()
     current = {
         (r.place, r.registration_id)
         for r in db.scalars(select(CategoryResult).where(CategoryResult.category_id == c.id)).all()

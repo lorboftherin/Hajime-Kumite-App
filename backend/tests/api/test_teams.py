@@ -257,3 +257,25 @@ def test_individual_and_team_categories_do_not_mix(client):
         "POST", f"/tournaments/{t['id']}/categories/merge", json={"source_ids": [ind["id"]], "target_id": eq["id"]}
     )
     assert r.status_code == 409 and r.json()["error"]["code"] == "INVALID_STATE"
+
+
+def test_team_final_decided_by_bouts_stores_podium_once(client):
+    """Cerrar el combate que decide la final por equipos termina la categoría con su podio."""
+    api = client
+    t = setup_tournament(api, is_test=False)
+    c = api.post(f"/tournaments/{t['id']}/categories", TEAM_KUMITE, expect=201)
+    dojos = [api.dojo(n) for n in ("Kaze", "Mizu")]
+    for d, p in zip(dojos, ("K", "M"), strict=True):
+        team(api, t["id"], c["id"], d, f"{p} A", people(api, d, p, 3))
+    _, m = first_team_match(api, c)
+    tm = api.get(f"/matches/{m['id']}/team")
+    aka_ids = [x["person_id"] for x in tm["aka"]["members"] if x["role"] == "starter"]
+    ao_ids = [x["person_id"] for x in tm["ao"]["members"] if x["role"] == "starter"]
+    bouts = [x["match"] for x in lineup(api, m["id"], list(zip(aka_ids, ao_ids, strict=True)))["bouts"]]
+    for b in bouts[:2]:  # dos victorias de tres: la final se decide sin el tercer combate
+        api.event(b["id"], "point", "aka", 2)
+        finish(api, b["id"], "aka")
+    assert api.get(f"/matches/{m['id']}/team")["match"]["status"] == "finished"
+    assert api.get(f"/categories/{c['id']}")["status"] == "finished"
+    res = next(r for r in api.get(f"/tournaments/{t['id']}/results") if r["category_id"] == c["id"])
+    assert [p["place"] for p in res["places"]] == [1, 2]
