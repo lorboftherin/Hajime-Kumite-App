@@ -30,7 +30,7 @@ from app.db.models import (
 from app.domain.categories import (
     CategoryRule,
     Competitor,
-    age_at,
+    competition_age,
     grade_to_ordinal,
     registration_warnings,
     suggest_categories,
@@ -58,7 +58,10 @@ def rule_of(c: Category) -> CategoryRule:
 
 def _warnings(p: Person, grade_ord: int | None, weight: str | None, c: Category, t: Tournament) -> list[dict[str, str]]:
     comp = Competitor(p.sex, p.birth_date, grade_ord, weight)
-    ws = [{"code": w.code, "message": w.message} for w in registration_warnings(comp, rule_of(c), t.age_reference_date)]
+    ws = [
+        {"code": w.code, "message": w.message}
+        for w in registration_warnings(comp, rule_of(c), t.age_reference_date, t.age_mode or "date")
+    ]
     if t.status not in ("draft", "registration_open"):
         ws.append({"code": "REGISTRATION_CLOSED", "message": "Las inscripciones del torneo están cerradas"})
     if c.status not in ("open", "empty"):
@@ -123,7 +126,9 @@ def create_registration(
         grade=grade,
         grade_ordinal=grade_ord,
         weight_class=data.weight_class,
-        age_at_reference=age_at(p.birth_date, t.age_reference_date) if p.birth_date else None,
+        age_at_reference=competition_age(p.birth_date, t.age_reference_date, t.age_mode or "date")
+        if p.birth_date
+        else None,
         seed=data.seed,
         updated_by_id=user.id,
     )
@@ -228,19 +233,21 @@ def withdraw(db: Session, user: User, rid: int, reason: str, version: int | None
     return {"registration_id": r.id, "options": options, "pending_match_ids": [m.id for m in pending]}
 
 
-def suggestions(db: Session, tid: int, person_id: int, modality: str | None = None) -> list[Category]:
+def suggestions(
+    db: Session, tid: int, person_id: int, modality: str | None = None, weight_class: str | None = None
+) -> list[Category]:
+    """Categorías compatibles. Con peso declarado se filtra por peso; sin él,
+    se sugieren las compatibles en todo lo demás (igual que la importación)."""
     t = get_tournament(db, tid)
     p = people.get_person(db, person_id)
     g = people.current_grade(db, p.id, t.start_date)
-    comp = Competitor(p.sex, p.birth_date, g.grade_ordinal if g else None, None)
+    comp = Competitor(p.sex, p.birth_date, g.grade_ordinal if g else None, weight_class or None)
     cats = db.scalars(
         select(Category).where(Category.tournament_id == tid, Category.status.in_(("open", "empty")))
     ).all()
     by_id = {str(c.id): c for c in cats}
     rules = [rule_of(c) for c in cats]
-    # El peso no se conoce aquí: se ignora para sugerir.
-    rules = [CategoryRule(**{**r.__dict__, "weight_class": None}) for r in rules]
-    return [by_id[r.id] for r in suggest_categories(comp, rules, t.age_reference_date, modality)]
+    return [by_id[r.id] for r in suggest_categories(comp, rules, t.age_reference_date, modality, t.age_mode or "date")]
 
 
 # ---------------------------------------------------------------------------
@@ -453,8 +460,16 @@ def create_import_preview(db: Session, user: User, tid: int, filename: str, cont
             comp = Competitor(data["sexo"], bd, grade_ord, data["categoria_peso"] or None)
             if "competitor" in data["rol"]:
                 for mod in data["modalidades"]:
-                    matches = suggest_categories(comp, rules, t.age_reference_date, mod)
+                    matches = suggest_categories(comp, rules, t.age_reference_date, mod, t.age_mode or "date")
                     suggested += [int(r.id) for r in matches]
+                    # Sin peso: se sugieren igual las de kumite compatibles en lo
+                    # demás, con aviso para confirmar la categoría de peso.
+                    if mod == "kumite" and not data["categoria_peso"]:
+                        weighted = [r for r in matches if r.weight_class]
+                        if weighted:
+                            data.setdefault("avisos", []).append(
+                                "Sin categoría de peso: confirma la categoría de kumite sugerida"
+                            )
             existing_dojo = people.find_dojo_by_name(db, data["dojo"]) if data["dojo"] else None
             data["dojo_id"] = existing_dojo.id if existing_dojo else None
         status = "error" if errors else ("duplicate" if dups else "new")

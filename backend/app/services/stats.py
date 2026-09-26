@@ -12,7 +12,7 @@ from dataclasses import asdict
 from datetime import date
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.errors import NotFound
@@ -31,6 +31,7 @@ from app.domain.stats import (
     BADGES,
     MVP_WEIGHTS,
     NON_TECHNICAL,
+    NOT_DISPUTED,
     CareerStats,
     FightLine,
     MatchFacts,
@@ -39,9 +40,9 @@ from app.domain.stats import (
     match_facts,
     mvp_index,
 )
-from app.services.brackets import _domain_events, get_match, participants
+from app.services.brackets import _domain_events, _scoring_rules, get_match, participants
 from app.services.people import get_person
-from app.services.tournaments import effective_kumite_rules, get_tournament
+from app.services.tournaments import effective_kata, effective_kumite_rules, get_tournament
 
 PLACE_KEY = {1: "gold", 2: "silver", 3: "bronze"}
 
@@ -65,11 +66,15 @@ def _facts(db: Session, matches: list[Match]) -> dict[int, MatchFacts]:
     rules_cache: dict[int, Any] = {}
     out = {}
     for m in matches:
-        if m.category_id not in rules_cache:
-            c = db.get(Category, m.category_id)
-            rules_cache[m.category_id] = effective_kumite_rules(c, db.get(Tournament, c.tournament_id))
-        out[m.id] = match_facts(_domain_events(by_match[m.id]), rules_cache[m.category_id])
+        out[m.id] = match_facts(_domain_events(by_match[m.id]), _rules(db, rules_cache, m.category_id))
     return out
+
+
+def _rules(db: Session, cache: dict[int, Any], cid: int):
+    if cid not in cache:
+        c = db.get(Category, cid)
+        cache[cid] = effective_kumite_rules(c, db.get(Tournament, c.tournament_id))
+    return cache[cid]
 
 
 def _result(m: Match, color: str) -> str:
@@ -114,12 +119,14 @@ def _lines_by_person(db: Session, tournament_ids: list[int] | None) -> tuple[dic
     facts = _facts(db, [m for m, _ in rows])
     lines: dict[int, list[FightLine]] = defaultdict(list)
     dojo_of: dict[int, str] = {}
+    rules_cache: dict[int, Any] = {}
     for m, _c in rows:
+        duration = _rules(db, rules_cache, m.category_id).duration_seconds
         for color in ("aka", "ao"):
             pid = _person_of(m, color, regs)
             if pid is None:
                 continue
-            lines[pid].append(FightLine(color, _result(m, color), m.method, facts[m.id]))
+            lines[pid].append(FightLine(color, _result(m, color), m.method, facts[m.id], duration))
             r = regs.get(m.aka_registration_id if color == "aka" else m.ao_registration_id)
             if r is not None:
                 dojo_of[pid] = r.display_name if r.team_id else r.dojo.name
@@ -156,8 +163,10 @@ def _team_credits(db: Session, reg_ids: list[int]) -> dict[int, set[int]]:
 
 def _medals(
     db: Session, tournament_ids: list[int] | None, dojo_of: dict[int, str] | None = None
-) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
-    """Medallas por persona (individuales y de equipo) y oros invictos.
+) -> tuple[dict[int, dict[str, int]], dict[int, int], dict[int, dict[str, int]]]:
+    """Medallas por persona (individuales y de equipo), oros invictos y
+    medallas obtenidas sin competir (ningún combate disputado ni kata
+    ejecutado en la categoría: p. ej. oro con un solo inscrito).
     Completa ``dojo_of`` para quien no tiene combates de kumite (p. ej. kata)."""
     stmt = (
         select(CategoryResult, Registration)
@@ -172,27 +181,82 @@ def _medals(
     credits = _team_credits(db, [r.id for _, r in rows if r.team_id])
     medals: dict[int, dict[str, int]] = defaultdict(lambda: {"gold": 0, "silver": 0, "bronze": 0})
     unbeaten: dict[int, int] = defaultdict(int)
+    uncontested: dict[int, dict[str, int]] = defaultdict(lambda: {"gold": 0, "silver": 0, "bronze": 0})
     for cr, r in rows:
         people = {r.person_id} if r.person_id else credits.get(r.id, set())
         key = PLACE_KEY[cr.place]
-        clean = False
-        if key == "gold":
-            played = db.scalars(
-                select(Match).where(
-                    Match.is_current,
-                    Match.parent_match_id.is_(None),
-                    Match.status == "finished",
-                    or_(Match.aka_registration_id == r.id, Match.ao_registration_id == r.id),
+        played = db.scalars(
+            select(Match).where(
+                Match.is_current,
+                Match.parent_match_id.is_(None),
+                Match.status == "finished",
+                or_(Match.aka_registration_id == r.id, Match.ao_registration_id == r.id),
+            )
+        ).all()
+        disputed = [m for m in played if m.method not in NOT_DISPUTED]
+        contested = bool(disputed) or bool(
+            db.scalar(
+                select(KataPerformance.id).where(
+                    KataPerformance.registration_id == r.id, KataPerformance.total.is_not(None)
                 )
-            ).all()
-            clean = bool(played) and all(m.winner_registration_id == r.id for m in played)
+            )
+        )
+        clean = key == "gold" and bool(disputed) and all(m.winner_registration_id == r.id for m in played)
         for pid in people:
             if dojo_of is not None and pid not in dojo_of:
                 dojo_of[pid] = r.display_name if r.team_id else r.dojo.name
             medals[pid][key] += 1
             if clean:
                 unbeaten[pid] += 1
-    return medals, unbeaten
+            if not contested:
+                uncontested[pid][key] += 1
+    return medals, unbeaten, uncontested
+
+
+def _kata_performed(db: Session, person_id: int) -> int:
+    """Ejecuciones de kata con nota o decisión (rondas y combates por banderas o notas)."""
+    perfs = db.scalar(
+        select(func.count())
+        .select_from(KataPerformance)
+        .join(Registration, Registration.id == KataPerformance.registration_id)
+        .join(Tournament, Tournament.id == Registration.tournament_id)
+        .where(Registration.person_id == person_id, KataPerformance.total.is_not(None), ~Tournament.is_test)
+    )
+    regs = select(Registration.id).where(Registration.person_id == person_id)
+    bouts = db.scalar(
+        select(func.count())
+        .select_from(Match)
+        .join(Category, Category.id == Match.category_id)
+        .join(Tournament, Tournament.id == Category.tournament_id)
+        .where(
+            Match.is_current,
+            Match.status == "finished",
+            Category.modality == "kata",
+            ~Tournament.is_test,
+            Match.method.not_in(tuple(NOT_DISPUTED)),
+            or_(Match.aka_registration_id.in_(regs), Match.ao_registration_id.in_(regs)),
+        )
+    )
+    return (perfs or 0) + (bouts or 0)
+
+
+def _kata_average(db: Session, cache: dict[int, int], perf: KataPerformance) -> float:
+    """Nota de kata comparable entre paneles distintos: el total dividido
+    entre las notas que cuentan (5 jueces sin extremos = 3; 7 jueces WKF = 3;
+    3 jueces = 3…)."""
+    if perf.category_id not in cache:
+        c = db.get(Category, perf.category_id)
+        cfg = effective_kata(c, db.get(Tournament, c.tournament_id))
+        cache[perf.category_id] = _scoring_rules(cfg).counted
+    counted = cache[perf.category_id]
+    if perf.scores:
+        counted = max(1, min(counted, len(perf.scores)))
+    return float(perf.total) / counted
+
+
+def _best_kata(db: Session, perfs: list[KataPerformance]) -> KataPerformance | None:
+    cache: dict[int, int] = {}
+    return max(perfs, key=lambda p: (_kata_average(db, cache, p), float(p.total)), default=None)
 
 
 def _stats_out(st: CareerStats) -> dict[str, Any]:
@@ -211,7 +275,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
     lines, _ = _lines_by_person(db, None)
     mine = lines.get(p.id, [])
     st = career(mine)
-    medals_all, unbeaten = _medals(db, None)
+    medals_all, unbeaten, uncontested = _medals(db, None)
     medals = medals_all.get(p.id, {"gold": 0, "silver": 0, "bronze": 0})
     team_regs = db.scalars(
         select(Registration.id)
@@ -227,14 +291,19 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
         )
         .distinct()
     ).all()
-    best_kata = db.scalar(
-        select(KataPerformance.total)
-        .join(Registration, Registration.id == KataPerformance.registration_id)
-        .join(Tournament, Tournament.id == Registration.tournament_id)
-        .where(Registration.person_id == p.id, ~Tournament.is_test, KataPerformance.total.is_not(None))
-        .order_by(KataPerformance.total.desc())
+    best = _best_kata(
+        db,
+        list(
+            db.scalars(
+                select(KataPerformance)
+                .join(Registration, Registration.id == KataPerformance.registration_id)
+                .join(Tournament, Tournament.id == Registration.tournament_id)
+                .where(Registration.person_id == p.id, ~Tournament.is_test, KataPerformance.total.is_not(None))
+            ).all()
+        ),
     )
-    badges = earned_badges(st, medals, len(tournaments), unbeaten.get(p.id, 0))
+    best_kata = best.total if best is not None else None
+    badges = earned_badges(st, medals, len(tournaments), unbeaten.get(p.id, 0), _kata_performed(db, p.id))
     return {
         "person_id": p.id,
         "name": _name(p),
@@ -242,7 +311,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
         "medals": medals,
         "tournaments": len(tournaments),
         "best_kata_score": float(best_kata) if best_kata is not None else None,
-        "mvp_index": mvp_index(st, medals),
+        "mvp_index": mvp_index(st, medals, uncontested.get(p.id)),
         "badges": [asdict(b) | {"earned": b in badges} for b in BADGES],
         "form": [ln.result for ln in mine[-5:]],
     }
@@ -255,7 +324,7 @@ def person_stats(db: Session, person_id: int) -> dict[str, Any]:
 
 def _leaders(db: Session, tournament_ids: list[int] | None, limit: int = 10) -> dict[str, Any]:
     lines, dojo_of = _lines_by_person(db, tournament_ids)
-    medals, _ = _medals(db, tournament_ids, dojo_of)
+    medals, _, uncontested = _medals(db, tournament_ids, dojo_of)
     pids = set(lines) | set(medals)
     names = {p.id: _name(p) for p in db.scalars(select(Person).where(Person.id.in_(pids or {0}))).all()}
     rows = []
@@ -275,8 +344,11 @@ def _leaders(db: Session, tournament_ids: list[int] | None, limit: int = 10) -> 
                 "yuko": st.techniques["yuko"],
                 "senshu": st.senshu,
                 "fastest_win": round(st.fastest_win, 1) if st.fastest_win else None,
+                "fastest_win_fraction": (
+                    round(st.fastest_win_fraction, 3) if st.fastest_win_fraction is not None else None
+                ),
                 "medals": md,
-                "mvp_index": mvp_index(st, md),
+                "mvp_index": mvp_index(st, md, uncontested.get(pid)),
             }
         )
 
@@ -290,7 +362,14 @@ def _leaders(db: Session, tournament_ids: list[int] | None, limit: int = 10) -> 
         "ippon": top("ippon", cond=lambda r: r["ippon"] > 0),
         "points": top("points", cond=lambda r: r["points"] > 0),
         "senshu": top("senshu", cond=lambda r: r["senshu"] > 0),
-        "fastest_win": top("fastest_win", reverse=False, cond=lambda r: r["fastest_win"] is not None),
+        # Por fracción del tiempo de su categoría (a igual fracción, menos segundos).
+        "fastest_win": sorted(
+            (r for r in rows if r["fastest_win"] is not None),
+            key=lambda r: (
+                r["fastest_win_fraction"] if r["fastest_win_fraction"] is not None else 1.0,
+                r["fastest_win"],
+            ),
+        )[:limit],
         "mvp_weights": MVP_WEIGHTS,
     }
 
@@ -299,13 +378,18 @@ def tournament_leaders(db: Session, tid: int) -> dict[str, Any]:
     """Tabla de líderes y premios automáticos del torneo («héroes» del evento)."""
     t = get_tournament(db, tid)
     board = _leaders(db, [tid] if not t.is_test else [])
-    kata = db.execute(
-        select(KataPerformance, Registration, Category)
-        .join(Registration, Registration.id == KataPerformance.registration_id)
-        .join(Category, Category.id == KataPerformance.category_id)
-        .where(Category.tournament_id == tid, KataPerformance.total.is_not(None))
-        .order_by(KataPerformance.total.desc())
-    ).first()
+    best = _best_kata(
+        db,
+        list(
+            db.scalars(
+                select(KataPerformance)
+                .join(Category, Category.id == KataPerformance.category_id)
+                .join(Tournament, Tournament.id == Category.tournament_id)
+                .where(Category.tournament_id == tid, KataPerformance.total.is_not(None), ~Tournament.is_test)
+            ).all()
+        ),
+    )
+    kata = (best, db.get(Registration, best.registration_id), db.get(Category, best.category_id)) if best else None
     awards = []
     if board["mvp"]:
         r = board["mvp"][0]
@@ -315,8 +399,10 @@ def tournament_leaders(db: Session, tid: int) -> dict[str, Any]:
         awards.append(_award("ippon", "Rey del ippon", "Más ippons marcados", r, f"{r['ippon']} ippon"))
     if board["fastest_win"]:
         r = board["fastest_win"][0]
+        frac = r["fastest_win_fraction"]
+        value = _mmss(r["fastest_win"]) + (f" ({round(frac * 100)} % del tiempo)" if frac is not None else "")
         awards.append(
-            _award("fastest", "Victoria más rápida", "Por técnica, en tiempo de reloj", r, _mmss(r["fastest_win"]))
+            _award("fastest", "Victoria más rápida", "Por ippon, diferencia o hansoku, según su tiempo", r, value)
         )
     if board["senshu"]:
         r = board["senshu"][0]
@@ -327,7 +413,7 @@ def tournament_leaders(db: Session, tid: int) -> dict[str, Any]:
             {
                 "code": "kata",
                 "title": "Mejor kata",
-                "detail": f"Nota más alta · {cat.name}",
+                "detail": f"Mejor promedio por juez · {cat.name}",
                 "person_id": reg.person_id,
                 "name": reg.display_name,
                 "dojo": reg.dojo.name,

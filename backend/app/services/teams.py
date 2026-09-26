@@ -24,12 +24,15 @@ from app.api.errors import InvalidState, NotFound
 from app.db.base import utcnow
 from app.db.models import Category, Match, MatchEventRow, Person, Registration, Team, TeamMember, Tournament, User
 from app.domain.categories import grade_to_ordinal
-from app.domain.teams import DEFAULT_TEAM_BOUTS, BoutResult, TeamDecision, TeamTieRule, decide_team
+from app.domain.teams import DEFAULT_TEAM_BOUTS, BoutResult, ExtraBoutTie, TeamDecision, TeamTieRule, decide_team
 from app.services import people
 from app.services.audit import apply_warnings, audit, bump, check_version, snapshot
-from app.services.tournaments import get_category, get_tournament, refresh_category_status
+from app.services.tournaments import effective_kumite_rules, get_category, get_tournament, refresh_category_status
 
-TEAM_METHODS = ("victories", "points", "extra_bout")
+TEAM_METHODS = ("victories", "points", "extra_bout", "incomplete_team")
+# Combates que no se disputan: puesto vacío en la alineación o el
+# enfrentamiento ya se decidió antes de llegar a ellos.
+NOT_DISPUTED = "not_disputed"
 
 
 def team_settings(c: Category, t: Tournament) -> tuple[int, TeamTieRule]:
@@ -37,6 +40,30 @@ def team_settings(c: Category, t: Tournament) -> tuple[int, TeamTieRule]:
     del torneo, sobrescribibles por categoría)."""
     cfg = {**(t.kumite_rules or {}), **(c.kumite_rules or {})}
     return int(cfg.get("team_bouts") or DEFAULT_TEAM_BOUTS), TeamTieRule(cfg.get("team_tie_rule") or "points")
+
+
+def team_options(c: Category, t: Tournament) -> dict[str, Any]:
+    """Opciones de kumite por equipos (``kumite_rules`` del torneo con override
+    por categoría). Ver docs/reglas-configurables.md.
+
+    * ``team_extra_bout_tie``: "hantei" (defecto, WKF) o "repeat".
+    * ``team_empty_slot_walkover``: puesto vacío = walkover del rival con el
+      marcador de la victoria por diferencia (defecto: sí).
+    * ``team_lock_order``: el orden declarado no cambia tras empezar el primer
+      combate, salvo override (defecto: sí).
+    * ``team_min_starters``: mínimo de integrantes distintos en la alineación;
+      si no se completa, el equipo pierde el enfrentamiento (defecto: sin mínimo).
+    """
+    cfg = {**(t.kumite_rules or {}), **(c.kumite_rules or {})}
+    planned, rule = team_settings(c, t)
+    return {
+        "bouts": planned,
+        "tie_rule": rule.value,
+        "extra_bout_tie": cfg.get("team_extra_bout_tie") or ExtraBoutTie.HANTEI.value,
+        "empty_slot_walkover": cfg.get("team_empty_slot_walkover", True) is not False,
+        "lock_order": cfg.get("team_lock_order", True) is not False,
+        "min_starters": int(cfg["team_min_starters"]) if cfg.get("team_min_starters") else None,
+    }
 
 
 def _name(p: Person) -> str:
@@ -277,11 +304,12 @@ def decision_for(db: Session, parent: Match, override: tuple[int, BoutResult] | 
     c = get_category(db, parent.category_id)
     t = get_tournament(db, c.tournament_id)
     planned, rule = team_settings(c, t)
+    extra_tie = ExtraBoutTie(team_options(c, t)["extra_bout_tie"])
     bouts = bouts_of(db, parent.id)
     results = _results(bouts)
     if override is not None:
         results = [override[1] if b.id == override[0] else r for b, r in zip(bouts, results, strict=True)]
-    return decide_team(results, planned, rule)
+    return decide_team(results, planned, rule, extra_tie)
 
 
 def _parent_of(db: Session, bout: Match) -> Match:
@@ -328,10 +356,13 @@ def settle(db: Session, user: User, parent: Match, at: datetime, reason: str | N
     d = decision_for(db, parent)
     c = get_category(db, parent.category_id)
     parent.aka_score, parent.ao_score = d.wins["aka"], d.wins["ao"]
+    if parent.method == "incomplete_team" and parent.status == "finished":
+        return d  # perdió por alineación incompleta: los combates no cambian el resultado
     if d.winner is not None:
         winner_id = parent.aka_registration_id if d.winner == "aka" else parent.ao_registration_id
         if (parent.winner_registration_id, parent.method) != (winner_id, d.method) or parent.status != "finished":
             record_finish(db, user, parent, c, d.winner, d.method, at, str(uuid.uuid4()), reason, None)
+        _mark_not_disputed(db, user, parent)
     elif parent.winner_registration_id is not None and parent.method in TEAM_METHODS:
         # Una corrección dejó el enfrentamiento sin decidir: se anula su cierre.
         last = db.scalar(
@@ -368,7 +399,75 @@ def settle(db: Session, user: User, parent: Match, at: datetime, reason: str | N
         )
         db.flush()
         sync(db, c)
+    if d.winner is None:
+        _restore_not_disputed(db, user, parent)
     return d
+
+
+def _has_events(db: Session, mid: int) -> bool:
+    return bool(db.scalar(select(MatchEventRow.id).where(MatchEventRow.match_id == mid)))
+
+
+def _mark_not_disputed(db: Session, user: User, parent: Match) -> None:
+    """Enfrentamiento decidido: los combates que faltan (sin empezar) quedan
+    como no disputados; no aparecen en la cola del tatami."""
+    for b in bouts_of(db, parent.id):
+        if b.status == "ready" and not _has_events(db, b.id):
+            b.status, b.method = "void", NOT_DISPUTED
+            bump(b, user)
+
+
+def _restore_not_disputed(db: Session, user: User, parent: Match) -> None:
+    """Una corrección dejó el enfrentamiento sin decidir: vuelven a la cola."""
+    for b in bouts_of(db, parent.id):
+        if b.status == "void" and b.method == NOT_DISPUTED:
+            b.status, b.method = "ready", None
+            bump(b, user)
+
+
+def _close_empty_slots(db: Session, user: User, parent: Match, c: Category, t: Tournament) -> None:
+    """Puesto vacío en la alineación: walkover del rival con el marcador de la
+    victoria por diferencia (p. ej. 8–0). Sin nadie de ninguno de los dos
+    lados, el combate queda no disputado (cuenta como empate 0–0)."""
+    from app.services.brackets import record_finish
+
+    if not team_options(c, t)["empty_slot_walkover"]:
+        return
+    gap = effective_kumite_rules(c, t).lead_victory or 8
+    for b in bouts_of(db, parent.id):
+        if b.kind != "bout" or b.status != "ready" or _has_events(db, b.id):
+            continue
+        aka, ao = b.aka_person_id is not None, b.ao_person_id is not None
+        if aka and ao:
+            continue
+        if not aka and not ao:
+            record_finish(db, user, b, c, None, NOT_DISPUTED, utcnow(), str(uuid.uuid4()), "Puesto vacío", None)
+            b.aka_score = b.ao_score = 0
+            continue
+        color = "aka" if aka else "ao"
+        score = {"aka": gap if aka else 0, "ao": gap if ao else 0}
+        record_finish(
+            db, user, b, c, color, "walkover", utcnow(), str(uuid.uuid4()), "Puesto vacío en la alineación", score
+        )
+
+
+def _lineup_incomplete(db: Session, user: User, parent: Match, c: Category, t: Tournament) -> str | None:
+    """Mínimo de titulares: el equipo que no presenta ``team_min_starters``
+    integrantes distintos pierde el enfrentamiento. Devuelve el color que
+    pierde (o None)."""
+    minimum = team_options(c, t)["min_starters"]
+    if not minimum:
+        return None
+    regular = [b for b in bouts_of(db, parent.id) if b.kind == "bout"]
+    short = [
+        color for color in ("aka", "ao") if len({getattr(b, f"{color}_person_id") for b in regular} - {None}) < minimum
+    ]
+    if len(short) == 2:
+        raise InvalidState(
+            f"Ninguno de los dos equipos presenta {minimum} integrantes: decide el organizador",
+            code="TEAM_INCOMPLETE",
+        )
+    return short[0] if short else None
 
 
 def _new_bout(parent: Match, number: int, kind: str, aka_pid: int | None, ao_pid: int | None) -> Match:
@@ -469,13 +568,23 @@ def set_lineup(db: Session, user: User, mid: int, data: s.LineupIn) -> dict[str,
                     select(MatchEventRow).where(MatchEventRow.match_id.in_([b.id for b in regular]))
                 ).all()
             }
+            changed = False
             for row, b in zip(regular, data.bouts, strict=True):
                 if (row.aka_person_id, row.ao_person_id) == (b.aka_person_id, b.ao_person_id):
                     continue
+                changed = True
                 if row.id in started or row.status != "ready":
                     raise InvalidState(
                         f"El combate {row.code} ya empezó; no se cambia su alineación", code="BOUT_STARTED"
                     )
+            if changed and team_options(c, t)["lock_order"] and started:
+                # El orden se declara antes del primer combate (WKF).
+                ws.append(
+                    {
+                        "code": "LINEUP_LOCKED",
+                        "message": "El enfrentamiento ya empezó: el orden declarado no se cambia",
+                    }
+                )
             apply_warnings(db, user, ws, data.override.reason if data.override else None, "match", lambda: parent.id)
             for row, b in zip(regular, data.bouts, strict=True):
                 if (row.aka_person_id, row.ao_person_id) != (b.aka_person_id, b.ao_person_id):
@@ -488,6 +597,18 @@ def set_lineup(db: Session, user: User, mid: int, data: s.LineupIn) -> dict[str,
             c.status = "in_progress"
     bump(parent, user)
     db.flush()
+    loser = _lineup_incomplete(db, user, parent, c, t)
+    if loser is not None and parent.status != "finished":
+        from app.services.brackets import record_finish
+
+        winner = "ao" if loser == "aka" else "aka"
+        record_finish(
+            db, user, parent, c, winner, "incomplete_team", utcnow(), str(uuid.uuid4()), "Alineación incompleta", None
+        )
+        _mark_not_disputed(db, user, parent)
+    elif not data.extra:
+        _close_empty_slots(db, user, parent, c, t)
+        settle(db, user, parent, utcnow(), None)
     after = [{"code": b.code, "aka": b.aka_person_id, "ao": b.ao_person_id} for b in bouts_of(db, parent.id)]
     audit(
         db,
@@ -509,7 +630,7 @@ def team_match_out(db: Session, parent: Match) -> dict[str, Any]:
         parent = _parent_of(db, parent)
     c = get_category(db, parent.category_id)
     t = get_tournament(db, c.tournament_id)
-    planned, rule = team_settings(c, t)
+    options = team_options(c, t)
     bouts = bouts_of(db, parent.id)
     pids = {pid for b in bouts for pid in (b.aka_person_id, b.ao_person_id) if pid}
     names = {p.id: _name(p) for p in db.scalars(select(Person).where(Person.id.in_(pids or {0}))).all()}
@@ -531,7 +652,7 @@ def team_match_out(db: Session, parent: Match) -> dict[str, Any]:
         "match": s.MatchOut.model_validate(parent).model_dump(mode="json"),
         "category_id": c.id,
         "category_name": c.name,
-        "settings": {"bouts": planned, "tie_rule": rule.value},
+        "settings": options,
         "aka": side(parent.aka_registration_id),
         "ao": side(parent.ao_registration_id),
         "bouts": [
@@ -552,6 +673,7 @@ def team_match_out(db: Session, parent: Match) -> dict[str, Any]:
             "points": d.points,
             "draws": d.draws,
             "needs_extra_bout": d.needs_extra_bout,
+            "extra_bout_needs_hantei": d.extra_bout_needs_hantei,
             "pending_bouts": d.pending_bouts,
             "reason": d.reason,
         },

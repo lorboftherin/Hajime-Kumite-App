@@ -240,7 +240,7 @@ class CategoryFields(BaseModel):
     grade_min: int | None = None
     grade_max: int | None = None
     weight_class: str | None = None
-    format: Literal["single_elimination", "round_robin", "kata_rounds"] | None = None
+    format: Literal["single_elimination", "round_robin", "kata_rounds", "groups_knockout"] | None = None
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     duration_seconds: int | None = None
     kumite_rules: dict[str, Any] | None = None
@@ -248,6 +248,11 @@ class CategoryFields(BaseModel):
     kata_structure: Literal["bracket", "rounds"] | None = None
     kata_judges: int | None = None
     sort_order: int = 0
+    max_entrants: int | None = None  # cupo: al superarlo se advierte y se sugiere dividir
+    weight_min_kg: float | None = None  # rango en kg (sin él, se deduce de la etiqueta)
+    weight_max_kg: float | None = None
+    kata_rules: dict[str, Any] | None = None  # override de kata_defaults del torneo
+    competition_rules: dict[str, Any] | None = None  # override de competition_rules del torneo
 
 
 class TemplateCreate(BaseModel):
@@ -275,7 +280,7 @@ class CategoryCreate(CategoryFields):
 class CategoryUpdate(BaseModel):
     version: int
     name: str | None = None
-    format: Literal["single_elimination", "round_robin", "kata_rounds"] | None = None
+    format: Literal["single_elimination", "round_robin", "kata_rounds", "groups_knockout"] | None = None
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     duration_seconds: int | None = None
     kumite_rules: dict[str, Any] | None = None
@@ -284,6 +289,12 @@ class CategoryUpdate(BaseModel):
     kata_judges: int | None = None
     tatami_id: int | None = None
     queue_position: int | None = None
+    weight_class: str | None = None
+    max_entrants: int | None = None
+    weight_min_kg: float | None = None
+    weight_max_kg: float | None = None
+    kata_rules: dict[str, Any] | None = None
+    competition_rules: dict[str, Any] | None = None
 
 
 class CategoryOut(CategoryFields, ORM):
@@ -298,12 +309,24 @@ class CategoryOut(CategoryFields, ORM):
     version: int
     entrant_count: int = 0
     advice: list[str] = []
+    split_from_id: int | None = None  # categoría de la que salió al dividir
+    has_split: bool = False  # tiene divisiones activas (se pueden deshacer)
 
 
 class CategoryMergeIn(BaseModel):
     source_ids: list[int] = Field(min_length=1)
     target_id: int | None = None  # None = crear nueva a partir de la primera
     new_name: str | None = None
+    reason: str = ""
+    override: Override | None = None
+
+
+class CategorySplitIn(BaseModel):
+    """Dividir una categoría en dos (reversible como la fusión)."""
+
+    criterion: Literal["weight", "grade", "draw"] = "draw"
+    names: list[str] | None = Field(default=None, min_length=2, max_length=2)  # nombres de las dos mitades
+    seed: int | None = None  # sorteo reproducible
     reason: str = ""
     override: Override | None = None
 
@@ -324,10 +347,12 @@ class TournamentCreate(BaseModel):
     city: str = ""
     is_test: bool = False
     age_reference_date: date | None = None  # por defecto, el día del torneo
-    default_format: Literal["single_elimination", "round_robin"] = "single_elimination"
+    default_format: Literal["single_elimination", "round_robin", "groups_knockout"] = "single_elimination"
     default_third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] = "two_bronzes"
     kumite_rules: dict[str, Any] = {}
     kata_defaults: dict[str, Any] = {}
+    competition_rules: dict[str, Any] = {}
+    age_mode: Literal["date", "birth_year"] = "date"
     template_id: int | None = None
     tatami_count: int = Field(default=1, ge=1, le=12)
 
@@ -341,9 +366,12 @@ class TournamentUpdate(BaseModel):
     city: str | None = None
     is_test: bool | None = None
     age_reference_date: date | None = None
+    default_format: Literal["single_elimination", "round_robin", "groups_knockout"] | None = None
     default_third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     kumite_rules: dict[str, Any] | None = None
     kata_defaults: dict[str, Any] | None = None
+    competition_rules: dict[str, Any] | None = None
+    age_mode: Literal["date", "birth_year"] | None = None
 
 
 class TatamiOut(ORM):
@@ -366,6 +394,8 @@ class TournamentOut(ORM):
     default_third_place_rule: str
     kumite_rules: dict[str, Any]
     kata_defaults: dict[str, Any]
+    competition_rules: dict[str, Any] | None = None
+    age_mode: str = "date"
     template_id: int | None
     version: int
     tatamis: list[TatamiOut] = []
@@ -543,11 +573,27 @@ class ImportConfirm(BaseModel):
 
 
 class BracketGenerateIn(BaseModel):
-    format: Literal["single_elimination", "round_robin"] | None = None
+    format: Literal["single_elimination", "round_robin", "groups_knockout"] | None = None
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     seed: int | None = None
     reason: str = ""
     override: Override | None = None
+
+
+class BracketEntrantIn(BaseModel):
+    """Inscripción tardía o retiro con la llave ya generada."""
+
+    registration_id: int
+    reason: str = ""
+    version: int | None = None  # versión de la llave (Bracket) si el cliente la conoce
+    override: Override | None = None
+
+
+class DisqualifyIn(BaseModel):
+    """Shikkaku con alcance de torneo: retira todas las inscripciones de la persona."""
+
+    reason: str = Field(min_length=3)
+    override: Override | None = None  # confirmación: lista lo que se retira
 
 
 class SlotSwapIn(BaseModel):
@@ -605,6 +651,8 @@ class BracketOut(BaseModel):
     matches: list[MatchOut]
     podium: dict[str, Any]
     standings: list[dict[str, Any]] | None = None
+    groups: list[dict[str, Any]] | None = None  # formato groups_knockout: tabla de cada grupo
+    kata_rounds: dict[str, Any] | None = None  # rondas de kata: ronda en curso, cortes, orden
 
 
 class EventIn(BaseModel):
@@ -622,12 +670,19 @@ class EventIn(BaseModel):
         "kiken",
         "shikkaku",
         "walkover",
+        "golden_point",
     ]
     at: datetime  # hora del dispositivo
     color: Color | None = None
     value: float | None = None
     target_id: str | None = None
     reason: str | None = None
+    # Sanción: tipo de falta opcional y escalera (preset de dos categorías).
+    infraction: str | None = Field(default=None, max_length=30)
+    ladder: Literal["c1", "c2"] | None = None
+    # Hantei: votos de los jueces (opcional, solo registro) y quién votó.
+    votes: list[Color | None] | None = None
+    judge_person_ids: list[int | None] | None = None
     override: Override | None = None  # requerido para tocar un combate ya cerrado
 
 
@@ -639,6 +694,8 @@ class EventOut(ORM):
     target_id: str | None
     method: str | None
     reason: str | None
+    infraction: str | None = None
+    ladder: str | None = None
     device_at: datetime
     received_at: datetime
 
@@ -649,7 +706,14 @@ class ScoreboardOut(BaseModel):
     score: dict[str, int]
     sanction: dict[str, int]
     sanction_labels: list[str]
+    sanction_c2: dict[str, int] | None = None  # segunda escalera (preset de dos categorías)
+    sanction_labels_c2: list[str] | None = None
+    infractions: dict[str, dict[str, Any]] | None = None  # tipos de falta, si el preset los usa
     senshu: str | None
+    senshu_lost: list[str] = []
+    golden_point: bool = False  # en periodo de punto de oro
+    period_seconds: float | None = None  # duración del periodo en curso (None = sin límite)
+    hantei_votes: list[dict[str, Any]] = []
     elapsed_seconds: float
     duration_seconds: int
     running: bool
@@ -688,18 +752,40 @@ class FlagsIn(BaseModel):
 class KataScoreIn(BaseModel):
     registration_id: int
     scores: list[float]
+    athletic_scores: list[float] | None = None  # con notas técnico / atléticas
     judge_person_ids: list[int | None] | None = None
     kata_name: str | None = None
+    round_number: int | None = None  # por defecto, la ronda en curso
     version: int | None = None
+    override: Override | None = None  # p. ej. repetir un kata cuando el reglamento lo prohíbe
 
 
 class KataOrderIn(BaseModel):
     registration_ids: list[int]
+    round_number: int | None = None  # por defecto, la ronda en curso
+    reason: str = ""
+
+
+class KataMatchScoreIn(BaseModel):
+    """Kata por puntuación en llave: nota del panel para aka y para ao."""
+
+    aka_scores: list[float]
+    ao_scores: list[float]
+    aka_athletic: list[float] | None = None
+    ao_athletic: list[float] | None = None
+    aka_kata_name: str | None = None
+    ao_kata_name: str | None = None
+    judge_person_ids: list[int | None] | None = None
+    head_judge_vote: Color | None = None  # desempate final si las notas empatan en todo
+    event_id: str = Field(min_length=8, max_length=36)
+    at: datetime
+    override: Override | None = None
 
 
 class TieBreakIn(BaseModel):
     registration_ids_in_order: list[int]
     reason: str = Field(min_length=3)
+    round_number: int | None = None  # rondas de kata: por defecto, la ronda en curso
 
 
 class OfficialResultIn(BaseModel):

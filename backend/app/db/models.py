@@ -9,6 +9,7 @@ tests). Se evita ON DELETE CASCADE para no chocar con la restricción de
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -207,6 +208,15 @@ class CategoryFieldsMixin:
     kata_structure: Mapped[str | None] = mapped_column(String(20), nullable=True)  # bracket | rounds
     kata_judges: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Cupo sugerido: al superarlo se advierte (y se sugiere dividir).
+    max_entrants: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Rango de peso en kg, además de la etiqueta (el pesaje lo usará después).
+    weight_min_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    weight_max_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    # Overrides de la categoría sobre ``kata_defaults`` y ``competition_rules``
+    # del torneo (None = hereda). Ver docs/reglas-configurables.md.
+    kata_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    competition_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
 class TemplateCategory(Base, Timestamped, CategoryFieldsMixin):
@@ -235,6 +245,10 @@ class Tournament(Base, Timestamped, Versioned):
     default_third_place_rule: Mapped[str] = mapped_column(String(30), default="two_bronzes")
     kumite_rules: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     kata_defaults: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # Llaves, round robin, equipos y separación (ver docs/reglas-configurables.md).
+    competition_rules: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    # Cálculo de la edad: "date" (a la fecha de referencia) o "birth_year".
+    age_mode: Mapped[str] = mapped_column(String(10), default="date", server_default="date")
     template_id: Mapped[int | None] = mapped_column(ForeignKey("category_templates.id"), nullable=True)
     # Seguimiento en vivo público (opcional): enlace secreto sin inicio de sesión.
     # Sin token no hay vista pública. ``public_names``: "short" (Diego R.) o "full".
@@ -276,6 +290,23 @@ class CategoryMerge(Base):
     target_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     source_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     moved_registration_ids: Mapped[list[int]] = mapped_column(JSON)
+    reason: Mapped[str] = mapped_column(Unicode(500), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    undone_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class CategorySplit(Base):
+    """DivisionCategoria: reversible como la fusión; guarda qué inscripciones
+    pasaron a la categoría nueva."""
+
+    __tablename__ = "category_splits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    new_category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    criterion: Mapped[str] = mapped_column(String(20))  # weight | grade | draw
+    moved_registration_ids: Mapped[list[int]] = mapped_column(JSON)
+    before: Mapped[dict[str, Any]] = mapped_column(JSON)  # nombre y rangos del origen antes de dividir
     reason: Mapped[str] = mapped_column(Unicode(500), default="")
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
@@ -477,6 +508,9 @@ class MatchEventRow(Base):
     target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     method: Mapped[str | None] = mapped_column(String(30), nullable=True)
     reason: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+    # Sanciones: tipo de falta (opcional) y escalera ("c1" | "c2") con el preset de dos categorías.
+    infraction: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    ladder: Mapped[str | None] = mapped_column(String(2), nullable=True)
     device_at: Mapped[datetime] = mapped_column(UtcDateTime)
     received_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
@@ -493,8 +527,11 @@ class KataPerformance(Base, Timestamped, Versioned):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
     order: Mapped[int] = mapped_column(Integer, default=0)
     kata_name: Mapped[str | None] = mapped_column(Unicode(80), nullable=True)
-    total: Mapped[float | None] = mapped_column(Numeric(6, 1), nullable=True)
+    # Dos decimales: con notas técnico / atléticas el total es ponderado (70/30).
+    total: Mapped[float | None] = mapped_column(Numeric(7, 2), nullable=True)
     scores: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)  # NotaJuez por posición
+    athletic_scores: Mapped[list[float] | None] = mapped_column(JSON, nullable=True)  # nota atlética por juez
+    group_number: Mapped[int | None] = mapped_column(Integer, nullable=True)  # grupo dentro de la ronda
     judge_person_ids: Mapped[list[int | None] | None] = mapped_column(JSON, nullable=True)
     tie_break_place: Mapped[int | None] = mapped_column(Integer, nullable=True)  # decisión manual
 
