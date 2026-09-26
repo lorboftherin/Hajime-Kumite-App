@@ -17,6 +17,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     Date,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -28,6 +29,7 @@ from sqlalchemy import (
     false,
     text,
 )
+from sqlalchemy.dialects.mssql import DATETIME2
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, Timestamped, UtcDateTime, Versioned, utcnow
@@ -379,6 +381,14 @@ class Tournament(Base, Timestamped, Versioned):
             mssql_where=text("public_token IS NOT NULL"),
             sqlite_where=text("public_token IS NOT NULL"),
         ),
+        # Dirección fija de la página pública (/t/<slug>): única entre las asignadas.
+        Index(
+            "uq_tournaments_public_slug",
+            "public_slug",
+            unique=True,
+            mssql_where=text("public_slug IS NOT NULL"),
+            sqlite_where=text("public_slug IS NOT NULL"),
+        ),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Unicode(200))
@@ -414,6 +424,14 @@ class Tournament(Base, Timestamped, Versioned):
     certificate_organizer: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
     certificate_signer_name: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
     certificate_signer_title: Mapped[str] = mapped_column(Unicode(200), default="", server_default="")
+    # Portal público (ver docs/portal-publico.md): dirección fija «copa-lima-2026»
+    # que se genera al activar el público y el organizador puede editar. Solo
+    # responde mientras haya ``public_token`` (público activo).
+    public_slug: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Horarios estimados (app.services.schedule): zona horaria del torneo y
+    # margen entre combates (saludo, llamado, cambio de protecciones).
+    timezone: Mapped[str] = mapped_column(String(40), default="America/Lima", server_default="America/Lima")
+    match_overhead_seconds: Mapped[int] = mapped_column(Integer, default=60, server_default="60")
 
     organization: Mapped[Organization] = relationship(lazy="joined")
     tatamis: Mapped[list[Tatami]] = relationship(back_populates="tournament", lazy="selectin", order_by="Tatami.number")
@@ -429,6 +447,9 @@ class Tatami(Base, Timestamped):
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
     number: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(Unicode(60))
+    # Hora planificada de inicio, en la hora local del torneo (``Tournament.timezone``),
+    # sin zona: es lo que el organizador escribe («sábado 9:00»).
+    planned_start: Mapped[datetime | None] = mapped_column(DateTime().with_variant(DATETIME2(), "mssql"), nullable=True)
     tournament: Mapped[Tournament] = relationship(back_populates="tatamis")
 
 

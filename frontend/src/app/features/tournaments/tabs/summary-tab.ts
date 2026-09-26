@@ -184,13 +184,50 @@ const HINT: Record<string, string> = {
               </select>
             </label>
             <div class="field">
-              <span>Página pública</span>
-              <div class="row">
-                <input readonly [value]="publicUrl(t.public_token)" (focus)="$any($event.target).select()" aria-label="Enlace público" />
-                <button class="btn sm" (click)="copy(publicUrl(t.public_token))">Copiar</button>
-                <a class="btn sm" [href]="publicUrl(t.public_token)" target="_blank" rel="noopener">Abrir</a>
-              </div>
+              <span>Página pública (dirección fija, para compartir)</span>
+              @if (t.public_slug && !editingSlug()) {
+                <div class="row">
+                  <input readonly [value]="slugUrl(t.public_slug)" (focus)="$any($event.target).select()" aria-label="Dirección fija de la página pública" />
+                  <button class="btn sm" (click)="copy(slugUrl(t.public_slug))">Copiar</button>
+                  <a class="btn sm" [href]="slugUrl(t.public_slug)" target="_blank" rel="noopener">Abrir</a>
+                  <button class="btn sm ghost" (click)="startSlug(t.public_slug)">Cambiar</button>
+                </div>
+              } @else {
+                <form class="row" (ngSubmit)="saveSlug()">
+                  <span class="prefix muted small">{{ origin }}/t/</span>
+                  <input name="slug" [(ngModel)]="slugDraft" aria-label="Dirección fija" placeholder="copa-lima-2026" />
+                  <button class="btn sm primary">Guardar</button>
+                  @if (t.public_slug) {<button type="button" class="btn sm" (click)="editingSlug.set(false)">Cancelar</button>}
+                </form>
+                <span class="small muted">Minúsculas sin tildes, números y guiones.</span>
+              }
             </div>
+          </div>
+          <div class="field overlays">
+            <span>Enlace secreto del vivo (el de siempre; sigue funcionando)</span>
+            <ul>
+              <li>
+                <code>{{ publicUrl(t.public_token) }}</code>
+                <button class="btn sm ghost" (click)="copy(publicUrl(t.public_token))">Copiar</button>
+              </li>
+            </ul>
+          </div>
+          <div class="field overlays">
+            <span>Pantallas del coliseo (TV a pantalla completa, sin interacción)</span>
+            <ul>
+              <li>
+                <strong>Todos los tatamis</strong>
+                <code>{{ screenUrl(t.public_token) }}</code>
+                <button class="btn sm ghost" (click)="copy(screenUrl(t.public_token))">Copiar</button>
+              </li>
+              @for (tat of t.tatamis; track tat.id) {
+                <li>
+                  <strong>{{ tat.name }}</strong>
+                  <code>{{ screenUrl(t.public_token, tat.id) }}</code>
+                  <button class="btn sm ghost" (click)="copy(screenUrl(t.public_token, tat.id))">Copiar</button>
+                </li>
+              }
+            </ul>
           </div>
           @if (t.tatamis.length) {
             <div class="field overlays">
@@ -207,8 +244,10 @@ const HINT: Record<string, string> = {
             </div>
           }
           <p class="small muted">
-            Solo se publican nombres, dojos, marcadores, resultados y medallero; nunca documentos ni fechas de nacimiento.
-            <button class="linkish" (click)="regenerate()">Cambiar el enlace</button> si se compartió por error.
+            Solo se publican nombres, dojos, marcadores, horarios estimados, llaves, resultados y medallero; nunca documentos
+            ni fechas de nacimiento.
+            @if (!t.is_test) {Aparece en <a routerLink="/torneos-publicos" target="_blank">Torneos públicos</a>.}
+            <button class="linkish" (click)="regenerate()">Cambiar el enlace secreto</button> si se compartió por error.
           </p>
         }
       </section>
@@ -418,6 +457,9 @@ const HINT: Record<string, string> = {
         word-break: break-all;
       }
     }
+    .prefix {
+      white-space: nowrap;
+    }
     .linkish {
       border: 0;
       background: none;
@@ -478,8 +520,31 @@ export class SummaryTab {
   readonly templates = signal<Template[]>([]);
   genTemplate: number | null = null;
 
+  readonly origin = location.origin;
+  readonly editingSlug = signal(false);
+  slugDraft = '';
+
   publicUrl(token: string): string {
     return `${location.origin}/vivo/${token}`;
+  }
+
+  slugUrl(slug: string): string {
+    return `${location.origin}/t/${slug}`;
+  }
+
+  screenUrl(token: string, tatami?: number): string {
+    return `${location.origin}/pantalla/${token}${tatami ? `/${tatami}` : ''}`;
+  }
+
+  startSlug(current: string): void {
+    this.slugDraft = current;
+    this.editingSlug.set(true);
+  }
+
+  async saveSlug(): Promise<void> {
+    const slug = this.slugDraft.trim().toLowerCase();
+    if (!slug) return;
+    if (await this.setPublic(true, undefined, false, slug)) this.editingSlug.set(false);
   }
 
   overlayUrl(token: string, tatami: number): string {
@@ -495,14 +560,15 @@ export class SummaryTab {
     }
   }
 
-  async setPublic(enabled: boolean, names?: string, regenerate = false): Promise<void> {
+  async setPublic(enabled: boolean, names?: string, regenerate = false, slug?: string): Promise<boolean> {
     const t = this.ctx.tournament();
-    if (!t) return;
-    const body = { enabled, names: names ?? t.public_names ?? 'short', regenerate };
+    if (!t) return false;
+    const body = { enabled, names: names ?? t.public_names ?? 'short', regenerate, ...(slug ? { slug } : {}) };
     const res = await this.mut.put<Tournament>(`/tournaments/${t.id}/public`, body, {
-      success: enabled ? 'Seguimiento en vivo activo' : 'Seguimiento en vivo desactivado',
+      success: slug ? 'Dirección guardada' : enabled ? 'Seguimiento en vivo activo' : 'Seguimiento en vivo desactivado',
     });
     if (res) this.ctx.reload();
+    return !!res;
   }
 
   async regenerate(): Promise<void> {

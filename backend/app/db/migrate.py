@@ -29,6 +29,7 @@ LEGACY_COLUMNS = (
     ("tournaments", "public_token", "0003"),
     ("match_presence", "is_primary", "0008_mesa_principal"),
     ("registrations", "checkin_status", "0012_checkin_ranking"),
+    ("tournaments", "public_slug", "0013_portal_publico"),
 )
 
 

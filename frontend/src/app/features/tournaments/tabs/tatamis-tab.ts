@@ -5,13 +5,27 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
-import { Category, QueueItem, Tatami, TatamiQueue } from '../../../core/models';
+import { Category, QueueItem, Tatami, TatamiQueue, Tournament } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { PluralPipe, plural } from '../../../shared/plural';
 import { appendUnique, estimateMatches, moveItem } from '../organizer-logic';
+import { hourText, zoneOfIso } from '../../public/public-logic';
 import { TournamentContext } from '../tournament-context';
+
+/** Zonas horarias frecuentes en torneos de la región (la del torneo siempre aparece). */
+const TIMEZONES = [
+  'America/Lima',
+  'America/Bogota',
+  'America/Guayaquil',
+  'America/La_Paz',
+  'America/Santiago',
+  'America/Argentina/Buenos_Aires',
+  'America/Caracas',
+  'America/Mexico_City',
+  'America/Sao_Paulo',
+];
 
 interface TatamiView {
   tatami: Tatami;
@@ -29,8 +43,44 @@ interface TatamiView {
       <button class="btn" [class.primary]="!planning() && unassignedWithBracket() > 0" (click)="planning.set(!planning())" [attr.aria-expanded]="planning()">
         {{ planning() ? 'Cerrar colas' : 'Organizar colas' }}
       </button>
+      <button class="btn" (click)="toggleScheduling()" [attr.aria-expanded]="scheduling()">{{ scheduling() ? 'Cerrar horarios' : 'Horarios' }}</button>
       <button class="btn" (click)="addTatami()"><app-icon name="plus" /> Agregar tatami</button>
     </div>
+
+    @if (scheduling()) {
+      <section class="card planner" aria-labelledby="h-horarios">
+        <h2 id="h-horarios">Horarios estimados</h2>
+        <p class="small muted">
+          Con la hora de inicio de cada tatami se estima a qué hora empieza cada combate (duración de la categoría más el
+          margen, ajustada con el ritmo real del tatami). Se muestra en la página pública, en «¿Cuándo pelea?» y en las colas.
+        </p>
+        <form class="sched-grid" (ngSubmit)="saveSettings()">
+          <label class="field">
+            <span>Margen entre combates (segundos)</span>
+            <input type="number" name="ovh" min="0" max="1800" step="5" [(ngModel)]="sched.overhead" />
+          </label>
+          <label class="field">
+            <span>Zona horaria</span>
+            <select name="tz" [(ngModel)]="sched.timezone">
+              @for (z of zones(); track z) {
+                <option [value]="z">{{ z }}</option>
+              }
+            </select>
+          </label>
+          <div class="field end"><button class="btn primary" [disabled]="busy()">Guardar</button></div>
+        </form>
+        <ul class="list-plain sched-list">
+          @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
+            <li>
+              <label class="field inline">
+                <span class="grow">{{ t.name || 'Tatami ' + t.number }} · inicio</span>
+                <input type="datetime-local" [value]="(t.planned_start ?? '').slice(0, 16)" (change)="savePlanned(t, $any($event.target).value)" [attr.aria-label]="'Hora de inicio de ' + (t.name || 'Tatami ' + t.number)" />
+              </label>
+            </li>
+          }
+        </ul>
+      </section>
+    }
     @if (!planning() && unassignedWithBracket() > 0) {
       <div class="alert warn small">
         {{ unassignedWithBracket() | plural: 'categoría con llave no tiene' : 'categorías con llave no tienen' }} tatami: sus combates no aparecen en ninguna cola.
@@ -119,7 +169,12 @@ interface TatamiView {
       @for (v of views(); track v.tatami.id) {
         <section class="card tatami">
           <div class="tatami-head">
-            <h2>{{ v.tatami.name || 'Tatami ' + v.tatami.number }}</h2>
+            <h2>
+              {{ v.tatami.name || 'Tatami ' + v.tatami.number }}
+              @if (v.tatami.planned_start) {
+                <span class="muted small num">· inicio {{ v.tatami.planned_start.slice(11, 16) }}</span>
+              }
+            </h2>
             <button class="btn sm ghost" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode"><app-icon name="print" /> Planilla PDF</button>
           </div>
           @if (v.data; as q) {
@@ -185,6 +240,9 @@ interface TatamiView {
                       <span class="badge ai">Siguiente</span>
                     }
                     <span class="num n">{{ it.number }}</span> {{ it.category_name }} <span class="code">{{ it.match.code }}</span>
+                    @if (it.eta) {
+                      <span class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
+                    }
                     @if (it.match.status !== 'ready') {
                       <app-status [status]="it.match.status" type="match" />
                     }
@@ -209,6 +267,35 @@ interface TatamiView {
     </div>
   `,
   styles: `
+    .sched-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem 1rem;
+      align-items: end;
+      margin-top: 0.75rem;
+      .end {
+        justify-content: flex-end;
+      }
+    }
+    .sched-list {
+      margin-top: 0.75rem;
+      li {
+        border-bottom: 1px solid var(--kasumi);
+        padding: 0.35rem 0;
+      }
+      label.field.inline {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+        flex-wrap: wrap;
+      }
+    }
+    .eta {
+      margin-left: auto;
+      color: var(--ai-ink, var(--ai));
+      font-weight: 700;
+    }
     .tatamis {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -412,6 +499,44 @@ export class TatamisTab {
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
   readonly views = signal<TatamiView[]>([]);
+
+  // --- Horarios estimados (PATCH /tournaments/{id}/schedule y /tatamis/{id}) ---
+  readonly scheduling = signal(false);
+  sched = { overhead: 60, timezone: 'America/Lima' };
+  readonly zones = computed(() => {
+    const cur = this.ctx.tournament()?.timezone ?? 'America/Lima';
+    return [...new Set([cur, ...TIMEZONES])];
+  });
+
+  toggleScheduling(): void {
+    const t = this.ctx.tournament();
+    this.sched = { overhead: t?.match_overhead_seconds ?? 60, timezone: t?.timezone ?? 'America/Lima' };
+    this.scheduling.set(!this.scheduling());
+  }
+
+  async saveSettings(): Promise<void> {
+    this.busy.set(true);
+    const res = await this.mut.patch<Tournament>(
+      `/tournaments/${this.ctx.id()}/schedule`,
+      { timezone: this.sched.timezone, match_overhead_seconds: Number(this.sched.overhead) || 0 },
+      { success: 'Horarios guardados' },
+    );
+    this.busy.set(false);
+    if (res) this.ctx.tournament.set(res);
+  }
+
+  async savePlanned(t: Tatami, value: string): Promise<void> {
+    const res = await this.mut.patch<Tatami>(
+      `/tatamis/${t.id}`,
+      { planned_start: value || null },
+      { success: value ? `Inicio de ${t.name || 'Tatami ' + t.number} guardado` : 'Hora de inicio quitada' },
+    );
+    if (res) this.load();
+  }
+
+  hour(iso: string | null | undefined): string {
+    return hourText(iso, zoneOfIso(iso));
+  }
 
   constructor() {
     this.load();

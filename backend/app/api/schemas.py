@@ -486,6 +486,7 @@ class TatamiOut(ORM):
     id: int
     number: int
     name: str
+    planned_start: datetime | None = None  # hora local del torneo, sin zona
 
 
 class TournamentOut(ORM):
@@ -518,6 +519,9 @@ class TournamentOut(ORM):
     certificate_organizer: str = ""
     certificate_signer_name: str = ""
     certificate_signer_title: str = ""
+    public_slug: str | None = None
+    timezone: str = "America/Lima"
+    match_overhead_seconds: int = 60
 
 
 class PublicLiveIn(BaseModel):
@@ -526,6 +530,21 @@ class PublicLiveIn(BaseModel):
     enabled: bool
     names: Literal["short", "full"] = "short"
     regenerate: bool = False  # nuevo enlace: el anterior deja de funcionar
+    # Dirección fija /t/<slug>. None = la actual (o una nueva a partir del nombre y el año).
+    slug: str | None = Field(default=None, max_length=80)
+
+
+class ScheduleSettingsIn(BaseModel):
+    """Parámetros de los horarios estimados del torneo."""
+
+    timezone: str | None = Field(default=None, max_length=40)
+    match_overhead_seconds: int | None = Field(default=None, ge=0, le=1800)
+
+
+class TatamiUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    # Hora local del torneo («2026-10-17T09:00»); null la quita.
+    planned_start: datetime | None = None
 
 
 class StatusChange(BaseModel):

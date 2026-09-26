@@ -129,6 +129,38 @@ def test_weight_labels_become_numeric_ranges(tmp_path):
     assert got == {"-45": (None, 45.0), "+84": (84.0, None), "45-50": (45.0, 50.0), "Libre": (None, None)}
 
 
+def test_portal_publico_da_direccion_a_los_torneos_ya_publicos(tmp_path):
+    """0009: los torneos con el vivo activo reciben su dirección fija, única."""
+    from datetime import date
+
+    from alembic import command
+    from sqlalchemy import text
+
+    from app.db.base import make_engine
+    from app.db.migrate import alembic_config
+
+    engine = make_engine(f"sqlite:///{tmp_path / 'slug.db'}")
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0008_mesa_principal")
+    with engine.begin() as conn:
+        d = date(2026, 10, 17)
+        _fill(conn, "tournaments", name="Copa Perú Ñandú", start_date=d, public_token="a" * 32)
+        _fill(conn, "tournaments", name="Copa Perú Ñandú", start_date=d, public_token="b" * 32)
+        _fill(conn, "tournaments", name="Privado", start_date=d)
+        _fill(conn, "tatamis", tournament_id=1, number=1, name="Tatami 1")
+    upgrade_database(engine)
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT public_slug, timezone, match_overhead_seconds FROM tournaments ORDER BY id"))
+        assert [tuple(r) for r in rows] == [
+            ("copa-peru-nandu-2026", "America/Lima", 60),
+            ("copa-peru-nandu-2026-2", "America/Lima", 60),
+            (None, "America/Lima", 60),
+        ]
+        assert conn.execute(text("SELECT planned_start FROM tatamis")).scalar() is None
+
+
 def test_wait_for_database_retries_until_it_answers(monkeypatch):
     """Azure SQL serverless en pausa: la primera conexión falla y la app reintenta."""
     from sqlalchemy.exc import OperationalError

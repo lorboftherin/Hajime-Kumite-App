@@ -18,6 +18,7 @@ from app.api.routers import (
     core,
     dojo_portal,
     history,
+    horarios,
     organizations,
     organizer,
     public,
@@ -131,6 +132,7 @@ def create_app() -> FastAPI:
         certificates.router,
         ranking.router,
         history.router,
+        horarios.router,
         organizations.router,
         dojo_portal.router,
         public_profiles.router,
@@ -181,11 +183,15 @@ def mount_frontend(app: FastAPI, directory: str) -> None:
     Las rutas de Angular (p. ej. /mesa/12) devuelven index.html; /api y /docs
     siguen siendo de la API.
     """
+    from functools import partial
     from pathlib import Path
 
-    from fastapi.responses import FileResponse
+    from fastapi import Request, Response
+    from fastapi.responses import FileResponse, HTMLResponse
     from starlette.exceptions import HTTPException as StarletteHTTPException
     from starlette.staticfiles import StaticFiles
+
+    from app.services import share_preview
 
     root = Path(directory)
     index = root / "index.html"
@@ -199,7 +205,26 @@ def mount_frontend(app: FastAPI, directory: str) -> None:
             except StarletteHTTPException as e:
                 if e.status_code != 404 or path.startswith(("api/", "docs", "openapi")):
                     raise
+                preview = await _share_preview(path, scope)
+                if preview is not None:
+                    return preview
                 return FileResponse(index)
+
+    async def _share_preview(path: str, scope) -> Response | None:
+        """Rutas públicas (/t/<slug>, /competidor/<id>…): index.html con las
+        etiquetas para la vista previa al compartir (app.services.share_preview)."""
+        if not share_preview.is_public_path(path):
+            return None
+        base_url = str(Request(scope).base_url).rstrip("/")
+        render = partial(share_preview.render, index, path, base_url, share_preview.session)
+        try:
+            doc = await anyio.to_thread.run_sync(render)
+        except Exception:  # noqa: BLE001 - sin vista previa, la página igual funciona
+            logging.getLogger("hajime.share").warning("No se pudo armar la vista previa de %s", path, exc_info=True)
+            return None
+        if doc is None:
+            return None
+        return HTMLResponse(doc, headers={"Cache-Control": "public, max-age=60"})
 
     app.mount("/", SPAStaticFiles(directory=root, html=True), name="frontend")
 

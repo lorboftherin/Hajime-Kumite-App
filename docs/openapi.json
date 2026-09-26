@@ -8452,6 +8452,122 @@
     }
    }
   },
+  "/api/v1/tournaments/{tid}/schedule": {
+   "patch": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Update Schedule",
+    "description": "Zona horaria del torneo y margen entre combates (segundos) para los horarios estimados.",
+    "operationId": "update_schedule_api_v1_tournaments__tid__schedule_patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ScheduleSettingsIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TournamentOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tatamis/{tatami_id}": {
+   "patch": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Update Tatami",
+    "description": "Nombre y hora planificada de inicio (hora local del torneo) de un tatami.",
+    "operationId": "update_tatami_api_v1_tatamis__tatami_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TatamiOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/organizations": {
    "get": {
     "tags": [
@@ -10605,6 +10721,307 @@
     }
    }
   },
+  "/api/v1/public/torneos": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Directory",
+    "description": "Torneos con página pública (no los de prueba): en curso, próximos y recientes.",
+    "operationId": "directory_api_v1_public_torneos_get",
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/t/{slug}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Live By Slug",
+    "description": "El vivo del torneo por su dirección fija.",
+    "operationId": "live_by_slug_api_v1_public_t__slug__get",
+    "parameters": [
+     {
+      "name": "slug",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Slug"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/t/{slug}/people": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "People By Slug",
+    "description": "Competidores y su próximo combate («¿cuándo pelea?»).",
+    "operationId": "people_by_slug_api_v1_public_t__slug__people_get",
+    "parameters": [
+     {
+      "name": "slug",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Slug"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/t/{slug}/categories/{category_id}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Category By Slug",
+    "description": "Llave y resultados de una categoría, de solo lectura.",
+    "operationId": "category_by_slug_api_v1_public_t__slug__categories__category_id__get",
+    "parameters": [
+     {
+      "name": "slug",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Slug"
+      }
+     },
+     {
+      "name": "category_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Category Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/t/{slug}/tatamis/{tatami_id}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Overlay By Slug",
+    "description": "Marcador del tatami (overlay y pantalla grande).",
+    "operationId": "overlay_by_slug_api_v1_public_t__slug__tatamis__tatami_id__get",
+    "parameters": [
+     {
+      "name": "slug",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Slug"
+      }
+     },
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/t/{slug}/stream": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Stream By Slug",
+    "description": "Actualización en vivo por SSE (ver ``/public/{token}/stream``).",
+    "operationId": "stream_by_slug_api_v1_public_t__slug__stream_get",
+    "parameters": [
+     {
+      "name": "slug",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Slug"
+      }
+     },
+     {
+      "name": "live",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Live"
+      }
+     },
+     {
+      "name": "people",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "People"
+      }
+     },
+     {
+      "name": "tatami",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tatami"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/public/{token}": {
    "get": {
     "tags": [
@@ -10646,13 +11063,104 @@
     }
    }
   },
+  "/api/v1/public/{token}/people": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "People",
+    "description": "Competidores y su próximo combate («¿cuándo pelea?»), sin datos sensibles.",
+    "operationId": "people_api_v1_public__token__people_get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/{token}/categories/{category_id}": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Category",
+    "description": "Llave y resultados de una categoría, de solo lectura.",
+    "operationId": "category_api_v1_public__token__categories__category_id__get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "category_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Category Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/public/{token}/tatamis/{tatami_id}": {
    "get": {
     "tags": [
      "public"
     ],
     "summary": "Overlay",
-    "description": "Marcador del tatami para el overlay de la transmisión.",
+    "description": "Marcador del tatami para el overlay de la transmisión y la pantalla grande.",
     "operationId": "overlay_api_v1_public__token__tatamis__tatami_id__get",
     "parameters": [
      {
@@ -10671,6 +11179,83 @@
       "schema": {
        "type": "integer",
        "title": "Tatami Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/public/{token}/stream": {
+   "get": {
+    "tags": [
+     "public"
+    ],
+    "summary": "Stream",
+    "description": "Server-Sent Events: envía la instantánea (evento ``live``, ``people`` u\n``overlay``) cada vez que cambia y un comentario de latido cada 15 s. Con\ndemasiadas conexiones responde 503: el cliente sigue con el sondeo.",
+    "operationId": "stream_api_v1_public__token__stream_get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     },
+     {
+      "name": "live",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Live"
+      }
+     },
+     {
+      "name": "people",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "People"
+      }
+     },
+     {
+      "name": "tatami",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tatami"
       }
      }
     ],
@@ -16223,6 +16808,18 @@
       "type": "boolean",
       "title": "Regenerate",
       "default": false
+     },
+     "slug": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slug"
      }
     },
     "type": "object",
@@ -16910,6 +17507,38 @@
      "code"
     ],
     "title": "ScanIn"
+   },
+   "ScheduleSettingsIn": {
+    "properties": {
+     "timezone": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Timezone"
+     },
+     "match_overhead_seconds": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 1800.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Match Overhead Seconds"
+     }
+    },
+    "type": "object",
+    "title": "ScheduleSettingsIn",
+    "description": "Parámetros de los horarios estimados del torneo."
    },
    "ScoreboardOut": {
     "properties": {
@@ -17854,6 +18483,18 @@
      "name": {
       "type": "string",
       "title": "Name"
+     },
+     "planned_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Start"
      }
     },
     "type": "object",
@@ -17881,6 +18522,37 @@
     ],
     "title": "TatamiQueueIn",
     "description": "Orden completo de la cola: categorías del tatami, de la primera a la última."
+   },
+   "TatamiUpdate": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "planned_start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Start"
+     }
+    },
+    "type": "object",
+    "title": "TatamiUpdate"
    },
    "TeamCreate": {
     "properties": {
@@ -19387,6 +20059,27 @@
       "type": "string",
       "title": "Certificate Signer Title",
       "default": ""
+     },
+     "public_slug": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Slug"
+     },
+     "timezone": {
+      "type": "string",
+      "title": "Timezone",
+      "default": "America/Lima"
+     },
+     "match_overhead_seconds": {
+      "type": "integer",
+      "title": "Match Overhead Seconds",
+      "default": 60
      }
     },
     "type": "object",

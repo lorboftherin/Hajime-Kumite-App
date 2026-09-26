@@ -63,6 +63,26 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   categorías equivalentes entre torneos, «mejor academia», puesto en el perfil
   de la persona y vista pública `/ranking/:temporada` (menores abreviados).
 
+- **Portal público** (`docs/portal-publico.md`): dirección fija `/t/<slug>`
+  (del nombre y el año, editable; el enlace secreto `/vivo/<token>` sigue
+  funcionando), directorio `/torneos-publicos` con buscador, metadatos para
+  compartir, «¿Cuándo pelea?» con buscador por nombre o dojo y favoritos en el
+  dispositivo, llave de solo lectura por categoría y pantalla grande del
+  coliseo (`/pantalla/<token>/<tatami>` y mosaico `/pantalla/<token>`).
+- **Horarios estimados:** hora planificada por tatami, zona horaria y margen
+  entre combates del torneo; hora estimada de cada combate en el vivo, en
+  «¿Cuándo pelea?», en la cola del tatami y en «Mi tatami». Cubre grupos +
+  eliminación y kata por rondas (duración por ejecución configurable,
+  `performance_seconds`, 3 min por defecto) y descuenta a los ausentes.
+- **Vista previa al compartir:** el backend sirve el `index.html` con título,
+  descripción, URL e imagen del torneo, la categoría, el competidor o el
+  ranking público en `/t/…`, `/competidor/…` y `/ranking/…`.
+- Los nombres del portal público enlazan al perfil `/competidor/<id>`.
+- **Actualización en vivo por SSE** (`GET /public/{token}/stream`): un sondeo
+  compartido por torneo y proceso, latido cada 15 s, límite de conexiones
+  (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
+  propagación de un punto.
+
 ### Seguridad
 
 - De los rivales, quien no es organizador ve solo el nombre abreviado en el
@@ -75,6 +95,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.
 - Migración `0012_checkin_ranking` (acreditación, plantillas archivadas, firma
   de diplomas y tablas `ranking_seasons`/`ranking_entries`; compatible hacia atrás).
+- Migración `0013_portal_publico` (columnas nuevas con valor por defecto o
+  nulas; los torneos con vivo activo reciben su dirección fija).
 
 ## [0.2.0] - 2026-09-26
 

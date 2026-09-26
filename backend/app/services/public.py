@@ -9,20 +9,26 @@ documentos, fechas de nacimiento ni identificadores de personas.
 
 from __future__ import annotations
 
+import hashlib
+import re
 import secrets
+import threading
+import time
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
-from app.api.errors import NotFound
+from app.api.errors import Conflict, NotFound
 from app.db.base import utcnow
 from app.db.models import Category, CategoryResult, Match, Person, Registration, Tatami, Tournament, User
 from app.domain.kumite import compute_scoreboard
-from app.services import entitlements, reports
+from app.services import entitlements, reports, schedule
 from app.services import stats as stats_svc
 from app.services.audit import audit, bump
 from app.services.brackets import (
@@ -30,21 +36,64 @@ from app.services.brackets import (
     SCHEDULED,
     _domain_events,
     _events,
+    bracket_out,
     queue_order,
     registrations_by_id,
     schedule_items,
 )
 from app.services.tournaments import effective_kumite_rules, get_tournament
 
+# ---------------------------------------------------------------------------
+# Dirección fija (/t/<slug>)
+# ---------------------------------------------------------------------------
+
+SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SLUG_MIN, SLUG_MAX = 3, 80
+
+
+def slugify(name: str, year: int) -> str:
+    """«Copa Lima Kids» + 2026 → «copa-lima-kids-2026» (sin tildes ni símbolos)."""
+    base = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
+    base = re.sub(r"[^a-z0-9]+", "-", base).strip("-")[:60].strip("-") or "torneo"
+    return base if str(year) in base.split("-") else f"{base}-{year}"
+
+
+def _slug_taken(db: Session, slug: str, tid: int) -> bool:
+    return db.scalar(select(Tournament.id).where(Tournament.public_slug == slug, Tournament.id != tid)) is not None
+
+
+def _unique_slug(db: Session, base: str, tid: int) -> str:
+    slug, n = base, 2
+    while _slug_taken(db, slug, tid):
+        slug, n = f"{base}-{n}", n + 1
+    return slug
+
+
+def _check_slug(db: Session, raw: str, tid: int) -> str:
+    slug = raw.strip().lower()
+    if not (SLUG_MIN <= len(slug) <= SLUG_MAX) or not SLUG_RE.match(slug):
+        raise Conflict(
+            "La dirección solo puede tener letras minúsculas sin tildes, números y guiones (3 a 80 caracteres)",
+            code="INVALID_SLUG",
+        )
+    if _slug_taken(db, slug, tid):
+        raise Conflict("Esa dirección ya la usa otro torneo", code="SLUG_TAKEN")
+    return slug
+
 
 def set_public(db: Session, user: User, tid: int, data: s.PublicLiveIn) -> Tournament:
     t = get_tournament(db, tid)
-    before = {"public": t.public_token is not None, "names": t.public_names}
+    before = {"public": t.public_token is not None, "names": t.public_names, "slug": t.public_slug}
     if not data.enabled:
         t.public_token = None
     elif t.public_token is None or data.regenerate:
         t.public_token = secrets.token_urlsafe(24)
     t.public_names = data.names
+    # La dirección fija se conserva al desactivar: al volver a activar, el mismo enlace.
+    if data.slug is not None:
+        t.public_slug = _check_slug(db, data.slug, t.id)
+    elif data.enabled and not t.public_slug:
+        t.public_slug = _unique_slug(db, slugify(t.name, t.start_date.year), t.id)
     bump(t, user)
     audit(
         db,
@@ -53,11 +102,20 @@ def set_public(db: Session, user: User, tid: int, data: s.PublicLiveIn) -> Tourn
         t.id,
         "public_live",
         before,
-        {"public": t.public_token is not None, "names": t.public_names, "regenerated": data.regenerate},
+        {
+            "public": t.public_token is not None,
+            "names": t.public_names,
+            "slug": t.public_slug,
+            "regenerated": data.regenerate,
+        },
         tournament_id=t.id,
     )
     db.commit()
     db.refresh(t)
+    forget_slugs()
+    from app.services import share_preview
+
+    share_preview.clear()
     return t
 
 
@@ -66,6 +124,39 @@ def by_token(db: Session, token: str) -> Tournament:
     if t is None:
         raise NotFound("Este enlace de seguimiento no existe o fue desactivado")
     return t
+
+
+# Dirección fija → token, por proceso y por pocos segundos: la instantánea
+# compartida se guarda por token, así /t/<slug> y /vivo/<token> la comparten.
+SLUG_TTL = 5.0
+_slug_lock = threading.Lock()
+_slug_cache: dict[str, tuple[float, str | None]] = {}
+
+
+def forget_slugs() -> None:
+    with _slug_lock:
+        _slug_cache.clear()
+
+
+def token_for_slug(db: Session, slug: str) -> str:
+    """Token del torneo con esa dirección fija y el público activo (``NotFound`` si no)."""
+    now = time.monotonic()
+    with _slug_lock:
+        hit = _slug_cache.get(slug)
+    if hit is None or hit[0] <= now:
+        token = db.scalar(
+            select(Tournament.public_token).where(
+                Tournament.public_slug == slug.lower(), Tournament.public_token.is_not(None)
+            )
+        )
+        db.commit()
+        with _slug_lock:
+            if len(_slug_cache) > 2000:
+                _slug_cache.clear()
+            _slug_cache[slug] = hit = (now + SLUG_TTL, token)
+    if not hit[1]:
+        raise NotFound("Este torneo no existe o no tiene la página pública activa")
+    return hit[1]
 
 
 def short_name(first: str, last: str) -> str:
@@ -82,6 +173,11 @@ def _person_name(p: Person | None, style: str) -> str:
     if p is None:
         return ""
     return _styled(p.first_names, p.last_names, style)
+
+
+def _public_id(r: Registration) -> str | None:
+    """Enlace al perfil público de la persona (``/competidor/<public_id>``); los equipos no tienen."""
+    return r.person.public_id if r.team_id is None and r.person is not None else None
 
 
 def _reg_name(r: Registration | None, style: str) -> str:
@@ -193,6 +289,10 @@ def live(db: Session, token: str) -> dict[str, Any]:
 
     tatamis = []
     scheduled = schedule_items(t.tatamis, queue_order([c for c in cats.values() if c.tatami_id]), matches)
+    tz = schedule.zone(t.timezone)
+    absent = {rid for rid, r in regs.items() if r.checkin_status == "absent"}
+    kata = schedule.load_kata(db, cats.values())
+    etas = schedule.plan(t, t.tatamis, cats.values(), matches, sched=scheduled, kata=kata, absent=absent)
     for tat in t.tatamis:
         sched = scheduled[tat.id]
         open_items = [it for it in sched if it["match"].status in ("ready", "in_progress", "needs_review")]
@@ -202,6 +302,8 @@ def live(db: Session, token: str) -> dict[str, Any]:
         def item(it):
             m = it["match"]
             out = _match_item(rows, m, it["number"], it["category_name"])
+            out["category_id"] = it["category_id"]
+            out["eta"] = schedule.iso_local(etas.get(m.id), tz)
             bout = rows.bouts.get(m.id)
             if bout is not None:
                 out["bout"] = _match_item(rows, bout, None, it["category_name"])
@@ -234,11 +336,13 @@ def live(db: Session, token: str) -> dict[str, Any]:
         places = []
         for cr in by_cat[c.id]:
             r = regs[cr.registration_id]
-            places.append({"place": cr.place, "name": _reg_name(r, style), "dojo": r.dojo.name})
+            places.append(
+                {"place": cr.place, "name": _reg_name(r, style), "dojo": r.dojo.name, "public_id": _public_id(r)}
+            )
             if cr.place in (1, 2, 3):
                 tally[r.dojo_id][cr.place - 1] += 1
                 dojo_names[r.dojo_id] = r.dojo.name
-        public_results.append({"category": c.name, "places": places})
+        public_results.append({"category_id": c.id, "category": c.name, "places": places})
 
     leaders = stats_svc.tournament_leaders(
         db,
@@ -273,10 +377,12 @@ def live(db: Session, token: str) -> dict[str, Any]:
             "venue": t.venue,
             "city": t.city,
             "status": t.status,
+            "slug": t.public_slug,
+            "timezone": t.timezone,
         },
         "tatamis": tatamis,
         "categories": [
-            {"name": c.name, "modality": c.modality, "status": c.status}
+            {"id": c.id, "name": c.name, "modality": c.modality, "status": c.status}
             for c in cats.values()
             if c.status not in ("merged", "cancelled", "empty")
         ],
@@ -313,13 +419,29 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
         "tournament": t.name,
         "tatami": {"number": tat.number, "name": tat.name},
         "server_time": utcnow().isoformat() + "Z",
+        "next": None,
     }
     if it is None:
         return {**base, "match": None}
     m = it["match"]
     bout = _bouts(matches).get(m.id)
+    # El siguiente combate del tatami (pantalla grande del coliseo).
+    after = sched[sched.index(it) + 1 :]
+    nxt = next((x for x in after if x["match"].status in ("ready", "pending")), None)
     ids = {x for x in (m.aka_registration_id, m.ao_registration_id) if x}
+    if nxt is not None:
+        ids |= {x for x in (nxt["match"].aka_registration_id, nxt["match"].ao_registration_id) if x}
     rows = _Rows(style, registrations_by_id(db, ids))
+    base["next"] = (
+        {
+            "number": nxt["number"],
+            "category": nxt["category_name"],
+            "aka": rows.side(nxt["match"], "aka"),
+            "ao": rows.side(nxt["match"], "ao"),
+        }
+        if nxt is not None
+        else None
+    )
     team = None
     if bout is not None:
         rows.persons = _load_persons(db, {x for x in (bout.aka_person_id, bout.ao_person_id) if x})
@@ -357,3 +479,290 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
             "team": team,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# «¿Cuándo pelea?»: competidores con su próximo combate
+# ---------------------------------------------------------------------------
+
+OPEN = ("pending", "ready", "in_progress")
+
+
+def public_key(tid: int, kind: str, ident: int) -> str:
+    """Clave estable y opaca de un competidor en la vista pública (para favoritos):
+    no es el id de la persona y no sirve en otro torneo."""
+    raw = f"{tid}:{kind}:{ident}".encode()
+    return hashlib.blake2b(raw, digest_size=6, key=b"hajime-publico").hexdigest()
+
+
+def people(db: Session, token: str) -> dict[str, Any]:
+    """Lista compacta para buscar por nombre o dojo y seguir favoritos.
+
+    Por competidor (persona o equipo): nombre según la regla del torneo, dojo
+    y, por categoría, su próximo combate (tatami, número, cuántos faltan antes
+    y hora estimada) o su puesto. Nada de documentos, fechas de nacimiento ni
+    ids internos (solo el ``public_id`` del perfil público). Seis o siete
+    consultas (una más con kata por rondas), sin importar el tamaño del torneo.
+    Excluye inscripciones pendientes, rechazadas o retiradas y ausentes.
+    """
+    t = by_token(db, token)
+    style = t.public_names
+    cats = {
+        c.id: c
+        for c in db.scalars(
+            select(Category).where(Category.tournament_id == t.id).order_by(Category.sort_order, Category.id)
+        ).all()
+    }
+    matches = list(
+        db.scalars(
+            select(Match)
+            .join(Category, Category.id == Match.category_id)
+            .where(Category.tournament_id == t.id, Match.is_current, Match.parent_match_id.is_(None))
+        ).all()
+    )
+    regs = [
+        r
+        for r in db.scalars(
+            select(Registration)
+            .where(Registration.tournament_id == t.id, Registration.status == "active")
+            .options(*REG_LIGHT)
+        ).all()
+        if r.category_id in cats and cats[r.category_id].status not in ("merged", "cancelled", "empty")
+    ]
+    # Ausentes en la acreditación: no aparecen ni ocupan turno.
+    absent = set(
+        db.scalars(
+            select(Registration.id).where(Registration.tournament_id == t.id, Registration.checkin_status == "absent")
+        ).all()
+    )
+    regs = [r for r in regs if r.id not in absent]
+    places = {
+        (cr.category_id, cr.registration_id): cr.place
+        for cr in db.scalars(
+            select(CategoryResult)
+            .join(Category, Category.id == CategoryResult.category_id)
+            .where(Category.tournament_id == t.id)
+        ).all()
+    }
+    tz = schedule.zone(t.timezone)
+    lines = schedule.timeline(
+        t, t.tatamis, cats.values(), matches, kata=schedule.load_kata(db, cats.values()), absent=absent
+    )
+
+    # Próximo turno de cada inscripción: el primero de la cola de su tatami
+    # (combate o, en kata por rondas, su ejecución).
+    upcoming: dict[int, dict[str, Any]] = {}
+    for tat in t.tatamis:
+        for ahead, slot in enumerate(lines.get(tat.id, [])):
+            info = {
+                "tatami": tat.number,
+                "tatami_name": tat.name,
+                "number": slot.number,
+                "code": slot.match.code if slot.match is not None else None,
+                "kata_round": slot.performance.round_number if slot.performance is not None else None,
+                "turn": slot.turn,
+                "status": slot.status,
+                "ahead": ahead,
+                "eta": schedule.iso_local(slot.eta, tz),
+            }
+            for rid in slot.registrations:
+                if rid not in upcoming:
+                    upcoming[rid] = info
+
+    groups: dict[tuple[str, int], dict[str, Any]] = {}
+    for r in sorted(regs, key=lambda r: (cats[r.category_id].sort_order, r.category_id, r.id)):
+        kind, ident = ("e", r.team_id) if r.team_id else ("p", r.person_id or -r.id)
+        c = cats[r.category_id]
+        g = groups.setdefault(
+            (kind, ident),
+            {
+                "key": public_key(t.id, kind, ident),
+                # Perfil público (/competidor/<public_id>): ya abrevia a los menores y protege sus datos.
+                "public_id": _public_id(r),
+                "name": _reg_name(r, style),
+                "dojo": r.dojo.name,
+                "team": kind == "e",
+                "entries": [],
+            },
+        )
+        nxt = upcoming.get(r.id)
+        place = places.get((c.id, r.id))
+        if nxt is not None:
+            state = "fighting" if nxt["status"] == "in_progress" else "scheduled"
+        elif place is not None and c.status == "finished":
+            state = "placed"
+        elif c.status == "finished":
+            state = "done"
+        else:
+            state = "waiting"
+        g["entries"].append(
+            {
+                "category_id": c.id,
+                "category": c.name,
+                "state": state,
+                "place": place if c.status == "finished" else None,
+                "next": nxt,
+            }
+        )
+    competitors = sorted(groups.values(), key=lambda g: (g["name"].lower(), g["dojo"].lower()))
+    return {
+        "tournament": {"name": t.name, "slug": t.public_slug, "timezone": t.timezone},
+        "competitors": competitors,
+        "server_time": utcnow().isoformat() + "Z",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Llave y resultados de una categoría (solo lectura)
+# ---------------------------------------------------------------------------
+
+
+def category_kind(category_id: int) -> str:
+    return f"category:{category_id}"
+
+
+def category(db: Session, token: str, category_id: int) -> dict[str, Any]:
+    """Llave de una categoría para el público: nombres según la regla del torneo,
+    marcador y método de cada combate, podio y, en todos contra todos o kata
+    por puntos, la tabla."""
+    t = by_token(db, token)
+    c = db.get(Category, category_id)
+    if c is None or c.tournament_id != t.id or c.status in ("merged", "cancelled", "empty"):
+        raise NotFound("Categoría no encontrada")
+    style = t.public_names
+    try:
+        b = bracket_out(db, c.id)
+    except NotFound:
+        b = None
+    ids: set[int] = set()
+    if b is not None:
+        ids = {int(k) for k in b.participants} | {
+            x for m in b.matches for x in (m.aka_registration_id, m.ao_registration_id) if x
+        }
+        regs = registrations_by_id(db, ids)
+    else:
+        regs = {
+            r.id: r
+            for r in db.scalars(
+                select(Registration)
+                .where(Registration.category_id == c.id, Registration.status == "active")
+                .options(*REG_LIGHT)
+            ).all()
+        }
+
+    def who(rid: int | None) -> dict[str, str | None] | None:
+        r = regs.get(rid) if rid else None
+        if r is None:
+            return None
+        return {"name": _reg_name(r, style), "dojo": r.dojo.name, "public_id": _public_id(r)}
+
+    out: dict[str, Any] = {
+        "tournament": {"name": t.name, "slug": t.public_slug},
+        "category": {
+            "id": c.id,
+            "name": c.name,
+            "modality": c.modality,
+            "status": c.status,
+            "is_team": c.is_team,
+        },
+        "format": b.format if b else None,
+        "matches": [],
+        "podium": [],
+        "standings": None,
+        "entrants": sorted(
+            ({"name": _reg_name(r, style), "dojo": r.dojo.name} for r in regs.values()),
+            key=lambda x: x["name"].lower(),
+        ),
+        "server_time": utcnow().isoformat() + "Z",
+    }
+    if b is None:
+        return out
+    for m in b.matches:
+        if m.status == "void":
+            continue
+        winner = None
+        if m.winner_registration_id is not None:
+            winner = "aka" if m.winner_registration_id == m.aka_registration_id else "ao"
+        out["matches"].append(
+            {
+                "code": m.code,
+                "kind": m.kind,
+                "round": m.round,
+                "position": m.position,
+                "status": m.status,
+                "aka": who(m.aka_registration_id),
+                "ao": who(m.ao_registration_id),
+                "score": [m.aka_score or 0, m.ao_score or 0],
+                "winner": winner,
+                "method": m.method,
+            }
+        )
+    out["podium"] = [{"place": p["place"], **(who(p["registration_id"]) or {})} for p in b.podium["places"]]
+    if b.standings is not None:
+        out["standings"] = [
+            {
+                **(who(st["registration_id"]) or {}),
+                "rank": st.get("rank"),
+                "wins": st.get("wins"),
+                "played": st.get("played"),
+                "points_for": st.get("points_for"),
+                "total": st.get("total"),
+                "kata_name": st.get("kata_name"),
+            }
+            for st in b.standings
+        ]
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Directorio público de torneos
+# ---------------------------------------------------------------------------
+
+RECENT_DAYS = 120
+
+
+def directory(db: Session, q: str = "", today: date | None = None) -> dict[str, Any]:
+    """Torneos con el público activo y dirección fija (no los de prueba ni los
+    cancelados): próximos, en curso y recientes. Una consulta."""
+    today = today or utcnow().date()
+    stmt = select(
+        Tournament.name,
+        Tournament.public_slug,
+        Tournament.start_date,
+        Tournament.end_date,
+        Tournament.venue,
+        Tournament.city,
+        Tournament.status,
+    ).where(
+        Tournament.public_token.is_not(None),
+        Tournament.public_slug.is_not(None),
+        ~Tournament.is_test,
+        Tournament.status != "cancelled",
+        or_(Tournament.status == "in_progress", Tournament.start_date >= today - timedelta(days=RECENT_DAYS)),
+    )
+    for word in (q or "").split()[:5]:
+        like = f"%{word[:40]}%"
+        stmt = stmt.where(or_(Tournament.name.ilike(like), Tournament.city.ilike(like)))
+    rows = db.execute(stmt.order_by(Tournament.start_date.desc()).limit(300)).all()
+    out: dict[str, list[dict[str, Any]]] = {"live": [], "upcoming": [], "recent": []}
+    for name, slug, start, end, venue, city, status in rows:
+        last = end or start
+        if status == "in_progress" or (start <= today <= last and status != "finished"):
+            phase = "live"
+        elif start > today:
+            phase = "upcoming"
+        else:
+            phase = "recent"
+        out[phase].append(
+            {
+                "name": name,
+                "slug": slug,
+                "start_date": start,
+                "end_date": end,
+                "venue": venue,
+                "city": city,
+                "status": status,
+            }
+        )
+    out["upcoming"].reverse()  # el más cercano primero
+    return {"tournaments": out, "today": today}

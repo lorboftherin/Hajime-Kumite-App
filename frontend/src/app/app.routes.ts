@@ -54,11 +54,44 @@ export const routes: Routes = [
     loadComponent: () => import('./features/competidor/public-profile').then((m) => m.PublicProfilePage),
     title: 'Competidor · Hajime',
   },
+  // --- Portal público (sin inicio de sesión; solo con el público activo). Ver docs/portal-publico.md ---
   {
-    // Seguimiento en vivo público (sin inicio de sesión; solo con enlace activo).
+    // Seguimiento en vivo por el enlace secreto.
     path: 'vivo/:token',
     loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),
     title: 'En vivo · Hajime',
+  },
+  {
+    path: 'vivo/:token/categoria/:id',
+    loadComponent: () => import('./features/public/category').then((m) => m.PublicCategoryPage),
+    title: 'Llave · Hajime en vivo',
+  },
+  {
+    // Página pública por la dirección fija del torneo: lo mismo que /vivo/:token.
+    path: 't/:slug',
+    loadComponent: () => import('./features/public/live').then((m) => m.PublicLivePage),
+    title: 'En vivo · Hajime',
+  },
+  {
+    path: 't/:slug/categoria/:id',
+    loadComponent: () => import('./features/public/category').then((m) => m.PublicCategoryPage),
+    title: 'Llave · Hajime en vivo',
+  },
+  {
+    path: 'torneos-publicos',
+    loadComponent: () => import('./features/public/directory').then((m) => m.PublicDirectoryPage),
+    title: 'Torneos de karate en vivo · Hajime',
+  },
+  {
+    // Pantalla grande del coliseo: todos los tatamis en mosaico o uno a pantalla completa.
+    path: 'pantalla/:token',
+    loadComponent: () => import('./features/public/screen').then((m) => m.ScreenMosaicPage),
+    title: 'Pantalla · Hajime',
+  },
+  {
+    path: 'pantalla/:token/:tatami',
+    loadComponent: () => import('./features/public/screen').then((m) => m.ScreenPage),
+    title: 'Pantalla · Hajime',
   },
   {
     // Ranking público de una temporada marcada pública (sin inicio de sesión).

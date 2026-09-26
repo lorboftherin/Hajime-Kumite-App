@@ -474,6 +474,9 @@ CREATE TABLE tournaments (
 	certificate_organizer NVARCHAR(200) NOT NULL DEFAULT '', 
 	certificate_signer_name NVARCHAR(200) NOT NULL DEFAULT '', 
 	certificate_signer_title NVARCHAR(200) NOT NULL DEFAULT '', 
+	public_slug VARCHAR(80) NULL, 
+	timezone VARCHAR(40) NOT NULL DEFAULT 'America/Lima', 
+	match_overhead_seconds INTEGER NOT NULL DEFAULT '60', 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
@@ -485,6 +488,7 @@ CREATE TABLE tournaments (
 );
 
 CREATE INDEX ix_tournaments_organization_id ON tournaments (organization_id);
+CREATE UNIQUE INDEX uq_tournaments_public_slug ON tournaments (public_slug) WHERE public_slug IS NOT NULL;
 CREATE UNIQUE INDEX uq_tournaments_public_token ON tournaments (public_token) WHERE public_token IS NOT NULL;
 CREATE TABLE dojo_memberships (
 	id INTEGER NOT NULL IDENTITY, 
@@ -569,6 +573,7 @@ CREATE TABLE tatamis (
 	tournament_id INTEGER NOT NULL, 
 	number INTEGER NOT NULL, 
 	name NVARCHAR(60) NOT NULL, 
+	planned_start DATETIME2 NULL, 
 	created_at DATETIME2 NOT NULL, 
 	updated_at DATETIME2 NOT NULL, 
 	updated_by_id INTEGER NULL, 
