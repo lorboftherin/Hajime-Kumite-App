@@ -192,7 +192,7 @@ tatami; si una corrección deja el enfrentamiento sin decidir, vuelven.
   por sorteo (separando dojos). La original conserva la primera mitad y la
   nueva recibe la segunda; los rangos de peso o grado se ajustan al corte.
   Se deshace con `POST /categories/{id}/unsplit` si no hay combates iniciados.
-- **Rango de peso:** la migración `0009_reglas_deportivas` lo deduce de las etiquetas
+- **Rango de peso:** la migración `0010_reglas_deportivas` lo deduce de las etiquetas
   existentes (`-45` = hasta 45 kg, `+84` = más de 84 kg, `45-50`). El pesaje
   real lo hará un trabajo posterior.
 - **Sugerencias sin peso:** *corrección*; la sugerencia manual ignoraba el

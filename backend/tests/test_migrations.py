@@ -90,10 +90,14 @@ def test_upgrade_keeps_existing_data(tmp_path):
         assert conn.execute(text("SELECT count(*) FROM match_events")).scalar() == 1
         assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert "parent_match_id" in {c["name"] for c in inspect(conn).get_columns("matches")}
+        # Los torneos existentes quedan en la organización principal (0009).
+        org = conn.execute(text("SELECT organization_id FROM tournaments")).scalar()
+        assert conn.execute(text("SELECT slug FROM organizations WHERE id = :o"), {"o": org}).scalar() == "principal"
+        assert conn.execute(text("SELECT count(*) FROM plans")).scalar() == 6
 
 
 def test_weight_labels_become_numeric_ranges(tmp_path):
-    """La migración 0009 deduce el rango en kg de las etiquetas de peso existentes."""
+    """La migración 0010 deduce el rango en kg de las etiquetas de peso existentes."""
     from alembic import command
     from sqlalchemy import text
 
@@ -104,7 +108,7 @@ def test_weight_labels_become_numeric_ranges(tmp_path):
     cfg = alembic_config()
     with engine.begin() as conn:
         cfg.attributes["connection"] = conn
-        command.upgrade(cfg, "0008_mesa_principal")
+        command.upgrade(cfg, "0009_organizaciones")
     with engine.begin() as conn:
         tid = _fill(conn, "tournaments")
         ids = {

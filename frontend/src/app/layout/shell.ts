@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
-import { isStaff, tatamiScopes } from '../core/roles';
+import { dojoAdminOf, hasOrganizations, isStaff, tatamiScopes } from '../core/roles';
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
@@ -26,6 +26,10 @@ const NAV: NavItem[] = [
 const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
 /** Operador de mesa de un tatami: acceso directo a su cola. */
 const MY_TATAMI: NavItem = { path: '/mi-tatami', kanji: '畳', label: 'Mi tatami' };
+/** Sensei (admin de dojo): sus competidores y la inscripción en línea. */
+const MY_DOJO: NavItem = { path: '/mis-competidores', kanji: '門', label: 'Mis competidores' };
+/** Organización: datos, miembros y plan. */
+const ORGANIZATION: NavItem = { path: '/organizacion', kanji: '組', label: 'Organización' };
 
 const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   { mode: 'light', label: 'Claro', icon: 'sun' },
@@ -110,6 +114,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
             }
           </div>
           <hr />
+          <a class="menu-item" routerLink="/planes" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Planes</a>
           <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
           <a class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
           <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
@@ -470,8 +475,9 @@ export class Shell {
     const u = this.auth.user();
     const staff = isStaff(u);
     const base = NAV.filter((it) => staff || !it.staff);
-    const mine = tatamiScopes(u).length ? [MY_TATAMI] : [];
-    return [...mine, ...base, ...(this.auth.isAdmin() ? [ADMIN] : [])];
+    const mine = [...(tatamiScopes(u).length ? [MY_TATAMI] : []), ...(dojoAdminOf(u).length ? [MY_DOJO] : [])];
+    const org = hasOrganizations(u) ? [ORGANIZATION] : [];
+    return [...mine, ...base, ...org, ...(this.auth.isAdmin() ? [ADMIN] : [])];
   });
   readonly name = computed(() => {
     const u = this.auth.user();
@@ -482,7 +488,8 @@ export class Shell {
     const u = this.auth.user();
     if (u?.is_admin) return 'Administrador';
     if (isStaff(u)) return 'Organizador';
-    return tatamiScopes(u).length ? 'Operador de mesa' : 'Operador';
+    if (tatamiScopes(u).length) return 'Operador de mesa';
+    return dojoAdminOf(u).length ? 'Sensei' : 'Operador';
   });
 
   /** Las llaves (/categorias/…) pertenecen a un torneo: se marca «Torneos» como sección activa. */

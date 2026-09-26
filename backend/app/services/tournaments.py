@@ -85,6 +85,10 @@ def create_tournament(db: Session, user: User, data: s.TournamentCreate) -> Tour
     fields = data.model_dump(exclude={"tatami_count"})
     _validate_tournament_rules(fields)
     fields["age_reference_date"] = data.age_reference_date or data.start_date
+    if fields.get("organization_id") is None:  # scripts y datos de prueba: la organización principal
+        from app.services.organizations import default_organization
+
+        fields["organization_id"] = default_organization(db).id
     t = Tournament(**fields, updated_by_id=user.id)
     db.add(t)
     db.flush()

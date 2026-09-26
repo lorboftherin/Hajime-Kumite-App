@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { fmtDate, todayLima } from '../../core/format';
-import { Template, Tournament } from '../../core/models';
+import { Organization, Template, Tournament } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { StatusBadge } from '../../shared/badge';
 import { Modal } from '../../shared/modal';
@@ -74,6 +74,9 @@ function readIncludeTest(): boolean {
                   <div class="when small">{{ dateRange(t.start_date, t.end_date) }}</div>
                 }
                 <div class="where small">{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</div>
+                @if (t.organization_name && multiOrg()) {
+                  <div class="org small">{{ t.organization_name }}</div>
+                }
                 <div class="foot">
                   <app-status [status]="t.status" type="tournament" />
                   @if (t.is_test) {
@@ -91,6 +94,18 @@ function readIncludeTest(): boolean {
     @if (showNew()) {
       <app-modal title="Nuevo torneo" (closed)="showNew.set(false)">
         <form (ngSubmit)="create()" class="stack">
+          @if (orgs().length > 1) {
+            <label class="field">
+              <span>Organización *</span>
+              <select name="org" [(ngModel)]="form.organization_id" required>
+                @for (o of orgs(); track o.id) {
+                  <option [ngValue]="o.id">{{ o.name }}</option>
+                }
+              </select>
+            </label>
+          } @else if (orgs().length === 1) {
+            <p class="small muted">Organización: <strong>{{ orgs()[0].name }}</strong></p>
+          }
           <label class="field"><span>Nombre *</span><input name="name" [(ngModel)]="form.name" required minlength="3" /></label>
           <div class="grid-2">
             <label class="field"><span>Fecha de inicio *</span><input type="date" name="sd" [(ngModel)]="form.start_date" required /></label>
@@ -215,7 +230,8 @@ function readIncludeTest(): boolean {
     .when {
       color: var(--sumi-2);
     }
-    .where {
+    .where,
+    .org {
       color: var(--nezumi-ink);
     }
     .foot {
@@ -254,6 +270,10 @@ export class TournamentListPage {
 
   readonly tournaments = signal<Tournament[]>([]);
   readonly templates = signal<Template[]>([]);
+  /** Organizaciones donde el usuario puede crear torneos (owner/admin; el Admin, todas). */
+  readonly orgs = signal<Organization[]>([]);
+  /** Se muestra la organización en cada tarjeta solo si hay torneos de más de una. */
+  readonly multiOrg = signal(false);
   readonly loading = signal(true);
   readonly showNew = signal(false);
   readonly busy = signal(false);
@@ -287,6 +307,7 @@ export class TournamentListPage {
       city: 'Lima',
       is_test: false,
       template_id: null as number | null,
+      organization_id: null as number | null,
       tatami_count: 1,
       default_format: 'single_elimination',
       default_third_place_rule: 'two_bronzes',
@@ -307,6 +328,7 @@ export class TournamentListPage {
     this.api.get<Tournament[]>('/tournaments', { include_test: this.includeTest }).subscribe({
       next: (t) => {
         this.tournaments.set(t);
+        this.multiOrg.set(new Set(t.map((x) => x.organization_id)).size > 1);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -321,6 +343,14 @@ export class TournamentListPage {
       this.form.name = 'Torneo de prueba';
     }
     this.showNew.set(true);
+    this.api.get<Organization[]>('/organizations').subscribe({
+      next: (list) => {
+        const mine = list.filter((o) => o.can_manage);
+        this.orgs.set(mine);
+        if (mine.length && this.form.organization_id === null) this.form.organization_id = mine[0].id;
+      },
+      error: () => {},
+    });
     this.api.get<Template[]>('/templates').subscribe({
       next: (t) => {
         this.templates.set(t);

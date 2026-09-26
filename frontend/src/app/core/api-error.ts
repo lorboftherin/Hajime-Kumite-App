@@ -26,6 +26,11 @@ export class ApiError extends Error {
     return this.code === 'WARNINGS' ? ((this.details['warnings'] as WarningItem[]) ?? []) : [];
   }
 
+  /** 402 PLAN_REQUIRED: la función necesita un plan (details.plan / plan_name / feature). */
+  get planRequired(): boolean {
+    return this.status === 402 && this.code === 'PLAN_REQUIRED';
+  }
+
   /** Mensaje legible, incluyendo errores de validación. */
   get fullMessage(): string {
     const errs = this.details['errors'] as Array<{ loc: unknown[]; msg: string }> | undefined;
