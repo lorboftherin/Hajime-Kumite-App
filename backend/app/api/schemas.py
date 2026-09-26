@@ -275,6 +275,13 @@ class CategoryCreate(CategoryFields):
 class CategoryUpdate(BaseModel):
     version: int
     name: str | None = None
+    # Datos básicos editables desde la pestaña Categorías (quién entra en la categoría).
+    sex: CategorySex | None = None
+    age_min: int | None = None
+    age_max: int | None = None
+    grade_min: int | None = None
+    grade_max: int | None = None
+    weight_class: str | None = None
     format: Literal["single_elimination", "round_robin", "kata_rounds"] | None = None
     third_place_rule: Literal["two_bronzes", "third_place_match", "repechage"] | None = None
     duration_seconds: int | None = None

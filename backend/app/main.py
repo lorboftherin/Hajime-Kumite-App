@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import install_handlers
-from app.api.routers import competition, core, history, public, tournaments
+from app.api.routers import competition, core, history, organizer, public, tournaments
 from app.config import DEFAULT_SECRET, get_settings
 from app.db.base import get_engine, wait_for_database
 
@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     install_handlers(app)
-    for r in (core.router, tournaments.router, competition.router, history.router, public.router):
+    for r in (core.router, tournaments.router, competition.router, organizer.router, history.router, public.router):
         app.include_router(r, prefix="/api/v1")
 
     @app.get("/health", tags=["meta"])
