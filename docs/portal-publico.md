@@ -57,6 +57,12 @@ persona; no es el id y no sirve en otro torneo). La estrella la guarda en
 modo privado quedan solo mientras la pestaña esté abierta. «Mis favoritos» se
 muestra arriba con su estado.
 
+Avisos: junto a la estrella, la campana «Avisarme» suscribe el dispositivo a
+Web Push (sin cuenta) y sigue a ese competidor por su `key` en el torneo:
+«te toca en ~3 combates», «¡A tatami!», resultado y medallas. Tocar el aviso
+abre `/t/<slug>?seguir=<key>`, que muestra al competidor arriba de «¿Cuándo
+pelea?». Ver [`avisos-push.md`](avisos-push.md).
+
 ## Horarios estimados (`app/services/schedule.py`)
 
 - **Datos:** `tatamis.planned_start` (hora local del torneo, se edita en

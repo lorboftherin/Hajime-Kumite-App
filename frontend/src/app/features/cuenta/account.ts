@@ -91,6 +91,7 @@ import { PageHead } from '../../shared/page-head';
 
       <section class="card links">
         <a routerLink="/mis-perfiles"><app-icon name="open" /> Mis perfiles deportivos</a>
+        <a routerLink="/avisos"><app-icon name="bell" /> Avisos en este dispositivo</a>
         <a routerLink="/cambiar-clave"><app-icon name="key" /> Cambiar contraseña</a>
         <a routerLink="/privacidad"
           ><app-icon name="open" /> Privacidad: qué datos se muestran y a quién</a

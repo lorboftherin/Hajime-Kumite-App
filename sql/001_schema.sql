@@ -168,6 +168,23 @@ CREATE TABLE persons (
 
 CREATE INDEX ix_persons_normalized_name ON persons (normalized_name);
 CREATE UNIQUE INDEX uq_persons_public_id ON persons (public_id) WHERE public_id IS NOT NULL;
+CREATE TABLE push_subscriptions (
+	id INTEGER NOT NULL IDENTITY, 
+	user_id INTEGER NULL, 
+	endpoint VARCHAR(800) NOT NULL, 
+	p256dh VARCHAR(120) NOT NULL, 
+	auth VARCHAR(60) NOT NULL, 
+	user_agent NVARCHAR(255) NOT NULL, 
+	preferences NVARCHAR(max) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	last_success_at DATETIME2 NULL, 
+	failures INTEGER NOT NULL DEFAULT '0', 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id), 
+	UNIQUE (endpoint)
+);
+
+CREATE INDEX ix_push_subscriptions_user_id ON push_subscriptions (user_id);
 CREATE TABLE ranking_seasons (
 	id INTEGER NOT NULL IDENTITY, 
 	name NVARCHAR(200) NOT NULL, 
@@ -623,6 +640,35 @@ CREATE TABLE invoices (
 );
 
 CREATE INDEX ix_invoices_payment_id ON invoices (payment_id);
+CREATE TABLE notification_outbox (
+	id INTEGER NOT NULL IDENTITY, 
+	subscription_id INTEGER NOT NULL, 
+	tournament_id INTEGER NULL, 
+	kind VARCHAR(20) NOT NULL, 
+	ref VARCHAR(60) NOT NULL, 
+	title NVARCHAR(200) NOT NULL, 
+	body NVARCHAR(500) NOT NULL, 
+	url NVARCHAR(500) NOT NULL, 
+	tag VARCHAR(80) NOT NULL, 
+	ttl INTEGER NOT NULL, 
+	urgency VARCHAR(10) NOT NULL, 
+	status VARCHAR(20) NOT NULL, 
+	attempts INTEGER NOT NULL, 
+	last_error NVARCHAR(500) NULL, 
+	created_at DATETIME2 NOT NULL, 
+	next_attempt_at DATETIME2 NOT NULL, 
+	locked_until DATETIME2 NULL, 
+	claimed_by VARCHAR(40) NULL, 
+	expires_at DATETIME2 NULL, 
+	sent_at DATETIME2 NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT uq_notification_outbox_dedup UNIQUE (subscription_id, kind, ref), 
+	FOREIGN KEY(subscription_id) REFERENCES push_subscriptions (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id)
+);
+
+CREATE INDEX ix_notification_outbox_pending ON notification_outbox (status, next_attempt_at);
+CREATE INDEX ix_notification_outbox_tournament_id ON notification_outbox (tournament_id);
 CREATE TABLE public_snapshots (
 	tournament_id INTEGER NOT NULL, 
 	kind VARCHAR(40) NOT NULL, 
@@ -635,6 +681,26 @@ CREATE TABLE public_snapshots (
 	FOREIGN KEY(tournament_id) REFERENCES tournaments (id)
 );
 
+CREATE TABLE push_follows (
+	id INTEGER NOT NULL IDENTITY, 
+	subscription_id INTEGER NOT NULL, 
+	tournament_id INTEGER NULL, 
+	person_key VARCHAR(24) NULL, 
+	person_id INTEGER NULL, 
+	dojo_id INTEGER NULL, 
+	created_at DATETIME2 NOT NULL, 
+	expires_at DATETIME2 NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(subscription_id) REFERENCES push_subscriptions (id), 
+	FOREIGN KEY(tournament_id) REFERENCES tournaments (id), 
+	FOREIGN KEY(person_id) REFERENCES persons (id), 
+	FOREIGN KEY(dojo_id) REFERENCES dojos (id)
+);
+
+CREATE INDEX ix_push_follows_dojo_id ON push_follows (dojo_id);
+CREATE INDEX ix_push_follows_key ON push_follows (tournament_id, person_key);
+CREATE INDEX ix_push_follows_person_id ON push_follows (person_id);
+CREATE INDEX ix_push_follows_subscription_id ON push_follows (subscription_id);
 CREATE TABLE referee_assignments (
 	id INTEGER NOT NULL IDENTITY, 
 	tournament_id INTEGER NOT NULL, 

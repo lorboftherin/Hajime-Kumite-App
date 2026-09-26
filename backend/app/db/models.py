@@ -1176,3 +1176,95 @@ class Guardianship(Base):
     relation: Mapped[str] = mapped_column("relationship", String(20))  # parent | guardian
     claim_id: Mapped[int | None] = mapped_column(ForeignKey("profile_claims.id"), nullable=True)
     verified_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Avisos Web Push (docs/avisos-push.md)
+# ---------------------------------------------------------------------------
+
+
+class PushSubscription(Base):
+    """Suscripción Web Push de un navegador (una por dispositivo y navegador).
+
+    ``user_id`` queda nulo cuando se suscribe un espectador sin cuenta desde la
+    página pública. ``endpoint`` es la URL del servicio de push del navegador
+    (FCM, Mozilla, Apple, Windows); ``p256dh`` y ``auth`` son sus claves para
+    cifrar (RFC 8291). Para modificarla sin sesión se exige ``auth``, que solo
+    conoce ese navegador. ``preferences``: qué avisos quiere recibir.
+    """
+
+    __tablename__ = "push_subscriptions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    # ASCII y como máximo 800: índice único válido en SQL Server (límite de 900 bytes).
+    endpoint: Mapped[str] = mapped_column(String(800), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(120))
+    auth: Mapped[str] = mapped_column(String(60))
+    user_agent: Mapped[str] = mapped_column(Unicode(255), default="")
+    preferences: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_success_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+
+
+class PushFollow(Base):
+    """A quién sigue una suscripción.
+
+    * ``tournament_id`` + ``person_key``: espectador sin cuenta que marcó a un
+      competidor en la página pública (la clave opaca ``key`` de «¿cuándo
+      pelea?»; no es el id de la persona y solo vale en ese torneo). Vence al
+      terminar el torneo (``expires_at``).
+    * ``person_id``: cuenta que sigue su propio perfil, el de un menor a cargo
+      o el de un alumno de su dojo (sensei). Vale en todos los torneos.
+    * ``dojo_id``: el sensei sigue a todo su dojo.
+    """
+
+    __tablename__ = "push_follows"
+    __table_args__ = (Index("ix_push_follows_key", "tournament_id", "person_key"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("push_subscriptions.id"), index=True)
+    tournament_id: Mapped[int | None] = mapped_column(ForeignKey("tournaments.id"), nullable=True)
+    person_key: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id"), nullable=True, index=True)
+    dojo_id: Mapped[int | None] = mapped_column(ForeignKey("dojos.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class NotificationOutbox(Base):
+    """Bandeja de salida de avisos push (como ``outbox_emails``, con *lease* entre procesos).
+
+    ``(subscription_id, kind, ref)`` es único: deduplica «te toca» por
+    suscripción, combate y tipo aunque el torneo se recorra muchas veces o lo
+    recorran varios procesos a la vez. ``expires_at``: pasado ese momento ya no
+    se envía (los de turno valen 10 minutos).
+    """
+
+    __tablename__ = "notification_outbox"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "kind", "ref", name="uq_notification_outbox_dedup"),
+        Index("ix_notification_outbox_pending", "status", "next_attempt_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(ForeignKey("push_subscriptions.id"))
+    tournament_id: Mapped[int | None] = mapped_column(ForeignKey("tournaments.id"), nullable=True, index=True)
+    # soon | next | result | medal | registration | claim
+    kind: Mapped[str] = mapped_column(String(20))
+    ref: Mapped[str] = mapped_column(String(60))  # combate, categoría, inscripción o reclamo
+    title: Mapped[str] = mapped_column(Unicode(200))
+    body: Mapped[str] = mapped_column(Unicode(500), default="")
+    url: Mapped[str] = mapped_column(Unicode(500), default="")
+    tag: Mapped[str] = mapped_column(String(80), default="")
+    ttl: Mapped[int] = mapped_column(Integer, default=3600)
+    urgency: Mapped[str] = mapped_column(String(10), default="normal")  # very-low | low | normal | high
+    # pending | sending | sent | failed | expired
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    next_attempt_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Quién tiene la reserva: el despachador reserva un lote con un solo UPDATE y lo relee por este valor.
+    claimed_by: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)

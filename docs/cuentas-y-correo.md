@@ -66,6 +66,11 @@ versión en texto plano. El texto de cada correo vive en el servicio que lo env�
 | Nueva solicitud de perfil | Reclamo nuevo: a los `dojo_admin` y senseis del dojo de la persona que tengan correo (no si se aprobó solo) |
 | Inscripciones revisadas | El organizador aprueba o rechaza en lote las inscripciones pedidas por un sensei: un correo por sensei con las aprobadas y las rechazadas con su motivo (`self_registration.notify_registration_decisions`) |
 
+Además del correo, las cuentas con avisos push activos en un dispositivo
+reciben «Inscripciones revisadas» (el sensei, uno por lote; la persona y su
+apoderado, uno por inscripción) y «Perfil aprobado». Ver
+[`avisos-push.md`](avisos-push.md).
+
 ## Correo en las cuentas
 
 - `users.email` es único entre las cuentas que lo tienen (las antiguas quedan

@@ -44,6 +44,12 @@ export const routes: Routes = [
     title: 'Crear cuenta · Hajime',
   },
   {
+    // Avisos push de este dispositivo: con o sin cuenta (docs/avisos-push.md).
+    path: 'avisos',
+    loadComponent: () => import('./features/cuenta/push-settings').then((m) => m.PushSettingsPage),
+    title: 'Avisos · Hajime',
+  },
+  {
     path: 'privacidad',
     loadComponent: () => import('./features/cuenta/privacy').then((m) => m.PrivacyPage),
     title: 'Privacidad · Hajime',

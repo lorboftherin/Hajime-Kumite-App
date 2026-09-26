@@ -380,6 +380,18 @@ def _approve(db: Session, reviewer: User | None, claim: ProfileClaim, p: Person,
 
 
 def _notify(db: Session, user: User, claim: ProfileClaim, p: Person) -> None:
+    if claim.status == "approved":
+        from app.services import push
+
+        push.notify_users(
+            db,
+            [user.id],
+            "claim",
+            f"claim:{claim.id}",
+            "Perfil aprobado",
+            f"Ya ves el historial de {public_name(p)}. Toca «Avisarme» para seguir sus combates.",
+            "/mis-perfiles",
+        )
     if not user.email:
         return
     base = get_settings().frontend_url()

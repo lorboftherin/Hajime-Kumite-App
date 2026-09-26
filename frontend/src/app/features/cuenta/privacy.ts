@@ -94,6 +94,14 @@ import { Enso, HajimeWord } from '../../shared/enso';
           solicitud tuya.
         </p>
 
+        <h2>Avisos en el dispositivo</h2>
+        <p>
+          Si activas los avisos («Avisarme»), guardamos la dirección de avisos de tu navegador y a
+          quién sigues en ese dispositivo. Los favoritos de la página pública se borran al terminar
+          el torneo. Los avisos usan el nombre abreviado de los menores, como la página pública, y
+          puedes desactivarlos en «Avisos».
+        </p>
+
         <h2>Tus derechos</h2>
         <p>
           Puedes borrar tu cuenta desde «Borrar mi cuenta». Para corregir o eliminar datos de un

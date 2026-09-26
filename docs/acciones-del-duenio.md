@@ -113,6 +113,17 @@ Detalle y pasos de prueba en [cobros.md](cobros.md).
 
 ## Más adelante
 
+- **Activar los avisos push** (`docs/avisos-push.md`): generar las claves una
+  sola vez con `python -m app.seed vapid-keys` (en tu máquina o en Cloud Shell
+  con el backend instalado) y cargarlas en cada ambiente: `HAJIME_VAPID_PUBLIC_KEY`
+  y `HAJIME_VAPID_SUBJECT` como variables, `HAJIME_VAPID_PRIVATE_KEY` como
+  **secreto** del Container App (y en Key Vault). Usa claves distintas en
+  pruebas y producción y no las cambies después: cambiarlas invalida todas las
+  suscripciones. *Comprobar:* `GET /api/v1/push/config` responde
+  `enabled: true`, y en Chrome la campana de `/t/<slug>` pide permiso y llega
+  un «te toca» al empezar combates.
+- **Avisos en la app de Android:** necesitan un proyecto de Firebase y
+  `google-services.json` (camino en `docs/avisos-push.md`, «Camino a FCM»).
 - **App de Android en Google Play:** hoy CI y los releases generan un APK de
   depuración. Para la tienda hará falta una llave de firma (keystore) guardada
   como secreto del entorno `prod` y un paso que firme un AAB de release.

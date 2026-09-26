@@ -1,15 +1,18 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { fmtDate, fmtDateTime, SEX_LABEL } from '../../core/format';
 import { Category, Dojo, DojoRegistration, OpenTournament, Person } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { PushService } from '../../core/push.service';
+import { ToastService } from '../../core/toast.service';
 import { StatusBadge } from '../../shared/badge';
 import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
 import { PageHead } from '../../shared/page-head';
 import { PersonForm } from '../../shared/person-form';
+import { PushButton, PushHint } from '../../shared/push-button';
 
 type Tab = 'competidores' | 'inscribir' | 'estado';
 
@@ -28,7 +31,7 @@ interface Pick {
  */
 @Component({
   selector: 'app-dojo-portal',
-  imports: [FormsModule, PageHead, Icon, Modal, PersonForm, StatusBadge],
+  imports: [FormsModule, PageHead, Icon, Modal, PersonForm, StatusBadge, PushButton, PushHint],
   template: `
     <div class="container">
       <app-page-head kanji="門" [title]="dojo()?.name ?? 'Mis competidores'">
@@ -44,7 +47,13 @@ interface Pick {
             }
           </select>
         }
-        @if (tab() === 'competidores' && dojoId()) {
+        @if (tab() === 'competidores' && dojoId(); as did) {
+          <app-push-button
+            [on]="pushDojos().has(did)"
+            [busy]="pushBusy()"
+            [label]="'todo el dojo'"
+            (toggled)="togglePush({ dojo_id: did }, $event)"
+          />
           <button class="btn primary" (click)="showNew.set(true)">
             <app-icon name="plus" /> Nuevo competidor
           </button>
@@ -87,6 +96,7 @@ interface Pick {
 
         @switch (tab()) {
           @case ('competidores') {
+            <app-push-hint [always]="false" />
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -115,7 +125,14 @@ interface Pick {
                         }
                       </td>
                       <td>{{ p.current_grade ?? '—' }}</td>
-                      <td class="right">
+                      <td class="right nowrap">
+                        <app-push-button
+                          [compact]="true"
+                          [on]="pushPersons().has(p.id)"
+                          [busy]="pushBusy()"
+                          [label]="p.first_names + ' ' + p.last_names"
+                          (toggled)="togglePush({ person_id: p.id }, $event)"
+                        />
                         <button class="btn sm" (click)="openEdit(p)">Editar</button>
                       </td>
                     </tr>
@@ -420,7 +437,43 @@ export class DojoPortalPage {
       .filter(({ pk }) => pk.selected && pk.category_id !== null);
   });
 
+  private push = inject(PushService);
+  private toast = inject(ToastService);
+  /** Alumnos y dojos con aviso en este dispositivo («te toca», resultados, medallas). */
+  readonly pushPersons = signal<Set<number>>(new Set());
+  readonly pushDojos = signal<Set<number>>(new Set());
+  readonly pushBusy = signal(false);
+
+  private setPush(s: { person_ids: number[]; dojo_ids: number[] }): void {
+    this.pushPersons.set(new Set(s.person_ids));
+    this.pushDojos.set(new Set(s.dojo_ids));
+  }
+
+  async togglePush(target: { person_id?: number; dojo_id?: number }, on: boolean): Promise<void> {
+    this.pushBusy.set(true);
+    try {
+      const s = await this.push.followAccount(target, on);
+      if (!s) return;
+      this.setPush(s);
+      this.toast.ok(
+        on
+          ? target.dojo_id
+            ? 'Te avisaremos de todos los competidores del dojo'
+            : 'Te avisaremos de sus combates'
+          : 'Aviso quitado',
+      );
+    } catch {
+      this.toast.error('No se pudo guardar el aviso');
+    } finally {
+      this.pushBusy.set(false);
+    }
+  }
+
   constructor() {
+    effect(() => {
+      if (!this.push.subscription()) return;
+      untracked(() => void this.push.state().then((s) => this.setPush(s)));
+    });
     this.api.get<Dojo[]>('/dojo-portal/dojos').subscribe({
       next: (d) => {
         this.dojos.set(d);

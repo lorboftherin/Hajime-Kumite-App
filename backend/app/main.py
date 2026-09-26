@@ -24,6 +24,7 @@ from app.api.routers import (
     organizer,
     public,
     public_profiles,
+    push,
     ranking,
     templates,
     tournaments,
@@ -56,11 +57,14 @@ async def lifespan(_: FastAPI):
         # false: el entrypoint ya lo hizo una vez (python -m app.prepare).
         prepare_database(settings, get_engine())
     dispatcher = _start_mail_dispatcher(settings)
+    push_service = _start_push_service(settings)
     try:
         yield
     finally:
         if dispatcher is not None:
             dispatcher.stop()
+        if push_service is not None:
+            push_service.stop()
 
 
 def _start_mail_dispatcher(settings):
@@ -84,6 +88,25 @@ def _start_mail_dispatcher(settings):
     dispatcher = MailDispatcher(session_factory(), settings)
     dispatcher.start()
     return dispatcher
+
+
+def _start_push_service(settings):
+    """Hilo de avisos push: recorre los torneos que cambian y envía la bandeja
+    (ver app/services/push.py). Solo con claves VAPID y, como el de correo, no
+    con SQLite en memoria (las pruebas)."""
+    from app.services import push as push_svc
+    from app.services import push_eval  # noqa: F401 - registra el oyente de cambios
+
+    if not settings.push_dispatcher or not push_svc.enabled(settings):
+        return None
+    engine = get_engine()
+    if engine.url.get_backend_name() == "sqlite" and engine.url.database in (None, "", ":memory:"):
+        return None
+    from app.db.base import session_factory
+
+    service = push_svc.PushService(session_factory(), settings)
+    service.start()
+    return service
 
 
 def _ping_database() -> None:
@@ -139,6 +162,7 @@ def create_app() -> FastAPI:
         dojo_portal.router,
         public_profiles.router,
         public.router,
+        push.router,
     )
     for r in routers:
         app.include_router(r, prefix="/api/v1")
