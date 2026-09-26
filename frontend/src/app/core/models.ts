@@ -45,6 +45,10 @@ export interface User {
 export interface TokenOut {
   access_token: string;
   token_type: string;
+  /** Token opaco para renovar el de acceso sin pedir la contraseña (se rota en cada uso). */
+  refresh_token?: string | null;
+  /** Segundos de vida del token de acceso. */
+  expires_in?: number | null;
   user: User;
 }
 

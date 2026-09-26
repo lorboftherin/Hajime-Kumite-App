@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
@@ -21,7 +21,10 @@ from app.db.models import (
     Person,
     PersonMerge,
     PersonRole,
+    RefereeAssignment,
     Registration,
+    RuleOverride,
+    TeamMember,
     User,
 )
 from app.domain.categories import grade_to_ordinal
@@ -181,28 +184,114 @@ def add_consent(db: Session, user: User, person_id: int, data: s.ConsentIn) -> D
     return c
 
 
+def log_sensitive_view(db: Session, user: User, person_id: int) -> None:
+    """Deja constancia (acción ``view_sensitive``) de que un usuario vio el documento
+    o la fecha de nacimiento de una persona. Una sola vez cada 15 min por
+    usuario y persona para que abrir la ficha varias veces no llene la auditoría."""
+    since = utcnow() - timedelta(minutes=15)
+    seen = db.scalar(
+        select(AuditEntry.id)
+        .where(
+            AuditEntry.entity == "person",
+            AuditEntry.entity_id == str(person_id),
+            AuditEntry.action == "view_sensitive",
+            AuditEntry.user_id == user.id,
+            AuditEntry.at >= since,
+        )
+        .limit(1)
+    )
+    if seen is None:
+        audit(db, user, "person", person_id, "view_sensitive")
+        db.commit()
+
+
+_REDACTED = {"redacted": True}
+
+
+def _redact_entries(entries) -> None:
+    for a in entries:
+        a.before = _REDACTED if a.before else None
+        a.after = _REDACTED if a.after else None
+
+
 def anonymize_person(db: Session, user: User, person_id: int, reason: str) -> Person:
     """Derecho de cancelación (sección 11): borra los datos identificativos y
     conserva inscripciones y combates para no romper el historial de los rivales.
+
+    Además de la persona, se redactan las huellas con sus datos: fotos de
+    auditoría de la persona, de sus inscripciones, de los equipos que integró
+    y de sus asignaciones como árbitro; su nombre en mensajes de advertencias
+    aceptadas y motivos de auditoría; y las filas de importación que la crearon
+    o la mencionaban como posible duplicado.
     """
     p = get_person(db, person_id)
     if p.anonymized_at:
         raise InvalidState("La persona ya fue anonimizada")
+    old_name = f"{p.first_names} {p.last_names}".strip()
     p.first_names = "Competidor"
     p.last_names = f"anonimizado #{p.id}"
     p.normalized_name = ""
     p.birth_date = None
     p.identity_incomplete = True
     p.anonymized_at = utcnow()
+    new_name = f"{p.first_names} {p.last_names}"
     db.execute(delete(IdentityDocument).where(IdentityDocument.person_id == p.id))
     db.execute(delete(DataConsent).where(DataConsent.person_id == p.id))
     # La auditoría y las filas de importación conservan la acción, no los datos.
-    for a in db.scalars(select(AuditEntry).where(AuditEntry.entity == "person", AuditEntry.entity_id == str(p.id))):
-        a.before, a.after = ({"redacted": True} if a.before else None), ({"redacted": True} if a.after else None)
+    _redact_entries(
+        db.scalars(select(AuditEntry).where(AuditEntry.entity == "person", AuditEntry.entity_id == str(p.id)))
+    )
+    reg_ids = list(db.scalars(select(Registration.id).where(Registration.person_id == p.id)).all())
+    team_ids = list(db.scalars(select(TeamMember.team_id).where(TeamMember.person_id == p.id).distinct()).all())
+    team_reg_ids = (
+        list(db.scalars(select(Registration.id).where(Registration.team_id.in_(team_ids))).all()) if team_ids else []
+    )
+    if reg_ids or team_reg_ids:
+        _redact_entries(
+            db.scalars(
+                select(AuditEntry).where(
+                    AuditEntry.entity == "registration",
+                    AuditEntry.entity_id.in_([str(i) for i in reg_ids + team_reg_ids]),
+                )
+            )
+        )
+    if team_ids:
+        _redact_entries(
+            db.scalars(
+                select(AuditEntry).where(
+                    AuditEntry.entity == "team", AuditEntry.entity_id.in_([str(i) for i in team_ids])
+                )
+            )
+        )
+    assignment_ids = {
+        str(i) for i in db.scalars(select(RefereeAssignment.id).where(RefereeAssignment.person_id == p.id)).all()
+    }
+    _redact_entries(
+        a
+        for a in db.scalars(select(AuditEntry).where(AuditEntry.entity == "referee_assignment"))
+        if a.entity_id in assignment_ids
+        or (a.before or {}).get("person_id") == p.id
+        or (a.after or {}).get("person") == old_name
+    )
+    if len(old_name) >= 3:
+        # Advertencias aceptadas de sus inscripciones y cualquier mensaje o motivo que la nombre.
+        conds = [RuleOverride.message.contains(old_name)]
+        if reg_ids:
+            conds.append((RuleOverride.entity == "registration") & RuleOverride.entity_id.in_(reg_ids))
+        for ov in db.scalars(select(RuleOverride).where(or_(*conds))):
+            ov.message = ov.message.replace(old_name, new_name)
+            ov.reason = ov.reason.replace(old_name, new_name)
+        for a in db.scalars(select(AuditEntry).where(AuditEntry.reason.contains(old_name))):
+            a.reason = (a.reason or "").replace(old_name, new_name)
     for row in db.scalars(select(ImportRow)):
         if (row.resolution or {}).get("person_id") == p.id:
             row.data = {"redacted": True}
             row.duplicates = []
+        elif any(d.get("person_id") == p.id for d in row.duplicates or []):
+            row.duplicates = [
+                {**d, "full_name": new_name, "birth_date": None} if d.get("person_id") == p.id else d
+                for d in row.duplicates
+            ]
     bump(p, user)
     audit(db, user, "person", p.id, "anonymize", reason=reason)
     db.commit()

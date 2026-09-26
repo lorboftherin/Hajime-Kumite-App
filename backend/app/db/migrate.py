@@ -17,6 +17,7 @@ LEGACY_MARKERS = (
     ("teams", "0002"),
     ("match_presence", "0004"),
     ("login_attempts", "0005_intentos_login"),
+    ("user_sessions", "0005_sesiones"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)

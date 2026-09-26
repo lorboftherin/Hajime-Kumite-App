@@ -15,6 +15,9 @@
 | `HAJIME_ENVIRONMENT` | `prod` | `dev`, `test` o `prod` |
 | `HAJIME_DATABASE_URL` | `mssql+pyodbc://usuario:clave@servidor.database.windows.net:1433/hajime?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes` | En Azure, guardarla como secreto |
 | `HAJIME_JWT_SECRET` | 64 caracteres aleatorios | La API no arranca en `prod` sin este valor |
+| `HAJIME_JWT_PREVIOUS_SECRET` | el secreto anterior | Solo durante una rotación: los tokens firmados con él siguen valiendo hasta vencer (ver abajo) |
+| `HAJIME_ACCESS_TOKEN_MINUTES` | `60` | Vida del token de acceso; la app lo renueva sola antes de que venza |
+| `HAJIME_REFRESH_TOKEN_DAYS` | `30` | Vida del token de renovación (una sesión sin uso durante este tiempo pide la contraseña) |
 | `HAJIME_CORS_ORIGINS` | `["https://hajime.example.pe"]` | Orígenes de otros dominios que pueden llamar a la API. Sin definir: en `dev`/`test` se aceptan los de desarrollo (`localhost`, app del celular); en `prod`, **ninguno**. Si en prod se usa la app del celular, agregar `"https://localhost"` y `"capacitor://localhost"` |
 | `HAJIME_SECRET_FILE` | `/data/jwt_secret` | Alternativa a `HAJIME_JWT_SECRET`: se genera y guarda la primera vez |
 | `HAJIME_ADMIN_PASSWORD` | — | Crea el admin en el primer arranque si no hay usuarios |
@@ -88,6 +91,34 @@ Si el contenedor se expone directo a internet sin proxy, poner
   5 min; 30 fallos desde una misma IP (cualquier usuario) la bloquean también.
   La cuenta se guarda en la base (tabla `login_attempts`), así vale para todos
   los procesos y copias.
+
+## Sesiones y rotación del secreto JWT
+
+- Al iniciar sesión la app recibe un token de acceso (60 min) y uno de
+  renovación (30 días, rotado en cada uso). Cada dispositivo es una sesión:
+  se ven en `GET /auth/sessions`, se cierran con `DELETE /auth/sessions/{id}`
+  y el Admin cierra todas las de una cuenta con `DELETE /users/{id}/sessions`
+  (p. ej. una tablet perdida).
+- `HAJIME_JWT_MINUTES` ya no se usa: la vida del token de acceso es
+  `HAJIME_ACCESS_TOKEN_MINUTES`.
+- **Rotar el secreto sin expulsar a nadie:** poner el valor actual en
+  `HAJIME_JWT_PREVIOUS_SECRET` y el nuevo en `HAJIME_JWT_SECRET`, y
+  reiniciar. Los tokens firmados con el anterior siguen valiendo hasta vencer
+  (a lo sumo `HAJIME_ACCESS_TOKEN_MINUTES`) y la app se renueva sola con el
+  nuevo. Pasado ese tiempo, quitar `HAJIME_JWT_PREVIOUS_SECRET`.
+
+## Protección de datos: filas de importación
+
+Al confirmar o cancelar una importación de Excel se borran el DNI y la
+fecha de nacimiento de sus filas. Las filas de lotes de más de 30 días se
+borran bajo demanda:
+
+```bash
+python -m app.seed purge-imports            # o --days 60
+```
+
+(o `POST /api/v1/imports/purge` como Admin). Conviene programarlo, p. ej.
+una vez por semana, o correrlo después de cada torneo.
 
 ## Azure (propuesta inicial, sección 22)
 

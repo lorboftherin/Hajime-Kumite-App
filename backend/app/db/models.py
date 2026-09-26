@@ -48,6 +48,28 @@ class User(Base, Timestamped):
     display_name: Mapped[str] = mapped_column(Unicode(200), default="")
 
 
+class UserSession(Base):
+    """Sesión abierta (un inicio de sesión en un dispositivo).
+
+    El token de renovación es opaco y aleatorio; aquí solo se guarda su hash
+    (SHA-256). Cada renovación lo rota: el nuevo reemplaza a ``token_hash`` y
+    el anterior queda en ``previous_token_hash`` para detectar su reutilización.
+    """
+
+    __tablename__ = "user_sessions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    previous_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    rotated_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_used_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    user_agent: Mapped[str] = mapped_column(Unicode(255), default="")
+    ip: Mapped[str] = mapped_column(String(45), default="")
+
+
 class Person(Base, Timestamped, Versioned):
     """Persona."""
 

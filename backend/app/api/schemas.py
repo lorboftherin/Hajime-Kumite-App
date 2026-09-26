@@ -56,7 +56,28 @@ class UserOut(ORM):
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # Token opaco para renovar el de acceso sin volver a pedir la contraseña.
+    refresh_token: str | None = None
+    expires_in: int | None = None  # segundos de vida del token de acceso
     user: UserOut
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=10, max_length=200)
+
+
+class LogoutIn(BaseModel):
+    refresh_token: str | None = None
+
+
+class SessionOut(ORM):
+    id: int
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    user_agent: str
+    ip: str
+    current: bool = False
 
 
 class PasswordChange(BaseModel):
