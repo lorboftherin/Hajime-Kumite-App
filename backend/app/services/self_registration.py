@@ -27,6 +27,7 @@ from app.db.models import (
     Dojo,
     DojoAdminRequest,
     DojoMembership,
+    Guardianship,
     Person,
     PersonRole,
     Registration,
@@ -578,6 +579,7 @@ def notify_registration_decisions(db: Session, regs: list[Registration]) -> None
     Se encola en ``outbox_emails`` (ver ``app.services.mail``) sin confirmar la
     transacción. Sin correo en la cuenta, solo queda la constancia en el log.
     """
+    _push_registration_decisions(db, regs)
     by_user: dict[int, list[Registration]] = {}
     for r in regs:
         log.info(
@@ -619,6 +621,53 @@ def notify_registration_decisions(db: Session, regs: list[Registration]) -> None
                 ("Ver mis competidores", f"{get_settings().frontend_url()}/mis-competidores"),
             ),
             kind="registration_decision",
+        )
+
+
+def _push_registration_decisions(db: Session, regs: list[Registration]) -> None:
+    """Aviso push de la decisión: al sensei que la pidió (uno por lote) y a la cuenta
+    de la persona y de su padre, madre o apoderado (uno por inscripción)."""
+    from app.services import push
+    from app.services.claims import public_name
+
+    if not regs or not push.enabled():
+        return
+    by_requester: dict[int, list[Registration]] = {}
+    for r in regs:
+        if r.requested_by_id is not None:
+            by_requester.setdefault(r.requested_by_id, []).append(r)
+    for user_id, mine in by_requester.items():
+        t = get_tournament(db, mine[0].tournament_id)
+        ok = sum(1 for r in mine if r.status == "active")
+        no = len(mine) - ok
+        body = f"{ok} aprobada{'s' if ok != 1 else ''}, {no} no aprobada{'s' if no != 1 else ''}"
+        ref = f"regs:{min(r.id for r in mine)}:{len(mine)}:{ok}:{int(utcnow().timestamp())}"
+        push.notify_users(
+            db, [user_id], "registration", ref, f"Inscripciones revisadas · {t.name}", body, "/mis-competidores"
+        )
+    for r in regs:
+        if r.person_id is None:
+            continue
+        p = db.get(Person, r.person_id)
+        if p is None:
+            continue
+        users = set(db.scalars(select(User.id).where(User.person_id == p.id, User.is_active)).all())
+        users |= set(db.scalars(select(Guardianship.user_id).where(Guardianship.person_id == p.id)).all())
+        users.discard(r.requested_by_id)  # el sensei ya recibe el resumen del lote
+        if not users:
+            continue
+        t = get_tournament(db, r.tournament_id)
+        c = db.get(Category, r.category_id)
+        approved = r.status == "active"
+        push.notify_users(
+            db,
+            users,
+            "registration",
+            f"reg:{r.id}:{r.status}",
+            f"Inscripción {'aprobada' if approved else 'no aprobada'} · {t.name}",
+            f"{public_name(p)} · {c.name if c else ''}"
+            + ("" if approved else f" · motivo: {r.rejection_reason or 'sin motivo'}"),
+            "/mis-perfiles",
         )
 
 

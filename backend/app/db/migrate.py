@@ -23,6 +23,7 @@ LEGACY_MARKERS = (
     ("category_splits", "0010_reglas_deportivas"),
     ("outbox_emails", "0011_cuentas"),
     ("ranking_seasons", "0012_checkin_ranking"),
+    ("push_subscriptions", "0015_avisos_push"),
 )
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
 LEGACY_COLUMNS = (

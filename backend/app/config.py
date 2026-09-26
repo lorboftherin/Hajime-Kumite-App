@@ -131,6 +131,37 @@ class Settings(BaseSettings):
     # Aviso «Tus diplomas están listos» a la persona y a su apoderado (con correo)
     # al finalizar una categoría con podio. Apagado por defecto.
     notify_diplomas: bool = False
+
+    # --- Avisos Web Push (ver app/services/push.py y docs/avisos-push.md) ---
+    # Claves VAPID (python -m app.seed vapid-keys las genera): pública y privada en
+    # base64url (P-256) y el contacto del remitente («mailto:…»). Sin las dos
+    # claves, los avisos quedan apagados (GET /push/config responde disabled).
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:soporte@hajime.pe"
+    # Hilo que recorre los torneos tras cada cambio y envía la bandeja de avisos
+    # en cada proceso. Con un Container Apps Job (python -m app.push_worker) se
+    # puede apagar aquí.
+    push_dispatcher: bool = True
+    push_poll_seconds: float = 2.0
+    # Red de seguridad: cada cuánto se recorren los torneos en curso aunque este
+    # proceso no haya visto cambios (los hizo otro proceso o copia).
+    push_sweep_seconds: float = 30.0
+    push_max_attempts: int = 5
+    push_lease_seconds: int = 60
+    push_timeout: float = 10.0
+    # «Te toca en ~N combates»: se avisa cuando faltan N combates o menos en su tatami.
+    push_soon_ahead: int = 3
+    # Vigencia de los avisos de turno (TTL del servicio de push y de la bandeja).
+    push_turn_ttl_seconds: int = 600
+    # Servicios de push aceptados (sufijo del host del endpoint, https). Evita que
+    # el servidor termine haciendo POST a cualquier URL (SSRF).
+    push_allowed_hosts: list[str] = [
+        "fcm.googleapis.com",
+        "push.services.mozilla.com",
+        "notify.windows.com",
+        "push.apple.com",
+    ]
     # --- Planes y cobros (ver docs/organizaciones-y-planes.md) ---
     # marcha_blanca: toda cuenta tiene acceso completo (pruebas y marcha blanca).
     # enforced: cada función de pago exige una suscripción vigente de la

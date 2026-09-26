@@ -85,6 +85,21 @@ def current_user(request: Request, db: DB, cred: HTTPAuthorizationCredentials | 
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
+def optional_user(
+    request: Request, db: DB, cred: HTTPAuthorizationCredentials | None = Depends(_bearer)
+) -> User | None:
+    """La cuenta si hay una sesión válida; ``None`` si no (rutas que también sirven sin cuenta)."""
+    if cred is None:
+        return None
+    try:
+        return current_user(request, db, cred)
+    except Unauthorized:
+        return None
+
+
+OptionalUser = Annotated[User | None, Depends(optional_user)]
+
+
 def require_admin(user: CurrentUser) -> User:
     if not user.is_admin:
         raise Forbidden("Solo el Admin Global puede realizar esta acción")

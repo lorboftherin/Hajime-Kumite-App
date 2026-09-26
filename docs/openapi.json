@@ -11281,6 +11281,282 @@
     }
    }
   },
+  "/api/v1/push/config": {
+   "get": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Push Config",
+    "description": "Clave pública VAPID (``applicationServerKey``) o ``enabled: false`` si el servidor no tiene claves.",
+    "operationId": "push_config_api_v1_push_config_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushConfigOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/push/subscriptions": {
+   "post": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Subscribe",
+    "description": "Suscribe este navegador (o actualiza sus claves). Con sesión, queda ligado a la cuenta.",
+    "operationId": "subscribe_api_v1_push_subscriptions_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushSubscribeIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushStateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/push/subscriptions/state": {
+   "post": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Subscription State",
+    "description": "Estado de la suscripción de este navegador: preferencias y a quién sigue\n(``subscribed: false`` si no existe). Con ``tournament``, las claves seguidas allí.",
+    "operationId": "subscription_state_api_v1_push_subscriptions_state_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushStateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushStateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/push/subscriptions/unsubscribe": {
+   "post": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Unsubscribe",
+    "description": "Borra la suscripción de este navegador con todo lo que seguía.",
+    "operationId": "unsubscribe_api_v1_push_subscriptions_unsubscribe_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushRef"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/push/subscriptions/preferences": {
+   "put": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Set Preferences",
+    "operationId": "set_preferences_api_v1_push_subscriptions_preferences_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushPreferencesIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushStateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/push/follows": {
+   "put": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Follow Public",
+    "description": "Competidores que sigue este navegador en un torneo con página pública (claves\n``key`` de «¿cuándo pelea?»). Reemplaza la lista; vence al terminar el torneo.",
+    "operationId": "follow_public_api_v1_push_follows_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushPublicFollowIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushStateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/me/push/follows": {
+   "put": {
+    "tags": [
+     "push"
+    ],
+    "summary": "Follow Account",
+    "description": "Seguir en este dispositivo el perfil propio, el de un menor a cargo o el de un\nalumno del dojo (sensei), o a todo el dojo. ``follow: false`` deja de seguir.",
+    "operationId": "follow_account_api_v1_me_push_follows_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PushAccountFollowIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PushStateOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
   "/health/live": {
    "get": {
     "tags": [
@@ -16828,6 +17104,328 @@
     ],
     "title": "PublicLiveIn",
     "description": "Activa o desactiva el seguimiento en vivo público del torneo."
+   },
+   "PushAccountFollowIn": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     },
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "follow": {
+      "type": "boolean",
+      "title": "Follow",
+      "default": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "auth"
+    ],
+    "title": "PushAccountFollowIn",
+    "description": "Seguir (o dejar de seguir) un perfil propio, de la familia o de un alumno, o a todo un dojo."
+   },
+   "PushConfigOut": {
+    "properties": {
+     "enabled": {
+      "type": "boolean",
+      "title": "Enabled"
+     },
+     "public_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Public Key"
+     },
+     "soon_ahead": {
+      "type": "integer",
+      "title": "Soon Ahead",
+      "description": "Se avisa «te toca en ~N combates» cuando faltan N o menos"
+     }
+    },
+    "type": "object",
+    "required": [
+     "enabled",
+     "soon_ahead"
+    ],
+    "title": "PushConfigOut",
+    "description": "Si el servidor tiene claves VAPID y cuál es la pública (``applicationServerKey``)."
+   },
+   "PushKeys": {
+    "properties": {
+     "p256dh": {
+      "type": "string",
+      "maxLength": 120,
+      "title": "P256Dh"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     }
+    },
+    "type": "object",
+    "required": [
+     "p256dh",
+     "auth"
+    ],
+    "title": "PushKeys"
+   },
+   "PushPreferences": {
+    "properties": {
+     "turn": {
+      "type": "boolean",
+      "title": "Turn",
+      "description": "«Te toca en ~N combates» y «¡A tatami!»",
+      "default": true
+     },
+     "results": {
+      "type": "boolean",
+      "title": "Results",
+      "description": "Resultado de cada combate",
+      "default": true
+     },
+     "medals": {
+      "type": "boolean",
+      "title": "Medals",
+      "description": "Medallas al cerrar la categoría",
+      "default": true
+     },
+     "account": {
+      "type": "boolean",
+      "title": "Account",
+      "description": "Cuenta: inscripciones revisadas y perfiles aprobados",
+      "default": true
+     }
+    },
+    "type": "object",
+    "title": "PushPreferences",
+    "description": "Qué avisos quiere recibir este dispositivo."
+   },
+   "PushPreferencesIn": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     },
+     "preferences": {
+      "$ref": "#/components/schemas/PushPreferences"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "auth",
+     "preferences"
+    ],
+    "title": "PushPreferencesIn"
+   },
+   "PushPublicFollowIn": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     },
+     "tournament": {
+      "type": "string",
+      "maxLength": 80,
+      "title": "Tournament",
+      "description": "Dirección fija (slug) o token del enlace público"
+     },
+     "keys": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 100,
+      "title": "Keys"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "auth",
+     "tournament"
+    ],
+    "title": "PushPublicFollowIn",
+    "description": "Competidores que sigue un espectador en un torneo: reemplaza la lista anterior."
+   },
+   "PushRef": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "auth"
+    ],
+    "title": "PushRef",
+    "description": "Identifica la suscripción de este navegador: el endpoint y su secreto ``auth``\n(solo lo conoce el navegador que se suscribió)."
+   },
+   "PushStateIn": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "auth": {
+      "type": "string",
+      "maxLength": 60,
+      "title": "Auth"
+     },
+     "tournament": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tournament",
+      "description": "Dirección fija o token: devuelve sus claves"
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "auth"
+    ],
+    "title": "PushStateIn"
+   },
+   "PushStateOut": {
+    "properties": {
+     "subscribed": {
+      "type": "boolean",
+      "title": "Subscribed"
+     },
+     "account": {
+      "type": "boolean",
+      "title": "Account",
+      "default": false
+     },
+     "preferences": {
+      "$ref": "#/components/schemas/PushPreferences"
+     },
+     "keys": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Keys",
+      "description": "Claves que sigue en el torneo pedido"
+     },
+     "person_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Person Ids"
+     },
+     "dojo_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Dojo Ids"
+     }
+    },
+    "type": "object",
+    "required": [
+     "subscribed"
+    ],
+    "title": "PushStateOut"
+   },
+   "PushSubscribeIn": {
+    "properties": {
+     "endpoint": {
+      "type": "string",
+      "maxLength": 800,
+      "title": "Endpoint"
+     },
+     "keys": {
+      "$ref": "#/components/schemas/PushKeys"
+     },
+     "user_agent": {
+      "type": "string",
+      "maxLength": 255,
+      "title": "User Agent",
+      "default": ""
+     },
+     "preferences": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PushPreferences"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "endpoint",
+     "keys"
+    ],
+    "title": "PushSubscribeIn",
+    "description": "Lo que entrega ``PushSubscription.toJSON()`` del navegador, más preferencias opcionales."
    },
    "RefereeAssignIn": {
     "properties": {
