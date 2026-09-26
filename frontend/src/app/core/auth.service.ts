@@ -5,6 +5,7 @@ import { ApiError } from './api-error';
 import { ApiService } from './api.service';
 import { jwtExpiresAt } from './jwt';
 import { TokenOut, User } from './models';
+import { SessionExpiredService } from './session-expired.service';
 
 const TOKEN_KEY = 'hajime.token';
 const REFRESH_KEY = 'hajime.refresh';
@@ -51,6 +52,7 @@ function remove(key: string): void {
 export class AuthService {
   private api = inject(ApiService);
   private router = inject(Router);
+  private sessionExpired = inject(SessionExpiredService);
 
   readonly token = signal<string | null>(read<string>(TOKEN_KEY));
   /** Token de renovación (mismo almacenamiento que el de acceso). */
@@ -160,7 +162,8 @@ export class AuthService {
     if (!this.refreshToken() || exp === null || this.refreshing) return;
     if (exp - Date.now() < REFRESH_AHEAD_MS) {
       void this.refresh().then((r) => {
-        if (r === 'invalid') this.logout(true, false);
+        // Con la mesa abierta, ella muestra su panel de reingreso en vez de ir al login.
+        if (r === 'invalid') this.logout(!this.sessionExpired.notifyExpired(), false);
       });
     }
   }

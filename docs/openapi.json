@@ -2238,6 +2238,66 @@
       }
      }
     }
+   },
+   "put": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Set Queue",
+    "description": "Reemplaza la cola de categorías del tatami en una sola transacción (auditada).",
+    "operationId": "set_queue_api_v1_tatamis__tatami_id__queue_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiQueueIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryOut"
+         },
+         "title": "Response Set Queue Api V1 Tatamis  Tatami Id  Queue Put"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
    }
   },
   "/api/v1/tatamis/{tatami_id}/scoresheet.pdf": {
@@ -4071,6 +4131,23 @@
        "type": "integer",
        "title": "Mid"
       }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
+      }
      }
     ],
     "requestBody": {
@@ -4113,6 +4190,7 @@
      "matches"
     ],
     "summary": "Finish",
+    "description": "Idempotente por ``id``: la mesa puede dejar el cierre en cola sin señal y reenviarlo.",
     "operationId": "finish_api_v1_matches__mid__finish_post",
     "security": [
      {
@@ -4127,6 +4205,23 @@
       "schema": {
        "type": "integer",
        "title": "Mid"
+      }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
       }
      }
     ],
@@ -4361,7 +4456,7 @@
      "matches"
     ],
     "summary": "Presence",
-    "description": "Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate.",
+    "description": "Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate y si\nesta tablet lleva la mesa (solo puede llevarla quien puede operar el combate).",
     "operationId": "presence_api_v1_matches__mid__presence_post",
     "security": [
      {
@@ -4458,6 +4553,62 @@
     }
    }
   },
+  "/api/v1/matches/{mid}/presence/take": {
+   "post": {
+    "tags": [
+     "matches"
+    ],
+    "summary": "Take Table",
+    "description": "«Tomar la mesa»: esta tablet pasa a registrar y las demás quedan en solo lectura.",
+    "operationId": "take_table_api_v1_matches__mid__presence_take_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "mid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Mid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PresenceIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/matches/{mid}/official-result": {
    "post": {
     "tags": [
@@ -4533,6 +4684,23 @@
       "schema": {
        "type": "integer",
        "title": "Mid"
+      }
+     },
+     {
+      "name": "X-Device-Id",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 40
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Device-Id"
       }
      }
     ],
@@ -4891,6 +5059,175 @@
       "content": {
        "application/json": {
         "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/registrations/{rid}/walkover": {
+   "post": {
+    "tags": [
+     "registrations"
+    ],
+    "summary": "Walkover",
+    "description": "Da walkover al rival en todos los combates pendientes de una inscripción retirada.",
+    "operationId": "walkover_api_v1_registrations__rid__walkover_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "rid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Rid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WalkoverIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/readiness": {
+   "get": {
+    "tags": [
+     "tournaments"
+    ],
+    "summary": "Readiness",
+    "description": "Verificación previa a «Iniciar torneo»: problemas con severidad (error, warning, info).",
+    "operationId": "readiness_api_v1_tournaments__tid__readiness_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/imports/{bid}/rows/{row_id}": {
+   "patch": {
+    "tags": [
+     "imports"
+    ],
+    "summary": "Update Import Row",
+    "description": "Corrige una fila de la vista previa y la vuelve a validar.",
+    "operationId": "update_import_row_api_v1_imports__bid__rows__row_id__patch",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "bid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Bid"
+      }
+     },
+     {
+      "name": "row_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Row Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportRowUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportBatchOut"
+        }
        }
       }
      },
@@ -6367,6 +6704,77 @@
       ],
       "title": "Name"
      },
+     "sex": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "M",
+         "F",
+         "X"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sex"
+     },
+     "age_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Min"
+     },
+     "age_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age Max"
+     },
+     "grade_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Min"
+     },
+     "grade_max": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade Max"
+     },
+     "weight_class": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Weight Class"
+     },
      "format": {
       "anyOf": [
        {
@@ -7343,6 +7751,21 @@
      "resolution"
     ],
     "title": "ImportRowOut"
+   },
+   "ImportRowUpdate": {
+    "properties": {
+     "data": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Data"
+     }
+    },
+    "type": "object",
+    "required": [
+     "data"
+    ],
+    "title": "ImportRowUpdate",
+    "description": "Celdas corregidas (mismas claves que la plantilla: nombres, apellidos, sexo…)."
    },
    "KataScoreIn": {
     "properties": {
@@ -9049,6 +9472,24 @@
     ],
     "title": "TatamiOut"
    },
+   "TatamiQueueIn": {
+    "properties": {
+     "category_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "title": "Category Ids"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_ids"
+    ],
+    "title": "TatamiQueueIn",
+    "description": "Orden completo de la cola: categorías del tatami, de la primera a la última."
+   },
    "TeamCreate": {
     "properties": {
      "category_id": {
@@ -10096,6 +10537,24 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "WalkoverIn": {
+    "properties": {
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 250
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "title": "WalkoverIn"
    },
    "WithdrawIn": {
     "properties": {

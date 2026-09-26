@@ -232,7 +232,19 @@
 </div>
 
 <ng-template #matchTpl let-m>
-  <div class="match" [class.clickable]="canOpen(m) && !swapMode()" [class.done]="m.status === 'finished'" [class.bye-match]="m.method === 'bye'" (click)="openMatch(m)" [attr.title]="canOpen(m) ? 'Abrir mesa' : null">
+  <div
+    class="match"
+    [class.clickable]="canOpen(m) && !swapMode()"
+    [class.done]="m.status === 'finished'"
+    [class.bye-match]="m.method === 'bye'"
+    (click)="openMatch(m)"
+    [attr.title]="canOpen(m) ? 'Abrir mesa' : null"
+    [attr.role]="canOpen(m) && !swapMode() ? 'button' : null"
+    [attr.tabindex]="canOpen(m) && !swapMode() ? 0 : null"
+    [attr.aria-label]="canOpen(m) && !swapMode() ? matchLabel(m) : null"
+    (keydown.enter)="onMatchKey($event, m)"
+    (keydown.space)="onMatchKey($event, m)"
+  >
     <div class="m-head">
       <span class="code">{{ m.code }}</span>
       @if (m.status !== 'finished' && m.status !== 'bye' && m.status !== 'pending') {
@@ -252,6 +264,12 @@
         [class.swappable]="swapMode() && slot !== null"
         [class.picked]="swapMode() && slot !== null && swapA() === slot"
         (click)="clickSlot($event, slot)"
+        [attr.role]="swapMode() && slot !== null ? 'button' : null"
+        [attr.tabindex]="swapMode() && slot !== null ? 0 : null"
+        [attr.aria-pressed]="swapMode() && slot !== null ? swapA() === slot : null"
+        [attr.aria-label]="swapMode() && slot !== null ? slotLabel(slot, rid) : null"
+        (keydown.enter)="onSlotKey($event, slot)"
+        (keydown.space)="onSlotKey($event, slot)"
       >
         <span class="sr-only">{{ color === 'aka' ? 'Aka' : 'Ao' }}:</span>
         @if (slot !== null) {

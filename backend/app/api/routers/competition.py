@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Header, Response
 from fastapi.responses import JSONResponse
 
 from app.api import schemas as s
@@ -22,6 +24,9 @@ from app.services import operation, referees, reports, teams
 from app.services.tournaments import get_category
 
 router = APIRouter()
+
+# Tablet que envía el evento: si otra lleva la mesa del combate, se responde 409 CONFLICT_DEVICE.
+DeviceId = Annotated[str | None, Header(alias="X-Device-Id", max_length=40)]
 
 
 def _ensure_match_operator(db, user, mid: int) -> None:
@@ -88,16 +93,19 @@ def get_match(mid: int, db: DB, _: MatchReader):
 
 
 @router.post("/matches/{mid}/events", response_model=s.ScoreboardOut, tags=["matches"])
-def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser):
+def add_event(mid: int, data: s.EventIn, db: DB, user: CurrentUser, device: DeviceId = None):
     """Idempotente: reenviar el mismo ``id`` devuelve 200 sin duplicar."""
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     sb, created = svc.add_event(db, user, mid, data)
     return JSONResponse(sb.model_dump(mode="json"), status_code=201 if created else 200)
 
 
 @router.post("/matches/{mid}/finish", tags=["matches"])
-def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser):
+def finish(mid: int, data: s.FinishIn, db: DB, user: CurrentUser, device: DeviceId = None):
+    """Idempotente por ``id``: la mesa puede dejar el cierre en cola sin señal y reenviarlo."""
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     sb, affected = svc.finish(db, user, mid, data)
     return {"scoreboard": sb.model_dump(mode="json"), "affected_matches": affected}
 
@@ -128,9 +136,18 @@ def category_referees(cid: int, db: DB, _: CategoryReader):
 
 @router.post("/matches/{mid}/presence", tags=["matches"])
 def presence(mid: int, data: s.PresenceIn, db: DB, user: CurrentUser):
-    """Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate."""
+    """Latido de la mesa abierta; devuelve otros dispositivos en el mismo combate y si
+    esta tablet lleva la mesa (solo puede llevarla quien puede operar el combate)."""
+    # Solo quien puede operar el combate late (y por tanto puede llevar la mesa).
     _ensure_match_operator(db, user, mid)
-    return operation.heartbeat(db, user, mid, data.device_id)
+    return operation.heartbeat(db, user, mid, data.device_id, can_own=True)
+
+
+@router.post("/matches/{mid}/presence/take", tags=["matches"])
+def take_table(mid: int, data: s.PresenceIn, db: DB, user: CurrentUser):
+    """«Tomar la mesa»: esta tablet pasa a registrar y las demás quedan en solo lectura."""
+    _ensure_match_operator(db, user, mid)
+    return operation.take(db, user, mid, data.device_id)
 
 
 @router.delete("/matches/{mid}/presence", status_code=204, tags=["matches"])
@@ -150,8 +167,9 @@ def official_result(mid: int, data: s.OfficialResultIn, db: DB, user: CurrentUse
 
 
 @router.post("/matches/{mid}/flags", tags=["kata"])
-def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser):
+def flags(mid: int, data: s.FlagsIn, db: DB, user: CurrentUser, device: DeviceId = None):
     _ensure_match_operator(db, user, mid)
+    operation.ensure_device(db, mid, device)
     return svc.record_flags(db, user, mid, data)
 
 

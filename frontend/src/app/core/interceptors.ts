@@ -3,6 +3,7 @@ import { inject, untracked } from '@angular/core';
 import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { AuthService } from './auth.service';
+import { SessionExpiredService } from './session-expired.service';
 import { apiBase } from './server';
 
 /** Agrega el JWT como Bearer a las llamadas a la API. */
@@ -53,19 +54,30 @@ function toApiError(err: HttpErrorResponse): Observable<never> {
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const expired = inject(SessionExpiredService);
   return next(req).pipe(
     catchError((err: unknown) => {
       if (!(err instanceof HttpErrorResponse)) return throwError(() => ApiError.from(err));
       if (err.status !== 401 || endsWithAny(req.url, CREDENTIAL_PATHS) || endsWithAny(req.url, SESSION_PATHS)) {
         return toApiError(err);
       }
-      return renewAndRetry(auth, req, next, err);
+      return renewAndRetry(auth, expired, req, next, err);
     }),
   );
 };
 
+/**
+ * Sesión cerrada sin remedio. Si hay una pantalla que se encarga del reingreso (la mesa,
+ * con eventos en cola), se cierra sin redirigir y ella muestra su panel; si no, al login.
+ */
+function expireSession(auth: AuthService, expired: SessionExpiredService): void {
+  if (expired.notifyExpired()) auth.logout(false, false);
+  else auth.logout(true, false);
+}
+
 function renewAndRetry(
   auth: AuthService,
+  expired: SessionExpiredService,
   req: HttpRequest<unknown>,
   next: HttpHandlerFn,
   original: HttpErrorResponse,
@@ -79,13 +91,13 @@ function renewAndRetry(
     switchMap((result) => {
       const token = untracked(() => auth.token());
       if (result !== 'ok' || !token) {
-        if (result !== 'network') auth.logout(true, false);
+        if (result !== 'network') expireSession(auth, expired);
         return toApiError(original);
       }
       return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })).pipe(
         catchError((err: unknown) => {
           if (!(err instanceof HttpErrorResponse)) return throwError(() => ApiError.from(err));
-          if (err.status === 401) auth.logout(true, false); // ni con el token nuevo: sesión cerrada
+          if (err.status === 401) expireSession(auth, expired); // ni con el token nuevo: sesión cerrada
           return toApiError(err);
         }),
       );

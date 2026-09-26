@@ -257,7 +257,7 @@ export class LoginPage {
       await this.auth.login(this.username(), this.password());
       // Si la cuenta debe cambiar su contraseña, el authGuard lleva a /cambiar-clave (conservando returnUrl).
       const ret = this.route.snapshot.queryParamMap.get('returnUrl');
-      this.router.navigateByUrl(ret && ret.startsWith('/') ? ret : '/torneos');
+      this.router.navigateByUrl(ret && ret.startsWith('/') ? ret : '/'); // '/' decide: Torneos o Mi tatami
     } catch (e) {
       const err = ApiError.from(e);
       this.locked.set(err.status === 429 || err.code === 'TOO_MANY_ATTEMPTS');

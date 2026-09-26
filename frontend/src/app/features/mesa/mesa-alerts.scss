@@ -1,0 +1,168 @@
+// Mesa: avisos de tiempo (parpadeo), opciones de sonido, solo lectura y reingreso de sesión.
+
+/* ---------- Parpadeo del reloj (15 s y fin) ---------- */
+.clock.flash-warn {
+  animation: clock-flash 0.4s steps(2, jump-none) 6;
+  border-color: var(--m-yamabuki);
+}
+.clock.flash-end {
+  animation: clock-flash 0.5s steps(2, jump-none) 12;
+  border-color: var(--m-shu);
+}
+@keyframes clock-flash {
+  0% {
+    background: var(--y-deep);
+  }
+  100% {
+    background: rgba(184, 50, 42, 0.45);
+  }
+}
+.clock.flash-warn {
+  animation-name: clock-flash-warn;
+}
+@keyframes clock-flash-warn {
+  0% {
+    background: var(--y-deep);
+  }
+  100% {
+    background: rgba(184, 134, 43, 0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  // Sin parpadeo: un borde grueso y fijo mientras dura el aviso.
+  .clock.flash-warn,
+  .clock.flash-end {
+    animation: none;
+    box-shadow: 0 0 0 4px currentColor;
+  }
+}
+
+/* ---------- Sanciones: nombre completo o abreviatura (celular) ---------- */
+.mlabel .abbr {
+  display: none;
+}
+
+/* ---------- Opciones de aviso (sonido y yame automático) ---------- */
+.opts {
+  position: relative;
+}
+.hbtn.muted {
+  opacity: 0.7;
+}
+.opts-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(300px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--y-line);
+  background: var(--y-panel-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+.opts-title {
+  font-weight: 800;
+}
+.opts-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--y-dim);
+}
+.opts-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  input {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    accent-color: var(--m-matcha);
+  }
+}
+
+/* ---------- Solo lectura (otra tablet lleva la mesa) ---------- */
+.notice.ai {
+  background: rgba(43, 85, 144, 0.22);
+  border: 1px solid rgba(90, 131, 192, 0.55);
+  color: var(--ao-on-dark);
+}
+.readonly-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  strong {
+    color: var(--y-text);
+  }
+  .qbtn {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Reingreso de sesión dentro de la mesa ---------- */
+.relogin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+}
+.relogin {
+  width: min(420px, 100%);
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--y-line);
+  background: var(--y-panel);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .relogin-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    strong {
+      font-family: var(--m-display);
+      font-size: 1.2rem;
+    }
+    span {
+      font-size: 0.875rem;
+      color: var(--y-dim);
+    }
+  }
+  .sfield {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    span {
+      font-size: 0.8125rem;
+      color: var(--y-dim);
+    }
+    input {
+      min-height: 46px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid #3d3832;
+      background: var(--y-bg);
+      color: var(--y-text);
+      font: inherit;
+      font-size: 1rem;
+      color-scheme: dark;
+    }
+  }
+  .qbtn {
+    min-height: 48px;
+  }
+}

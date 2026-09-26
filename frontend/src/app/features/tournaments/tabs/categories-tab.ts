@@ -5,16 +5,18 @@ import { DialogService } from '../../../core/dialog.service';
 import { ADVICE_LABEL, CATEGORY_STATUS, FORMAT_LABEL, GRADES, MODALITY_LABEL, SEX_LABEL } from '../../../core/format';
 import { Bracket, Category } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
+import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { Modal } from '../../../shared/modal';
 import { MoreMenu } from '../../../shared/more-menu';
 import { LabelPipe } from '../../../shared/pipes';
+import { PluralPipe, plural, pluralWord } from '../../../shared/plural';
 import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-categories-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu],
+  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu, PluralPipe],
   template: `
     <div class="toolbar">
       <div class="search">
@@ -35,11 +37,19 @@ import { TournamentContext } from '../tournament-context';
       <label class="field inline small"><input type="checkbox" [ngModel]="hideEmpty()" (ngModelChange)="hideEmpty.set($event)" /> Ocultar vacías</label>
       <span class="count">{{ filtered().length }} de {{ ctx.categories().length }}</span>
       <button class="btn icon-only ghost" (click)="reload()" title="Recargar" aria-label="Recargar"><app-icon name="refresh" /></button>
+      @if (pendingBrackets().length) {
+        <button class="btn" [disabled]="generatingAll()" (click)="generateAll()" [title]="'Generar las llaves de ' + (pendingBrackets().length | plural: 'categoría con inscritos' : 'categorías con inscritos') + ' que aún no la tienen'">
+          @if (generatingAll()) {
+            <span class="spinner"></span>
+          }
+          Generar todas las llaves ({{ pendingBrackets().length }})
+        </button>
+      }
       <button class="btn primary" (click)="openCreate()"><app-icon name="plus" /> Categoría manual</button>
     </div>
     @if (selected().size) {
       <div class="selection-bar" role="status">
-        <span><strong class="num">{{ selected().size }}</strong> seleccionada(s)</span>
+        <span><strong class="num">{{ selected().size }}</strong> {{ selected().size === 1 ? 'seleccionada' : 'seleccionadas' }}</span>
         <button class="btn sm" [disabled]="selected().size < 2" (click)="openMerge()">Fusionar seleccionadas</button>
         <button class="btn sm ghost" (click)="clearSelection()">Quitar selección</button>
       </div>
@@ -98,6 +108,9 @@ import { TournamentContext } from '../tournament-context';
                   <button class="btn sm primary" (click)="generate(c)">Generar llave</button>
                 }
                 <app-more [label]="'Más acciones · ' + c.name">
+                  @if (c.status !== 'merged' && c.status !== 'cancelled') {
+                    <button class="menu-item" (click)="openEdit(c)">Editar categoría</button>
+                  }
                   <button class="menu-item" (click)="openTatami(c)">Asignar tatami</button>
                   @if (mergeTargets().has(c.id)) {
                     <button class="menu-item" (click)="unmerge(c)">Separar (deshacer fusión)</button>
@@ -167,6 +180,79 @@ import { TournamentContext } from '../tournament-context';
           <button class="btn" (click)="tatamiCat.set(null)">Cancelar</button>
           <button class="btn primary" (click)="saveTatami(c)">Guardar</button>
         </div>
+      </app-modal>
+    }
+
+    @if (editCat(); as c) {
+      <app-modal [title]="'Editar · ' + c.name" [wide]="true" (closed)="editCat.set(null)">
+        <form (ngSubmit)="saveEdit(c)">
+          <h3 class="sec">Datos básicos</h3>
+          <div class="grid-3">
+            <label class="field" style="grid-column: span 2"><span>Nombre *</span><input name="name" [(ngModel)]="ec.name" required /></label>
+            <label class="field">
+              <span>Sexo</span>
+              <select name="sex" [(ngModel)]="ec.sex">
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+                <option value="X">Mixto</option>
+              </select>
+            </label>
+            <label class="field"><span>Edad mín.</span><input type="number" name="amin" [(ngModel)]="ec.age_min" /></label>
+            <label class="field"><span>Edad máx.</span><input type="number" name="amax" [(ngModel)]="ec.age_max" /></label>
+            <label class="field"><span>Peso</span><input name="w" [(ngModel)]="ec.weight_class" placeholder="-60" /></label>
+            <label class="field">
+              <span>Grado mín.</span>
+              <select name="gmin" [(ngModel)]="ec.grade_min">
+                <option [ngValue]="null">—</option>
+                @for (g of grades; track g; let i = $index) {
+                  <option [ngValue]="i + 1">{{ g }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Grado máx.</span>
+              <select name="gmax" [(ngModel)]="ec.grade_max">
+                <option [ngValue]="null">—</option>
+                @for (g of grades; track g; let i = $index) {
+                  <option [ngValue]="i + 1">{{ g }}</option>
+                }
+              </select>
+            </label>
+            @if (c.modality === 'kumite') {
+              <label class="field"><span>Duración (seg)</span><input type="number" min="0" name="dur" [(ngModel)]="ec.duration_seconds" placeholder="Por defecto" /></label>
+            }
+            <label class="field">
+              <span>Formato</span>
+              <select name="fmt" [(ngModel)]="ec.format" [disabled]="formatLocked(c)">
+                <option [ngValue]="null">Por defecto del torneo</option>
+                <option value="single_elimination">Eliminación directa</option>
+                <option value="round_robin">Round robin</option>
+                @if (c.modality === 'kata') {
+                  <option value="kata_rounds">Rondas de kata</option>
+                }
+              </select>
+              @if (formatLocked(c)) {
+                <span class="hint">Con combates iniciados el formato no cambia.</span>
+              }
+            </label>
+          </div>
+          @if (c.entrant_count) {
+            <p class="hint">Cambiar edades, sexo, grados o peso no mueve a los {{ c.entrant_count | plural: 'inscrito' : 'inscritos' }}: revisa sus inscripciones si ya no encajan.</p>
+          }
+          <!--
+            Sección «Reglas»: la completa la configuración de reglas de la categoría
+            (kumite, kata, máximo de inscritos, modo de edad). Sus campos se agregan
+            al mismo cuerpo del PATCH /categories/{id} en saveEdit().
+          -->
+          <section class="rules-slot" aria-labelledby="cat-rules-title">
+            <h3 class="sec" id="cat-rules-title">Reglas</h3>
+            <p class="hint">Las reglas de combate de esta categoría se configuran aquí.</p>
+          </section>
+          <div class="form-actions">
+            <button type="button" class="btn" (click)="editCat.set(null)">Cancelar</button>
+            <button class="btn primary" [disabled]="!ec.name.trim() || saving()">Guardar cambios</button>
+          </div>
+        </form>
       </app-modal>
     }
 
@@ -310,6 +396,15 @@ import { TournamentContext } from '../tournament-context';
     .advice {
       color: var(--yamabuki-ink);
     }
+    .sec {
+      margin: 0 0 0.75rem;
+      font-size: var(--fs-16);
+    }
+    .rules-slot {
+      margin-top: var(--space-5);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--kasumi);
+    }
   `,
 })
 export class CategoriesTab {
@@ -317,6 +412,7 @@ export class CategoriesTab {
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   readonly statusLabel = CATEGORY_STATUS;
   readonly statusKeys = Object.keys(CATEGORY_STATUS);
@@ -471,6 +567,113 @@ export class CategoriesTab {
   async generate(c: Category): Promise<void> {
     const res = await this.mut.post<Bracket>(`/categories/${c.id}/bracket`, {}, { success: 'Llave generada' });
     if (res) this.router.navigate(['/categorias', c.id, 'llave']);
+  }
+
+  // --- Generar todas las llaves pendientes (sin salir de la tabla) ---
+  readonly generatingAll = signal(false);
+  /** Categorías abiertas con al menos dos inscritos y todavía sin llave. */
+  readonly pendingBrackets = computed(() =>
+    this.ctx.categories().filter((c) => c.status === 'open' && c.entrant_count >= 2),
+  );
+
+  async generateAll(): Promise<void> {
+    const list = this.pendingBrackets();
+    if (!list.length || this.generatingAll()) return;
+    const ok = await this.dialog.confirm({
+      title: 'Generar todas las llaves',
+      message: `Se generará la llave de ${plural(list.length, 'categoría', 'categorías')}: ${list
+        .map((c) => `${c.name} (${c.entrant_count})`)
+        .join(', ')}. Cada una queda como versión nueva; puedes regenerarla después.`,
+      confirmText: `Generar ${list.length} ${pluralWord(list.length, 'llave', 'llaves')}`,
+    });
+    if (!ok) return;
+    this.generatingAll.set(true);
+    const done: string[] = [];
+    const failed: string[] = [];
+    for (const c of list) {
+      let reason = 'cancelada';
+      const res = await this.mut.post<Bracket>(
+        `/categories/${c.id}/bracket`,
+        {},
+        {
+          onError: (err) => {
+            reason = err.fullMessage;
+            return true;
+          },
+        },
+      );
+      if (res) done.push(c.name);
+      else failed.push(`${c.name}: ${reason}`);
+    }
+    this.generatingAll.set(false);
+    await this.ctx.loadCategories();
+    const text = `${plural(done.length, 'llave generada', 'llaves generadas')}`;
+    if (failed.length) this.toast.error(`${text}; ${plural(failed.length, 'falló', 'fallaron')}: ${failed.join('; ')}`);
+    else this.toast.ok(text);
+  }
+
+  // --- Editar categoría (datos básicos; la sección «Reglas» se agrega aparte) ---
+  readonly editCat = signal<Category | null>(null);
+  readonly saving = signal(false);
+  ec = this.editFields(null);
+
+  private editFields(c: Category | null) {
+    return {
+      name: c?.name ?? '',
+      sex: c?.sex ?? 'M',
+      age_min: c?.age_min ?? null,
+      age_max: c?.age_max ?? null,
+      grade_min: c?.grade_min ?? null,
+      grade_max: c?.grade_max ?? null,
+      weight_class: c?.weight_class ?? '',
+      duration_seconds: c?.duration_seconds ?? null,
+      format: c?.format ?? null,
+    };
+  }
+
+  formatLocked(c: Category): boolean {
+    return ['in_progress', 'finished'].includes(c.status);
+  }
+
+  openEdit(c: Category): void {
+    this.ec = this.editFields(c);
+    this.editCat.set(c);
+  }
+
+  async saveEdit(c: Category): Promise<void> {
+    const f = this.ec;
+    const num = (v: unknown) => (v === '' || v === null || v === undefined ? null : Number(v));
+    const next: Record<string, unknown> = {
+      name: f.name.trim(),
+      sex: f.sex,
+      age_min: num(f.age_min),
+      age_max: num(f.age_max),
+      grade_min: f.grade_min,
+      grade_max: f.grade_max,
+      weight_class: f.weight_class.trim() || null,
+      duration_seconds: c.modality === 'kumite' ? num(f.duration_seconds) : c.duration_seconds,
+      format: f.format,
+    };
+    // Solo se envía lo que cambió (el formato no se toca si la categoría ya empezó).
+    const body: Record<string, unknown> = { version: c.version };
+    for (const [k, v] of Object.entries(next)) {
+      if (k === 'format' && this.formatLocked(c)) continue;
+      if ((c as unknown as Record<string, unknown>)[k] !== v) body[k] = v;
+    }
+    if (Object.keys(body).length === 1) {
+      this.editCat.set(null);
+      return;
+    }
+    this.saving.set(true);
+    const res = await this.mut.patch<Category>(`/categories/${c.id}`, body, {
+      success: 'Categoría actualizada',
+      onConflict: () => this.reload(),
+    });
+    this.saving.set(false);
+    if (res) {
+      this.editCat.set(null);
+      this.reload();
+    }
   }
 
   blankCategory() {

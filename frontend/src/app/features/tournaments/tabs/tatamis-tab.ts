@@ -1,13 +1,16 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
-import { QueueItem, Tatami, TatamiQueue } from '../../../core/models';
+import { Category, QueueItem, Tatami, TatamiQueue } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
+import { PluralPipe, plural } from '../../../shared/plural';
+import { appendUnique, estimateMatches, moveItem } from '../organizer-logic';
 import { TournamentContext } from '../tournament-context';
 
 interface TatamiView {
@@ -18,13 +21,100 @@ interface TatamiView {
 
 @Component({
   selector: 'app-tatamis-tab',
-  imports: [RouterLink, StatusBadge, Icon],
+  imports: [FormsModule, RouterLink, StatusBadge, Icon, PluralPipe],
   template: `
     <div class="toolbar">
-      <span class="muted small grow">Se actualiza cada 15 s. Asigna categorías a un tatami desde la pestaña Categorías.</span>
+      <span class="muted small grow">Se actualiza cada 15 s.</span>
       <button class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
+      <button class="btn" [class.primary]="!planning() && unassignedWithBracket() > 0" (click)="planning.set(!planning())" [attr.aria-expanded]="planning()">
+        {{ planning() ? 'Cerrar colas' : 'Organizar colas' }}
+      </button>
       <button class="btn" (click)="addTatami()"><app-icon name="plus" /> Agregar tatami</button>
     </div>
+    @if (!planning() && unassignedWithBracket() > 0) {
+      <div class="alert warn small">
+        {{ unassignedWithBracket() | plural: 'categoría con llave no tiene' : 'categorías con llave no tienen' }} tatami: sus combates no aparecen en ninguna cola.
+        <button class="btn sm" (click)="planning.set(true)">Organizar colas</button>
+      </div>
+    }
+
+    @if (planning()) {
+      <section class="card planner" aria-label="Colas de categorías por tatami">
+        <h2>Colas de categorías</h2>
+        <p class="small muted">
+          Elige categorías sin tatami y asígnalas; en cada tatami ordénalas con ↑ ↓ y guarda. El número de combates es una
+          estimación según los inscritos y el formato.
+        </p>
+        <div class="plan-grid">
+          <div class="plan-col">
+            <h3>Sin tatami <span class="muted small">({{ unassigned().length }})</span></h3>
+            @if (unassigned().length) {
+              <label class="field inline small all">
+                <input type="checkbox" [checked]="picked().size === unassigned().length" (change)="pickAll($any($event.target).checked)" />
+                Seleccionar todas
+              </label>
+              <ul class="list-plain plan-list">
+                @for (c of unassigned(); track c.id) {
+                  <li>
+                    <label class="field inline">
+                      <input type="checkbox" [checked]="picked().has(c.id)" (change)="togglePick(c.id)" />
+                      <span class="grow">{{ c.name }}</span>
+                      <span class="est num" [title]="'Combates estimados'">{{ est(c) | plural: 'combate' : 'combates' }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+              <div class="row assign">
+                <select [ngModel]="target()" (ngModelChange)="target.set($event)" aria-label="Tatami destino">
+                  @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
+                    <option [ngValue]="t.id">{{ t.name || 'Tatami ' + t.number }}</option>
+                  }
+                </select>
+                <button class="btn primary" [disabled]="!picked().size || !target() || busy()" (click)="assignPicked()">
+                  Asignar {{ picked().size ? '(' + picked().size + ')' : '' }} a {{ tatamiLabel(target()) }}
+                </button>
+              </div>
+            } @else {
+              <p class="muted small">Todas las categorías con inscritos tienen tatami.</p>
+            }
+          </div>
+          @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
+            <div class="plan-col">
+              <h3>
+                {{ t.name || 'Tatami ' + t.number }}
+                <span class="muted small">· {{ queueTotal(t.id) | plural: 'combate' : 'combates' }} aprox.</span>
+                @if (dirty().has(t.id)) {
+                  <span class="badge yamabuki">sin guardar</span>
+                }
+              </h3>
+              <ol class="list-plain plan-list queue-edit">
+                @for (cid of queueOf(t.id); track cid; let i = $index; let first = $first; let last = $last) {
+                  @let c = ctx.categoryById().get(cid);
+                  <li>
+                    <span class="pos num">{{ i + 1 }}</span>
+                    <span class="grow">
+                      {{ c?.name ?? '#' + cid }}
+                      <span class="est small num">{{ (c ? est(c) : 0) | plural: 'combate' : 'combates' }}</span>
+                    </span>
+                    <button class="btn sm ghost icon-only" [disabled]="first" (click)="move(t.id, i, -1)" [attr.aria-label]="'Subir ' + (c?.name ?? '')">↑</button>
+                    <button class="btn sm ghost icon-only" [disabled]="last" (click)="move(t.id, i, 1)" [attr.aria-label]="'Bajar ' + (c?.name ?? '')">↓</button>
+                    <button class="btn sm ghost icon-only" (click)="remove(t.id, cid)" [attr.aria-label]="'Quitar ' + (c?.name ?? '') + ' de la cola'"><app-icon name="close" /></button>
+                  </li>
+                } @empty {
+                  <li class="muted small">Cola vacía.</li>
+                }
+              </ol>
+              @if (dirty().has(t.id)) {
+                <div class="row">
+                  <button class="btn sm" (click)="discard(t.id)">Descartar</button>
+                  <button class="btn sm primary" [disabled]="busy()" (click)="saveQueue(t.id)">Guardar cola</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
     <div class="tatamis">
       @for (v of views(); track v.tatami.id) {
         <section class="card tatami">
@@ -132,6 +222,63 @@ interface TatamiView {
     }
     .tatami {
       margin: 0;
+    }
+    .planner h2 {
+      margin-bottom: 0.25rem;
+    }
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+      align-items: start;
+    }
+    .plan-col h3 {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.4rem;
+      margin: 0 0 0.5rem;
+      font-size: var(--fs-16);
+    }
+    .plan-list {
+      max-height: 22rem;
+      overflow-y: auto;
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-height: 2.75rem;
+        padding: 0.2rem 0;
+        border-bottom: 1px solid var(--kasumi);
+      }
+      label.field.inline {
+        flex: 1;
+        min-height: 2.75rem;
+        margin: 0;
+      }
+    }
+    .all {
+      margin-bottom: 0.25rem;
+    }
+    .est {
+      color: var(--nezumi-ink);
+      font-size: var(--fs-12);
+      white-space: nowrap;
+      margin-left: 0.35rem;
+    }
+    .pos {
+      min-width: 1.5rem;
+      font-weight: 700;
+      color: var(--nezumi-ink);
+    }
+    .assign {
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+      select {
+        flex: 1;
+        min-width: 8rem;
+      }
     }
     .progress {
       display: flex;
@@ -272,8 +419,134 @@ export class TatamisTab {
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
+  // --- Colas de categorías (PUT /tatamis/{id}/queue) ---
+  readonly planning = signal(false);
+  readonly busy = signal(false);
+  /** Cola local por tatami (ids de categoría en orden); las no guardadas se marcan en `dirty`. */
+  readonly queues = signal<Record<number, number[]>>({});
+  readonly dirty = signal(new Set<number>());
+  readonly picked = signal(new Set<number>());
+  readonly target = signal(0);
+
+  /** Categorías que pueden ir a una cola: con inscritos y no fusionadas ni canceladas. */
+  private readonly schedulable = computed(() =>
+    this.ctx.categories().filter((c) => !['merged', 'cancelled', 'empty'].includes(c.status) && c.entrant_count > 0),
+  );
+  readonly unassigned = computed(() => {
+    const inQueue = new Set(Object.values(this.queues()).flat());
+    return this.schedulable().filter((c) => !inQueue.has(c.id));
+  });
+  readonly unassignedWithBracket = computed(
+    () => this.schedulable().filter((c) => !c.tatami_id && ['ready', 'in_progress'].includes(c.status)).length,
+  );
+
+  /** Rearma las colas desde el servidor, sin pisar las que tienen cambios sin guardar. */
+  private syncQueues(): void {
+    const tatamis = this.ctx.tournament()?.tatamis ?? [];
+    const dirty = this.dirty();
+    const prev = this.queues();
+    const next: Record<number, number[]> = {};
+    for (const t of tatamis) {
+      next[t.id] = dirty.has(t.id)
+        ? (prev[t.id] ?? [])
+        : this.ctx
+            .categories()
+            .filter((c) => c.tatami_id === t.id && !['merged', 'cancelled'].includes(c.status))
+            .sort((a, b) => (a.queue_position ?? 1e6) - (b.queue_position ?? 1e6) || a.id - b.id)
+            .map((c) => c.id);
+    }
+    this.queues.set(next);
+    if (!this.target() || !tatamis.some((t) => t.id === this.target())) this.target.set(tatamis[0]?.id ?? 0);
+  }
+
+  queueOf(tid: number): number[] {
+    return this.queues()[tid] ?? [];
+  }
+
+  est(c: Category): number {
+    const t = this.ctx.tournament();
+    return estimateMatches(
+      c.entrant_count,
+      c.format ?? t?.default_format,
+      c.third_place_rule ?? t?.default_third_place_rule,
+    );
+  }
+
+  queueTotal(tid: number): number {
+    const byId = this.ctx.categoryById();
+    return this.queueOf(tid).reduce((n, cid) => n + (byId.get(cid) ? this.est(byId.get(cid)!) : 0), 0);
+  }
+
+  tatamiLabel(tid: number): string {
+    const t = this.ctx.tournament()?.tatamis.find((x) => x.id === tid);
+    return t ? t.name || `Tatami ${t.number}` : 'tatami';
+  }
+
+  togglePick(cid: number): void {
+    const s = new Set(this.picked());
+    if (s.has(cid)) s.delete(cid);
+    else s.add(cid);
+    this.picked.set(s);
+  }
+
+  pickAll(on: boolean): void {
+    this.picked.set(new Set(on ? this.unassigned().map((c) => c.id) : []));
+  }
+
+  private setQueue(tid: number, ids: number[]): void {
+    this.queues.update((q) => ({ ...q, [tid]: ids }));
+    this.dirty.update((d) => new Set(d).add(tid));
+  }
+
+  move(tid: number, i: number, delta: -1 | 1): void {
+    this.setQueue(tid, moveItem(this.queueOf(tid), i, delta));
+  }
+
+  remove(tid: number, cid: number): void {
+    this.setQueue(
+      tid,
+      this.queueOf(tid).filter((x) => x !== cid),
+    );
+  }
+
+  discard(tid: number): void {
+    this.dirty.update((d) => {
+      const s = new Set(d);
+      s.delete(tid);
+      return s;
+    });
+    this.syncQueues();
+  }
+
+  async assignPicked(): Promise<void> {
+    const tid = this.target();
+    const add = this.unassigned()
+      .filter((c) => this.picked().has(c.id))
+      .map((c) => c.id);
+    if (!tid || !add.length) return;
+    this.setQueue(tid, appendUnique(this.queueOf(tid), add));
+    this.picked.set(new Set());
+    await this.saveQueue(tid, `${plural(add.length, 'categoría asignada', 'categorías asignadas')} a ${this.tatamiLabel(tid)}`);
+  }
+
+  async saveQueue(tid: number, success = 'Cola guardada'): Promise<void> {
+    this.busy.set(true);
+    const res = await this.mut.put<Category[]>(`/tatamis/${tid}/queue`, { category_ids: this.queueOf(tid) }, { success });
+    this.busy.set(false);
+    if (!res) return;
+    this.dirty.update((d) => {
+      const s = new Set(d);
+      s.delete(tid);
+      return s;
+    });
+    await this.ctx.loadCategories();
+    this.syncQueues();
+    this.load();
+  }
+
   async load(): Promise<void> {
-    await this.ctx.reload();
+    await Promise.all([this.ctx.reload(), this.ctx.loadCategories()]);
+    this.syncQueues();
     const tatamis = this.ctx.tournament()?.tatamis ?? [];
     const views = await Promise.all(
       tatamis.map(async (t): Promise<TatamiView> => {

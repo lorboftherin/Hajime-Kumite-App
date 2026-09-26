@@ -240,6 +240,34 @@ export class BracketPage {
     if (this.canOpen(m)) this.router.navigate(['/mesa', m.id]);
   }
 
+  /** Teclado: Enter o Espacio abren el combate (como el clic). */
+  onMatchKey(ev: Event, m: Match): void {
+    if (ev.target !== ev.currentTarget || this.swapMode() || !this.canOpen(m)) return;
+    ev.preventDefault();
+    this.openMatch(m);
+  }
+
+  matchLabel(m: Match): string {
+    const who = (rid: number | null) => (rid ? this.pname(rid) : 'por definir');
+    return `Combate ${m.code}: ${who(m.aka_registration_id)} contra ${who(m.ao_registration_id)}. Abrir`;
+  }
+
+  /** Teclado: Enter o Espacio eligen la posición para intercambiar. */
+  onSlotKey(ev: Event, slot: number | null): void {
+    if (!this.swapMode() || slot === null) return;
+    ev.preventDefault();
+    this.clickSlot(ev, slot);
+  }
+
+  slotLabel(slot: number, rid: number | null): string {
+    const who = rid ? this.pname(rid) : 'vacía';
+    const picked = this.swapA();
+    if (picked === slot) return `Posición ${slot + 1} (${who}), elegida. Elige otra para intercambiar o pulsa de nuevo para soltarla`;
+    return picked === null
+      ? `Posición ${slot + 1} (${who}). Elegir para intercambiar`
+      : `Posición ${slot + 1} (${who}). Intercambiar con la posición ${picked + 1}`;
+  }
+
   // --- Intercambio de posiciones ---
   toggleSwap(): void {
     this.swapMode.set(!this.swapMode());

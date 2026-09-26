@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { isStaff, tatamiScopes } from '../core/roles';
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
@@ -12,15 +13,19 @@ interface NavItem {
   path: string;
   kanji: string;
   label: string;
+  /** Solo para Admin y organizadores (personas, dojos, plantillas). */
+  staff?: boolean;
 }
 
 const NAV: NavItem[] = [
   { path: '/torneos', kanji: '大会', label: 'Torneos' },
-  { path: '/personas', kanji: '人', label: 'Personas' },
-  { path: '/dojos', kanji: '道場', label: 'Dojos' },
-  { path: '/plantillas', kanji: '型', label: 'Plantillas' },
+  { path: '/personas', kanji: '人', label: 'Personas', staff: true },
+  { path: '/dojos', kanji: '道場', label: 'Dojos', staff: true },
+  { path: '/plantillas', kanji: '型', label: 'Plantillas', staff: true },
 ];
 const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
+/** Operador de mesa de un tatami: acceso directo a su cola. */
+const MY_TATAMI: NavItem = { path: '/mi-tatami', kanji: '畳', label: 'Mi tatami' };
 
 const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   { mode: 'light', label: 'Claro', icon: 'sun' },
@@ -90,7 +95,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
         <span class="avatar" aria-hidden="true">{{ initial() }}</span>
         <span class="who">
           <span class="uname">{{ name() }}</span>
-          <span class="role">{{ auth.isAdmin() ? 'Administrador' : 'Operador' }}</span>
+          <span class="role">{{ roleLabel() }}</span>
         </span>
       </button>
       @if (menuOpen() === slot) {
@@ -461,12 +466,24 @@ export class Shell {
   readonly themes = THEMES;
   /** Dónde está abierto el menú de usuario: barra lateral, barra superior (celular) o cerrado. */
   readonly menuOpen = signal<'side' | 'top' | null>(null);
-  readonly items = computed(() => (this.auth.isAdmin() ? [...NAV, ADMIN] : NAV));
+  readonly items = computed(() => {
+    const u = this.auth.user();
+    const staff = isStaff(u);
+    const base = NAV.filter((it) => staff || !it.staff);
+    const mine = tatamiScopes(u).length ? [MY_TATAMI] : [];
+    return [...mine, ...base, ...(this.auth.isAdmin() ? [ADMIN] : [])];
+  });
   readonly name = computed(() => {
     const u = this.auth.user();
     return u?.display_name || u?.username || '';
   });
   readonly initial = computed(() => (this.name() || '?').charAt(0).toUpperCase());
+  readonly roleLabel = computed(() => {
+    const u = this.auth.user();
+    if (u?.is_admin) return 'Administrador';
+    if (isStaff(u)) return 'Organizador';
+    return tatamiScopes(u).length ? 'Operador de mesa' : 'Operador';
+  });
 
   /** Las llaves (/categorias/…) pertenecen a un torneo: se marca «Torneos» como sección activa. */
   private readonly url = toSignal(

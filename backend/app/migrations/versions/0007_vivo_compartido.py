@@ -5,7 +5,7 @@ procesos y copias) e índices para las lecturas calientes: cola del tatami,
 vivo, estadísticas y permisos. El token público pasa a ser único (solo entre
 los que no son NULL, para SQL Server).
 
-Revision ID: 0005_vivo_compartido
+Revision ID: 0007_vivo_compartido
 Revises: 0004
 Create Date: 2026-09-26 16:40:47.314142
 """
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0005_vivo_compartido"
-down_revision = "0005_sesiones"
+revision = "0007_vivo_compartido"
+down_revision = "0006_sesiones"
 branch_labels = None
 depends_on = None
 

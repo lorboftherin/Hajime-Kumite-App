@@ -22,22 +22,44 @@
     </div>
     <div class="conn" role="status" aria-live="polite">
       @if (stuck()) {
-        <span class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i>Evento bloqueado · {{ pending().length }} pendiente(s)</span>
+        <span class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i>Evento bloqueado · {{ pending().length | plural: 'pendiente' : 'pendientes' }}</span>
         <button class="hbtn" (click)="retryNow()" title="Reintentar el evento bloqueado">Reintentar</button>
         <button class="hbtn danger" (click)="discardStuck()">Descartar este evento</button>
       } @else if (authBlocked()) {
         <button class="pill shu breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sesión vencida · {{ pending().length }} pendiente(s)
+          <i aria-hidden="true"></i>Sesión vencida · {{ pending().length | plural: 'pendiente' : 'pendientes' }}
         </button>
-      } @else if (offline()) {
+      } @else if (noSignal()) {
         <button class="pill yamabuki breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sin conexión · {{ pending().length }} pendiente(s)
+          <i aria-hidden="true"></i>Sin conexión · {{ pending().length | plural: 'pendiente' : 'pendientes' }}
         </button>
       } @else if (pending().length) {
         <span class="pill nezumi"><i aria-hidden="true"></i>Enviando {{ pending().length }}…</span>
+      } @else if (readOnly()) {
+        <span class="pill nezumi"><i aria-hidden="true"></i>Solo lectura</span>
       } @else {
         <span class="pill matcha"><i aria-hidden="true"></i>En línea</span>
       }
+      <div class="opts">
+        <button
+          class="hbtn icon"
+          [class.muted]="muted()"
+          (click)="optsOpen.set(!optsOpen())"
+          [attr.aria-expanded]="optsOpen()"
+          aria-haspopup="true"
+          [attr.aria-label]="muted() ? 'Avisos de tiempo (sonido apagado)' : 'Avisos de tiempo'"
+          [title]="muted() ? 'Sonido apagado' : 'Avisos de tiempo'"
+        >{{ muted() ? '🔕' : '🔔' }}</button>
+        @if (optsOpen()) {
+          <div class="opts-panel" role="group" aria-label="Avisos de tiempo">
+            <div class="opts-title">Avisos de tiempo</div>
+            <p class="opts-hint">Pitido corto a los 15 s (atoshi baraku) y largo al llegar a 0:00, con vibración y parpadeo del reloj.</p>
+            <label class="opts-row"><input type="checkbox" [checked]="!muted()" (change)="toggleMute()" /> Sonido en este dispositivo</label>
+            <label class="opts-row"><input type="checkbox" [checked]="autoYame()" (change)="toggleAutoYame()" /> Detener el reloj automáticamente al terminar (yame)</label>
+            <button class="hbtn" (click)="testSound()">Probar sonido</button>
+          </div>
+        }
+      </div>
       <button class="hbtn icon" (click)="reload()" title="Recargar" aria-label="Recargar marcador">↻</button>
     </div>
   </header>
@@ -47,6 +69,39 @@
   }
   @if (othersText()) {
     <div class="notice yamabuki" role="status">{{ othersText() }}</div>
+  }
+  @if (readOnly()) {
+    <div class="notice ai readonly-note" role="status">
+      <span><strong>Solo lectura.</strong> La mesa de este combate la lleva {{ ownerText() }}; aquí ves el marcador en vivo.@if (pending().length) { Esta tablet tiene {{ pending().length | plural: 'evento' : 'eventos' }} sin enviar: se enviarán si tomas la mesa. }</span>
+      <button class="qbtn primary" [disabled]="taking()" (click)="takeTable()">Tomar la mesa</button>
+    </div>
+  }
+  @if (finishQueued(); as fq) {
+    <div class="notice yamabuki" role="status">
+      <strong>Cierre en cola:</strong> {{ fq.body.winner === 'draw' ? 'hikiwake (empate)' : 'gana ' + (fq.body.winner === 'aka' ? 'AKA' : 'AO') }}.
+      Anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.
+    </div>
+  }
+  @if (needsLogin()) {
+    <div class="relogin-backdrop"><div class="relogin" role="dialog" aria-modal="true" aria-labelledby="relogin-title" appFocusTrap>
+      <form (ngSubmit)="relogin()">
+        <div class="relogin-head">
+          <strong id="relogin-title">Inicia sesión para seguir enviando</strong>
+          <span>La sesión venció. La mesa sigue abierta y {{ pending().length ? 'la cola (' + (pending().length | plural: 'evento' : 'eventos') + ') se conserva' : 'no se perdió nada' }}.</span>
+        </div>
+        <label class="sfield"><span>Usuario</span><input name="u" autocomplete="username" [ngModel]="reloginUser()" (ngModelChange)="reloginUser.set($event)" required /></label>
+        <label class="sfield"><span>Contraseña</span><input name="p" type="password" autocomplete="current-password" [ngModel]="reloginPass()" (ngModelChange)="reloginPass.set($event)" required autofocus /></label>
+        @if (reloginError()) {
+          <p class="sheet-warn">{{ reloginError() }}</p>
+        }
+        <button class="qbtn primary" type="submit" [disabled]="reloginBusy() || !reloginUser() || !reloginPass()">
+          @if (reloginBusy()) {
+            <span class="spin" aria-hidden="true"></span>
+          }
+          Ingresar y seguir
+        </button>
+      </form>
+    </div></div>
   }
 
   @if (sb(); as s) {
@@ -85,7 +140,7 @@
             <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
             @if (s.bout; as b) {
               <a class="qbtn primary" [routerLink]="['/mesa', b.parent_match_id]" [queryParams]="tatamiParams()">Volver al enfrentamiento →</a>
-            } @else if (tatami()) {
+            } @else if (tatamiId()) {
               <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
@@ -106,7 +161,7 @@
           <div class="rb-actions">
             <button class="qbtn" (click)="unlocked.set(false)">Volver a bloquear</button>
             <button class="qbtn" (click)="openFinish()">Corregir resultado</button>
-            @if (!s.bout && tatami()) {
+            @if (!s.bout && tatamiId()) {
               <button class="qbtn primary" (click)="nextMatch()">Siguiente combate →</button>
             }
           </div>
@@ -136,7 +191,7 @@
                   Más <span aria-hidden="true">⋯</span>
                 </button>
                 @if (moreOpen() === c) {
-                  <div class="more-menu" role="menu">
+                  <div class="more-menu" role="menu" [attr.aria-label]="'Más acciones para ' + (c === 'aka' ? 'AKA' : 'AO')" (keydown)="onMoreKey($event)">
                     <button role="menuitem" [disabled]="s.senshu !== c" (click)="rare('senshu_cancel', c)">
                       Cancelar senshu<small>Retira la primera ventaja</small>
                     </button>
@@ -176,9 +231,10 @@
                   (click)="sanction(c, i + 1)"
                   [attr.aria-pressed]="s.sanction[c] >= i + 1"
                   [title]="'Aplicar ' + label"
+                  [attr.aria-label]="label"
                 >
                   <span class="ink-mark" aria-hidden="true"></span>
-                  <span class="mlabel">{{ label }}</span>
+                  <span class="mlabel" aria-hidden="true"><span class="full">{{ label }}</span><span class="abbr">{{ sanctionAbbr(label) }}</span></span>
                 </button>
               }
             </div>
@@ -198,7 +254,7 @@
         }
 
         <section class="center" aria-label="Reloj y control">
-          <div class="clock {{ clockState() }}" [class.warn]="clockWarn()">
+          <div class="clock {{ clockState() }}" [class.warn]="clockWarn()" [class.flash-warn]="flash() === 'warn'" [class.flash-end]="flash() === 'end'">
             <div class="clock-label">{{ clockLabel() }}</div>
             <div class="digits" role="timer">{{ timeOver() ? '0:00' : timerText() }}</div>
             <div class="clock-sub">de {{ durationText() }}</div>
@@ -270,7 +326,7 @@
                 }
               </div>
             </div>
-            <div class="kcap">bandera(s)</div>
+            <div class="kcap">{{ voteCount()[c] === 1 ? 'bandera' : 'banderas' }}</div>
           </section>
         }
 
@@ -372,7 +428,7 @@
 <!-- ============ Hoja de cierre ============ -->
 @if (finishOpen()) {
   <div class="sheet-backdrop" (click)="onSheetBackdrop($event)">
-    <div class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="finished() ? 'Corregir resultado' : 'Confirmar ganador'">
+    <div class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="finished() ? 'Corregir resultado' : 'Confirmar ganador'" appFocusTrap>
       @if (sb(); as s) {
         <div class="sheet-head">
           <div>
@@ -421,7 +477,7 @@
             <label class="sfield">
               <span>Método</span>
               <select [(ngModel)]="finishForm.method">
-                @for (m of methods; track m) {
+                @for (m of methods(); track m) {
                   <option [value]="m">{{ methodLabel[m] }}</option>
                 }
               </select>
@@ -429,14 +485,23 @@
           } @else {
             <span></span>
           }
-          <label class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
+          @if (!isKata()) {
+            <label class="scheck"><input type="checkbox" [ngModel]="finishForm.time_over" (ngModelChange)="onTimeOverChange($event)" /> Tiempo cumplido</label>
+          }
         </div>
         <label class="sfield">
           <span>Motivo / observación {{ finished() ? '(corrección)' : '(opcional)' }}</span>
           <input [(ngModel)]="finishForm.reason" />
         </label>
-        @if (pending().length) {
-          <p class="sheet-warn">Hay {{ pending().length }} evento(s) sin enviar. Espera a que se sincronicen.</p>
+        @if (noSignal()) {
+          <p class="sheet-warn offline-note">
+            <strong>Sin señal.</strong> Anota el resultado en la planilla; se cerrará cuando vuelva la señal.
+            El cierre queda en cola en esta tablet y se envía solo, una única vez.
+          </p>
+        } @else if (pending().length) {
+          <p class="sheet-warn">
+            Hay {{ pending().length | plural: 'evento' : 'eventos' }} sin enviar: el cierre queda en cola y se envía después de ellos.
+          </p>
         }
         <div class="sheet-actions">
           <button class="qbtn" (click)="finishOpen.set(false)">Volver</button>
@@ -451,7 +516,9 @@
             @if (finishing()) {
               <span class="spin" aria-hidden="true"></span>
             }
-            @if (finishForm.winner === 'draw') {
+            @if (finishWillQueue() && finishForm.winner) {
+              Dejar el cierre en cola
+            } @else if (finishForm.winner === 'draw') {
               Confirmar: hikiwake (empate)
             } @else if (finishForm.winner) {
               Confirmar: gana {{ finishForm.winner === 'aka' ? 'AKA' : 'AO' }}

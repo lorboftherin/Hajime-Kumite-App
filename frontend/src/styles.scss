@@ -1064,6 +1064,27 @@ table.table {
       border-bottom-color: var(--sumi);
     }
   }
+  /* Hay más pestañas fuera de la vista: degradado en el borde y flecha (ink-tabs.ts). */
+  &.more-right::before {
+    content: '›';
+    order: 99;
+    position: sticky;
+    right: 0;
+    flex: none;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding: 0 0.2rem 0.15rem 2rem;
+    background: linear-gradient(to right, transparent, var(--washi) 65%);
+    color: var(--sumi-2);
+    font-size: 1.5rem;
+    line-height: 1;
+    pointer-events: none;
+  }
+  &.more-left {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+  }
   &.inked {
     a.active {
       border-bottom-color: transparent;

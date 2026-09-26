@@ -1,6 +1,6 @@
 """sesiones con token de renovacion
 
-Revision ID: 0005_sesiones
+Revision ID: 0006_sesiones
 Revises: 0004
 Create Date: 2026-09-26 16:39:11.509743
 """
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mssql
 
-revision = "0005_sesiones"
+revision = "0006_sesiones"
 down_revision = "0005_intentos_login"
 branch_labels = None
 depends_on = None
