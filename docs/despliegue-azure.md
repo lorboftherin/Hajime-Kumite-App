@@ -100,3 +100,13 @@ excedente). El dominio será el `.com` propio. Antes de datos reales: revisar
   del admin): en la configuración de la app, nunca en el código.
 - **Backups:** Azure SQL guarda copias automáticas y permite restaurar a
   cualquier momento de los últimos 7 días.
+
+## Dejar que Claude Code corra comandos de Azure
+
+`bash infra/azure/conectar-claude.sh` crea una identidad de aplicación con
+permiso de Colaborador solo sobre los grupos `hajime-test` y `hajime-prod`, y
+muestra cuatro variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_SECRET`) para pegar en el entorno de
+Claude Code (claude.ai/code → botón de la nube → engranaje → *Environment
+variables*), junto con los dominios que hay que permitir en *Network access*.
+El secreto vence a los 6 meses; se revoca con `az ad app delete`.
