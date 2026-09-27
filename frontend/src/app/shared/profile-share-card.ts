@@ -47,9 +47,9 @@ export async function shareProfileCard(p: PublicProfile, url: string): Promise<b
   center(p.dojo ?? '', 530, `500 34px ${ui}`, '#4A463F');
 
   const medals: Array<[string, number, string]> = [
-    ['Oro', p.medals.gold, '#C9A24B'],
-    ['Plata', p.medals.silver, '#A3A6A8'],
-    ['Bronce', p.medals.bronze, '#9C6238'],
+    [$localize`:@@perfil.compartir.oro:Oro`, p.medals.gold, '#C9A24B'],
+    [$localize`:@@perfil.compartir.plata:Plata`, p.medals.silver, '#A3A6A8'],
+    [$localize`:@@perfil.compartir.bronce:Bronce`, p.medals.bronze, '#9C6238'],
   ];
   medals.forEach(([label, n, color], i) => {
     const x = S / 2 + (i - 1) * 260;
@@ -67,12 +67,12 @@ export async function shareProfileCard(p: PublicProfile, url: string): Promise<b
   });
   const t = p.tournament_count;
   center(
-    `${t} ${t === 1 ? 'torneo disputado' : 'torneos disputados'}`,
+    `${t} ${t === 1 ? $localize`:@@perfil.compartir.torneo-disputado:torneo disputado` : $localize`:@@perfil.compartir.torneos-disputados:torneos disputados`}`,
     880,
     `500 32px ${ui}`,
     '#4A463F',
   );
-  center('Hajime · Torneos de karate', 1000, `700 28px ${display}`, '#8A8377');
+  center($localize`:@@perfil.compartir.hajime-torneos-karate:Hajime · Torneos de karate`, 1000, `700 28px ${display}`, '#8A8377');
 
   const blob: Blob = await new Promise((res, rej) =>
     c.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'),
@@ -81,7 +81,7 @@ export async function shareProfileCard(p: PublicProfile, url: string): Promise<b
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `${p.name} · Hajime`, url });
+      await navigator.share({ files: [file], title: $localize`:@@perfil.compartir.hajime:${p.name}:name: · Hajime`, url });
       return true;
     } catch {
       /* cancelado: se descarga */

@@ -41,7 +41,7 @@ export function qrScanSupported(): boolean {
     @if (error()) {
       <p class="alert warn small">{{ error() }}</p>
     } @else {
-      <p class="hint">Apunta la cámara al QR de la credencial.</p>
+      <p i18n="@@acreditacion.qr.apunta-camara-qr-credencial" class="hint">Apunta la cámara al QR de la credencial.</p>
     }
   `,
   styles: `
@@ -81,7 +81,7 @@ export class QrScanner implements OnDestroy {
   private async start(): Promise<void> {
     if (!qrScanSupported()) {
       this.error.set(
-        'Este navegador no puede leer códigos QR con la cámara. Escribe el código de la credencial.',
+        $localize`:@@acreditacion.qr.este-navegador-no-puede-leer:Este navegador no puede leer códigos QR con la cámara. Escribe el código de la credencial.`,
       );
       return;
     }
@@ -110,7 +110,7 @@ export class QrScanner implements OnDestroy {
       }, 250);
     } catch {
       this.error.set(
-        'No se pudo abrir la cámara (¿permiso denegado?). Escribe el código de la credencial.',
+        $localize`:@@acreditacion.qr.no-pudo-abrir-camara-permiso:No se pudo abrir la cámara (¿permiso denegado?). Escribe el código de la credencial.`,
       );
     }
   }

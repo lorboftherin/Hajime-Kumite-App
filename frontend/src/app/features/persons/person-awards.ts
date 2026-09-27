@@ -15,12 +15,12 @@ import { DatePipe } from '../../shared/pipes';
   template: `
     <div class="grid">
       <section>
-        <h2 class="section-title">Ranking</h2>
+        <h2 i18n="@@persona.premios.ranking" class="section-title">Ranking</h2>
         @for (r of ranking(); track r.season_id + r.group_key) {
           <article class="card rank">
             <div class="pos">
-              <span class="big">{{ r.rank }}.º</span>
-              <span class="muted small">de {{ r.of }}</span>
+              <span i18n="@@persona.premios.texto" class="big">{{ r.rank }}.º</span>
+              <span i18n="@@persona.premios.de" class="muted small">de {{ r.of }}</span>
             </div>
             <div class="grow">
               @if (links()) {
@@ -40,15 +40,15 @@ import { DatePipe } from '../../shared/pipes';
               <div class="muted small">{{ r.group_label }}</div>
             </div>
             <div class="pts">
-              <strong>{{ r.points }}</strong> <span class="muted small">pts</span>
+              <strong>{{ r.points }}</strong> <span i18n="@@persona.premios.pts" class="muted small">pts</span>
             </div>
           </article>
         } @empty {
-          <p class="muted small">Todavía no aparece en ningún ranking.</p>
+          <p i18n="@@persona.premios.todavia-no-aparece-ningun" class="muted small">Todavía no aparece en ningún ranking.</p>
         }
       </section>
       <section>
-        <h2 class="section-title">Diplomas y certificados</h2>
+        <h2 i18n="@@persona.premios.diplomas-certificados" class="section-title">Diplomas y certificados</h2>
         @for (t of certs(); track t.tournament_id) {
           <article class="card tour">
             <header>
@@ -56,10 +56,10 @@ import { DatePipe } from '../../shared/pipes';
                 <strong>{{ t.tournament_name }}</strong>
                 <span class="muted small"> · {{ t.start_date | fdate }}</span>
                 @if (t.is_test) {
-                  <span class="badge yamabuki hollow">prueba</span>
+                  <span i18n="@@persona.premios.prueba" class="badge yamabuki hollow">prueba</span>
                 }
               </div>
-              <button class="btn sm" (click)="open(t.tournament_id)">
+              <button i18n="@@persona.premios.diplomas" class="btn sm" (click)="open(t.tournament_id)">
                 <app-icon name="print" /> Diplomas
               </button>
             </header>
@@ -69,7 +69,7 @@ import { DatePipe } from '../../shared/pipes';
                   @if (i.place) {
                     <app-hanko [place]="i.place" />
                   } @else {
-                    <span class="part" title="Participación">P</span>
+                    <span i18n="@@persona.premios.p" i18n-title="@@persona.premios.participacion" class="part" title="Participación">P</span>
                   }
                   <span>{{ i.category_name }}</span>
                 </li>
@@ -77,7 +77,7 @@ import { DatePipe } from '../../shared/pipes';
             </ul>
           </article>
         } @empty {
-          <p class="muted small">Sin diplomas todavía: salen de las categorías finalizadas.</p>
+          <p i18n="@@persona.premios.sin-diplomas-todavia-salen" class="muted small">Sin diplomas todavía: salen de las categorías finalizadas.</p>
         }
       </section>
     </div>

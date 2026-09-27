@@ -22,7 +22,7 @@ export class TournamentContext {
       this.tournament.set(await firstValueFrom(this.api.get<Tournament>(`/tournaments/${id}`)));
       this.error.set('');
     } catch (e: any) {
-      this.error.set(e?.message ?? 'No se pudo cargar el torneo');
+      this.error.set(e?.message ?? $localize`:@@torneo.no-pudo-cargar-torneo:No se pudo cargar el torneo`);
     }
   }
 

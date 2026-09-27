@@ -11,6 +11,7 @@ import { canReviewClaims, dojoAdminOf, hasOrganizations, isCompetitorOnly, isSta
 import { ThemeMode, ThemeService } from '../core/theme.service';
 import { Enso, HajimeWord } from '../shared/enso';
 import { Icon, IconName } from '../shared/icon';
+import { etiquetas, lista } from '../core/i18n/etiquetas';
 
 interface NavItem {
   path: string;
@@ -20,32 +21,32 @@ interface NavItem {
   staff?: boolean;
 }
 
-const NAV: NavItem[] = [
-  { path: '/torneos', kanji: '大会', label: 'Torneos' },
-  { path: '/personas', kanji: '人', label: 'Personas', staff: true },
-  { path: '/dojos', kanji: '道場', label: 'Dojos', staff: true },
-  { path: '/plantillas', kanji: '型', label: 'Plantillas', staff: true },
-  { path: '/ranking', kanji: '番付', label: 'Ranking' },
-];
-const ADMIN: NavItem = { path: '/usuarios', kanji: '管理', label: 'Usuarios' };
+const NAV: NavItem[] = lista(() => [
+  { path: '/torneos', kanji: '大会', label: $localize`:@@menu.torneos:Torneos` },
+  { path: '/personas', kanji: '人', label: $localize`:@@menu.personas:Personas`, staff: true },
+  { path: '/dojos', kanji: '道場', label: $localize`:@@menu.dojos:Dojos`, staff: true },
+  { path: '/plantillas', kanji: '型', label: $localize`:@@menu.plantillas:Plantillas`, staff: true },
+  { path: '/ranking', kanji: '番付', label: $localize`:@@menu.ranking:Ranking` },
+]);
+const ADMIN: NavItem = etiquetas(() => ({ path: '/usuarios', kanji: '管理', label: $localize`:@@menu.usuarios:Usuarios` }));
 /** Admin Global: pagos, reembolsos, comprobantes y cupones. */
-const PAYMENTS: NavItem = { path: '/pagos', kanji: '会計', label: 'Pagos' };
+const PAYMENTS: NavItem = etiquetas(() => ({ path: '/pagos', kanji: '会計', label: $localize`:@@menu.pagos:Pagos` }));
 /** Cuenta de competidor o de padre, madre o apoderado: sus perfiles deportivos. */
-const MY_PROFILES: NavItem = { path: '/mis-perfiles', kanji: '選手', label: 'Mis perfiles' };
+const MY_PROFILES: NavItem = etiquetas(() => ({ path: '/mis-perfiles', kanji: '選手', label: $localize`:@@menu.mis-perfiles-2:Mis perfiles` }));
 /** Dojo, organizadores y Admin: solicitudes para reclamar perfiles. */
-const CLAIMS: NavItem = { path: '/solicitudes', kanji: '申請', label: 'Reclamos' };
+const CLAIMS: NavItem = etiquetas(() => ({ path: '/solicitudes', kanji: '申請', label: $localize`:@@menu.reclamos:Reclamos` }));
 /** Operador de mesa de un tatami: acceso directo a su cola. */
-const MY_TATAMI: NavItem = { path: '/mi-tatami', kanji: '畳', label: 'Mi tatami' };
+const MY_TATAMI: NavItem = etiquetas(() => ({ path: '/mi-tatami', kanji: '畳', label: $localize`:@@menu.mi-tatami:Mi tatami` }));
 /** Sensei (admin de dojo): sus competidores y la inscripción en línea. */
-const MY_DOJO: NavItem = { path: '/mis-competidores', kanji: '門', label: 'Mis competidores' };
+const MY_DOJO: NavItem = etiquetas(() => ({ path: '/mis-competidores', kanji: '門', label: $localize`:@@menu.mis-competidores:Mis competidores` }));
 /** Organización: datos, miembros y plan. */
-const ORGANIZATION: NavItem = { path: '/organizacion', kanji: '組', label: 'Organización' };
+const ORGANIZATION: NavItem = etiquetas(() => ({ path: '/organizacion', kanji: '組', label: $localize`:@@menu.organizacion:Organización` }));
 
-const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
-  { mode: 'light', label: 'Claro', icon: 'sun' },
-  { mode: 'dark', label: 'Oscuro', icon: 'moon' },
-  { mode: 'system', label: 'Sistema', icon: 'system' },
-];
+const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(() => [
+  { mode: 'light', label: $localize`:@@menu.claro:Claro`, icon: 'sun' },
+  { mode: 'dark', label: $localize`:@@menu.oscuro:Oscuro`, icon: 'moon' },
+  { mode: 'system', label: $localize`:@@menu.sistema:Sistema`, icon: 'system' },
+]);
 
 /**
  * Marco de la aplicación: barra lateral con kanji + etiqueta (≥1200 px), plegada a kanji con
@@ -61,9 +62,9 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     '(document:keydown.escape)': 'menuOpen.set(null)',
   },
   template: `
-    <aside class="sidebar no-print" aria-label="Navegación principal">
+    <aside i18n-aria-label="@@menu.navegacion-principal" class="sidebar no-print" aria-label="Navegación principal">
       <div class="sidebar-inner">
-      <a class="brand" routerLink="/" aria-label="Hajime, inicio">
+      <a i18n-aria-label="@@menu.hajime-inicio" class="brand" routerLink="/" aria-label="Hajime, inicio">
         <app-enso class="mark" />
         <app-hajime-word class="word" />
       </a>
@@ -82,7 +83,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     </aside>
 
     <header class="topbar no-print">
-      <a class="brand" routerLink="/" aria-label="Hajime, inicio">
+      <a i18n-aria-label="@@menu.hajime-inicio" class="brand" routerLink="/" aria-label="Hajime, inicio">
         <app-enso class="mark" />
         <app-hajime-word class="word" />
       </a>
@@ -96,16 +97,16 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
         <div class="plan-alert no-print" [class.grace]="a.in_grace" role="status">
           <span>{{ alertMessage(a) }}</span>
           @if (a.organization_id) {
-            <a [routerLink]="['/organizacion', a.organization_id]">Renovar</a>
+            <a i18n="@@menu.renovar" [routerLink]="['/organizacion', a.organization_id]">Renovar</a>
           } @else {
-            <a routerLink="/planes">Renovar</a>
+            <a i18n="@@menu.renovar" routerLink="/planes">Renovar</a>
           }
         </div>
       }
       <router-outlet />
     </main>
 
-    <nav class="bottom-bar no-print" aria-label="Navegación principal">
+    <nav i18n-aria-label="@@menu.navegacion-principal" class="bottom-bar no-print" aria-label="Navegación principal">
       @for (it of items(); track it.path) {
         <a [routerLink]="it.path" routerLinkActive="" #rlb="routerLinkActive" [class.active]="rlb.isActive || inBracket(it)" [attr.aria-current]="rlb.isActive ? 'page' : null">
           <span class="kanji" aria-hidden="true">{{ it.kanji }}</span>
@@ -115,7 +116,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
     </nav>
 
     <ng-template #userBtn let-slot="slot">
-      <button type="button" class="user-btn" (click)="toggleMenu(slot)" [attr.aria-expanded]="menuOpen() === slot" aria-haspopup="menu" [attr.aria-label]="'Menú de ' + name()">
+      <button type="button" class="user-btn" (click)="toggleMenu(slot)" [attr.aria-expanded]="menuOpen() === slot" aria-haspopup="menu" [attr.aria-label]="ariaMenuDe(name())">
         <span class="avatar" aria-hidden="true">{{ initial() }}</span>
         <span class="who">
           <span class="uname">{{ name() }}</span>
@@ -123,9 +124,9 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
         </span>
       </button>
       @if (menuOpen() === slot) {
-        <div class="menu-panel user-menu" [class.up]="slot === 'side'" role="menu" aria-label="Menú de usuario">
-          <div class="menu-label">Sesión: {{ auth.user()?.username }}</div>
-          <div class="theme" role="group" aria-label="Tema">
+        <div i18n-aria-label="@@menu.menu-usuario" class="menu-panel user-menu" [class.up]="slot === 'side'" role="menu" aria-label="Menú de usuario">
+          <div i18n="@@menu.sesion" class="menu-label">Sesión: {{ auth.user()?.username }}</div>
+          <div i18n-aria-label="@@menu.tema" class="theme" role="group" aria-label="Tema">
             @for (t of themes; track t.mode) {
               <button type="button" [class.on]="theme.mode() === t.mode" [attr.aria-pressed]="theme.mode() === t.mode" (click)="theme.set(t.mode)">
                 <app-icon [name]="t.icon" />
@@ -134,14 +135,14 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
             }
           </div>
           <hr />
-          <a class="menu-item" routerLink="/perfil" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Mi cuenta</a>
+          <a i18n="@@menu.mi-cuenta" class="menu-item" routerLink="/perfil" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Mi cuenta</a>
           @if (!competitorOnly()) {
-            <a class="menu-item" routerLink="/mis-perfiles" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="history" /> Mis perfiles</a>
+            <a i18n="@@menu.mis-perfiles" class="menu-item" routerLink="/mis-perfiles" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="history" /> Mis perfiles</a>
           }
-          <a class="menu-item" routerLink="/planes" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Planes</a>
-          <a class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
-          <a class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
-          <button type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
+          <a i18n="@@menu.planes" class="menu-item" routerLink="/planes" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="open" /> Planes</a>
+          <a i18n="@@menu.cambiar-contrasena" class="menu-item" routerLink="/cambiar-clave" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="key" /> Cambiar contraseña</a>
+          <a i18n="@@menu.borrar-mi-cuenta" class="menu-item" routerLink="/mi-cuenta" role="menuitem" (click)="menuOpen.set(null)"><app-icon name="close" /> Borrar mi cuenta</a>
+          <button i18n="@@menu.salir" type="button" class="menu-item" role="menuitem" (click)="logout()"><app-icon name="logout" /> Salir</button>
         </div>
       }
     </ng-template>
@@ -509,6 +510,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   `,
 })
 export class Shell {
+  ariaMenuDe = (nombre: string) => $localize`:@@menu.menu-de:Menú de ${nombre}:nombre:`;
   readonly auth = inject(AuthService);
   readonly theme = inject(ThemeService);
   private host = inject(ElementRef<HTMLElement>);
@@ -546,11 +548,11 @@ export class Shell {
   readonly initial = computed(() => (this.name() || '?').charAt(0).toUpperCase());
   readonly roleLabel = computed(() => {
     const u = this.auth.user();
-    if (u?.is_admin) return 'Administrador';
-    if (isStaff(u)) return 'Organizador';
-    if (isCompetitorOnly(u)) return 'Competidor';
-    if (tatamiScopes(u).length) return 'Operador de mesa';
-    return dojoAdminOf(u).length ? 'Sensei' : 'Operador';
+    if (u?.is_admin) return $localize`:@@menu.administrador:Administrador`;
+    if (isStaff(u)) return $localize`:@@menu.organizador:Organizador`;
+    if (isCompetitorOnly(u)) return $localize`:@@menu.competidor:Competidor`;
+    if (tatamiScopes(u).length) return $localize`:@@menu.operador-mesa:Operador de mesa`;
+    return dojoAdminOf(u).length ? 'Sensei' : $localize`:@@menu.operador:Operador`;
   });
 
   /** Las llaves (/categorias/…) pertenecen a un torneo: se marca «Torneos» como sección activa. */

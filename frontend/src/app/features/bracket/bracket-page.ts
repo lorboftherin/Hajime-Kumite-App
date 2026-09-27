@@ -28,6 +28,7 @@ import { MoreMenu } from '../../shared/more-menu';
 import { PageHead } from '../../shared/page-head';
 import { LabelPipe, LimaPipe } from '../../shared/pipes';
 import { BracketGenerator } from '../checkin/bracket-absent';
+import { etiquetas } from '../../core/i18n/etiquetas';
 
 function fmtScore(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -36,19 +37,19 @@ function fmtScore(v: number | string | null | undefined): string {
 }
 
 const PLACE: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
-const KIND_LABEL: Record<string, string> = {
-  third_place: 'Combate por el 3.º puesto',
-  repechage: 'Repechaje',
-};
+const KIND_LABEL: Record<string, string> = etiquetas(() => ({
+  third_place: $localize`:@@llave.combate-3-puesto:Combate por el 3.º puesto`,
+  repechage: $localize`:@@llave.repechaje-2:Repechaje`,
+}));
 
-const CHANGE_TEXT: Record<string, string> = {
-  bye: 'ocupa un bye de primera ronda',
-  round_robin: 'se agregaron sus combates',
-  kata_rounds: 'entra al final del orden de salida',
-  walkover: 'pierde por walkover su combate pendiente',
-  walkover_pending: 'perderá por walkover en cuanto se conozca a su rival',
-  none: 'no tenía combates por disputar',
-};
+const CHANGE_TEXT: Record<string, string> = etiquetas(() => ({
+  bye: $localize`:@@llave.ocupa-bye-primera-ronda:ocupa un bye de primera ronda`,
+  round_robin: $localize`:@@llave.agregaron-combates:se agregaron sus combates`,
+  kata_rounds: $localize`:@@llave.entra-final-orden-salida:entra al final del orden de salida`,
+  walkover: $localize`:@@llave.pierde-walkover-combate:pierde por walkover su combate pendiente`,
+  walkover_pending: $localize`:@@llave.perdera-walkover-cuanto-conozca:perderá por walkover en cuanto se conozca a su rival`,
+  none: $localize`:@@llave.no-tenia-combates-disputar:no tenía combates por disputar`,
+}));
 
 @Component({
   selector: 'app-bracket-page',
@@ -69,6 +70,16 @@ export class BracketPage {
   readonly thirdLabel = THIRD_PLACE_LABEL;
   readonly methodLabel = METHOD_LABEL;
   readonly kindLabel = KIND_LABEL;
+  readonly textoNotaDescartada = $localize`:@@llave.nota-descartada:Nota descartada`;
+  readonly textoAbrirMesa = $localize`:@@llave.abrir-mesa:Abrir mesa`;
+  readonly textoRegenerarLlave = $localize`:@@llave.titulo-regenerar-llave:Regenerar llave`;
+  readonly textoGenerarLlave = $localize`:@@llave.titulo-generar-llave:Generar llave`;
+  readonly textoAnadirLlave = $localize`:@@llave.titulo-anadir-llave:Añadir a la llave`;
+  readonly textoQuitarLlave = $localize`:@@llave.titulo-quitar-llave:Quitar de la llave`;
+  readonly textoEjTardia = $localize`:@@llave.ej-inscripcion-tardia:Ej.: inscripción tardía`;
+  readonly textoEjLesion = $localize`:@@llave.ej-lesion:Ej.: lesión`;
+  ariaNotaAtletica = (juez: number) => $localize`:@@llave.nota-atletica-juez:Nota atlética del juez ${juez}:juez:`;
+  ariaQuienJuez = (juez: number) => $localize`:@@llave.quien-juez:Quién es el juez ${juez}:juez:`;
 
   readonly category = signal<Category | null>(null);
   readonly tournament = signal<Tournament | null>(null);
@@ -243,7 +254,7 @@ export class BracketPage {
         } else throw e;
       }
     } catch (e) {
-      this.dialog.alert('Error', ApiError.from(e).fullMessage);
+      this.dialog.alert($localize`:@@llave.error:Error`, ApiError.from(e).fullMessage);
     } finally {
       this.loading.set(false);
     }
@@ -251,11 +262,11 @@ export class BracketPage {
 
   roundLabel(r: number, n: number): string {
     const fromEnd = n - r;
-    if (fromEnd === 0) return 'Final';
-    if (fromEnd === 1) return 'Semifinal';
-    if (fromEnd === 2) return 'Cuartos de final';
-    if (fromEnd === 3) return 'Octavos de final';
-    return `Ronda ${r}`;
+    if (fromEnd === 0) return $localize`:@@llave.final-2:Final`;
+    if (fromEnd === 1) return $localize`:@@llave.semifinal:Semifinal`;
+    if (fromEnd === 2) return $localize`:@@llave.cuartos-final:Cuartos de final`;
+    if (fromEnd === 3) return $localize`:@@llave.octavos-final:Octavos de final`;
+    return $localize`:@@llave.ronda-2:Ronda ${r}:r:`;
   }
 
   pname(rid: number | null | undefined): string {
@@ -277,8 +288,8 @@ export class BracketPage {
   sourceHint(source: string): string {
     const [kind, ref] = source.split(':');
     if (kind === 'slot') return '';
-    if (kind === 'winner' || kind === 'W') return `Ganador ${ref}`;
-    if (kind === 'loser' || kind === 'L') return `Perdedor ${ref}`;
+    if (kind === 'winner' || kind === 'W') return $localize`:@@llave.ganador:Ganador ${ref}:ref:`;
+    if (kind === 'loser' || kind === 'L') return $localize`:@@llave.perdedor:Perdedor ${ref}:ref:`;
     return ref ?? '';
   }
 
@@ -313,8 +324,8 @@ export class BracketPage {
   }
 
   matchLabel(m: Match): string {
-    const who = (rid: number | null) => (rid ? this.pname(rid) : 'por definir');
-    return `Combate ${m.code}: ${who(m.aka_registration_id)} contra ${who(m.ao_registration_id)}. Abrir`;
+    const who = (rid: number | null) => (rid ? this.pname(rid) : $localize`:@@llave.definir:por definir`);
+    return $localize`:@@llave.combate-contra-abrir:Combate ${m.code}:code:: ${who(m.aka_registration_id)}:aka: contra ${who(m.ao_registration_id)}:ao:. Abrir`;
   }
 
   /** Teclado: Enter o Espacio eligen la posición para intercambiar. */
@@ -325,12 +336,12 @@ export class BracketPage {
   }
 
   slotLabel(slot: number, rid: number | null): string {
-    const who = rid ? this.pname(rid) : 'vacía';
+    const who = rid ? this.pname(rid) : $localize`:@@llave.vacia:vacía`;
     const picked = this.swapA();
-    if (picked === slot) return `Posición ${slot + 1} (${who}), elegida. Elige otra para intercambiar o pulsa de nuevo para soltarla`;
+    if (picked === slot) return $localize`:@@llave.posicion-elegida-elige-otra-para:Posición ${slot + 1}:posicion: (${who}:who:), elegida. Elige otra para intercambiar o pulsa de nuevo para soltarla`;
     return picked === null
-      ? `Posición ${slot + 1} (${who}). Elegir para intercambiar`
-      : `Posición ${slot + 1} (${who}). Intercambiar con la posición ${picked + 1}`;
+      ? $localize`:@@llave.posicion-elegir-para:Posición ${slot + 1}:posicion: (${who}:who:). Elegir para intercambiar`
+      : $localize`:@@llave.posicion-intercambiar-posicion:Posición ${slot + 1}:posicion: (${who}:who:). Intercambiar con la posición ${picked + 1}:otra:`;
   }
 
   // --- Intercambio de posiciones ---
@@ -355,7 +366,7 @@ export class BracketPage {
     const res = await this.mut.patch<Bracket>(
       `/brackets/${b.id}/slots`,
       { version: b.version, a, b: slot, reason: '' },
-      { success: `Posiciones ${a + 1} y ${slot + 1} intercambiadas`, onConflict: () => this.load() },
+      { success: $localize`:@@llave.posiciones-intercambiadas:Posiciones ${a + 1}:posicion: y ${slot + 1}:otra: intercambiadas`, onConflict: () => this.load() },
     );
     this.swapA.set(null);
     if (res) this.bracket.set(res);
@@ -378,7 +389,7 @@ export class BracketPage {
     if (this.regen.seed !== '' && this.regen.seed !== null) body['seed'] = Number(this.regen.seed);
     if (this.regen.format) body['format'] = this.regen.format;
     if (this.regen.third_place_rule) body['third_place_rule'] = this.regen.third_place_rule;
-    const res = await this.brackets.generate(this.catId(), body, { success: 'Llave generada' });
+    const res = await this.brackets.generate(this.catId(), body, { success: $localize`:@@llave.llave-generada:Llave generada` });
     if (res) {
       this.regenOpen.set(false);
       this.bracket.set(res);
@@ -391,7 +402,7 @@ export class BracketPage {
     try {
       this.versions.set(await firstValueFrom(this.api.get<BracketVersion[]>(`/categories/${this.catId()}/bracket/versions`)));
     } catch (e) {
-      this.dialog.alert('Error', ApiError.from(e).fullMessage);
+      this.dialog.alert($localize`:@@llave.error:Error`, ApiError.from(e).fullMessage);
     }
   }
 
@@ -432,7 +443,7 @@ export class BracketPage {
       this.scoreInputs.some((x) => x === null) ||
       (split && this.athleticInputs.some((x) => x === null))
     ) {
-      this.dialog.alert('Notas incompletas', 'Ingresa la nota de cada juez (un decimal).');
+      this.dialog.alert($localize`:@@llave.notas-incompletas:Notas incompletas`, $localize`:@@llave.ingresa-nota-cada-juez-decimal:Ingresa la nota de cada juez (un decimal).`);
       return;
     }
     const res = await this.mut.post<Bracket>(
@@ -446,7 +457,7 @@ export class BracketPage {
         kata_name: this.kataName || null,
         version: row['version'],
       },
-      { success: 'Notas registradas', onConflict: () => this.load() },
+      { success: $localize`:@@llave.notas-registradas:Notas registradas`, onConflict: () => this.load() },
     );
     if (res) {
       this.bracket.set(res);
@@ -484,7 +495,7 @@ export class BracketPage {
         ),
       );
     } catch (e) {
-      this.dialog.alert('Error', ApiError.from(e).fullMessage);
+      this.dialog.alert($localize`:@@llave.error:Error`, ApiError.from(e).fullMessage);
       return;
     }
     this.entrantMode.set(mode);
@@ -516,8 +527,8 @@ export class BracketPage {
     if (res) {
       const who = this.categoryRegs().find((r) => r.id === this.entrant.registration_id)?.person_name ?? '';
       this.dialog.alert(
-        mode === 'add' ? 'Añadido a la llave' : 'Quitado de la llave',
-        `${who}: ${CHANGE_TEXT[res.result.mode] ?? res.result.mode}. Se guardó la versión v${res.bracket.version_number}.`,
+        mode === 'add' ? $localize`:@@llave.anadido-llave:Añadido a la llave` : $localize`:@@llave.quitado-llave:Quitado de la llave`,
+        $localize`:@@llave.guardo-version-v:${who}:who:: ${CHANGE_TEXT[res.result.mode] ?? res.result.mode}:cambio:. Se guardó la versión v${res.bracket.version_number}:version_number:.`,
       );
       this.entrantMode.set(null);
       this.bracket.set(res.bracket);
@@ -535,13 +546,13 @@ export class BracketPage {
 
   async resolveTie(): Promise<void> {
     if (this.tieReason.trim().length < 3) {
-      this.dialog.alert('Falta el motivo', 'Indica el motivo del desempate (mín. 3 caracteres).');
+      this.dialog.alert($localize`:@@llave.falta-motivo:Falta el motivo`, $localize`:@@llave.indica-motivo-desempate-min-3:Indica el motivo del desempate (mín. 3 caracteres).`);
       return;
     }
     const res = await this.mut.post<Bracket>(
       `/categories/${this.catId()}/kata-tie-break`,
       { registration_ids_in_order: this.tieOrder(), reason: this.tieReason.trim() },
-      { success: 'Desempate registrado' },
+      { success: $localize`:@@llave.desempate-registrado:Desempate registrado` },
     );
     if (res) {
       this.bracket.set(res);

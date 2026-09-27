@@ -15,7 +15,7 @@ import { Icon } from './icon';
       <div class="modal" [class.wide]="wide()" role="dialog" aria-modal="true" [attr.aria-label]="title()" appFocusTrap>
         <div class="head">
           <h2>{{ title() }}</h2>
-          <button type="button" class="btn ghost sm icon-only close" (click)="closed.emit()" aria-label="Cerrar"><app-icon name="close" /></button>
+          <button i18n-aria-label="@@modal.cerrar" type="button" class="btn ghost sm icon-only close" (click)="closed.emit()" aria-label="Cerrar"><app-icon name="close" /></button>
         </div>
         <ng-content />
       </div>

@@ -6,13 +6,14 @@ import { ApiError } from '../../../core/api-error';
 import { ApiService, LONG_TIMEOUT_MS } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
-import { DUPLICATE_REASON, IMPORT_BATCH_STATUS, plural } from '../../../core/format';
+import { DUPLICATE_REASON, IMPORT_BATCH_STATUS } from '../../../core/format';
 import { ImportBatch, ImportRow } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { TournamentContext } from '../tournament-context';
+import { lista } from '../../../core/i18n/etiquetas';
 
 interface Decision {
   action: 'create' | 'use_existing' | 'skip';
@@ -21,19 +22,20 @@ interface Decision {
 }
 
 /** Columnas editables de una fila (mismas claves que la plantilla). */
-const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = [
-  { key: 'nombres', label: 'Nombres' },
-  { key: 'apellidos', label: 'Apellidos' },
-  { key: 'fecha_nacimiento', label: 'Fecha de nacimiento', placeholder: 'dd/mm/aaaa' },
-  { key: 'sexo', label: 'Sexo (M/F)' },
-  { key: 'grado', label: 'Grado', placeholder: '8 kyu, 1 dan…' },
-  { key: 'categoria_peso', label: 'Peso', placeholder: '-45' },
+const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = lista(() => [
+  { key: 'nombres', label: $localize`:@@torneo.importar.nombres:Nombres` },
+  { key: 'apellidos', label: $localize`:@@torneo.importar.apellidos:Apellidos` },
+  { key: 'fecha_nacimiento', label: $localize`:@@torneo.importar.fecha-nacimiento:Fecha de nacimiento`, placeholder: 'dd/mm/aaaa' },
+  { key: 'sexo', label: $localize`:@@torneo.importar.sexo-m-f:Sexo (M/F)` },
+  { key: 'grado', label: $localize`:@@torneo.importar.grado:Grado`, placeholder: '8 kyu, 1 dan…' },
+  { key: 'categoria_peso', label: $localize`:@@torneo.importar.peso:Peso`, placeholder: '-45' },
   { key: 'dojo', label: 'Dojo' },
-  { key: 'tipo_documento', label: 'Tipo de documento', placeholder: 'DNI, CE, PASSPORT' },
-  { key: 'numero_documento', label: 'Número de documento' },
-  { key: 'modalidades', label: 'Modalidades', placeholder: 'kumite, kata' },
-  { key: 'rol', label: 'Rol', placeholder: 'competidor, árbitro, sensei' },
-];
+  { key: 'tipo_documento', label: $localize`:@@torneo.importar.tipo-documento:Tipo de documento`, placeholder: 'DNI, CE, PASSPORT' },
+  { key: 'numero_documento', label: $localize`:@@torneo.importar.numero-documento:Número de documento` },
+  { key: 'modalidades', label: $localize`:@@torneo.importar.modalidades:Modalidades`, placeholder: 'kumite, kata' },
+  { key: 'rol', label: $localize`:@@torneo.importar.rol:Rol`, placeholder: 'competidor, árbitro, sensei' },
+]);
+// Palabras que acepta la importación (el backend las lee en español): no se traducen.
 const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: 'árbitro', sensei: 'sensei' };
 
 @Component({
@@ -41,20 +43,20 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
   imports: [FormsModule, StatusBadge, Icon],
   template: `
     <div class="card intro">
-      <h2>Importar inscripciones desde Excel</h2>
+      <h2 i18n="@@torneo.importar.importar-inscripciones-desde">Importar inscripciones desde Excel</h2>
       <ol class="steps">
-        <li>Descarga la plantilla con columnas fijas y compártela con los dojos.</li>
-        <li>Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con error).</li>
-        <li>Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li>
+        <li i18n="@@torneo.importar.descarga-plantilla-columnas">Descarga la plantilla con columnas fijas y compártela con los dojos.</li>
+        <li i18n="@@torneo.importar.sube-archivo-veras-vista-previa">Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con error).</li>
+        <li i18n="@@torneo.importar.revisa-decisiones-categorias">Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li>
       </ol>
       <div class="row">
-        <button class="btn" (click)="downloadTemplate()"><app-icon name="download" /> Descargar plantilla .xlsx</button>
-        <label class="btn primary">
+        <button i18n="@@torneo.importar.descargar-plantilla-xlsx" class="btn" (click)="downloadTemplate()"><app-icon name="download" /> Descargar plantilla .xlsx</button>
+        <label i18n="@@torneo.importar.subir-archivo" class="btn primary">
           <app-icon name="upload" /> Subir archivo
           <input type="file" accept=".xlsx" hidden (change)="upload($event)" />
         </label>
         @if (uploading()) {
-          <span class="spinner"></span> <span class="small muted">Procesando…</span>
+          <span class="spinner"></span> <span i18n="@@torneo.importar.procesando" class="small muted">Procesando…</span>
         }
       </div>
     </div>
@@ -62,10 +64,10 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
     @if (batch(); as b) {
       <div class="card">
         <div class="row">
-          <h2 class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2>
-          <span class="badge matcha">{{ plural(counts().new, 'nueva', 'nuevas') }}</span>
-          <span class="badge yamabuki">{{ plural(counts().duplicate, 'posible duplicado', 'posibles duplicados') }}</span>
-          <span class="badge shu">{{ plural(counts().error, 'con error', 'con error') }}</span>
+          <h2 i18n="@@torneo.importar.vista-previa" class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2>
+          <span i18n="@@torneo.importar.n-nuevas" class="badge matcha">{counts().new, plural, =1 {1 nueva} other {{{ counts().new }} nuevas}}</span>
+          <span i18n="@@torneo.importar.n-duplicados" class="badge yamabuki">{counts().duplicate, plural, =1 {1 posible duplicado} other {{{ counts().duplicate }} posibles duplicados}}</span>
+          <span i18n="@@torneo.importar.n-con-error" class="badge shu">{counts().error, plural, =1 {1 con error} other {{{ counts().error }} con error}}</span>
         </div>
         <div class="table-wrap mt">
           <table class="table preview-table">
@@ -79,12 +81,12 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
             </colgroup>
             <thead>
               <tr>
-                <th>Fila</th>
-                <th>Persona</th>
-                <th>Dojo</th>
-                <th>Estado</th>
-                <th>Decisión</th>
-                <th>Categorías</th>
+                <th i18n="@@torneo.importar.fila">Fila</th>
+                <th i18n="@@torneo.importar.persona">Persona</th>
+                <th i18n="@@torneo.importar.dojo">Dojo</th>
+                <th i18n="@@torneo.importar.estado">Estado</th>
+                <th i18n="@@torneo.importar.decision">Decisión</th>
+                <th i18n="@@torneo.importar.categorias">Categorías</th>
               </tr>
             </thead>
             <tbody>
@@ -100,13 +102,13 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                     <div class="muted small">
                       {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} · {{ r.data['grado'] || 's/g' }}
                       @if (r.data['numero_documento']) { · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }} }
-                      @if (r.data['categoria_peso']) { · {{ r.data['categoria_peso'] }} kg }
+                      @if (r.data['categoria_peso']) {<ng-container i18n="@@torneo.importar.kg"> · {{ r.data['categoria_peso'] }} kg </ng-container>}
                     </div>
                   </td>
                   <td>
                     {{ r.data['dojo'] }}
                     @if (!r.data['dojo_id'] && r.data['dojo']) {
-                      <div class="small muted">(se creará)</div>
+                      <div i18n="@@torneo.importar.creara" class="small muted">(se creará)</div>
                     }
                   </td>
                   <td>
@@ -120,29 +122,29 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                     }
                     @if (b.status === 'preview' && editing() !== r.id) {
                       <button class="btn sm mt-xs" [class.primary]="r.status === 'error'" [class.ghost]="r.status !== 'error'" (click)="startEdit(r)">
-                        {{ r.status === 'error' ? 'Corregir' : 'Editar datos' }}
+                        <ng-container i18n="@@torneo.importar.corregir-editar">{r.status, select, error {Corregir} other {Editar datos}}</ng-container>
                       </button>
                     }
                     @for (dup of r.duplicates; track $index) {
                       <div class="small">
                         @if (dup['person_id']) {
                           ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) · {{ dupReasonText(dup['reason']) }}
-                        } @else {
+                        } @else {<ng-container i18n="@@torneo.importar.fila-mismo-archivo">
                           ≈ fila {{ dup['row_number'] }} del mismo archivo
-                        }
+                        </ng-container>}
                       </div>
                     }
                   </td>
                   <td>
                     @if (r.status === 'error') {
-                      <span class="muted small">Se omite</span>
+                      <span i18n="@@torneo.importar.omite" class="muted small">Se omite</span>
                     } @else if (d) {
-                      <select class="cell-input" [ngModel]="d.action" (ngModelChange)="setAction(r, $event)" aria-label="Decisión">
-                        <option value="create">Crear persona</option>
+                      <select i18n-aria-label="@@torneo.importar.decision-2" class="cell-input" [ngModel]="d.action" (ngModelChange)="setAction(r, $event)" aria-label="Decisión">
+                        <option i18n="@@torneo.importar.crear-persona" value="create">Crear persona</option>
                         @if (personDups(r).length) {
-                          <option value="use_existing">Usar existente</option>
+                          <option i18n="@@torneo.importar.usar-existente" value="use_existing">Usar existente</option>
                         }
-                        <option value="skip">Omitir</option>
+                        <option i18n="@@torneo.importar.omitir" value="skip">Omitir</option>
                       </select>
                       @if (d.action === 'use_existing') {
                         <select class="mt-xs cell-input" [ngModel]="d.person_id" (ngModelChange)="setPerson(r, $event)">
@@ -158,11 +160,11 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                       @for (cid of rowCats(r); track cid) {
                         <label class="field inline"><input type="checkbox" [checked]="d.category_ids.has(cid)" [disabled]="d.action === 'skip'" (change)="toggleCat(r, cid)" /> {{ catName(cid) }}</label>
                       } @empty {
-                        <span class="muted">Sin sugerencias: elige una categoría.</span>
+                        <span i18n="@@torneo.importar.sin-sugerencias-elige-categoria" class="muted">Sin sugerencias: elige una categoría.</span>
                       }
                       @if (d.action !== 'skip' && isCompetitor(r)) {
-                        <select class="cell-input mt-xs" [ngModel]="0" (ngModelChange)="addCat(r, $event)" [attr.aria-label]="'Otra categoría para la fila ' + r.row_number">
-                          <option [ngValue]="0">{{ rowCats(r).length ? '+ Otra categoría…' : 'Elegir categoría…' }}</option>
+                        <select class="cell-input mt-xs" [ngModel]="0" (ngModelChange)="addCat(r, $event)" [attr.aria-label]="ariaOtraCategoria(r.row_number)">
+                          <option i18n="@@torneo.importar.otra-elegir-categoria" [ngValue]="0">@if (rowCats(r).length) {+ Otra categoría…} @else {Elegir categoría…}</option>
                           @for (c of manualCategories(); track c.id) {
                             @if (!d.category_ids.has(c.id)) {
                               <option [ngValue]="c.id">{{ c.name }}</option>
@@ -186,8 +188,8 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                           }
                         </div>
                         <div class="row">
-                          <button type="button" class="btn sm" (click)="editing.set(null)">Cancelar</button>
-                          <button class="btn sm primary" [disabled]="busy()">Guardar y revalidar</button>
+                          <button i18n="@@torneo.importar.cancelar" type="button" class="btn sm" (click)="editing.set(null)">Cancelar</button>
+                          <button i18n="@@torneo.importar.guardar-revalidar" class="btn sm primary" [disabled]="busy()">Guardar y revalidar</button>
                         </div>
                       </form>
                     </td>
@@ -199,8 +201,8 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
         </div>
         @if (b.status === 'preview') {
           <div class="form-actions">
-            <button class="btn" (click)="cancel()">Cancelar importación</button>
-            <button class="btn primary" [disabled]="busy()" (click)="confirm()">Confirmar e inscribir</button>
+            <button i18n="@@torneo.importar.cancelar-importacion" class="btn" (click)="cancel()">Cancelar importación</button>
+            <button i18n="@@torneo.importar.confirmar-e-inscribir" class="btn primary" [disabled]="busy()" (click)="confirm()">Confirmar e inscribir</button>
           </div>
         }
       </div>
@@ -208,7 +210,7 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
 
     @if (result(); as res) {
       <div class="alert ok import-result">
-        <strong>Importación confirmada.</strong>
+        <strong i18n="@@torneo.importar.importacion-confirmada">Importación confirmada.</strong>
         <ul>
           @for (kv of resultEntries(); track kv[0]) {
             <li>{{ resultLabel[kv[0]] ?? kv[0] }}: <strong>{{ kv[1] }}</strong></li>
@@ -309,9 +311,10 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
   `,
 })
 export class ImportTab {
+  ariaOtraCategoria = (fila: number) => $localize`:@@torneo.importar.otra-categoria-fila:Otra categoría para la fila ${fila}:fila:`;
   /** Roles distintos de competidor (árbitro, sensei) para mostrarlos en la vista previa. */
   staffRoles(roles: unknown): string[] {
-    const label: Record<string, string> = { referee: 'Árbitro', sensei: 'Sensei' };
+    const label: Record<string, string> = { referee: $localize`:@@torneo.importar.arbitro-2:Árbitro`, sensei: 'Sensei' };
     return Array.isArray(roles) ? roles.filter((r) => r in label).map((r) => label[r]) : [];
   }
 
@@ -330,11 +333,10 @@ export class ImportTab {
   dupReasonText(reason: unknown): string {
     return DUPLICATE_REASON[String(reason)] ?? String(reason ?? '');
   }
-  readonly plural = plural;
   readonly resultLabel: Record<string, string | undefined> = {
-    created_people: 'Personas creadas',
-    registrations: 'Inscripciones creadas',
-    skipped: 'Filas omitidas',
+    created_people: $localize`:@@torneo.importar.personas-creadas:Personas creadas`,
+    registrations: $localize`:@@torneo.importar.inscripciones-creadas:Inscripciones creadas`,
+    skipped: $localize`:@@torneo.importar.filas-omitidas:Filas omitidas`,
   };
   readonly batch = signal<ImportBatch | null>(null);
   readonly decisions = signal<Record<number, Decision>>({});
@@ -426,8 +428,8 @@ export class ImportTab {
     if (row) this.decisions.update((all) => ({ ...all, [row.id]: this.defaultDecision(row) }));
     this.toast.show(
       row?.status === 'error'
-        ? `Fila ${r.row_number}: sigue con errores`
-        : `Fila ${r.row_number} corregida`,
+        ? $localize`:@@torneo.importar.fila-sigue-errores:Fila ${r.row_number}:row_number:: sigue con errores`
+        : $localize`:@@torneo.importar.fila-corregida:Fila ${r.row_number}:row_number: corregida`,
       row?.status === 'error' ? 'warn' : 'ok',
     );
   }
@@ -521,7 +523,7 @@ export class ImportTab {
         this.api.post(`/imports/${b.id}/confirm`, override ? { decisions, override } : { decisions }, undefined, {
           timeoutMs: LONG_TIMEOUT_MS,
         }),
-      { success: 'Importación confirmada' },
+      { success: $localize`:@@torneo.importar.importacion-confirmada-2:Importación confirmada` },
     );
     this.busy.set(false);
     if (res) {
@@ -535,9 +537,9 @@ export class ImportTab {
   async cancel(): Promise<void> {
     const b = this.batch();
     if (!b) return;
-    const ok = await this.dialog.confirm({ title: 'Cancelar importación', message: 'No se guardará nada de este archivo.', danger: true, confirmText: 'Cancelar importación' });
+    const ok = await this.dialog.confirm({ title: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`, message: $localize`:@@torneo.importar.no-guardara-nada-este-archivo:No se guardará nada de este archivo.`, danger: true, confirmText: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación` });
     if (!ok) return;
-    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), { success: 'Importación cancelada' });
+    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), { success: $localize`:@@torneo.importar.importacion-cancelada:Importación cancelada` });
     if (res !== undefined) {
       this.batch.set(null);
       this.setLote(null);

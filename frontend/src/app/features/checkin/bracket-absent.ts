@@ -34,19 +34,19 @@ export class BracketGenerator {
       const absent = err.warnings.find((w) => w.code === 'ABSENT_ENTRANTS');
       if (absent) {
         const choice = await this.dialog.choose({
-          title: 'Hay inscritos ausentes',
+          title: $localize`:@@acreditacion.ausentes.hay-inscritos-ausentes:Hay inscritos ausentes`,
           message: absent.message,
           choices: [
             {
               value: 'exclude',
-              label: 'Excluir ausentes',
-              hint: 'Se retiran con «No se presentó» y no entran en la llave',
+              label: $localize`:@@acreditacion.ausentes.excluir-ausentes:Excluir ausentes`,
+              hint: $localize`:@@acreditacion.ausentes.retiran-no-presento-no-entran:Se retiran con «No se presentó» y no entran en la llave`,
               primary: true,
             },
             {
               value: 'include',
-              label: 'Incluirlos igual',
-              hint: 'Pide un motivo; quedan en la llave',
+              label: $localize`:@@acreditacion.ausentes.incluirlos-igual:Incluirlos igual`,
+              hint: $localize`:@@acreditacion.ausentes.pide-motivo-quedan-llave:Pide un motivo; quedan en la llave`,
             },
           ],
         });

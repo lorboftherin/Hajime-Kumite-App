@@ -4,28 +4,29 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { INVOICE_STATUS, invoiceNumber, PAYMENT_STATUS, penFromCents } from '../../core/billing';
 import { DialogService } from '../../core/dialog.service';
-import { fmtDate, SUBSCRIPTION_STATUS } from '../../core/format';
+import { fmtDate, fmtSoles, SUBSCRIPTION_STATUS } from '../../core/format';
 import { BillingConfig, PaymentOut, Plan, PlansOut, Subscription } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
 import { PageHead } from '../../shared/page-head';
 import { SubscribeDialog } from '../billing/subscribe-dialog';
+import { etiquetas } from '../../core/i18n/etiquetas';
 
 /** Qué incluye cada nivel (docs/modelo-negocio.md). El servidor decide los derechos reales. */
-const INCLUDES: Record<string, string> = {
+const INCLUDES: Record<string, string> = etiquetas(() => ({
   publico:
-    'Torneos, llaves, resultados, medallero por dojo, seguimiento en vivo y perfil básico del competidor.',
+    $localize`:@@planes.torneos-llaves-resultados:Torneos, llaves, resultados, medallero por dojo, seguimiento en vivo y perfil básico del competidor.`,
   competidor:
-    'Todo lo necesario del propio perfil (o del hijo o hija): historial completo, hoja de cada combate, medallas, grados, estadísticas básicas, insignias y avisos.',
+    $localize`:@@planes.todo-necesario-propio-perfil:Todo lo necesario del propio perfil (o del hijo o hija): historial completo, hoja de cada combate, medallas, grados, estadísticas básicas, insignias y avisos.`,
   competidor_plus:
-    'Análisis adicional: evolución por temporada, técnicas, índice Hajime y su tendencia, comparación con rivales (datos públicos) y certificados descargables.',
-  dojo: 'Administrar el dojo y sus competidores, inscribir alumnos y organizar torneos: inscripciones, Excel, llaves, mesa, varios tatamis, árbitros, reportes, Shadow Mode y overlay en vivo.',
-  organizador: 'Lo mismo que Dojo, pensado para ligas y organizadores que no son un dojo.',
-};
-const AUDIENCE: Record<string, string> = {
-  all: 'Cualquiera',
-  person: 'Competidores, padres o apoderados',
-  organization: 'Dojos, ligas y organizadores',
-};
+    $localize`:@@planes.analisis-adicional-evolucion:Análisis adicional: evolución por temporada, técnicas, índice Hajime y su tendencia, comparación con rivales (datos públicos) y certificados descargables.`,
+  dojo: $localize`:@@planes.administrar-dojo-competidores:Administrar el dojo y sus competidores, inscribir alumnos y organizar torneos: inscripciones, Excel, llaves, mesa, varios tatamis, árbitros, reportes, Shadow Mode y overlay en vivo.`,
+  organizador: $localize`:@@planes.mismo-dojo-pensado-para-ligas:Lo mismo que Dojo, pensado para ligas y organizadores que no son un dojo.`,
+}));
+const AUDIENCE: Record<string, string> = etiquetas(() => ({
+  all: $localize`:@@planes.cualquiera:Cualquiera`,
+  person: $localize`:@@planes.competidores-padres-apoderados:Competidores, padres o apoderados`,
+  organization: $localize`:@@planes.dojos-ligas-organizadores:Dojos, ligas y organizadores`,
+}));
 
 /** Página «Planes»: niveles, precios (provisionales) y el modo de cobro vigente. */
 @Component({
@@ -33,38 +34,38 @@ const AUDIENCE: Record<string, string> = {
   imports: [RouterLink, PageHead, SubscribeDialog],
   template: `
     <div class="container">
-      <app-page-head kanji="料金" title="Planes">
+      <app-page-head i18n-title="@@planes.planes" kanji="料金" title="Planes">
         <div meta class="meta-line">
-          <span>Gratis lo necesario; membresía para dojos y organizadores</span>
+          <span i18n="@@planes.gratis-necesario-membresia-para">Gratis lo necesario; membresía para dojos y organizadores</span>
         </div>
       </app-page-head>
 
       @if (data(); as d) {
         @if (d.mode === 'marcha_blanca') {
-          <div class="alert ok">
+          <div i18n="@@planes.marcha-blanca-durante-pruebas" class="alert ok">
             <strong>Marcha blanca:</strong> durante las pruebas todo es gratis para cualquier
             cuenta. Los niveles ya existen y se activarán en el lanzamiento.
           </div>
         } @else {
-          <div class="alert info">
+          <div class="alert info"><ng-container i18n="@@planes.planes-estan-activos-elige">
             Los planes están activos. Elige «Suscribirse» para contratar o renovar
-            @if (config()?.provider === 'manual') {
+            </ng-container>@if (config()?.provider === 'manual') {<ng-container i18n="@@planes.ahora-pago-coordina-equipo">
               (por ahora el pago se coordina con el equipo de Hajime y el administrador lo activa)
-            }
+            </ng-container>}<ng-container i18n="@@planes.plan-organizacion-esta">
             . El plan de tu organización está en <a routerLink="/organizacion">Organización</a>.
-          </div>
+          </ng-container></div>
         }
 
         <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
-                <th>Nivel</th>
-                <th>Para quién</th>
-                <th class="right">Mensual</th>
-                <th class="right">Anual</th>
-                <th>Qué incluye</th>
-                <th><span class="sr-only">Contratar</span></th>
+                <th i18n="@@planes.nivel">Nivel</th>
+                <th i18n="@@planes.para-quien">Para quién</th>
+                <th i18n="@@planes.mensual" class="right">Mensual</th>
+                <th i18n="@@planes.anual" class="right">Anual</th>
+                <th i18n="@@planes.incluye">Qué incluye</th>
+                <th><span i18n="@@planes.contratar" class="sr-only">Contratar</span></th>
               </tr>
             </thead>
             <tbody>
@@ -88,11 +89,11 @@ const AUDIENCE: Record<string, string> = {
                   </td>
                   <td class="right nowrap">
                     @if (canSubscribe(p)) {
-                      <button class="btn sm primary" type="button" (click)="chosen.set(p)">
+                      <button i18n="@@planes.suscribirse" class="btn sm primary" type="button" (click)="chosen.set(p)">
                         Suscribirse
                       </button>
                       @if (p.trial_days) {
-                        <div class="small muted">{{ p.trial_days }} días de prueba</div>
+                        <div i18n="@@planes.dias-prueba" class="small muted">{{ p.trial_days }} días de prueba</div>
                       }
                     }
                   </td>
@@ -103,22 +104,22 @@ const AUDIENCE: Record<string, string> = {
         </div>
         @if (mySubs().length || myPayments().length) {
           <section class="card mine" aria-labelledby="h-mio">
-            <h2 id="h-mio">Mi Competidor Plus</h2>
+            <h2 i18n="@@planes.mi-competidor-plus" id="h-mio">Mi Competidor Plus</h2>
             @for (sub of mySubs(); track sub.id) {
               <p>
                 <strong>{{ sub.plan_name }}</strong> · {{ statusLabel(sub.status) }}
-                @if (sub.current_period_end) {
-                  · {{ sub.cancel_at_period_end ? 'termina' : 'vigente hasta' }} el
+                @if (sub.current_period_end) {<ng-container i18n="@@organizacion.termina-vigente-hasta">
+                  · @if (sub.cancel_at_period_end) {termina} @else {vigente hasta} el
                   {{ date(sub.current_period_end) }}
-                }
+                </ng-container>}
                 @if (sub.in_grace) {
-                  <span class="badge plain">En gracia</span>
+                  <span i18n="@@planes.gracia" class="badge plain">En gracia</span>
                 }
                 @if (sub.recurring) {
-                  <span class="badge matcha">Renovación automática</span>
+                  <span i18n="@@planes.renovacion-automatica" class="badge matcha">Renovación automática</span>
                 }
                 @if (sub.status !== 'canceled' && !sub.cancel_at_period_end) {
-                  <button class="btn sm ghost" type="button" (click)="cancel(sub)">Cancelar</button>
+                  <button i18n="@@planes.cancelar" class="btn sm ghost" type="button" (click)="cancel(sub)">Cancelar</button>
                 }
               </p>
             }
@@ -127,10 +128,10 @@ const AUDIENCE: Record<string, string> = {
                 <table class="table">
                   <thead>
                     <tr>
-                      <th>Fecha</th>
-                      <th class="right">Monto</th>
-                      <th>Estado</th>
-                      <th>Comprobante</th>
+                      <th i18n="@@planes.fecha">Fecha</th>
+                      <th i18n="@@planes.monto" class="right">Monto</th>
+                      <th i18n="@@planes.estado">Estado</th>
+                      <th i18n="@@planes.comprobante">Comprobante</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -142,7 +143,7 @@ const AUDIENCE: Record<string, string> = {
                         <td class="small">
                           @if (pay.invoice; as inv) {
                             @if (inv.pdf_url) {
-                              <a [href]="inv.pdf_url" target="_blank" rel="noopener"
+                              <a i18n="@@planes.pdf" [href]="inv.pdf_url" target="_blank" rel="noopener"
                                 >{{ num(inv.serie, inv.numero) }} (PDF)</a
                               >
                             } @else {
@@ -161,7 +162,7 @@ const AUDIENCE: Record<string, string> = {
           </section>
         }
 
-        <p class="small muted note">
+        <p i18n="@@planes.precios-soles-s-provisionales" class="small muted note">
           Precios en soles (S/), <strong>provisionales</strong>: pueden cambiar antes del
           lanzamiento. Los resultados siguen siendo públicos y gratuitos: pagar da herramientas de
           gestión o análisis adicional, nunca ocultar o cambiar resultados.
@@ -216,7 +217,7 @@ export class PlansPage {
   constructor() {
     this.api.get<PlansOut>('/plans').subscribe({
       next: (d) => this.data.set(d),
-      error: (e) => this.error.set(e?.message ?? 'No se pudieron cargar los planes'),
+      error: (e) => this.error.set(e?.message ?? $localize`:@@planes.no-pudieron-cargar-planes:No se pudieron cargar los planes`),
     });
     this.api.get<BillingConfig>('/billing/config').subscribe({
       next: (c) => this.config.set(c),
@@ -260,9 +261,9 @@ export class PlansPage {
 
   async cancel(sub: Subscription): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: 'Cancelar Competidor Plus',
-      message: 'No se renovará. Conservas el acceso hasta el fin del periodo pagado.',
-      confirmText: 'Cancelar suscripción',
+      title: $localize`:@@planes.cancelar-competidor-plus:Cancelar Competidor Plus`,
+      message: $localize`:@@planes.no-renovara-conservas-acceso:No se renovará. Conservas el acceso hasta el fin del periodo pagado.`,
+      confirmText: $localize`:@@planes.cancelar-suscripcion:Cancelar suscripción`,
       danger: true,
     });
     if (!ok) return;
@@ -270,7 +271,7 @@ export class PlansPage {
       `/subscriptions/${sub.id}/cancel`,
       {},
       {
-        success: 'Suscripción cancelada',
+        success: $localize`:@@planes.suscripcion-cancelada:Suscripción cancelada`,
       },
     );
     if (out) void this.loadMine();
@@ -278,11 +279,8 @@ export class PlansPage {
 
   price(v: number | null): string {
     if (v === null || v === undefined) return '—';
-    if (!v) return 'Gratis';
-    return (
-      'S/ ' +
-      v.toLocaleString('es-PE', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })
-    );
+    if (!v) return $localize`:@@planes.gratis:Gratis`;
+    return fmtSoles(v);
   }
   featureName(d: PlansOut, f: string): string {
     return d.features[f] || f;

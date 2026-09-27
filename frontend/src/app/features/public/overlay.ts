@@ -22,7 +22,7 @@ import { OverlayData } from '../../core/models';
           <span>{{ m.category }}</span>
           @if (m.team; as t) {
             <span class="sep">·</span>
-            <span class="team">{{ t.extra ? 'Combate extra' : 'Combate ' + t.bout }} · {{ t.aka }} {{ t.wins[0] }}–{{ t.wins[1] }} {{ t.ao }}</span>
+            <span class="team">@if (t.extra) {<ng-container i18n="@@mesa.combate-extra">Combate extra</ng-container>} @else {<ng-container i18n="@@mesa.combate-n">Combate {{ t.bout }}</ng-container>} · {{ t.aka }} {{ t.wins[0] }}–{{ t.wins[1] }} {{ t.ao }}</span>
           }
         </div>
         <div class="bar">
@@ -31,17 +31,17 @@ import { OverlayData } from '../../core/models';
               <span class="nm">{{ m.aka?.name ?? '—' }}</span>
               <span class="dj">{{ m.aka?.dojo }}</span>
             </div>
-            @if (m.senshu === 'aka') {<span class="senshu" title="Senshu">先</span>}
+            @if (m.senshu === 'aka') {<span i18n-title="@@publico.overlay.senshu" class="senshu" title="Senshu">先</span>}
             @if (m.sanction[0]) {<span class="pen">{{ m.sanction[0] }}</span>}
             <span class="pts">{{ m.score[0] }}</span>
           </div>
           <div class="clock" [class.run]="m.running" [class.over]="remaining() <= 0">
-            {{ m.status === 'finished' ? 'FIN' : clockText() }}
+            @if (m.status === 'finished') {<ng-container i18n="@@publico.fin">FIN</ng-container>} @else {{{ clockText() }}}
           </div>
           <div class="side ao" [class.won]="m.winner === 'ao'">
             <span class="pts">{{ m.score[1] }}</span>
             @if (m.sanction[1]) {<span class="pen">{{ m.sanction[1] }}</span>}
-            @if (m.senshu === 'ao') {<span class="senshu" title="Senshu">先</span>}
+            @if (m.senshu === 'ao') {<span i18n-title="@@publico.overlay.senshu" class="senshu" title="Senshu">先</span>}
             <div class="who">
               <span class="nm">{{ m.ao?.name ?? '—' }}</span>
               <span class="dj">{{ m.ao?.dojo }}</span>

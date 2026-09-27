@@ -32,7 +32,7 @@ function toParams(p?: Params): HttpParams {
 
 /** Error de «el servidor no respondió a tiempo»: la mesa lo trata como sin conexión y reintenta. */
 export function timeoutError(): ApiError {
-  return new ApiError(0, 'TIMEOUT', 'El servidor no respondió a tiempo');
+  return new ApiError(0, 'TIMEOUT', $localize`:@@error.servidor-no-respondio-tiempo:El servidor no respondió a tiempo`);
 }
 
 /** Corta la espera a los `ms` milisegundos con el error TIMEOUT (0 = sin límite). */

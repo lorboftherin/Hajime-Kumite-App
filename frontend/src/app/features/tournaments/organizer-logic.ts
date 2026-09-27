@@ -10,10 +10,14 @@ export function registrationSummary(
   failed: Array<{ name: string; reason: string }>,
 ): string {
   const parts: string[] = [];
-  if (ok.length) parts.push(`Inscrito en ${joinList(ok)}`);
+  if (ok.length) parts.push($localize`:@@torneo.inscrito:Inscrito en ${joinList(ok)}:categorias:`);
   if (failed.length) {
     const f = failed.map((x) => `${x.name}: ${x.reason}`).join('; ');
-    parts.push(`${ok.length ? 'falló' : 'No se pudo inscribir en'} ${f}`);
+    parts.push(
+      ok.length
+        ? $localize`:@@torneo.fallo-en:falló ${f}:fallidas:`
+        : $localize`:@@torneo.no-pudo-inscribir-en:No se pudo inscribir en ${f}:fallidas:`,
+    );
   }
   return parts.join('; ');
 }
@@ -76,7 +80,7 @@ export function auditChanges(
 /** Valor legible para la auditoría: vacío como «—», sí/no, listas y objetos compactos. */
 export function auditValue(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
-  if (typeof v === 'boolean') return v ? 'sí' : 'no';
+  if (typeof v === 'boolean') return v ? $localize`:@@torneo.si:sí` : $localize`:@@torneo.no:no`;
   if (Array.isArray(v)) return v.length ? v.map((x) => auditValue(x)).join(', ') : '—';
   if (typeof v === 'object') {
     return Object.entries(v as Record<string, unknown>)

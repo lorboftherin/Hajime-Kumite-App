@@ -20,15 +20,15 @@ interface Draft {
   template: `
     <div class="card intro">
       <div class="grow">
-        <h2>Shadow Mode</h2>
-        <p class="muted">Comparación con el resultado oficial. Registra lo que dice la mesa oficial (papel) para cada combate; las diferencias se marcan y alimentan los criterios de éxito.</p>
-        <label class="field inline small"><input type="checkbox" [checked]="onlyDiffs()" (change)="onlyDiffs.set(!onlyDiffs())" /> Mostrar solo diferencias</label>
+        <h2 i18n="@@torneo.sombra.shadow-mode">Shadow Mode</h2>
+        <p i18n="@@torneo.sombra.comparacion-resultado-oficial" class="muted">Comparación con el resultado oficial. Registra lo que dice la mesa oficial (papel) para cada combate; las diferencias se marcan y alimentan los criterios de éxito.</p>
+        <label i18n="@@torneo.sombra.mostrar-solo-diferencias" class="field inline small"><input type="checkbox" [checked]="onlyDiffs()" (change)="onlyDiffs.set(!onlyDiffs())" /> Mostrar solo diferencias</label>
       </div>
       @if (report(); as r) {
         <div class="kpi">
           <div class="figure">{{ r.winner_agreement_pct === null ? '—' : r.winner_agreement_pct + '%' }}</div>
-          <div class="small muted">coincidencia de ganador</div>
-          <div class="small num">{{ r.compared }} comparados de {{ r.matches }} · {{ r.differences.length }} diferencias</div>
+          <div i18n="@@torneo.sombra.coincidencia-ganador" class="small muted">coincidencia de ganador</div>
+          <div i18n="@@torneo.sombra.comparados-diferencias" class="small num">{{ r.compared }} comparados de {{ r.matches }} · {{ r.differences.length }} diferencias</div>
         </div>
       }
     </div>
@@ -46,12 +46,12 @@ interface Draft {
         </colgroup>
         <thead>
           <tr>
-            <th>Combate</th>
-            <th>App</th>
-            <th>Ganador oficial</th>
-            <th>Marcador oficial (aka–ao)</th>
-            <th>Hallazgo</th>
-            <th>Origen del error</th>
+            <th i18n="@@torneo.sombra.combate">Combate</th>
+            <th i18n="@@torneo.sombra.app">App</th>
+            <th i18n="@@torneo.sombra.ganador-oficial">Ganador oficial</th>
+            <th i18n="@@torneo.sombra.marcador-oficial-aka-ao">Marcador oficial (aka–ao)</th>
+            <th i18n="@@torneo.sombra.hallazgo">Hallazgo</th>
+            <th i18n="@@torneo.sombra.origen-error">Origen del error</th>
             <th></th>
           </tr>
         </thead>
@@ -68,53 +68,53 @@ interface Draft {
               <td class="small">
                 <div><strong>{{ pname(it.app_winner_registration_id) }}</strong></div>
                 @if (flags) {
-                  <div class="muted">Banderas</div>
+                  <div i18n="@@torneo.sombra.banderas" class="muted">Banderas</div>
                 } @else {
                   <div class="muted num">{{ it.app_score[0] ?? '–' }} – {{ it.app_score[1] ?? '–' }}</div>
                 }
               </td>
               <td>
                 @if (d) {
-                  <select class="cell-input" [(ngModel)]="d.winner" aria-label="Ganador oficial">
+                  <select i18n-aria-label="@@torneo.sombra.ganador-oficial-2" class="cell-input" [(ngModel)]="d.winner" aria-label="Ganador oficial">
                     <option [ngValue]="null">—</option>
                     @if (m?.aka_registration_id) {
-                      <option [ngValue]="m!.aka_registration_id">Aka: {{ pname(m!.aka_registration_id) }}</option>
+                      <option i18n="@@torneo.sombra.aka" [ngValue]="m!.aka_registration_id">Aka: {{ pname(m!.aka_registration_id) }}</option>
                     }
                     @if (m?.ao_registration_id) {
-                      <option [ngValue]="m!.ao_registration_id">Ao: {{ pname(m!.ao_registration_id) }}</option>
+                      <option i18n="@@torneo.sombra.ao" [ngValue]="m!.ao_registration_id">Ao: {{ pname(m!.ao_registration_id) }}</option>
                     }
                   </select>
                   @if (it.winner_matches === false) {
-                    <div class="error-text">≠ ganador</div>
+                    <div i18n="@@torneo.sombra.ganador" class="error-text">≠ ganador</div>
                   }
                 }
               </td>
               <td class="nowrap">
                 @if (flags) {
-                  <span class="muted small" title="Decisión por banderas: no hay marcador que comparar">No aplica</span>
+                  <span i18n="@@torneo.sombra.no-aplica" i18n-title="@@torneo.sombra.decision-banderas-no-hay" class="muted small" title="Decisión por banderas: no hay marcador que comparar">No aplica</span>
                 } @else if (d) {
-                  <input class="score aka-b" type="number" min="0" [(ngModel)]="d.aka" aria-label="Marcador oficial aka" /> –
-                  <input class="score ao-b" type="number" min="0" [(ngModel)]="d.ao" aria-label="Marcador oficial ao" />
+                  <input i18n-aria-label="@@torneo.sombra.marcador-oficial-aka" class="score aka-b" type="number" min="0" [(ngModel)]="d.aka" aria-label="Marcador oficial aka" /> –
+                  <input i18n-aria-label="@@torneo.sombra.marcador-oficial-ao" class="score ao-b" type="number" min="0" [(ngModel)]="d.ao" aria-label="Marcador oficial ao" />
                   @if (it.score_matches === false) {
-                    <div class="error-text">≠ marcador</div>
+                    <div i18n="@@torneo.sombra.marcador" class="error-text">≠ marcador</div>
                   }
                 }
               </td>
-              <td>@if (d) {<textarea class="cell-input finding" [rows]="d.finding.length > 70 ? 3 : 2" [(ngModel)]="d.finding" placeholder="Descripción" aria-label="Hallazgo"></textarea>}</td>
+              <td>@if (d) {<textarea i18n-aria-label="@@torneo.sombra.hallazgo-2" i18n-placeholder="@@torneo.sombra.descripcion" class="cell-input finding" [rows]="d.finding.length > 70 ? 3 : 2" [(ngModel)]="d.finding" placeholder="Descripción" aria-label="Hallazgo"></textarea>}</td>
               <td>
                 @if (d) {
-                  <select class="cell-input" [(ngModel)]="d.error_source" aria-label="Origen del error">
+                  <select i18n-aria-label="@@torneo.sombra.origen-error-2" class="cell-input" [(ngModel)]="d.error_source" aria-label="Origen del error">
                     <option [ngValue]="null">—</option>
-                    <option value="none">Sin error</option>
-                    <option value="app">App</option>
-                    <option value="paper">Papel</option>
+                    <option i18n="@@torneo.sombra.sin-error" value="none">Sin error</option>
+                    <option i18n="@@torneo.sombra.app" value="app">App</option>
+                    <option i18n="@@torneo.sombra.papel" value="paper">Papel</option>
                   </select>
                 }
               </td>
-              <td><button class="btn sm" (click)="save(it)">Guardar</button></td>
+              <td><button i18n="@@torneo.sombra.guardar" class="btn sm" (click)="save(it)">Guardar</button></td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="empty">No hay combates finalizados para comparar.</td></tr>
+            <tr><td i18n="@@torneo.sombra.no-hay-combates-finalizados-para" colspan="7" class="empty">No hay combates finalizados para comparar.</td></tr>
           }
         </tbody>
       </table>
@@ -277,7 +277,7 @@ export class ShadowTab {
         finding: d.finding || null,
         error_source: d.error_source,
       },
-      { success: 'Resultado oficial guardado' },
+      { success: $localize`:@@torneo.sombra.resultado-oficial-guardado:Resultado oficial guardado` },
     );
     if (res) this.load();
   }

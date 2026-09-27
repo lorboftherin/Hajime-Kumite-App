@@ -75,5 +75,5 @@ export function medalsText(g: number, s: number, b: number): string {
   if (g) parts.push(`${g} ${g === 1 ? 'oro' : 'oros'}`);
   if (s) parts.push(`${s} ${s === 1 ? 'plata' : 'platas'}`);
   if (b) parts.push(`${b} ${b === 1 ? 'bronce' : 'bronces'}`);
-  return parts.join(', ') || 'sin medallas';
+  return parts.join(', ') || $localize`:@@ranking.sin-medallas:sin medallas`;
 }

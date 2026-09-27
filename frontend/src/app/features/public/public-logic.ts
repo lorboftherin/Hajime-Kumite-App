@@ -1,6 +1,7 @@
 // Lógica pura del portal público (buscador, favoritos, textos): probada en public-logic.spec.ts.
-import { plural } from '../../shared/plural';
+import { localeActual } from '../../core/i18n/idioma';
 import { NextFight, PublicBracketMatch, PublicCompetitor, PublicEntry } from './public-models';
+import { etiquetas } from '../../core/i18n/etiquetas';
 
 /** Minúsculas y sin tildes: «Huamán» se encuentra escribiendo «huaman». */
 export function fold(s: string): string {
@@ -30,14 +31,14 @@ export function hourText(iso: string | null | undefined, timeZone = 'America/Lim
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   try {
-    return new Intl.DateTimeFormat('es-PE', {
+    return new Intl.DateTimeFormat(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
       timeZone,
     }).format(d);
   } catch {
-    return new Intl.DateTimeFormat('es-PE', {
+    return new Intl.DateTimeFormat(localeActual(), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -59,19 +60,28 @@ export function zoneOfIso(iso: string | null | undefined): string {
 /** «Pelea en Tatami 2, combate T2-014, faltan 3 combates (≈ 11:40)». */
 export function fightText(n: NextFight, timeZone?: string): string {
   const eta = n.eta ? ` (≈ ${hourText(n.eta, timeZone)})` : '';
-  const where = n.tatami_name || `Tatami ${n.tatami}`;
+  const where = n.tatami_name || $localize`:@@publico.tatami:Tatami ${n.tatami}:tatami:`;
   if (n.kata_round) {
-    const turn = `ronda ${n.kata_round}${n.turn ? `, turno ${n.turn}` : ''}`;
-    if (n.ahead === 0) return `Es el siguiente en salir en ${where} (${turn})${eta}`;
-    return `Sale en ${where} (${turn}), ${n.ahead === 1 ? 'falta 1 turno' : `faltan ${plural(n.ahead, 'turno', 'turnos')}`}${eta}`;
+    const turn = n.turn
+      ? $localize`:@@publico.ronda-turno:ronda ${n.kata_round}:ronda:, turno ${n.turn}:turno:`
+      : $localize`:@@publico.ronda-kata:ronda ${n.kata_round}:ronda:`;
+    if (n.ahead === 0) return $localize`:@@publico.siguiente-salir:Es el siguiente en salir en ${where}:where: (${turn}:turn:)${eta}:eta:`;
+    if (n.ahead === 1) return $localize`:@@publico.sale-falta-1-turno:Sale en ${where}:where: (${turn}:turn:), falta 1 turno${eta}:eta:`;
+    return $localize`:@@publico.sale-faltan-turnos:Sale en ${where}:where: (${turn}:turn:), faltan ${n.ahead}:faltan: turnos${eta}:eta:`;
   }
-  if (n.status === 'in_progress') return `Peleando ahora en ${where}, combate ${n.number}`;
-  const rival = n.status === 'pending' ? ', rival por definir' : '';
-  if (n.ahead === 0) return `Es el siguiente en ${where}, combate ${n.number}${rival}${eta}`;
-  return `Pelea en ${where}, combate ${n.number}, ${n.ahead === 1 ? 'falta 1 combate' : `faltan ${plural(n.ahead, 'combate', 'combates')}`}${rival}${eta}`;
+  if (n.status === 'in_progress') return $localize`:@@publico.peleando-ahora-combate:Peleando ahora en ${where}:where:, combate ${n.number}:number:`;
+  const rival = n.status === 'pending' ? $localize`:@@publico.rival-definir:, rival por definir` : '';
+  if (n.ahead === 0) return $localize`:@@publico.siguiente-combate:Es el siguiente en ${where}:where:, combate ${n.number}:number:${rival}:rival:${eta}:eta:`;
+  if (n.ahead === 1)
+    return $localize`:@@publico.pelea-falta-1-combate:Pelea en ${where}:where:, combate ${n.number}:number:, falta 1 combate${rival}:rival:${eta}:eta:`;
+  return $localize`:@@publico.pelea-faltan-combates:Pelea en ${where}:where:, combate ${n.number}:number:, faltan ${n.ahead}:faltan: combates${rival}:rival:${eta}:eta:`;
 }
 
-const PLACE: Record<number, string> = { 1: 'Oro', 2: 'Plata', 3: 'Bronce' };
+const PLACE: Record<number, string> = etiquetas(() => ({
+  1: $localize`:@@medalla.oro:Oro`,
+  2: $localize`:@@medalla.plata:Plata`,
+  3: $localize`:@@medalla.bronce:Bronce`,
+}));
 
 export function entryText(e: PublicEntry, timeZone?: string): string {
   switch (e.state) {
@@ -80,12 +90,12 @@ export function entryText(e: PublicEntry, timeZone?: string): string {
       return e.next ? fightText(e.next, timeZone) : '';
     case 'placed':
       return e.place && PLACE[e.place]
-        ? `${PLACE[e.place]} (${e.place}.º puesto)`
-        : `${e.place}.º puesto`;
+        ? $localize`:@@publico.medalla-puesto:${PLACE[e.place]}:medalla: (${e.place}:puesto:.º puesto)`
+        : $localize`:@@formato.puesto-n:${e.place}:puesto:.º puesto`;
     case 'done':
-      return 'Categoría terminada';
+      return $localize`:@@publico.categoria-terminada:Categoría terminada`;
     default:
-      return 'Sin combate programado por ahora';
+      return $localize`:@@publico.sin-combate-programado-ahora:Sin combate programado por ahora`;
   }
 }
 
@@ -125,18 +135,18 @@ export function toggleFavorite(keys: Set<string>, key: string): Set<string> {
 /** «Final», «Semifinal», «Cuartos de final» o «Ronda N» según la distancia a la final. */
 export function roundLabel(round: number, finalRound: number): string {
   const d = finalRound - round;
-  if (d === 0) return 'Final';
-  if (d === 1) return 'Semifinal';
-  if (d === 2) return 'Cuartos de final';
-  if (d === 3) return 'Octavos de final';
-  return `Ronda ${round}`;
+  if (d === 0) return $localize`:@@publico.final:Final`;
+  if (d === 1) return $localize`:@@publico.semifinal:Semifinal`;
+  if (d === 2) return $localize`:@@publico.cuartos-final:Cuartos de final`;
+  if (d === 3) return $localize`:@@publico.octavos-final:Octavos de final`;
+  return $localize`:@@publico.ronda:Ronda ${round}:round:`;
 }
 
-export const KIND_LABEL: Record<string, string> = {
-  third_place: 'Combate por el 3.er puesto',
-  repechage: 'Repechaje',
-  round_robin: 'Todos contra todos',
-};
+export const KIND_LABEL: Record<string, string> = etiquetas(() => ({
+  third_place: $localize`:@@publico.combate-3-er-puesto:Combate por el 3.er puesto`,
+  repechage: $localize`:@@publico.repechaje:Repechaje`,
+  round_robin: $localize`:@@publico.todos-contra-todos:Todos contra todos`,
+}));
 
 /** Rondas de la llave principal, en orden, con sus combates por posición. */
 export function bracketRounds(

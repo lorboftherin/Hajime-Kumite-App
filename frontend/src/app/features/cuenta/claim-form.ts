@@ -17,16 +17,16 @@ import { MutationService } from '../../core/mutation.service';
   template: `
     <div class="stack">
       <fieldset class="relation">
-        <legend>¿De quién es el perfil?</legend>
-        <label
+        <legend i18n="@@cuenta.reclamo.quien-perfil">¿De quién es el perfil?</legend>
+        <label i18n="@@cuenta.reclamo.mio-soy-mayor-edad"
           ><input type="radio" name="rel" value="self" [(ngModel)]="relation" /> Es mío (soy mayor
           de edad)</label
         >
-        <label
+        <label i18n="@@cuenta.reclamo.mi-hijo-hija"
           ><input type="radio" name="rel" value="parent" [(ngModel)]="relation" /> De mi hijo o
           hija</label
         >
-        <label
+        <label i18n="@@cuenta.reclamo.menor-soy-apoderado"
           ><input type="radio" name="rel" value="guardian" [(ngModel)]="relation" /> De un menor del
           que soy apoderado</label
         >
@@ -34,26 +34,26 @@ import { MutationService } from '../../core/mutation.service';
 
       <form class="search" (ngSubmit)="search()">
         <label class="field grow">
-          <span>Nombre y apellido</span>
-          <input name="q" [(ngModel)]="q" placeholder="Ej.: Diego Ramírez" autocomplete="off" />
+          <span i18n="@@cuenta.reclamo.nombre-apellido">Nombre y apellido</span>
+          <input i18n-placeholder="@@cuenta.reclamo.ej-diego-ramirez" name="q" [(ngModel)]="q" placeholder="Ej.: Diego Ramírez" autocomplete="off" />
         </label>
         <label class="field">
-          <span>Dojo</span>
+          <span i18n="@@cuenta.reclamo.dojo">Dojo</span>
           <select name="dojo" [(ngModel)]="dojoId">
-            <option [ngValue]="null">Cualquiera</option>
+            <option i18n="@@cuenta.reclamo.cualquiera" [ngValue]="null">Cualquiera</option>
             @for (d of dojos(); track d.id) {
               <option [ngValue]="d.id">{{ d.name }}</option>
             }
           </select>
         </label>
-        <button class="btn" [disabled]="q().trim().length < 3 || busy()">Buscar</button>
+        <button i18n="@@cuenta.reclamo.buscar" class="btn" [disabled]="q().trim().length < 3 || busy()">Buscar</button>
       </form>
       @if (searchError()) {
         <div class="alert warn">{{ searchError() }}</div>
       }
 
       @if (results(); as rs) {
-        <ul class="list-plain results" aria-label="Resultados">
+        <ul i18n-aria-label="@@cuenta.reclamo.resultados" class="list-plain results" aria-label="Resultados">
           @for (r of rs; track r.public_id) {
             <li>
               <label class="result" [class.on]="selected()?.public_id === r.public_id">
@@ -65,34 +65,34 @@ import { MutationService } from '../../core/mutation.service';
                 />
                 <span class="grow">
                   <strong>{{ r.name }}</strong>
-                  <span class="muted">· {{ r.dojo || 'Sin dojo' }}</span>
+                  <span class="muted">· {{ r.dojo || sinDojo }}</span>
                   <span class="small muted block">
                     @if (r.tournament_count) {
                       {{ r.tournaments.join(', ') }}
-                      @if (r.tournament_count > r.tournaments.length) {
+                      @if (r.tournament_count > r.tournaments.length) {<ng-container i18n="@@cuenta.reclamo.mas">
                         y {{ r.tournament_count - r.tournaments.length }} más
-                      }
-                    } @else {
+                      </ng-container>}
+                    } @else {<ng-container i18n="@@cuenta.reclamo.sin-torneos-disputados">
                       Sin torneos disputados
-                    }
+                    </ng-container>}
                   </span>
                 </span>
               </label>
             </li>
           } @empty {
-            <li class="muted small">Sin resultados. Prueba con otro nombre o sin elegir dojo.</li>
+            <li i18n="@@cuenta.reclamo.sin-resultados-prueba-otro" class="muted small">Sin resultados. Prueba con otro nombre o sin elegir dojo.</li>
           }
         </ul>
       }
 
       @if (selected(); as sel) {
         <form class="stack card inner" (ngSubmit)="submit(sel)">
-          <p class="small">
+          <p i18n="@@cuenta.reclamo.solicitas-perfil-revisa-dojo" class="small">
             Solicitas el perfil de <strong>{{ sel.name }}</strong
             >. Lo revisa su dojo o la organización.
           </p>
           <label class="field">
-            <span>Últimos 4 dígitos del documento (opcional)</span>
+            <span i18n="@@cuenta.reclamo.ultimos-4-digitos-documento">Últimos 4 dígitos del documento (opcional)</span>
             <input
               name="doc"
               [(ngModel)]="last4"
@@ -101,13 +101,13 @@ import { MutationService } from '../../core/mutation.service';
               autocomplete="off"
               class="short"
             />
-            <small class="hint"
+            <small i18n="@@cuenta.reclamo.comparan-no-guardan-ayudan" class="hint"
               >Se comparan y no se guardan. Ayudan a que la revisión sea más rápida.</small
             >
           </label>
           <label class="field">
-            <span>Mensaje para quien revisa (opcional)</span>
-            <textarea
+            <span i18n="@@cuenta.reclamo.mensaje-para-quien-revisa">Mensaje para quien revisa (opcional)</span>
+            <textarea i18n-placeholder="@@cuenta.reclamo.ej-entrena-martes-sensei-luis"
               name="ev"
               rows="2"
               [(ngModel)]="evidence"
@@ -118,15 +118,15 @@ import { MutationService } from '../../core/mutation.service';
           @if (relation() !== 'self') {
             <label class="check">
               <input type="checkbox" name="consent" [(ngModel)]="consent" />
-              <span>
-                Como {{ relation() === 'parent' ? 'padre o madre' : 'apoderado' }}, autorizo la
+              <span i18n="@@cuenta.reclamo.como-autorizo-publicacion">
+                Como @if (relation() === 'parent') {padre o madre} @else {apoderado}, autorizo la
                 publicación de sus resultados deportivos y el uso de sus datos en estadísticas de
                 Hajime, como se explica en Privacidad.
               </span>
             </label>
           }
           <div class="form-actions">
-            <button
+            <button i18n="@@cuenta.reclamo.enviar-solicitud"
               class="btn primary"
               [disabled]="
                 busy() ||
@@ -215,6 +215,7 @@ import { MutationService } from '../../core/mutation.service';
   `,
 })
 export class ClaimForm {
+  readonly sinDojo = $localize`:@@comun.sin-dojo:Sin dojo`;
   private api = inject(ApiService);
   private mut = inject(MutationService);
   readonly sent = output<Claim>();
@@ -265,7 +266,7 @@ export class ClaimForm {
     };
     if (this.last4().trim()) body['document_last4'] = this.last4().trim();
     const c = await this.mut.post<Claim>('/profile-claims', body, {
-      success: 'Solicitud enviada',
+      success: $localize`:@@cuenta.reclamo.solicitud-enviada:Solicitud enviada`,
     });
     this.busy.set(false);
     if (c) {

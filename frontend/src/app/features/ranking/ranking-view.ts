@@ -14,8 +14,8 @@ import { medalsText } from './ranking-logic';
   template: `
     @if (detail(); as d) {
       <div class="filters">
-        <div class="chips" role="group" aria-label="Tabla">
-          <button
+        <div i18n-aria-label="@@ranking.vista.tabla" class="chips" role="group" aria-label="Tabla">
+          <button i18n="@@ranking.vista.competidores"
             type="button"
             class="chip"
             [class.on]="section() === 'persons'"
@@ -23,7 +23,7 @@ import { medalsText } from './ranking-logic';
           >
             Competidores
           </button>
-          <button
+          <button i18n="@@ranking.vista.mejor-academia"
             type="button"
             class="chip"
             [class.on]="section() === 'dojos'"
@@ -33,22 +33,22 @@ import { medalsText } from './ranking-logic';
           </button>
         </div>
         @if (section() === 'persons') {
-          <select
+          <select i18n-aria-label="@@ranking.vista.modalidad"
             aria-label="Modalidad"
             [ngModel]="modality()"
             (ngModelChange)="modalityChange.emit($event)"
           >
-            <option value="">Kumite y kata</option>
-            <option value="kumite">Kumite</option>
-            <option value="kata">Kata</option>
+            <option i18n="@@ranking.vista.kumite-kata" value="">Kumite y kata</option>
+            <option i18n="@@ranking.vista.kumite" value="kumite">Kumite</option>
+            <option i18n="@@ranking.vista.kata" value="kata">Kata</option>
           </select>
-          <select
+          <select i18n-aria-label="@@ranking.vista.categoria"
             class="grow"
             aria-label="Categoría"
             [ngModel]="group()"
             (ngModelChange)="groupChange.emit($event)"
           >
-            <option value="">Todas las categorías</option>
+            <option i18n="@@ranking.vista.todas-categorias" value="">Todas las categorías</option>
             @for (g of d.groups; track g.key) {
               <option [value]="g.key">{{ g.label }} ({{ g.competitors }})</option>
             }
@@ -68,11 +68,11 @@ import { medalsText } from './ranking-logic';
                 <thead>
                   <tr>
                     <th class="center">#</th>
-                    <th>Competidor</th>
-                    <th>Dojo</th>
-                    <th class="center">Medallas</th>
-                    <th class="center">Torneos</th>
-                    <th class="right">Puntos</th>
+                    <th i18n="@@ranking.vista.competidor">Competidor</th>
+                    <th i18n="@@ranking.vista.dojo">Dojo</th>
+                    <th i18n="@@ranking.vista.medallas" class="center">Medallas</th>
+                    <th i18n="@@ranking.vista.torneos" class="center">Torneos</th>
+                    <th i18n="@@ranking.vista.puntos" class="right">Puntos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -109,9 +109,9 @@ import { medalsText } from './ranking-logic';
           </section>
         } @empty {
           <div class="card empty">
-            <p><strong>Sin resultados todavía.</strong></p>
+            <p><strong i18n="@@ranking.vista.sin-resultados-todavia">Sin resultados todavía.</strong></p><ng-container i18n="@@ranking.vista.ranking-llena-categorias">
             El ranking se llena con las categorías finalizadas de los torneos de la temporada.
-          </div>
+          </ng-container></div>
         }
       } @else {
         <div class="table-wrap">
@@ -119,10 +119,10 @@ import { medalsText } from './ranking-logic';
             <thead>
               <tr>
                 <th class="center">#</th>
-                <th>Dojo</th>
-                <th class="center">Medallas</th>
-                <th class="center">Participaciones</th>
-                <th class="right">Puntos</th>
+                <th i18n="@@ranking.vista.dojo">Dojo</th>
+                <th i18n="@@ranking.vista.medallas" class="center">Medallas</th>
+                <th i18n="@@ranking.vista.participaciones" class="center">Participaciones</th>
+                <th i18n="@@ranking.vista.puntos" class="right">Puntos</th>
               </tr>
             </thead>
             <tbody>
@@ -146,19 +146,19 @@ import { medalsText } from './ranking-logic';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="empty">Sin resultados todavía.</td>
+                  <td i18n="@@ranking.vista.sin-resultados-todavia" colspan="5" class="empty">Sin resultados todavía.</td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
       }
-      <p class="hint">
+      <p class="hint"><ng-container i18n="@@ranking.vista.puntos-oro-plata-bronce">
         Puntos: oro {{ d.season.points.gold }}, plata {{ d.season.points.silver }}, bronce
         {{ d.season.points.bronze }}, participación {{ d.season.points.participation }}.
-        @if (multiplied().length) {
+        </ng-container>@if (multiplied().length) {<ng-container i18n="@@ranking.vista.valen-mas">
           Valen más: {{ multiplied().join(', ') }}.
-        }
+        </ng-container>}
       </p>
     }
   `,

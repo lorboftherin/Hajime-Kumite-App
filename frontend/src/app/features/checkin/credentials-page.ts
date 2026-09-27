@@ -8,7 +8,6 @@ import { FilesService } from '../../core/files.service';
 import { Credential, Tournament } from '../../core/models';
 import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
-import { PluralPipe } from '../../shared/plural';
 
 /**
  * Credenciales imprimibles (/torneos/:id/credenciales): vista previa y PDF
@@ -17,20 +16,20 @@ import { PluralPipe } from '../../shared/plural';
  */
 @Component({
   selector: 'app-credentials-page',
-  imports: [FormsModule, RouterLink, Icon, PageHead, PluralPipe],
+  imports: [FormsModule, RouterLink, Icon, PageHead],
   template: `
     <div class="container">
       <app-page-head
         kanji="証"
-        [title]="'Credenciales' + (tournament() ? ' · ' + tournament()!.name : '')"
+        [title]="tituloCredenciales()"
       >
-        <a back class="back-link" [routerLink]="['/torneos', id(), 'acreditacion']"
+        <a i18n="@@acreditacion.credenciales.acreditacion" back class="back-link" [routerLink]="['/torneos', id(), 'acreditacion']"
           ><app-icon name="back" /> Acreditación</a
         >
         <div meta class="meta-line">
-          <span>{{ shown().length | plural: 'credencial' : 'credenciales' }}</span>
+          <span i18n="@@acreditacion.credenciales.n-credenciales">{shown().length, plural, =1 {1 credencial} other {{{ shown().length }} credenciales}}</span>
         </div>
-        <button class="btn primary" (click)="print()">
+        <button i18n="@@acreditacion.credenciales.abrir-pdf-para-imprimir" class="btn primary" (click)="print()">
           <app-icon name="print" /> Abrir PDF para imprimir
         </button>
       </app-page-head>
@@ -38,13 +37,13 @@ import { PluralPipe } from '../../shared/plural';
         <div class="alert danger">{{ error() }}</div>
       }
       <div class="toolbar no-print">
-        <select aria-label="Dojo" [ngModel]="dojo()" (ngModelChange)="dojo.set($event)">
-          <option [ngValue]="''">Todos los dojos</option>
+        <select i18n-aria-label="@@acreditacion.credenciales.dojo" aria-label="Dojo" [ngModel]="dojo()" (ngModelChange)="dojo.set($event)">
+          <option i18n="@@acreditacion.credenciales.todos-dojos" [ngValue]="''">Todos los dojos</option>
           @for (d of dojos(); track d) {
             <option [ngValue]="d">{{ d }}</option>
           }
         </select>
-        <p class="hint grow">
+        <p i18n="@@acreditacion.credenciales.cada-credencial-lleva-qr-codigo" class="hint grow">
           Cada credencial lleva el QR con el código de la persona: en la mesa de acreditación se
           escanea o se tipea para marcarla presente en todas sus categorías.
         </p>
@@ -63,7 +62,7 @@ import { PluralPipe } from '../../shared/plural';
             <span class="code mono">{{ c.code }}</span>
           </article>
         } @empty {
-          <div class="card empty">No hay inscripciones activas.</div>
+          <div i18n="@@acreditacion.credenciales.no-hay-inscripciones-activas" class="card empty">No hay inscripciones activas.</div>
         }
       </div>
     </div>
@@ -97,6 +96,12 @@ import { PluralPipe } from '../../shared/plural';
   `,
 })
 export class CredentialsPage {
+  tituloCredenciales(): string {
+    const t = this.tournament();
+    return t
+      ? $localize`:@@acreditacion.credenciales.titulo-torneo:Credenciales · ${t.name}:torneo:`
+      : $localize`:@@acreditacion.credenciales.titulo:Credenciales`;
+  }
   private api = inject(ApiService);
   private files = inject(FilesService);
   readonly id = input.required<string>();

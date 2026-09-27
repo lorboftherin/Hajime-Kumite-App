@@ -26,7 +26,7 @@ import { Icon } from './icon';
       >
         <app-icon name="bell" />
         @if (!compact()) {
-          <span>{{ on() ? 'Avisando' : 'Avisarme' }}</span>
+          <span i18n="@@avisos.boton.avisando-avisarme">@if (on()) {Avisando} @else {Avisarme}</span>
         }
       </button>
     }
@@ -56,8 +56,12 @@ export class PushButton {
   readonly label = input('');
   readonly toggled = output<boolean>();
   readonly aria = computed(() => {
-    const who = this.label() ? ` de ${this.label()}` : '';
-    return this.on() ? `Dejar de recibir avisos${who}` : `Avisarme${who}`;
+    const who = this.label();
+    if (this.on())
+      return who
+        ? $localize`:@@avisos.boton.dejar-recibir-avisos-de:Dejar de recibir avisos de ${who}:quien:`
+        : $localize`:@@avisos.boton.dejar-recibir-avisos:Dejar de recibir avisos`;
+    return who ? $localize`:@@avisos.boton.avisarme-de:Avisarme de ${who}:quien:` : $localize`:@@avisos.boton.avisarme:Avisarme`;
   });
 }
 
@@ -73,7 +77,7 @@ export class PushButton {
       <p class="push-hint small" role="note">
         {{ push.message() }}
         @if (push.support() !== 'app') {
-          <a routerLink="/avisos">Ajustes de avisos</a>
+          <a i18n="@@avisos.boton.ajustes-avisos" routerLink="/avisos">Ajustes de avisos</a>
         }
       </p>
     }

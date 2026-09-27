@@ -39,6 +39,18 @@ module.exports = defineConfig([
       // Deuda conocida (respuestas de la API sin tipar en pocos lugares): se
       // avisa sin bloquear CI; tipar al tocar cada archivo.
       '@typescript-eslint/no-explicit-any': 'warn',
+      // Las traducciones se cargan en main.ts DESPUÉS de evaluar los módulos: un
+      // $localize suelto en el módulo quedaría en español. Va dentro de una
+      // función, un getter o un campo de instancia (docs/idiomas.md).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'TaggedTemplateExpression[tag.name="$localize"]:not(:function TaggedTemplateExpression):not(PropertyDefinition[static=false] TaggedTemplateExpression)',
+          message:
+            '$localize a nivel de módulo se evalúa antes de cargar las traducciones: muévelo a una función (p. ej. etiquetas(() => ({...}))) o a un campo de instancia.',
+        },
+      ],
     },
   },
   {

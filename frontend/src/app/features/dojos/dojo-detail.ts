@@ -16,7 +16,7 @@ import { PageHead } from '../../shared/page-head';
     <div class="container">
       @if (dojo(); as d) {
         <app-page-head kanji="道場" [title]="d.name">
-          <a back class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
+          <a i18n="@@dojo.dojos" back class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
           <div meta class="meta-line">
             @if (d.short_name) {
               <span class="code">{{ d.short_name }}</span>
@@ -25,36 +25,36 @@ import { PageHead } from '../../shared/page-head';
               <span>{{ d.city }}</span>
             }
             @if (d.is_independent) {
-              <span class="badge plain">Independiente</span>
+              <span i18n="@@dojo.independiente" class="badge plain">Independiente</span>
             }
             @if (d.is_claimed) {
-              <span class="badge matcha">Registrado</span>
+              <span i18n="@@dojo.registrado" class="badge matcha">Registrado</span>
             }
             @if (d.branches.length) {
-              <span>Sedes: {{ branchNames() }}</span>
+              <span i18n="@@dojo.sedes">Sedes: {{ branchNames() }}</span>
             }
             @if (history()?.senseis?.length) {
-              <span>
+              <span><ng-container i18n="@@dojo.sensei">
                 Sensei:
-                @for (s of history()!.senseis!; track s.person_id; let last = $last) {
+                </ng-container>@for (s of history()!.senseis!; track s.person_id; let last = $last) {
                   <a [routerLink]="['/personas', s.person_id]">{{ s.name }}</a>@if (!last) {, }
                 }
               </span>
             }
           </div>
-          <a class="btn" [routerLink]="['/personas']" [queryParams]="{ dojo: d.id }">Ver competidores</a>
+          <a i18n="@@dojo.ver-competidores" class="btn" [routerLink]="['/personas']" [queryParams]="{ dojo: d.id }">Ver competidores</a>
         </app-page-head>
       } @else if (!error()) {
-        <a class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
+        <a i18n="@@dojo.dojos" class="back-link" routerLink="/dojos"><app-icon name="back" /> Dojos</a>
       }
 
       @if (history(); as h) {
         @if (h.tournaments.length) {
-        <section class="card totals" aria-label="Medallero histórico">
-          <div class="medal"><app-hanko [place]="1" size="lg" /><div><span class="figure">{{ totals().gold }}</span><span class="small muted">Oro</span></div></div>
-          <div class="medal"><app-hanko [place]="2" size="lg" /><div><span class="figure">{{ totals().silver }}</span><span class="small muted">Plata</span></div></div>
-          <div class="medal"><app-hanko [place]="3" size="lg" /><div><span class="figure">{{ totals().bronze }}</span><span class="small muted">Bronce</span></div></div>
-          <div class="medal total"><div><span class="figure">{{ h.tournaments.length }}</span><span class="small muted">Torneos con medalla</span></div></div>
+        <section i18n-aria-label="@@dojo.medallero-historico" class="card totals" aria-label="Medallero histórico">
+          <div class="medal"><app-hanko [place]="1" size="lg" /><div><span class="figure">{{ totals().gold }}</span><span i18n="@@dojo.oro" class="small muted">Oro</span></div></div>
+          <div class="medal"><app-hanko [place]="2" size="lg" /><div><span class="figure">{{ totals().silver }}</span><span i18n="@@dojo.plata" class="small muted">Plata</span></div></div>
+          <div class="medal"><app-hanko [place]="3" size="lg" /><div><span class="figure">{{ totals().bronze }}</span><span i18n="@@dojo.bronce" class="small muted">Bronce</span></div></div>
+          <div class="medal total"><div><span class="figure">{{ h.tournaments.length }}</span><span i18n="@@dojo.torneos-medalla" class="small muted">Torneos con medalla</span></div></div>
         </section>
         }
 
@@ -65,10 +65,10 @@ import { PageHead } from '../../shared/page-head';
                 <div class="eyebrow num">{{ fdate(t.date) }}</div>
                 <h3><a [routerLink]="['/torneos', t.tournament_id, 'resultados']">{{ t.tournament_name }}</a></h3>
               </div>
-              <div class="tally num" aria-label="Medallas del torneo">
-                <span><span class="ring kin"></span>{{ t.gold }}<span class="sr-only"> oro</span></span>
-                <span><span class="ring gin"></span>{{ t.silver }}<span class="sr-only"> plata</span></span>
-                <span><span class="ring dou"></span>{{ t.bronze }}<span class="sr-only"> bronce</span></span>
+              <div i18n-aria-label="@@dojo.medallas-torneo" class="tally num" aria-label="Medallas del torneo">
+                <span><span class="ring kin"></span>{{ t.gold }}<span i18n="@@dojo.oro-2" class="sr-only"> oro</span></span>
+                <span><span class="ring gin"></span>{{ t.silver }}<span i18n="@@dojo.plata-2" class="sr-only"> plata</span></span>
+                <span><span class="ring dou"></span>{{ t.bronze }}<span i18n="@@dojo.bronce-2" class="sr-only"> bronce</span></span>
               </div>
             </div>
             <table class="table small flush mt">
@@ -91,8 +91,8 @@ import { PageHead } from '../../shared/page-head';
           </article>
         } @empty {
           <div class="card empty">
-            <p><strong>Este dojo aún no tiene medallas en su historial.</strong></p>
-            <p class="small">Los torneos de prueba no aparecen en el historial. Solo cuentan las categorías finalizadas de torneos oficiales.</p>
+            <p><strong i18n="@@dojo.este-dojo-aun-no-tiene-medallas">Este dojo aún no tiene medallas en su historial.</strong></p>
+            <p i18n="@@dojo.torneos-prueba-no-aparecen" class="small">Los torneos de prueba no aparecen en el historial. Solo cuentan las categorías finalizadas de torneos oficiales.</p>
           </div>
         }
       } @else if (error()) {

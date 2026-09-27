@@ -1,4 +1,5 @@
 import { Meta, Title } from '@angular/platform-browser';
+import { localeActual } from '../../core/i18n/idioma';
 
 /** Imagen para compartir: el logo de Hajime (512×512, en `public/icons`). */
 export const SHARE_IMAGE = 'icons/icon-512x512.png';
@@ -13,7 +14,7 @@ interface ShareTournament {
 function fmtDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   if (isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat('es-PE', {
+  return new Intl.DateTimeFormat(localeActual(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -39,7 +40,7 @@ export function setShareMeta(
   const desc = `${fmtDay(t.start_date)}${where ? ` · ${where}` : ''}. Combates en vivo, horarios, llaves y resultados.`;
   const url = `${location.origin}${path}`;
   const image = `${location.origin}/${SHARE_IMAGE}`;
-  title.setTitle(`${heading} · Hajime en vivo`);
+  title.setTitle($localize`:@@publico.compartir.hajime-vivo:${heading}:heading: · Hajime en vivo`);
   const tags: Array<[string, string, 'name' | 'property']> = [
     ['description', desc, 'name'],
     ['og:type', 'website', 'property'],

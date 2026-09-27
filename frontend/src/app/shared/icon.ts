@@ -19,7 +19,8 @@ export type IconName =
   | 'search'
   | 'open'
   | 'check'
-  | 'bell';
+  | 'bell'
+  | 'globe';
 
 /** Iconos de línea fina (1.6 px) en currentColor. Decorativos: el texto del botón da el nombre. */
 @Component({
@@ -90,6 +91,10 @@ export type IconName =
         }
         @case ('bell') {
           <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 0 0 4 0" />
+        }
+        @case ('globe') {
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5z" />
         }
       }
     </svg>

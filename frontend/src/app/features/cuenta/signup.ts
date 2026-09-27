@@ -15,29 +15,29 @@ import { AuthCard } from './auth-card';
   selector: 'app-signup',
   imports: [FormsModule, AuthCard, RouterLink],
   template: `
-    <app-auth-card
+    <app-auth-card i18n-lead="@@cuenta.crear.para-competidores-adultos-para" i18n-heading="@@cuenta.crear.crear-cuenta"
       id="su"
       heading="Crear cuenta"
       lead="Para competidores adultos y para padres, madres o apoderados de competidores menores."
     >
       @if (done()) {
         <div class="alert ok" role="status">
-          <strong>Revisa tu correo.</strong>
+          <strong i18n="@@cuenta.crear.revisa-correo">Revisa tu correo.</strong>
           <div class="small">{{ done() }}</div>
         </div>
-        <a class="btn primary lg block" routerLink="/login">Ir a ingresar</a>
+        <a i18n="@@cuenta.crear.ir-ingresar" class="btn primary lg block" routerLink="/login">Ir a ingresar</a>
       } @else {
         <form class="stack" (ngSubmit)="submit()">
           <label class="field">
-            <span>Tu nombre</span>
+            <span i18n="@@cuenta.crear.nombre">Tu nombre</span>
             <input name="name" [(ngModel)]="name" autocomplete="name" required autofocus />
           </label>
           <label class="field">
-            <span>Correo</span>
+            <span i18n="@@cuenta.crear.correo">Correo</span>
             <input name="email" type="email" [(ngModel)]="email" autocomplete="email" required />
           </label>
           <label class="field">
-            <span>Contraseña (mín. {{ min }})</span>
+            <span i18n="@@cuenta.crear.contrasena-min">Contraseña (mín. {{ min }})</span>
             <input
               name="password"
               type="password"
@@ -48,7 +48,7 @@ import { AuthCard } from './auth-card';
           </label>
           <label class="check">
             <input type="checkbox" name="terms" [(ngModel)]="accepted" />
-            <span>
+            <span i18n="@@cuenta.crear.lei-como-usan-mis-datos-pagina">
               Leí cómo se usan mis datos en la página de <a routerLink="/privacidad">Privacidad</a>.
               Soy mayor de edad.
             </span>
@@ -69,9 +69,9 @@ import { AuthCard } from './auth-card';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }
+            }<ng-container i18n="@@cuenta.crear.crear-cuenta-2">
             Crear cuenta
-          </button>
+          </ng-container></button>
         </form>
       }
     </app-auth-card>
@@ -116,7 +116,7 @@ export class SignupPage {
       const err = ApiError.from(e);
       this.error.set(
         err.code === 'SIGNUP_CLOSED'
-          ? 'El registro de cuentas aún no está abierto.'
+          ? $localize`:@@cuenta.crear.registro-cuentas-aun-no-esta:El registro de cuentas aún no está abierto.`
           : err.fullMessage,
       );
     } finally {

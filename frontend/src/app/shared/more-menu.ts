@@ -60,7 +60,7 @@ import { Icon } from './icon';
 export class MoreMenu {
   /** Texto visible del botón; vacío = solo el icono ⋯ (con nombre accesible `label`). */
   readonly text = input('');
-  readonly label = input('Más acciones');
+  readonly label = input($localize`:@@menu-mas.mas-acciones:Más acciones`);
   readonly small = input(true);
 
   readonly open = signal(false);

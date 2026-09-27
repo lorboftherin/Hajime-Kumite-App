@@ -12,6 +12,15 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Idiomas:** la interfaz también en inglés y portugués de Brasil, con un
+  solo build (`@angular/localize` con traducciones cargadas al arrancar). El
+  español sigue siendo el idioma por defecto; se elige por la preferencia del
+  dispositivo o el idioma del navegador, y se cambia en «Mi cuenta» o al pie
+  del inicio de sesión y de las páginas públicas. Fechas, números y montos
+  siguen el idioma elegido; los errores de la API se traducen por código con
+  el mensaje del servidor como respaldo. `npm run i18n:extract` y
+  `npm run i18n:check` (en CI). Correos, PDF y advertencias del backend siguen
+  en español. Ver `docs/idiomas.md`.
 - **Correo transaccional** con bandeja de salida en la base (`outbox_emails`),
   reintentos con espera creciente, reserva entre procesos y proveedores
   `console`, `smtp` (STARTTLS) y `acs` (Azure Communication Services por REST).

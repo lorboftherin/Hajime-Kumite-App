@@ -17,24 +17,24 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, PageHead, Modal],
   template: `
     <div class="container">
-      <app-page-head kanji="申請" title="Solicitudes de perfil">
+      <app-page-head i18n-title="@@cuenta.reclamos.solicitudes-perfil" kanji="申請" title="Solicitudes de perfil">
         <div meta class="meta-line">
-          <span
+          <span i18n="@@cuenta.reclamos.cuentas-piden-ligarse-competidor"
             >Cuentas que piden ligarse a un competidor: la propia persona adulta o su padre, madre o
             apoderado.</span
           >
         </div>
         <label class="field inline">
-          <span class="sr-only">Estado</span>
-          <select
+          <span i18n="@@cuenta.reclamos.estado" class="sr-only">Estado</span>
+          <select i18n-aria-label="@@cuenta.reclamos.estado-2"
             [ngModel]="filter()"
             (ngModelChange)="filter.set($event); load()"
             aria-label="Estado"
           >
-            <option value="pending">Pendientes</option>
-            <option value="approved">Aprobadas</option>
-            <option value="rejected">No aprobadas</option>
-            <option value="">Todas</option>
+            <option i18n="@@cuenta.reclamos.pendientes" value="pending">Pendientes</option>
+            <option i18n="@@cuenta.reclamos.aprobadas" value="approved">Aprobadas</option>
+            <option i18n="@@cuenta.reclamos.no-aprobadas" value="rejected">No aprobadas</option>
+            <option i18n="@@cuenta.reclamos.todas" value="">Todas</option>
           </select>
         </label>
       </app-page-head>
@@ -46,12 +46,12 @@ import { PageHead } from '../../shared/page-head';
         <table class="table">
           <thead>
             <tr>
-              <th>Competidor</th>
-              <th>Quién lo pide</th>
-              <th>Relación</th>
-              <th>Comprobación</th>
-              <th>Estado</th>
-              <th class="right"><span class="sr-only">Acciones</span></th>
+              <th i18n="@@cuenta.reclamos.competidor">Competidor</th>
+              <th i18n="@@cuenta.reclamos.quien-pide">Quién lo pide</th>
+              <th i18n="@@cuenta.reclamos.relacion">Relación</th>
+              <th i18n="@@cuenta.reclamos.comprobacion">Comprobación</th>
+              <th i18n="@@cuenta.reclamos.estado">Estado</th>
+              <th class="right"><span i18n="@@cuenta.reclamos.acciones" class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
@@ -60,10 +60,10 @@ import { PageHead } from '../../shared/page-head';
                 <td>
                   <strong>{{ c.person_name }}</strong>
                   @if (c.is_minor) {
-                    <span class="badge yamabuki">Menor</span>
+                    <span i18n="@@cuenta.reclamos.menor" class="badge yamabuki">Menor</span>
                   }
                   <div class="small muted">
-                    {{ c.dojo || 'Sin dojo' }}
+                    {{ c.dojo || sinDojo }}
                     @if (c.birth_date) {
                       · {{ fdate(c.birth_date) }}
                     }
@@ -79,11 +79,11 @@ import { PageHead } from '../../shared/page-head';
                 <td>{{ relation[c.relationship] }}</td>
                 <td class="small">
                   @if (c.document_match === true) {
-                    <span class="badge matcha">Documento coincide</span>
+                    <span i18n="@@cuenta.reclamos.documento-coincide" class="badge matcha">Documento coincide</span>
                   } @else if (c.document_match === false) {
-                    <span class="badge shu">Documento no coincide</span>
+                    <span i18n="@@cuenta.reclamos.documento-no-coincide" class="badge shu">Documento no coincide</span>
                   } @else {
-                    <span class="muted">Sin documento</span>
+                    <span i18n="@@cuenta.reclamos.sin-documento" class="muted">Sin documento</span>
                   }
                   <div class="muted">{{ when(c.created_at) }}</div>
                 </td>
@@ -101,15 +101,15 @@ import { PageHead } from '../../shared/page-head';
                 </td>
                 <td class="right nowrap">
                   @if (c.status === 'pending') {
-                    <button class="btn sm primary" (click)="approve(c)">Aprobar</button>
-                    <button class="btn sm" (click)="rejectFor.set(c); reason = ''">Rechazar</button>
+                    <button i18n="@@cuenta.reclamos.aprobar" class="btn sm primary" (click)="approve(c)">Aprobar</button>
+                    <button i18n="@@cuenta.reclamos.rechazar" class="btn sm" (click)="rejectFor.set(c); reason = ''">Rechazar</button>
                   }
                 </td>
               </tr>
             } @empty {
               <tr>
                 <td colspan="6" class="empty">
-                  <p>No hay solicitudes {{ filter() === 'pending' ? 'pendientes' : '' }}.</p>
+                  <p i18n="@@cuenta.reclamos.no-hay-solicitudes">No hay solicitudes @if (filter() === 'pending') {pendientes}.</p>
                 </td>
               </tr>
             }
@@ -119,15 +119,15 @@ import { PageHead } from '../../shared/page-head';
     </div>
 
     @if (rejectFor(); as c) {
-      <app-modal [title]="'Rechazar · ' + c.person_name" (closed)="rejectFor.set(null)">
+      <app-modal i18n-title="@@cuenta.reclamos.rechazar-titulo" title="Rechazar · {{ c.person_name }}" (closed)="rejectFor.set(null)">
         <form class="stack" (ngSubmit)="reject(c)">
           <label class="field">
-            <span>Motivo (lo recibe la cuenta que lo pidió)</span>
+            <span i18n="@@cuenta.reclamos.motivo-recibe-cuenta-pidio">Motivo (lo recibe la cuenta que lo pidió)</span>
             <textarea name="r" rows="3" [(ngModel)]="reason" maxlength="500"></textarea>
           </label>
           <div class="form-actions">
-            <button type="button" class="btn" (click)="rejectFor.set(null)">Cancelar</button>
-            <button class="btn danger">Rechazar solicitud</button>
+            <button i18n="@@cuenta.reclamos.cancelar" type="button" class="btn" (click)="rejectFor.set(null)">Cancelar</button>
+            <button i18n="@@cuenta.reclamos.rechazar-solicitud" class="btn danger">Rechazar solicitud</button>
           </div>
         </form>
       </app-modal>
@@ -148,6 +148,7 @@ export class ClaimsReviewPage {
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
   readonly relation = RELATION_LABEL;
+  readonly sinDojo = $localize`:@@comun.sin-dojo:Sin dojo`;
   readonly status = CLAIM_STATUS_LABEL;
   readonly when = fmtDateTime;
   readonly fdate = fmtDate;
@@ -167,23 +168,23 @@ export class ClaimsReviewPage {
         this.claims.set(c);
         this.error.set('');
       },
-      error: () => this.error.set('No tienes solicitudes para revisar.'),
+      error: () => this.error.set($localize`:@@cuenta.reclamos.no-tienes-solicitudes-para:No tienes solicitudes para revisar.`),
     });
   }
 
   async approve(c: ClaimReview): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: 'Aprobar solicitud',
+      title: $localize`:@@cuenta.reclamos.aprobar-solicitud:Aprobar solicitud`,
       message: c.is_minor
-        ? `${c.user_name} verá el historial completo de ${c.person_name} como ${this.relation[c.relationship].toLowerCase()}. Confirma que lo conoces.`
-        : `La cuenta de ${c.user_name} quedará ligada al perfil de ${c.person_name}.`,
-      confirmText: 'Aprobar',
+        ? $localize`:@@cuenta.reclamos.vera-historial-completo-como:${c.user_name}:user_name: verá el historial completo de ${c.person_name}:person_name: como ${this.relation[c.relationship].toLowerCase()}:relacion:. Confirma que lo conoces.`
+        : $localize`:@@cuenta.reclamos.cuenta-quedara-ligada-perfil:La cuenta de ${c.user_name}:user_name: quedará ligada al perfil de ${c.person_name}:person_name:.`,
+      confirmText: $localize`:@@cuenta.reclamos.aprobar-2:Aprobar`,
     });
     if (!ok) return;
     const r = await this.mut.post(
       `/profile-claims/${c.id}/review`,
       { approve: true },
-      { success: 'Solicitud aprobada' },
+      { success: $localize`:@@cuenta.reclamos.solicitud-aprobada:Solicitud aprobada` },
     );
     if (r) this.load();
   }
@@ -192,7 +193,7 @@ export class ClaimsReviewPage {
     const r = await this.mut.post(
       `/profile-claims/${c.id}/review`,
       { approve: false, reason: this.reason.trim() || null },
-      { success: 'Solicitud rechazada' },
+      { success: $localize`:@@cuenta.reclamos.solicitud-rechazada:Solicitud rechazada` },
     );
     this.rejectFor.set(null);
     if (r) this.load();
