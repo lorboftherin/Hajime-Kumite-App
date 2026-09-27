@@ -73,7 +73,13 @@ function readIncludeTest(): boolean {
                 @if (t.end_date && t.end_date !== t.start_date) {
                   <div class="when small">{{ dateRange(t.start_date, t.end_date) }}</div>
                 }
-                <div class="where small">{{ t.venue }}@if (t.venue && t.city) {, }{{ t.city }}</div>
+                <div class="where small">
+                  {{ t.venue }}
+                  @if (t.venue && t.city) {
+                    ,
+                  }
+                  {{ t.city }}
+                </div>
                 @if (t.organization_name && multiOrg()) {
                   <div class="org small">{{ t.organization_name }}</div>
                 }
@@ -114,7 +120,7 @@ function readIncludeTest(): boolean {
             <label class="field"><span i18n="@@torneos.ciudad">Ciudad</span><input name="city" [(ngModel)]="form.city" /></label>
             <label class="field">
               <span i18n="@@torneos.plantilla-categorias">Plantilla de categorías</span>
-              <select name="tpl" [(ngModel)]="form.template_id">
+              <select name="tpl" [(ngModel)]="form.template_id" (ngModelChange)="templatePicked = true">
                 <option i18n="@@torneos.sin-plantilla" [ngValue]="null">— Sin plantilla —</option>
                 @for (tp of templates(); track tp.id) {
                   <option [ngValue]="tp.id">{{ tp.name }} ({{ tp.items.length }})</option>
@@ -280,6 +286,8 @@ export class TournamentListPage {
   /** Los torneos de prueba se ocultan por defecto; la elección se recuerda en el dispositivo. */
   includeTest = readIncludeTest();
   form = this.blank();
+  /** El usuario ya eligió plantilla (también «Sin plantilla»): la carga no la reemplaza. */
+  templatePicked = false;
 
   constructor() {
     this.load();
@@ -289,7 +297,7 @@ export class TournamentListPage {
     return d ? String(Number(d.slice(8, 10))) : '';
   }
   month(d: string): string {
-    return d ? MONTHS[Number(d.slice(5, 7)) - 1] ?? '' : '';
+    return d ? (MONTHS[Number(d.slice(5, 7)) - 1] ?? '') : '';
   }
   year(d: string): string {
     return d ? d.slice(0, 4) : '';
@@ -338,6 +346,7 @@ export class TournamentListPage {
   /** asTest: desde "Primeros pasos" se propone un torneo de prueba con la plantilla base. */
   openNew(asTest = false): void {
     this.form = this.blank();
+    this.templatePicked = false;
     if (asTest) {
       this.form.is_test = true;
       this.form.name = $localize`:@@torneos.torneo-prueba:Torneo de prueba`;
@@ -347,15 +356,19 @@ export class TournamentListPage {
       next: (list) => {
         const mine = list.filter((o) => o.can_manage);
         this.orgs.set(mine);
-        if (mine.length && this.form.organization_id === null) this.form.organization_id = mine[0].id;
+        if (mine.length && this.form.organization_id === null)
+          this.form.organization_id = mine[0].id;
       },
       error: () => {},
     });
     this.api.get<Template[]>('/templates').subscribe({
       next: (t) => {
         this.templates.set(t);
-        if (t.length && this.form.template_id === null) {
-          this.form.template_id = (t.find((x) => x.name === 'Plantilla base (borrador)') ?? t[0]).id;
+        // Sin esta marca, elegir «Sin plantilla» antes de que llegue la lista se perdía.
+        if (t.length && this.form.template_id === null && !this.templatePicked) {
+          this.form.template_id = (
+            t.find((x) => x.name === 'Plantilla base (borrador)') ?? t[0]
+          ).id;
         }
       },
       error: () => {},

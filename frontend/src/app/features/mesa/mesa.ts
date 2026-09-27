@@ -64,6 +64,7 @@ import {
   retryDelay,
   sanctionAbbr,
   savePending,
+  scoreWithPending,
   timeUpAt,
 } from './mesa-logic';
 import { KataMatchScores } from './kata-match-scores';
@@ -329,6 +330,17 @@ export class MesaPage {
     () => this.duration() > 0 && this.clock().elapsed >= this.duration(),
   );
   readonly timerText = computed(() => mmss(Math.ceil(this.remaining())));
+  /** Marcador en pantalla: el del servidor más los puntos que siguen en la cola (sin señal). */
+  readonly score = computed<Record<Color, number>>(() => {
+    const s = this.sb();
+    if (!s) return { aka: 0, ao: 0 };
+    return scoreWithPending(
+      s.score,
+      s.events,
+      s.annulled_event_ids,
+      this.pendingHere().map((p) => p.body),
+    );
+  });
   readonly started = computed(
     () => !!this.sb()?.started || this.pendingHere().some((p) => p.body.type === 'start'),
   );
@@ -1217,7 +1229,8 @@ export class MesaPage {
       time_over: this.timeOver(),
     };
     // El método debe existir en la lista de la modalidad (un kata no se cierra «por puntos»).
-    if (!this.methods().includes(this.finishForm.method)) this.finishForm.method = this.methods()[0];
+    if (!this.methods().includes(this.finishForm.method))
+      this.finishForm.method = this.methods()[0];
     this.timeEndPick = null;
     if (this.finishForm.time_over) this.applyTimeEnd();
     this.finishId = newId();

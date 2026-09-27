@@ -6,6 +6,48 @@ seguridad, lógica deportiva, madurez técnica, competencia) más la prueba de
 carga contra Azure del mismo día. Los hallazgos con más impacto se verificaron
 a mano en el código o reproduciendo el fallo; se indica cuándo.
 
+## 0. Estado al 27/09/2026: el plan está construido
+
+Todo el plan de la sección 4 se implementó en la rama
+`claude/peaceful-wright-mqncfd` durante el 26 y 27/09, con CI completo en verde
+(backend, frontend, contratos, auditoría, Docker con prueba de humo de 2
+procesos y Trivy, Android y extremo a extremo). Lo que falta ya no es código:
+son decisiones y acciones del dueño, listadas al final de esta sección y, con
+el paso a paso, en `docs/acciones-del-duenio.md`.
+
+| Horizonte | Estado | Dónde leer más |
+| --- | --- | --- |
+| 0: arranque, vivo, login, errores | Hecho. Arranque único con candado entre procesos; instantánea del vivo compartida en base (346 → 8 consultas; mesa p95 1,1 s → 71 ms en local con 300 espectadores); bloqueo de login en base con IP real; errores JSON con `request_id`; `/health/ready` | `docs/despliegue.md`, `docs/pruebas-carga.md` |
+| 1: operación del día | Hecho. Sonido de fin de tiempo, «Mi tatami», dos tablets con «Tomar la mesa», cierre en cola sin red, retiro con walkover o regenerar, edición de inscripción y categoría, cola de tatamis editable, «listo para iniciar», importación corregible en pantalla, accesibilidad | `docs/guia-prueba.md` |
+| 1: confianza | Hecho. Logs JSON, Azure Monitor opcional, CI con permisos mínimos y acciones fijadas, lockfile con hashes, Dependabot, pip-audit, npm audit, Trivy, CodeQL, versión 0.2.0 con CHANGELOG, release, despliegue a producción con aprobación, rollback, respaldos y ensayo de restauración | `CONTRIBUTING.md`, `docs/despliegue-azure.md` |
+| 1: seguridad | Hecho. Lecturas con ámbito por torneo y organización, sesiones de 60 min con renovación revocable, rotación de secreto sin cortar sesiones, anonimización completa, purga de importaciones, registro de lecturas sensibles, cabeceras | `docs/revision-v0.2.md` §5.3 |
+| 1: e2e | Hecho. 15 pruebas Playwright (organizador, mesa, mesa sin red, importación, kata, público, autoinscripción, acreditación, accesibilidad, móvil); encontraron y corrigieron 3 fallos reales | `CONTRIBUTING.md` |
+| 2: organizaciones y planes | Hecho. Organizaciones con miembros, planes con derechos verificados en la API, marcha blanca por defecto | `docs/organizaciones-y-planes.md` |
+| 2: correo y cuentas | Hecho. Correo transaccional con outbox, recuperación de contraseña, registro abierto (apagado por defecto), reclamo de perfil de adulto y de menor, perfil público | `docs/cuentas-y-correo.md` |
+| 2: autoinscripción por dojo | Hecho. Invitación por enlace, portal del sensei, aprobación en lote | `docs/organizaciones-y-planes.md` |
+| 2: portal público y horarios | Hecho. Dirección fija `/t/<slug>`, directorio, «¿cuándo pelea?», favoritos, llaves públicas, horas estimadas, pantalla grande y mosaico, SSE, vista previa al compartir | `docs/portal-publico.md` |
+| 2: acreditación, plantillas, kata, reglas | Hecho. Check-in, pesaje, credenciales con QR; plantillas editables; reglas configurables (faltas, senshu, punto de oro, kata WKF 2+2 y 70/30, rondas, grupos + eliminación, edad por año, división de categorías, inscripción tardía en llave) | `docs/acreditacion-y-pesaje.md`, `docs/reglas-configurables.md` |
+| 3: cobros | Hecho. Mercado Pago y Culqi, comprobantes con Nubefact y nota de crédito, prueba gratis, cupones, recibos y recordatorios por correo, Plus pagado por el tutor | `docs/cobros.md` |
+| 3: avisos, ranking, diplomas | Hecho. Web Push («te toca», resultados, medallas), ranking por temporada y de dojos, diplomas de podio y participación | `docs/avisos-push.md`, `docs/ranking.md` |
+| 3: idiomas | En integración: inglés y portugués de Brasil con un solo build | `docs/idiomas.md` |
+
+### Lo que no se hizo y por qué
+
+- **Prueba de carga contra Azure:** el ambiente de pruebas sigue con la imagen vieja hasta que se cree `main` y se conecte la publicación automática. Hay que repetir `prueba_carga.py` (también con `--sse`) después del primer despliegue.
+- **Doble eliminación:** fuera de alcance para torneos locales (documentado en `docs/reglas-configurables.md`).
+- **Nota de crédito parcial, Izipay y avisos nativos en Android (FCM):** quedan preparados y documentados, sin activar.
+- **Rutas de suscripción de Culqi:** hay que verificarlas en su sandbox antes de cobrar mensualidades con Culqi.
+- **Revisión visual en celulares reales:** las pantallas pasaron build, pruebas unitarias, e2e con Chromium y axe, pero nadie las abrió aún en una tablet del coliseo.
+
+### Lo que depende de ti
+
+1. Crear y proteger `main` desde esta rama, y apuntar la publicación automática a `main` (`docs/acciones-del-duenio.md`, GitHub y Azure).
+2. Decidir el reglamento de referencia (§5, punto 1); todas las reglas ya son configurables y sus valores por defecto están en `docs/reglas-configurables.md`.
+3. Asesoría legal (Ley 29733) antes de abrir el registro de competidores y de mostrar perfiles de menores.
+4. Precios finales, pasarela y proveedor de comprobantes antes de pasar a `HAJIME_BILLING_MODE=enforced`.
+5. Claves VAPID y correo (SMTP o Azure Communication Services) en cada ambiente.
+6. Producción en Azure: tamaño de la base y `crear-ambiente.sh prod`.
+
 ## 1. Veredicto en una página
 
 Hajime ya es un producto operativo serio para un torneo local: el núcleo

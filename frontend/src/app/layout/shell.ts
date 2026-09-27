@@ -250,7 +250,8 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
       font-weight: 500;
       font-size: 1.15rem;
       line-height: 1;
-      color: var(--nezumi);
+      /* nezumi-ink: el tono tenue con contraste de texto (axe, color-contrast). */
+      color: var(--nezumi-ink);
       text-align: center;
       letter-spacing: 0.02em;
       transition: color var(--dur-1) var(--ease);

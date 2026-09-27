@@ -58,6 +58,7 @@ npm run i18n:check          # textos de la interfaz traducidos (docs/idiomas.md)
 npx ng test --watch=false
 npm run format:check
 npx ng build
+npm run e2e                                  # extremo a extremo (ver abajo)
 
 # Raíz
 python scripts/version.py --check
@@ -84,6 +85,58 @@ No traduzcas los términos de karate (hajime, yame, senshu, hantei, kiken,
 shikkaku, ippon, waza-ari, yuko, chui, hansoku, kata, kumite, tatami, dojo,
 sensei). Nada de `$localize` a nivel de módulo (ESLint lo impide): se evalúa
 antes de cargar las traducciones. Detalle y glosario en `docs/idiomas.md`.
+
+## Pruebas de extremo a extremo
+
+Playwright en `frontend/e2e/` (configuración en `frontend/playwright.config.ts`)
+contra el servidor real: `e2e/servidor.sh` prepara una base SQLite en una
+carpeta temporal (`python -m app.prepare`) y levanta uvicorn con un proceso en
+un puerto libre, sirviendo el frontend compilado en la misma URL (como la
+imagen «todo en uno»). `e2e/global-setup.ts` siembra por la API un organizador
+y una plantilla pequeña y deja las credenciales en `estado.json` de esa
+carpeta; cada escenario crea sus propios datos con nombres únicos, así que
+corren en paralelo y en cualquier orden. CI las corre en el job `e2e`.
+
+```bash
+# Requisitos: el backend instalado (backend/.venv, como arriba) y npm ci.
+cd frontend
+npx playwright install chromium        # una vez (en Linux: --with-deps)
+npm run e2e                            # toda la suite (~1 min)
+npm run e2e -- mesa-sin-red            # un archivo
+npm run e2e -- -g "kata por banderas"  # por nombre
+npx tsc -p e2e                         # tipos de las pruebas
+```
+
+- **Frontend compilado:** si `dist/hajime/browser` no existe o hay cambios en
+  `src/` más nuevos, `servidor.sh` corre `npx ng build` antes de arrancar
+  (`HAJIME_E2E_BUILD=1` fuerza la compilación).
+- **Depurar:** `npm run e2e -- --ui` (modo interactivo: cada paso con su
+  captura del DOM), `--headed` para ver el navegador, `--debug` para ir paso a
+  paso con el inspector.
+- **Trazas:** en CI cada prueba que falla se reintenta una vez y el reintento
+  graba la traza (`trace: 'on-first-retry'`); el reporte queda en el artefacto
+  `playwright-report` de la corrida, junto con el log del servidor. Localmente: `npm run e2e -- --trace on`,
+  luego `npx playwright show-report` o
+  `npx playwright show-trace test-results/<prueba>/trace.zip`.
+- **Correo:** el servidor usa el proveedor `console`; las pruebas leen los
+  enlaces (recuperar contraseña) del log `servidor.log` de la carpeta temporal.
+- **Variables:** `HAJIME_E2E_PYTHON` (intérprete con el backend; por defecto
+  `backend/.venv/bin/python` o `python`), `HAJIME_E2E_CHROMIUM` (otro Chromium
+  si el de la versión de Playwright no está instalado), `HAJIME_E2E_PORT` y
+  `HAJIME_E2E_DIR` (puerto y carpeta fijos; la carpeta temporal por defecto se
+  borra al terminar, una fijada a mano se conserva con la base y el log).
+- **Selectores:** por rol y texto visibles (como los ve quien usa la app o un
+  lector de pantalla); `data-testid` solo donde no hay texto ni rol estable
+  (los puntos de la pantalla grande).
+- **Esperas:** nunca pausas fijas. `expect(...)` reintenta hasta cumplirse y,
+  para el servidor, `expect.poll(() => api.get(...))`.
+- **Accesibilidad:** `accesibilidad.e2e.ts` pasa axe-core (reglas WCAG 2.x A/AA
+  y buenas prácticas) por ingreso, torneos, detalle, mesa, vivo y pantalla
+  grande; falla con violaciones *serious* o *critical*. Pendientes conocidas,
+  de impacto *moderate*: sin región `main` en el ingreso y en el vivo público
+  (`landmark-one-main`, `region`), saltos de nivel de encabezado en las tarjetas
+  de torneos y en el Resumen (`heading-order`) y la mesa sin `h1`
+  (`page-has-heading-one`).
 
 ## Cambios en la base de datos
 
