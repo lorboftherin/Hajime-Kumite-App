@@ -23,9 +23,15 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
   imports: [FormsModule, LabelPipe, PageHead, Icon, Modal, MoreMenu],
   template: `
     <div class="container">
-      <app-page-head i18n-title="@@plantillas.plantillas-categorias" kanji="型" title="Plantillas de categorías">
+      <app-page-head
+        i18n-title="@@plantillas.plantillas-categorias"
+        kanji="型"
+        title="Plantillas de categorías"
+      >
         <div meta class="meta-line">
-          <span i18n="@@plantillas.conjuntos-categorias-listos-para">Conjuntos de categorías listos para copiar a un torneo</span>
+          <span i18n="@@plantillas.conjuntos-categorias-listos-para"
+            >Conjuntos de categorías listos para copiar a un torneo</span
+          >
         </div>
         @if (canCreate()) {
           <button i18n="@@plantillas.nueva-plantilla" class="btn primary" (click)="openNew()">
@@ -43,11 +49,13 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
               (click)="select(t)"
             >
               <span class="name">{{ t.name }}</span>
-              <span class="muted small num"><ng-container i18n="@@plantillas.categorias">
-                {{ t.items.length }} categorías · {{ orgName(t) }}
-                </ng-container>@if (t.is_archived) {<ng-container i18n="@@plantillas.archivada">
-                  · archivada
-                </ng-container>}
+              <span class="muted small num"
+                ><ng-container i18n="@@plantillas.categorias">
+                  {{ t.items.length }} categorías · {{ orgName(t) }}
+                </ng-container>
+                @if (t.is_archived) {
+                  <ng-container i18n="@@plantillas.archivada"> · archivada </ng-container>
+                }
               </span>
             </button>
           } @empty {
@@ -84,10 +92,19 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
               </div>
               <div class="row">
                 @if (t.can_edit && !editing()) {
-                  <button i18n="@@plantillas.editar-tabla" class="btn primary" (click)="startEdit()">Editar tabla</button>
+                  <button i18n="@@plantillas.editar-tabla" class="btn primary" (click)="startEdit()"
+                    >Editar tabla</button
+                  >
                 }
-                <app-more i18n-label="@@plantillas.mas-acciones-plantilla" i18n-text="@@plantillas.mas" text="Más" label="Más acciones de la plantilla" [small]="false">
-                  <button i18n="@@plantillas.exportar-excel"
+                <app-more
+                  i18n-label="@@plantillas.mas-acciones-plantilla"
+                  i18n-text="@@plantillas.mas"
+                  text="Más"
+                  label="Más acciones de la plantilla"
+                  [small]="false"
+                >
+                  <button
+                    i18n="@@plantillas.exportar-excel"
                     class="menu-item"
                     (click)="
                       files.download(
@@ -103,17 +120,35 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                       Reemplazar filas desde Excel…
                       <input type="file" accept=".xlsx" hidden (change)="importFile($event, t)" />
                     </label>
-                    <button i18n="@@plantillas.cambiar-nombre-descripcion" class="menu-item" (click)="openMeta(t)">
+                    <button
+                      i18n="@@plantillas.cambiar-nombre-descripcion"
+                      class="menu-item"
+                      (click)="openMeta(t)"
+                    >
                       Cambiar nombre y descripción
                     </button>
-                    <button i18n="@@plantillas.duplicar" class="menu-item" (click)="duplicate(t)">Duplicar</button>
+                    <button i18n="@@plantillas.duplicar" class="menu-item" (click)="duplicate(t)"
+                      >Duplicar</button
+                    >
                     <hr />
                     @if (t.is_archived) {
-                      <button i18n="@@plantillas.restaurar" class="menu-item" (click)="setArchived(t, false)">Restaurar</button>
+                      <button
+                        i18n="@@plantillas.restaurar"
+                        class="menu-item"
+                        (click)="setArchived(t, false)"
+                        >Restaurar</button
+                      >
                     } @else if (t.in_use) {
-                      <button i18n="@@plantillas.archivar" class="menu-item" (click)="remove(t)">Archivar…</button>
+                      <button i18n="@@plantillas.archivar" class="menu-item" (click)="remove(t)"
+                        >Archivar…</button
+                      >
                     } @else {
-                      <button i18n="@@plantillas.borrar" class="menu-item danger" (click)="remove(t)">Borrar…</button>
+                      <button
+                        i18n="@@plantillas.borrar"
+                        class="menu-item danger"
+                        (click)="remove(t)"
+                        >Borrar…</button
+                      >
                     }
                   }
                 </app-more>
@@ -150,7 +185,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                     @for (r of rows(); track $index; let i = $index; let last = $last) {
                       <tr>
                         <td>
-                          <input i18n-aria-label="@@plantillas.codigo-2"
+                          <input
+                            i18n-aria-label="@@plantillas.codigo-2"
                             class="code-in"
                             [(ngModel)]="r.code"
                             [name]="'c' + i"
@@ -158,7 +194,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td>
-                          <input i18n-aria-label="@@plantillas.nombre-2"
+                          <input
+                            i18n-aria-label="@@plantillas.nombre-2"
                             class="name-in"
                             [(ngModel)]="r.name"
                             [name]="'n' + i"
@@ -166,13 +203,19 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td>
-                          <select i18n-aria-label="@@plantillas.modalidad-2" [(ngModel)]="r.modality" [name]="'m' + i" aria-label="Modalidad">
+                          <select
+                            i18n-aria-label="@@plantillas.modalidad-2"
+                            [(ngModel)]="r.modality"
+                            [name]="'m' + i"
+                            aria-label="Modalidad"
+                          >
                             <option i18n="@@plantillas.kumite" value="kumite">Kumite</option>
                             <option i18n="@@plantillas.kata" value="kata">Kata</option>
                           </select>
                         </td>
                         <td class="center">
-                          <input i18n-aria-label="@@plantillas.equipos"
+                          <input
+                            i18n-aria-label="@@plantillas.equipos"
                             type="checkbox"
                             [(ngModel)]="r.is_team"
                             [name]="'t' + i"
@@ -180,20 +223,27 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td>
-                          <select i18n-aria-label="@@plantillas.sexo-2" [(ngModel)]="r.sex" [name]="'s' + i" aria-label="Sexo">
+                          <select
+                            i18n-aria-label="@@plantillas.sexo-2"
+                            [(ngModel)]="r.sex"
+                            [name]="'s' + i"
+                            aria-label="Sexo"
+                          >
                             <option i18n="@@plantillas.m" value="M">M</option>
                             <option i18n="@@plantillas.f" value="F">F</option>
                             <option i18n="@@plantillas.mixto" value="X">Mixto</option>
                           </select>
                         </td>
                         <td class="nowrap">
-                          <input i18n-aria-label="@@plantillas.edad-minima"
+                          <input
+                            i18n-aria-label="@@plantillas.edad-minima"
                             class="num-in"
                             inputmode="numeric"
                             [(ngModel)]="r.age_min"
                             [name]="'a' + i"
                             aria-label="Edad mínima"
-                          />–<input i18n-aria-label="@@plantillas.edad-maxima"
+                          />–<input
+                            i18n-aria-label="@@plantillas.edad-maxima"
                             class="num-in"
                             inputmode="numeric"
                             [(ngModel)]="r.age_max"
@@ -202,7 +252,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td class="nowrap">
-                          <select i18n-aria-label="@@plantillas.grado-desde"
+                          <select
+                            i18n-aria-label="@@plantillas.grado-desde"
                             [(ngModel)]="r.grade_min"
                             [name]="'g' + i"
                             aria-label="Grado desde"
@@ -212,7 +263,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                               <option [ngValue]="gi + 1">{{ g }}</option>
                             }
                           </select>
-                          <select i18n-aria-label="@@plantillas.grado-hasta"
+                          <select
+                            i18n-aria-label="@@plantillas.grado-hasta"
                             [(ngModel)]="r.grade_max"
                             [name]="'h' + i"
                             aria-label="Grado hasta"
@@ -224,7 +276,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           </select>
                         </td>
                         <td>
-                          <input i18n-aria-label="@@plantillas.peso-2"
+                          <input
+                            i18n-aria-label="@@plantillas.peso-2"
                             class="w-in"
                             [(ngModel)]="r.weight_class"
                             [name]="'w' + i"
@@ -233,15 +286,27 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td>
-                          <select i18n-aria-label="@@plantillas.formato-2" [(ngModel)]="r.format" [name]="'f' + i" aria-label="Formato">
+                          <select
+                            i18n-aria-label="@@plantillas.formato-2"
+                            [(ngModel)]="r.format"
+                            [name]="'f' + i"
+                            aria-label="Formato"
+                          >
                             <option i18n="@@plantillas.torneo" [ngValue]="null">Del torneo</option>
-                            <option i18n="@@plantillas.eliminacion" value="single_elimination">Eliminación</option>
-                            <option i18n="@@plantillas.round-robin" value="round_robin">Round robin</option>
-                            <option i18n="@@plantillas.rondas-kata" value="kata_rounds">Rondas de kata</option>
+                            <option i18n="@@plantillas.eliminacion" value="single_elimination"
+                              >Eliminación</option
+                            >
+                            <option i18n="@@plantillas.round-robin" value="round_robin"
+                              >Round robin</option
+                            >
+                            <option i18n="@@plantillas.rondas-kata" value="kata_rounds"
+                              >Rondas de kata</option
+                            >
                           </select>
                         </td>
                         <td>
-                          <input i18n-aria-label="@@plantillas.duracion-segundos"
+                          <input
+                            i18n-aria-label="@@plantillas.duracion-segundos"
                             class="num-in"
                             inputmode="numeric"
                             [(ngModel)]="r.duration_seconds"
@@ -250,7 +315,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           />
                         </td>
                         <td class="nowrap">
-                          <button i18n-aria-label="@@plantillas.subir"
+                          <button
+                            i18n-aria-label="@@plantillas.subir"
                             class="btn sm ghost icon-only"
                             (click)="move(i, -1)"
                             [disabled]="i === 0"
@@ -258,7 +324,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           >
                             ↑
                           </button>
-                          <button i18n-aria-label="@@plantillas.bajar"
+                          <button
+                            i18n-aria-label="@@plantillas.bajar"
                             class="btn sm ghost icon-only"
                             (click)="move(i, 1)"
                             [disabled]="last"
@@ -266,7 +333,8 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                           >
                             ↓
                           </button>
-                          <button i18n-aria-label="@@plantillas.quitar-fila"
+                          <button
+                            i18n-aria-label="@@plantillas.quitar-fila"
                             class="btn sm ghost icon-only"
                             (click)="removeRow(i)"
                             aria-label="Quitar fila"
@@ -284,8 +352,15 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                   <app-icon name="plus" /> Agregar fila
                 </button>
                 <span class="grow"></span>
-                <button i18n="@@plantillas.cancelar" class="btn ghost" (click)="cancelEdit()">Cancelar</button>
-                <button i18n="@@plantillas.guardar-categorias" class="btn primary" [disabled]="saving()" (click)="saveRows(t)">
+                <button i18n="@@plantillas.cancelar" class="btn ghost" (click)="cancelEdit()"
+                  >Cancelar</button
+                >
+                <button
+                  i18n="@@plantillas.guardar-categorias"
+                  class="btn primary"
+                  [disabled]="saving()"
+                  (click)="saveRows(t)"
+                >
                   Guardar {{ rows().length }} categorías
                 </button>
               </div>
@@ -329,11 +404,15 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="9" class="empty"><ng-container i18n="@@plantillas.sin-categorias">
-                          Sin categorías.
-                          </ng-container>@if (t.can_edit) {<ng-container i18n="@@plantillas.usa-editar-tabla-para-agregarlas">
-                            Usa «Editar tabla» para agregarlas.
-                          </ng-container>}
+                        <td colspan="9" class="empty"
+                          ><ng-container i18n="@@plantillas.sin-categorias">
+                            Sin categorías.
+                          </ng-container>
+                          @if (t.can_edit) {
+                            <ng-container i18n="@@plantillas.usa-editar-tabla-para-agregarlas">
+                              Usa «Editar tabla» para agregarlas.
+                            </ng-container>
+                          }
                         </td>
                       </tr>
                     }
@@ -343,7 +422,11 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
             }
           } @else {
             <div class="card empty">
-              <p><strong i18n="@@plantillas.selecciona-plantilla">Selecciona una plantilla.</strong></p>
+              <p
+                ><strong i18n="@@plantillas.selecciona-plantilla"
+                  >Selecciona una plantilla.</strong
+                ></p
+              >
             </div>
           }
         </section>
@@ -351,10 +434,15 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
     </div>
 
     @if (newOpen()) {
-      <app-modal i18n-title="@@plantillas.nueva-plantilla-2" title="Nueva plantilla" (closed)="newOpen.set(false)">
+      <app-modal
+        i18n-title="@@plantillas.nueva-plantilla-2"
+        title="Nueva plantilla"
+        (closed)="newOpen.set(false)"
+      >
         <form class="stack" (ngSubmit)="create()">
           <label class="field"
-            ><span i18n="@@plantillas.nombre">Nombre</span><input name="nn" [(ngModel)]="meta.name" required autofocus
+            ><span i18n="@@plantillas.nombre">Nombre</span
+            ><input name="nn" [(ngModel)]="meta.name" required autofocus
           /></label>
           <label class="field"
             ><span i18n="@@plantillas.descripcion">Descripción</span
@@ -370,30 +458,49 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
               </select>
             </label>
           } @else if (orgChoices().length === 1) {
-            <p i18n="@@plantillas.organizacion-2" class="hint">Organización: {{ orgChoices()[0].name }}</p>
+            <p i18n="@@plantillas.organizacion-2" class="hint"
+              >Organización: {{ orgChoices()[0].name }}</p
+            >
           }
           <div class="form-actions">
-            <label i18n="@@plantillas.importar-excel" i18n-title="@@plantillas.crear-plantilla-desde-excel-xlsx" class="btn" title="Crear la plantilla desde un Excel (.xlsx)">
+            <label
+              i18n="@@plantillas.importar-excel"
+              i18n-title="@@plantillas.crear-plantilla-desde-excel-xlsx"
+              class="btn"
+              title="Crear la plantilla desde un Excel (.xlsx)"
+            >
               <app-icon name="upload" /> Importar Excel
               <input type="file" accept=".xlsx" hidden (change)="importFile($event, null)" />
             </label>
-            <button i18n="@@plantillas.crear-vacia" class="btn primary" [disabled]="!meta.name.trim()">Crear vacía</button>
+            <button
+              i18n="@@plantillas.crear-vacia"
+              class="btn primary"
+              [disabled]="!meta.name.trim()"
+              >Crear vacía</button
+            >
           </div>
         </form>
       </app-modal>
     }
     @if (metaOpen()) {
-      <app-modal i18n-title="@@plantillas.nombre-descripcion" title="Nombre y descripción" (closed)="metaOpen.set(false)">
+      <app-modal
+        i18n-title="@@plantillas.nombre-descripcion"
+        title="Nombre y descripción"
+        (closed)="metaOpen.set(false)"
+      >
         <form class="stack" (ngSubmit)="saveMeta()">
           <label class="field"
-            ><span i18n="@@plantillas.nombre">Nombre</span><input name="mn" [(ngModel)]="meta.name" required
+            ><span i18n="@@plantillas.nombre">Nombre</span
+            ><input name="mn" [(ngModel)]="meta.name" required
           /></label>
           <label class="field"
             ><span i18n="@@plantillas.descripcion">Descripción</span
             ><textarea name="md" rows="3" [(ngModel)]="meta.description"></textarea>
           </label>
           <div class="form-actions">
-            <button i18n="@@plantillas.guardar" class="btn primary" [disabled]="!meta.name.trim()">Guardar</button>
+            <button i18n="@@plantillas.guardar" class="btn primary" [disabled]="!meta.name.trim()"
+              >Guardar</button
+            >
           </div>
         </form>
       </app-modal>
@@ -583,7 +690,10 @@ export class TemplateListPage {
     const res = await this.mut.put<Template>(
       `/templates/${t.id}/items`,
       { version: t.version, items: toPayload(this.rows()) },
-      { success: $localize`:@@plantillas.plantilla-guardada:Plantilla guardada`, onConflict: () => this.load(t.id) },
+      {
+        success: $localize`:@@plantillas.plantilla-guardada:Plantilla guardada`,
+        onConflict: () => this.load(t.id),
+      },
     );
     this.saving.set(false);
     if (res) {
@@ -598,7 +708,15 @@ export class TemplateListPage {
     const orgs = (u?.organizations ?? [])
       .filter((o) => o.role === 'owner' || o.role === 'admin')
       .map((o) => ({ id: o.id as number | null, name: o.name }));
-    return u?.is_admin ? [{ id: null, name: $localize`:@@plantillas.global-todas-organizaciones:Global (todas las organizaciones)` }, ...orgs] : orgs;
+    return u?.is_admin
+      ? [
+          {
+            id: null,
+            name: $localize`:@@plantillas.global-todas-organizaciones:Global (todas las organizaciones)`,
+          },
+          ...orgs,
+        ]
+      : orgs;
   });
   newOrg: number | null = null;
 
@@ -648,7 +766,10 @@ export class TemplateListPage {
     const res = await this.mut.patch<Template>(
       `/templates/${t.id}`,
       { version: t.version, name: this.meta.name.trim(), description: this.meta.description },
-      { success: $localize`:@@plantillas.plantilla-actualizada:Plantilla actualizada`, onConflict: () => this.load(t.id) },
+      {
+        success: $localize`:@@plantillas.plantilla-actualizada:Plantilla actualizada`,
+        onConflict: () => this.load(t.id),
+      },
     );
     if (res) {
       this.metaOpen.set(false);
@@ -677,18 +798,26 @@ export class TemplateListPage {
     const res = await this.mut.patch<Template>(
       `/templates/${t.id}`,
       { version: t.version, is_archived: archived },
-      { success: archived ? $localize`:@@plantillas.plantilla-archivada:Plantilla archivada` : $localize`:@@plantillas.plantilla-restaurada:Plantilla restaurada` },
+      {
+        success: archived
+          ? $localize`:@@plantillas.plantilla-archivada:Plantilla archivada`
+          : $localize`:@@plantillas.plantilla-restaurada:Plantilla restaurada`,
+      },
     );
     if (res) await this.load(res.id);
   }
 
   async remove(t: Template): Promise<void> {
     const ok = await this.dialog.confirm({
-      title: t.in_use ? $localize`:@@plantillas.archivar-plantilla:Archivar plantilla` : $localize`:@@plantillas.borrar-plantilla:Borrar plantilla`,
+      title: t.in_use
+        ? $localize`:@@plantillas.archivar-plantilla:Archivar plantilla`
+        : $localize`:@@plantillas.borrar-plantilla:Borrar plantilla`,
       message: t.in_use
         ? $localize`:@@plantillas.uso-torneo-archiva-deja:«${t.name}:name:» la usó un torneo: se archiva (deja de ofrecerse para torneos nuevos) y se puede restaurar.`
         : $localize`:@@plantillas.borra-categorias-no-puede:Se borra «${t.name}:name:» con sus ${t.items.length}:length: categorías. No se puede deshacer.`,
-      confirmText: t.in_use ? $localize`:@@plantillas.archivar-2:Archivar` : $localize`:@@plantillas.borrar-2:Borrar`,
+      confirmText: t.in_use
+        ? $localize`:@@plantillas.archivar-2:Archivar`
+        : $localize`:@@plantillas.borrar-2:Borrar`,
       danger: !t.in_use,
     });
     if (!ok) return;
@@ -696,7 +825,11 @@ export class TemplateListPage {
       const res = await firstValueFrom(
         this.api.delete<{ deleted: boolean; archived: boolean }>(`/templates/${t.id}`),
       );
-      this.toast.ok(res.deleted ? $localize`:@@plantillas.plantilla-borrada:Plantilla borrada` : $localize`:@@plantillas.plantilla-archivada:Plantilla archivada`);
+      this.toast.ok(
+        res.deleted
+          ? $localize`:@@plantillas.plantilla-borrada:Plantilla borrada`
+          : $localize`:@@plantillas.plantilla-archivada:Plantilla archivada`,
+      );
       this.selected.set(null);
       await this.load();
     } catch (e) {
@@ -724,13 +857,20 @@ export class TemplateListPage {
           ? `/templates/import?organization_id=${this.newOrg}`
           : '/templates/import';
       const res = await firstValueFrom(this.api.upload<Template>(path, file));
-      this.toast.ok($localize`:@@plantillas.plantilla-categorias-importadas:Plantilla «${res.name}:name:»: ${res.items.length}:length: categorías importadas`);
+      this.toast.ok(
+        $localize`:@@plantillas.plantilla-categorias-importadas:Plantilla «${res.name}:name:»: ${res.items.length}:length: categorías importadas`,
+      );
       this.newOpen.set(false);
       await this.load(res.id);
     } catch (e) {
       const err = ApiError.from(e);
       const rows = (err.details['errors'] as string[] | undefined) ?? [];
-      if (rows.length) await this.dialog.alert($localize`:@@plantillas.plantilla-tiene-errores:La plantilla tiene errores`, err.message, rows);
+      if (rows.length)
+        await this.dialog.alert(
+          $localize`:@@plantillas.plantilla-tiene-errores:La plantilla tiene errores`,
+          err.message,
+          rows,
+        );
       else this.toast.error(err.fullMessage);
     }
   }

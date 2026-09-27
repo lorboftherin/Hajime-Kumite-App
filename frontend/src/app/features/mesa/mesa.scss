@@ -35,7 +35,13 @@
   --m-kin: var(--kin, #c9a24b);
   --m-sumi: var(--sumi, #1e1c1a);
 
-  --m-display: var(--font-display, 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif);
+  --m-display: var(
+    --font-display,
+    'Shippori Mincho B1',
+    'Hiragino Mincho ProN',
+    'Yu Mincho',
+    serif
+  );
   --m-ui: var(--font-ui, 'Zen Kaku Gothic New', system-ui, sans-serif);
   --m-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --m-ease: var(--ease, cubic-bezier(0.2, 0.7, 0.2, 1));
@@ -386,4 +392,3 @@ button.pill {
     }
   }
 }
-

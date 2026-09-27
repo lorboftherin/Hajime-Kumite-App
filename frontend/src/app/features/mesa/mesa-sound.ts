@@ -54,7 +54,10 @@ export class Beeper {
   private context(): AudioContext | null {
     if (this.ctx) return this.ctx;
     try {
-      const w = globalThis as unknown as { AudioContext?: AudioCtor; webkitAudioContext?: AudioCtor };
+      const w = globalThis as unknown as {
+        AudioContext?: AudioCtor;
+        webkitAudioContext?: AudioCtor;
+      };
       const Ctor = w.AudioContext ?? w.webkitAudioContext;
       this.ctx = Ctor ? new Ctor() : null;
     } catch {

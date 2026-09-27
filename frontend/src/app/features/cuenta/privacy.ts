@@ -12,7 +12,11 @@ import { Enso, HajimeWord } from '../../shared/enso';
   template: `
     <div class="page">
       <header class="top">
-        <a i18n-aria-label="@@privacidad.hajime" class="brand" routerLink="/login" aria-label="Hajime"
+        <a
+          i18n-aria-label="@@privacidad.hajime"
+          class="brand"
+          routerLink="/login"
+          aria-label="Hajime"
           ><app-enso class="mark" /><app-hajime-word class="word"
         /></a>
       </header>
@@ -48,11 +52,17 @@ import { Enso, HajimeWord } from '../../shared/enso';
               </td>
             </tr>
             <tr>
-              <td i18n="@@privacidad.propia-persona-adulta-perfil">La propia persona adulta (perfil reclamado)</td>
-              <td i18n="@@privacidad.historial-completo-combates">Su historial completo, combates, estadísticas e insignias.</td>
+              <td i18n="@@privacidad.propia-persona-adulta-perfil"
+                >La propia persona adulta (perfil reclamado)</td
+              >
+              <td i18n="@@privacidad.historial-completo-combates"
+                >Su historial completo, combates, estadísticas e insignias.</td
+              >
             </tr>
             <tr>
-              <td i18n="@@privacidad.padre-madre-apoderado-perfil">Padre, madre o apoderado (perfil del menor reclamado y aprobado)</td>
+              <td i18n="@@privacidad.padre-madre-apoderado-perfil"
+                >Padre, madre o apoderado (perfil del menor reclamado y aprobado)</td
+              >
               <td i18n="@@privacidad.historial-completo-menor-rivales">
                 El historial completo del menor. De los rivales, solo el nombre abreviado y su dojo.
               </td>
@@ -65,7 +75,9 @@ import { Enso, HajimeWord } from '../../shared/enso';
               </td>
             </tr>
             <tr>
-              <td i18n="@@privacidad.organizadores-administracion">Organizadores y administración</td>
+              <td i18n="@@privacidad.organizadores-administracion"
+                >Organizadores y administración</td
+              >
               <td i18n="@@privacidad.datos-necesarios-para-organizar">
                 Los datos necesarios para organizar el torneo, incluidos documento y fecha de
                 nacimiento.

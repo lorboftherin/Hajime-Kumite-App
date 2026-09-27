@@ -64,7 +64,11 @@ export class MoreMenu {
   readonly small = input(true);
 
   readonly open = signal(false);
-  readonly pos = signal<{ top: number | null; bottom: number | null; right: number }>({ top: 0, bottom: null, right: 0 });
+  readonly pos = signal<{ top: number | null; bottom: number | null; right: number }>({
+    top: 0,
+    bottom: null,
+    right: 0,
+  });
 
   private host = inject(ElementRef<HTMLElement>);
   private trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
@@ -83,7 +87,11 @@ export class MoreMenu {
     const r = this.trigger().nativeElement.getBoundingClientRect();
     const below = window.innerHeight - r.bottom;
     const right = Math.max(8, window.innerWidth - r.right);
-    this.pos.set(below < 280 && r.top > below ? { top: null, bottom: window.innerHeight - r.top + 6, right } : { top: r.bottom + 6, bottom: null, right });
+    this.pos.set(
+      below < 280 && r.top > below
+        ? { top: null, bottom: window.innerHeight - r.top + 6, right }
+        : { top: r.bottom + 6, bottom: null, right },
+    );
     this.open.set(true);
     window.addEventListener('scroll', this.onScroll, true);
     setTimeout(() => {
@@ -114,7 +122,8 @@ export class MoreMenu {
     ev.preventDefault();
     const items = this.items();
     const i = items.indexOf(document.activeElement as HTMLElement);
-    const next = ev.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    const next =
+      ev.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
     items[next]?.focus();
   }
 

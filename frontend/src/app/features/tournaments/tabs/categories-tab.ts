@@ -2,7 +2,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { DialogService } from '../../../core/dialog.service';
-import { ADVICE_LABEL, CATEGORY_STATUS, FORMAT_LABEL, GRADES, MODALITY_LABEL, SEX_LABEL } from '../../../core/format';
+import {
+  ADVICE_LABEL,
+  CATEGORY_STATUS,
+  FORMAT_LABEL,
+  GRADES,
+  MODALITY_LABEL,
+  SEX_LABEL,
+} from '../../../core/format';
 import { Bracket, Category } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
@@ -19,42 +26,105 @@ import { TournamentContext } from '../tournament-context';
 
 @Component({
   selector: 'app-categories-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, LabelPipe, Icon, MoreMenu, RulesForm, CategorySplitDialog],
+  imports: [
+    FormsModule,
+    RouterLink,
+    StatusBadge,
+    Modal,
+    LabelPipe,
+    Icon,
+    MoreMenu,
+    RulesForm,
+    CategorySplitDialog,
+  ],
   template: `
     <div class="toolbar">
       <div class="search">
         <app-icon name="search" />
-        <input i18n-aria-label="@@torneo.categorias.buscar-categoria" i18n-placeholder="@@torneo.categorias.buscar-nombre-codigo" placeholder="Buscar por nombre o código…" aria-label="Buscar categoría" [ngModel]="q()" (ngModelChange)="q.set($event)" />
+        <input
+          i18n-aria-label="@@torneo.categorias.buscar-categoria"
+          i18n-placeholder="@@torneo.categorias.buscar-nombre-codigo"
+          placeholder="Buscar por nombre o código…"
+          aria-label="Buscar categoría"
+          [ngModel]="q()"
+          (ngModelChange)="q.set($event)"
+        />
       </div>
-      <select i18n-aria-label="@@torneo.categorias.estado" aria-label="Estado" [ngModel]="status()" (ngModelChange)="status.set($event)">
+      <select
+        i18n-aria-label="@@torneo.categorias.estado"
+        aria-label="Estado"
+        [ngModel]="status()"
+        (ngModelChange)="status.set($event)"
+      >
         <option i18n="@@torneo.categorias.todos-estados" value="">Todos los estados</option>
         @for (s of statusKeys; track s) {
           <option [value]="s">{{ statusLabel[s] }}</option>
         }
       </select>
-      <select i18n-aria-label="@@torneo.categorias.modalidad" aria-label="Modalidad" [ngModel]="modality()" (ngModelChange)="modality.set($event)">
+      <select
+        i18n-aria-label="@@torneo.categorias.modalidad"
+        aria-label="Modalidad"
+        [ngModel]="modality()"
+        (ngModelChange)="modality.set($event)"
+      >
         <option i18n="@@torneo.categorias.kumite-kata" value="">Kumite y kata</option>
         <option i18n="@@torneo.categorias.kumite" value="kumite">Kumite</option>
         <option i18n="@@torneo.categorias.kata" value="kata">Kata</option>
       </select>
-      <label i18n="@@torneo.categorias.ocultar-vacias" class="field inline small"><input type="checkbox" [ngModel]="hideEmpty()" (ngModelChange)="hideEmpty.set($event)" /> Ocultar vacías</label>
-      <span i18n="@@torneo.categorias.de" class="count">{{ filtered().length }} de {{ ctx.categories().length }}</span>
-      <button i18n-aria-label="@@torneo.categorias.recargar" i18n-title="@@torneo.categorias.recargar" class="btn icon-only ghost" (click)="reload()" title="Recargar" aria-label="Recargar"><app-icon name="refresh" /></button>
+      <label i18n="@@torneo.categorias.ocultar-vacias" class="field inline small"
+        ><input type="checkbox" [ngModel]="hideEmpty()" (ngModelChange)="hideEmpty.set($event)" />
+        Ocultar vacías</label
+      >
+      <span i18n="@@torneo.categorias.de" class="count"
+        >{{ filtered().length }} de {{ ctx.categories().length }}</span
+      >
+      <button
+        i18n-aria-label="@@torneo.categorias.recargar"
+        i18n-title="@@torneo.categorias.recargar"
+        class="btn icon-only ghost"
+        (click)="reload()"
+        title="Recargar"
+        aria-label="Recargar"
+        ><app-icon name="refresh"
+      /></button>
       @if (pendingBrackets().length) {
-        <button class="btn" [disabled]="generatingAll()" (click)="generateAll()" [title]="tituloGenerarTodas(pendingBrackets().length)">
+        <button
+          class="btn"
+          [disabled]="generatingAll()"
+          (click)="generateAll()"
+          [title]="tituloGenerarTodas(pendingBrackets().length)"
+        >
           @if (generatingAll()) {
             <span class="spinner"></span>
-          }<ng-container i18n="@@torneo.categorias.generar-todas-llaves">
-          Generar todas las llaves ({{ pendingBrackets().length }})
-        </ng-container></button>
+          }
+          <ng-container i18n="@@torneo.categorias.generar-todas-llaves">
+            Generar todas las llaves ({{ pendingBrackets().length }})
+          </ng-container></button
+        >
       }
-      <button i18n="@@torneo.categorias.categoria-manual" class="btn primary" (click)="openCreate()"><app-icon name="plus" /> Categoría manual</button>
+      <button i18n="@@torneo.categorias.categoria-manual" class="btn primary" (click)="openCreate()"
+        ><app-icon name="plus" /> Categoría manual</button
+      >
     </div>
     @if (selected().size) {
       <div class="selection-bar" role="status">
-        <span i18n="@@torneo.categorias.n-seleccionadas">{selected().size, plural, =1 {<strong class="num">1</strong> seleccionada} other {<strong class="num">{{ selected().size }}</strong> seleccionadas}}</span>
-        <button i18n="@@torneo.categorias.fusionar-seleccionadas" class="btn sm" [disabled]="selected().size < 2" (click)="openMerge()">Fusionar seleccionadas</button>
-        <button i18n="@@torneo.categorias.quitar-seleccion" class="btn sm ghost" (click)="clearSelection()">Quitar selección</button>
+        <span i18n="@@torneo.categorias.n-seleccionadas">{selected().size, plural,
+          =1 {<strong class="num">1</strong> seleccionada}
+          other {<strong class="num">{{ selected().size }}</strong> seleccionadas}
+        }</span>
+        <button
+          i18n="@@torneo.categorias.fusionar-seleccionadas"
+          class="btn sm"
+          [disabled]="selected().size < 2"
+          (click)="openMerge()"
+          >Fusionar seleccionadas</button
+        >
+        <button
+          i18n="@@torneo.categorias.quitar-seleccion"
+          class="btn sm ghost"
+          (click)="clearSelection()"
+          >Quitar selección</button
+        >
       </div>
     }
 
@@ -62,33 +132,56 @@ import { TournamentContext } from '../tournament-context';
       <table class="table">
         <thead>
           <tr>
-            <th class="check"><span i18n="@@torneo.categorias.seleccionar" class="sr-only">Seleccionar</span></th>
+            <th class="check"
+              ><span i18n="@@torneo.categorias.seleccionar" class="sr-only">Seleccionar</span></th
+            >
             <th i18n="@@torneo.categorias.categoria">Categoría</th>
             <th i18n="@@torneo.categorias.modalidad-2">Modalidad</th>
             <th i18n="@@torneo.categorias.inscritos" class="center">Inscritos</th>
             <th i18n="@@torneo.categorias.estado-2">Estado</th>
             <th i18n="@@torneo.categorias.tatami-cola">Tatami · cola</th>
-            <th class="right"><span i18n="@@torneo.categorias.acciones" class="sr-only">Acciones</span></th>
+            <th class="right"
+              ><span i18n="@@torneo.categorias.acciones" class="sr-only">Acciones</span></th
+            >
           </tr>
         </thead>
         <tbody>
           @for (c of filtered(); track c.id) {
             <tr [class.selected]="selected().has(c.id)">
-              <td class="check"><input type="checkbox" [checked]="selected().has(c.id)" (change)="toggle(c.id)" [attr.aria-label]="ariaSeleccionar(c.name)" /></td>
+              <td class="check"
+                ><input
+                  type="checkbox"
+                  [checked]="selected().has(c.id)"
+                  (change)="toggle(c.id)"
+                  [attr.aria-label]="ariaSeleccionar(c.name)"
+              /></td>
               <td class="cat">
-                <div class="cat-name">{{ c.name }} @if (c.is_manual) {<span i18n="@@torneo.categorias.manual" class="badge plain">manual</span>}</div>
+                <div class="cat-name"
+                  >{{ c.name }}
+                  @if (c.is_manual) {
+                    <span i18n="@@torneo.categorias.manual" class="badge plain">manual</span>
+                  }
+                </div>
                 <div class="code">{{ c.code }}</div>
                 @if (c.merged_into_id) {
-                  <div i18n="@@torneo.categorias.fusionada" class="small muted">→ fusionada en {{ catName(c.merged_into_id) }}</div>
+                  <div i18n="@@torneo.categorias.fusionada" class="small muted"
+                    >→ fusionada en {{ catName(c.merged_into_id) }}</div
+                  >
                 }
                 @if (c.cancel_reason) {
-                  <div i18n="@@torneo.categorias.cancelada" class="small muted">Cancelada: {{ c.cancel_reason }}</div>
+                  <div i18n="@@torneo.categorias.cancelada" class="small muted"
+                    >Cancelada: {{ c.cancel_reason }}</div
+                  >
                 }
                 @if (c.advice.length && c.status !== 'empty') {
-                  <div i18n="@@torneo.categorias.sugerencia" class="small advice">Sugerencia: {{ adviceText(c.advice) }}</div>
+                  <div i18n="@@torneo.categorias.sugerencia" class="small advice"
+                    >Sugerencia: {{ adviceText(c.advice) }}</div
+                  >
                 }
                 @if (c.split_from_id) {
-                  <div i18n="@@torneo.categorias.dividida" class="small muted">← dividida de {{ catName(c.split_from_id) }}</div>
+                  <div i18n="@@torneo.categorias.dividida" class="small muted"
+                    >← dividida de {{ catName(c.split_from_id) }}</div
+                  >
                 }
               </td>
               <td class="nowrap">
@@ -99,7 +192,12 @@ import { TournamentContext } from '../tournament-context';
                 <span class="muted">· {{ c.sex | label: sexLabel }}</span>
               </td>
               <td class="center">
-                <span class="count-cell" [class.zero]="!c.entrant_count" [class.over]="!!c.max_entrants && c.entrant_count > c.max_entrants">{{ c.entrant_count }}</span>
+                <span
+                  class="count-cell"
+                  [class.zero]="!c.entrant_count"
+                  [class.over]="!!c.max_entrants && c.entrant_count > c.max_entrants"
+                  >{{ c.entrant_count }}</span
+                >
                 @if (c.max_entrants) {
                   <span class="muted small">/ {{ c.max_entrants }}</span>
                 }
@@ -107,51 +205,116 @@ import { TournamentContext } from '../tournament-context';
               <td><app-status [status]="c.status" /></td>
               <td class="nowrap">
                 @if (c.tatami_id) {
-                  {{ tatamiName(c.tatami_id) }} <span class="muted">· {{ c.queue_position ?? '—' }}</span>
+                  {{ tatamiName(c.tatami_id) }}
+                  <span class="muted">· {{ c.queue_position ?? '—' }}</span>
                 } @else {
                   <span class="muted">—</span>
                 }
               </td>
-              <td class="right"><div class="actions">
-                @if (hasBracket(c)) {
-                  <a i18n="@@torneo.categorias.llave" class="btn sm" [routerLink]="['/categorias', c.id, 'llave']">Llave</a>
-                } @else if (c.status === 'open' && c.entrant_count > 0) {
-                  <button i18n="@@torneo.categorias.generar-llave" class="btn sm primary" (click)="generate(c)">Generar llave</button>
-                }
-                <app-more i18n-label="@@menu-mas.mas-acciones-de" label="Más acciones · {{ c.name }}">
-                  @if (c.status !== 'merged' && c.status !== 'cancelled') {
-                    <button i18n="@@torneo.categorias.editar-categoria" class="menu-item" (click)="openEdit(c)">Editar categoría</button>
+              <td class="right"
+                ><div class="actions">
+                  @if (hasBracket(c)) {
+                    <a
+                      i18n="@@torneo.categorias.llave"
+                      class="btn sm"
+                      [routerLink]="['/categorias', c.id, 'llave']"
+                      >Llave</a
+                    >
+                  } @else if (c.status === 'open' && c.entrant_count > 0) {
+                    <button
+                      i18n="@@torneo.categorias.generar-llave"
+                      class="btn sm primary"
+                      (click)="generate(c)"
+                      >Generar llave</button
+                    >
                   }
-                  <button i18n="@@torneo.categorias.asignar-tatami" class="menu-item" (click)="openTatami(c)">Asignar tatami</button>
-                  @if (['open', 'ready'].includes(c.status) && c.entrant_count >= 2) {
-                    <button i18n="@@torneo.categorias.dividir-categoria" class="menu-item" (click)="splitCat.set(c)">Dividir categoría…</button>
-                  }
-                  @if (c.has_split) {
-                    <button i18n="@@torneo.categorias.deshacer-division" class="menu-item" (click)="unsplit(c)">Deshacer división</button>
-                  }
-                  @if (mergeTargets().has(c.id)) {
-                    <button i18n="@@torneo.categorias.separar-deshacer-fusion" class="menu-item" (click)="unmerge(c)">Separar (deshacer fusión)</button>
-                  }
-                  @if (c.status === 'finished') {
-                    <button i18n="@@torneo.categorias.reabrir-categoria" class="menu-item" (click)="reopen(c)">Reabrir categoría</button>
-                  }
-                  @if (c.status !== 'cancelled' && c.status !== 'merged') {
-                    <hr />
-                    <button i18n="@@torneo.categorias.cancelar-categoria" class="menu-item danger" (click)="cancel(c)">Cancelar categoría</button>
-                  }
-                </app-more>
-              </div></td>
+                  <app-more
+                    i18n-label="@@menu-mas.mas-acciones-de"
+                    label="Más acciones · {{ c.name }}"
+                  >
+                    @if (c.status !== 'merged' && c.status !== 'cancelled') {
+                      <button
+                        i18n="@@torneo.categorias.editar-categoria"
+                        class="menu-item"
+                        (click)="openEdit(c)"
+                        >Editar categoría</button
+                      >
+                    }
+                    <button
+                      i18n="@@torneo.categorias.asignar-tatami"
+                      class="menu-item"
+                      (click)="openTatami(c)"
+                      >Asignar tatami</button
+                    >
+                    @if (['open', 'ready'].includes(c.status) && c.entrant_count >= 2) {
+                      <button
+                        i18n="@@torneo.categorias.dividir-categoria"
+                        class="menu-item"
+                        (click)="splitCat.set(c)"
+                        >Dividir categoría…</button
+                      >
+                    }
+                    @if (c.has_split) {
+                      <button
+                        i18n="@@torneo.categorias.deshacer-division"
+                        class="menu-item"
+                        (click)="unsplit(c)"
+                        >Deshacer división</button
+                      >
+                    }
+                    @if (mergeTargets().has(c.id)) {
+                      <button
+                        i18n="@@torneo.categorias.separar-deshacer-fusion"
+                        class="menu-item"
+                        (click)="unmerge(c)"
+                        >Separar (deshacer fusión)</button
+                      >
+                    }
+                    @if (c.status === 'finished') {
+                      <button
+                        i18n="@@torneo.categorias.reabrir-categoria"
+                        class="menu-item"
+                        (click)="reopen(c)"
+                        >Reabrir categoría</button
+                      >
+                    }
+                    @if (c.status !== 'cancelled' && c.status !== 'merged') {
+                      <hr />
+                      <button
+                        i18n="@@torneo.categorias.cancelar-categoria"
+                        class="menu-item danger"
+                        (click)="cancel(c)"
+                        >Cancelar categoría</button
+                      >
+                    }
+                  </app-more>
+                </div></td
+              >
             </tr>
           } @empty {
-            <tr><td colspan="7" class="empty"><p><strong i18n="@@torneo.categorias.nada-aqui">Nada por aquí.</strong></p><ng-container i18n="@@torneo.categorias.no-hay-categorias-esos-filtros">No hay categorías con esos filtros.</ng-container></td></tr>
+            <tr
+              ><td colspan="7" class="empty"
+                ><p><strong i18n="@@torneo.categorias.nada-aqui">Nada por aquí.</strong></p
+                ><ng-container i18n="@@torneo.categorias.no-hay-categorias-esos-filtros"
+                  >No hay categorías con esos filtros.</ng-container
+                ></td
+              ></tr
+            >
           }
         </tbody>
       </table>
     </div>
 
     @if (mergeOpen()) {
-      <app-modal i18n-title="@@torneo.categorias.fusionar-categorias" title="Fusionar categorías" (closed)="mergeOpen.set(false)">
-        <p i18n="@@torneo.categorias.inscritos-pasan-categoria" class="small muted">Los inscritos pasan a la categoría destino; las demás quedan como "Fusionada" para el historial. Se puede deshacer si no hay combates iniciados.</p>
+      <app-modal
+        i18n-title="@@torneo.categorias.fusionar-categorias"
+        title="Fusionar categorías"
+        (closed)="mergeOpen.set(false)"
+      >
+        <p i18n="@@torneo.categorias.inscritos-pasan-categoria" class="small muted"
+          >Los inscritos pasan a la categoría destino; las demás quedan como "Fusionada" para el
+          historial. Se puede deshacer si no hay combates iniciados.</p
+        >
         <ul class="small">
           @for (c of selectedCats(); track c.id) {
             <li>{{ c.name }} ({{ c.entrant_count }})</li>
@@ -161,55 +324,96 @@ import { TournamentContext } from '../tournament-context';
           <label class="field">
             <span i18n="@@torneo.categorias.destino">Destino</span>
             <select [(ngModel)]="merge.target_id">
-              <option i18n="@@torneo.categorias.crear-categoria-nueva" [ngValue]="null">Crear una categoría nueva</option>
+              <option i18n="@@torneo.categorias.crear-categoria-nueva" [ngValue]="null"
+                >Crear una categoría nueva</option
+              >
               @for (c of selectedCats(); track c.id) {
                 <option [ngValue]="c.id">{{ c.name }}</option>
               }
             </select>
           </label>
           @if (merge.target_id === null) {
-            <label class="field"><span i18n="@@torneo.categorias.nombre-nueva-categoria">Nombre de la nueva categoría</span><input [(ngModel)]="merge.new_name" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.nombre-nueva-categoria"
+                >Nombre de la nueva categoría</span
+              ><input [(ngModel)]="merge.new_name"
+            /></label>
           }
-          <label class="field"><span i18n="@@torneo.categorias.motivo">Motivo</span><input i18n-placeholder="@@torneo.categorias.ej-pocos-inscritos" [(ngModel)]="merge.reason" placeholder="Ej.: pocos inscritos" /></label>
+          <label class="field"
+            ><span i18n="@@torneo.categorias.motivo">Motivo</span
+            ><input
+              i18n-placeholder="@@torneo.categorias.ej-pocos-inscritos"
+              [(ngModel)]="merge.reason"
+              placeholder="Ej.: pocos inscritos"
+          /></label>
         </div>
         <div class="form-actions">
-          <button i18n="@@torneo.categorias.cancelar" class="btn" (click)="mergeOpen.set(false)">Cancelar</button>
-          <button i18n="@@torneo.categorias.fusionar" class="btn primary" (click)="doMerge()">Fusionar</button>
+          <button i18n="@@torneo.categorias.cancelar" class="btn" (click)="mergeOpen.set(false)"
+            >Cancelar</button
+          >
+          <button i18n="@@torneo.categorias.fusionar" class="btn primary" (click)="doMerge()"
+            >Fusionar</button
+          >
         </div>
       </app-modal>
     }
 
     @if (splitCat(); as c) {
-      <app-category-split [category]="c" (closed)="splitCat.set(null)" (done)="splitCat.set(null); reload()" />
+      <app-category-split
+        [category]="c"
+        (closed)="splitCat.set(null)"
+        (done)="splitCat.set(null); reload()"
+      />
     }
 
     @if (tatamiCat(); as c) {
-      <app-modal i18n-title="@@torneo.categorias.tatami-de" title="Tatami · {{ c.name }}" (closed)="tatamiCat.set(null)">
+      <app-modal
+        i18n-title="@@torneo.categorias.tatami-de"
+        title="Tatami · {{ c.name }}"
+        (closed)="tatamiCat.set(null)"
+      >
         <div class="grid-2">
           <label class="field">
             <span i18n="@@torneo.categorias.tatami">Tatami</span>
             <select [(ngModel)]="tat.tatami_id">
-              <option i18n="@@torneo.categorias.sin-asignar" [ngValue]="null">— Sin asignar —</option>
+              <option i18n="@@torneo.categorias.sin-asignar" [ngValue]="null"
+                >— Sin asignar —</option
+              >
               @for (tt of ctx.tournament()?.tatamis ?? []; track tt.id) {
                 <option [ngValue]="tt.id">{{ tt.name || 'Tatami ' + tt.number }}</option>
               }
             </select>
           </label>
-          <label class="field"><span i18n="@@torneo.categorias.posicion-cola">Posición en la cola</span><input type="number" min="1" [(ngModel)]="tat.queue_position" /></label>
+          <label class="field"
+            ><span i18n="@@torneo.categorias.posicion-cola">Posición en la cola</span
+            ><input type="number" min="1" [(ngModel)]="tat.queue_position"
+          /></label>
         </div>
         <div class="form-actions">
-          <button i18n="@@torneo.categorias.cancelar" class="btn" (click)="tatamiCat.set(null)">Cancelar</button>
-          <button i18n="@@torneo.categorias.guardar" class="btn primary" (click)="saveTatami(c)">Guardar</button>
+          <button i18n="@@torneo.categorias.cancelar" class="btn" (click)="tatamiCat.set(null)"
+            >Cancelar</button
+          >
+          <button i18n="@@torneo.categorias.guardar" class="btn primary" (click)="saveTatami(c)"
+            >Guardar</button
+          >
         </div>
       </app-modal>
     }
 
     @if (editCat(); as c) {
-      <app-modal i18n-title="@@torneo.categorias.editar-de" title="Editar · {{ c.name }}" [wide]="true" (closed)="editCat.set(null)">
+      <app-modal
+        i18n-title="@@torneo.categorias.editar-de"
+        title="Editar · {{ c.name }}"
+        [wide]="true"
+        (closed)="editCat.set(null)"
+      >
         <form (ngSubmit)="saveEdit(c)">
           <h3 i18n="@@torneo.categorias.datos-basicos" class="sec">Datos básicos</h3>
           <div class="grid-3">
-            <label class="field" style="grid-column: span 2"><span i18n="@@torneo.categorias.nombre">Nombre *</span><input name="name" [(ngModel)]="ec.name" required /></label>
+            <label class="field" style="grid-column: span 2"
+              ><span i18n="@@torneo.categorias.nombre">Nombre *</span
+              ><input name="name" [(ngModel)]="ec.name" required
+            /></label>
             <label class="field">
               <span i18n="@@torneo.categorias.sexo">Sexo</span>
               <select name="sex" [(ngModel)]="ec.sex">
@@ -218,9 +422,18 @@ import { TournamentContext } from '../tournament-context';
                 <option i18n="@@torneo.categorias.mixto" value="X">Mixto</option>
               </select>
             </label>
-            <label class="field"><span i18n="@@torneo.categorias.edad-min">Edad mín.</span><input type="number" name="amin" [(ngModel)]="ec.age_min" /></label>
-            <label class="field"><span i18n="@@torneo.categorias.edad-max">Edad máx.</span><input type="number" name="amax" [(ngModel)]="ec.age_max" /></label>
-            <label class="field"><span i18n="@@torneo.categorias.peso">Peso</span><input name="w" [(ngModel)]="ec.weight_class" placeholder="-60" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.edad-min">Edad mín.</span
+              ><input type="number" name="amin" [(ngModel)]="ec.age_min"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.edad-max">Edad máx.</span
+              ><input type="number" name="amax" [(ngModel)]="ec.age_max"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.peso">Peso</span
+              ><input name="w" [(ngModel)]="ec.weight_class" placeholder="-60"
+            /></label>
             <label class="field">
               <span i18n="@@torneo.categorias.grado-min">Grado mín.</span>
               <select name="gmin" [(ngModel)]="ec.grade_min">
@@ -240,56 +453,121 @@ import { TournamentContext } from '../tournament-context';
               </select>
             </label>
             @if (c.modality === 'kumite') {
-              <label class="field"><span i18n="@@torneo.categorias.duracion-seg">Duración (seg)</span><input i18n-placeholder="@@torneo.categorias.defecto" type="number" min="0" name="dur" [(ngModel)]="ec.duration_seconds" placeholder="Por defecto" /></label>
+              <label class="field"
+                ><span i18n="@@torneo.categorias.duracion-seg">Duración (seg)</span
+                ><input
+                  i18n-placeholder="@@torneo.categorias.defecto"
+                  type="number"
+                  min="0"
+                  name="dur"
+                  [(ngModel)]="ec.duration_seconds"
+                  placeholder="Por defecto"
+              /></label>
             }
             <label class="field">
               <span i18n="@@torneo.categorias.formato">Formato</span>
               <select name="fmt" [(ngModel)]="ec.format" [disabled]="formatLocked(c)">
-                <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null">Por defecto del torneo</option>
-                <option i18n="@@torneo.categorias.eliminacion-directa" value="single_elimination">Eliminación directa</option>
-                <option i18n="@@torneo.categorias.round-robin" value="round_robin">Round robin</option>
-                <option i18n="@@torneo.categorias.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
+                <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null"
+                  >Por defecto del torneo</option
+                >
+                <option i18n="@@torneo.categorias.eliminacion-directa" value="single_elimination"
+                  >Eliminación directa</option
+                >
+                <option i18n="@@torneo.categorias.round-robin" value="round_robin"
+                  >Round robin</option
+                >
+                <option i18n="@@torneo.categorias.grupos-eliminacion" value="groups_knockout"
+                  >Grupos + eliminación</option
+                >
                 @if (c.modality === 'kata') {
-                  <option i18n="@@torneo.categorias.rondas-kata" value="kata_rounds">Rondas de kata</option>
+                  <option i18n="@@torneo.categorias.rondas-kata" value="kata_rounds"
+                    >Rondas de kata</option
+                  >
                 }
               </select>
               @if (formatLocked(c)) {
-                <span i18n="@@torneo.categorias.combates-iniciados-formato-no" class="hint">Con combates iniciados el formato no cambia.</span>
+                <span i18n="@@torneo.categorias.combates-iniciados-formato-no" class="hint"
+                  >Con combates iniciados el formato no cambia.</span
+                >
               }
             </label>
           </div>
           @if (c.entrant_count) {
-            <p i18n="@@torneo.categorias.cambiar-edades-sexo-grados-peso" class="hint">{c.entrant_count, plural, =1 {Cambiar edades, sexo, grados o peso no mueve a los 1 inscrito: revisa sus inscripciones si ya no encajan.} other {Cambiar edades, sexo, grados o peso no mueve a los {{ c.entrant_count }} inscritos: revisa sus inscripciones si ya no encajan.}}</p>
+            <p
+              i18n="@@torneo.categorias.cambiar-edades-sexo-grados-peso"
+              class="hint"
+              >{c.entrant_count, plural,
+                =1 {
+                  Cambiar edades, sexo, grados o peso no mueve a los 1 inscrito: revisa sus
+                  inscripciones si ya no encajan.
+                }
+                other {
+                  Cambiar edades, sexo, grados o peso no mueve a los {{ c.entrant_count }}
+                  inscritos: revisa sus inscripciones si ya no encajan.
+                }
+              }</p
+            >
           }
           <!-- Sección «Reglas» (docs/reglas-configurables.md): vacío = hereda del torneo.
                Sus campos van en el mismo PATCH /categories/{id} de saveEdit(). -->
           <section class="rules-slot" aria-labelledby="cat-rules-title">
             <h3 i18n="@@torneo.categorias.reglas" class="sec" id="cat-rules-title">Reglas</h3>
-            <p i18n="@@torneo.categorias.cada-campo-vacio-hereda-regla" class="hint">Cada campo vacío hereda la regla del torneo.</p>
+            <p i18n="@@torneo.categorias.cada-campo-vacio-hereda-regla" class="hint"
+              >Cada campo vacío hereda la regla del torneo.</p
+            >
             <div class="grid-3">
               <label class="field">
                 <span i18n="@@torneo.categorias.terceros-lugares">Terceros lugares</span>
                 <select name="tp" [(ngModel)]="ec.third_place_rule" [disabled]="formatLocked(c)">
-                  <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null">Por defecto del torneo</option>
-                  <option i18n="@@torneo.categorias.dos-bronces" value="two_bronzes">Dos bronces</option>
-                  <option i18n="@@torneo.categorias.combate-3" value="third_place_match">Combate por el 3.º</option>
+                  <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null"
+                    >Por defecto del torneo</option
+                  >
+                  <option i18n="@@torneo.categorias.dos-bronces" value="two_bronzes"
+                    >Dos bronces</option
+                  >
+                  <option i18n="@@torneo.categorias.combate-3" value="third_place_match"
+                    >Combate por el 3.º</option
+                  >
                   <option i18n="@@torneo.categorias.repechaje" value="repechage">Repechaje</option>
                 </select>
               </label>
               <label class="field">
                 <span i18n="@@torneo.categorias.cupo-max-inscritos">Cupo (máx. inscritos)</span>
-                <input i18n-placeholder="@@torneo.categorias.sin-cupo" type="number" min="2" name="max" [(ngModel)]="ec.max_entrants" placeholder="Sin cupo" />
-                <span i18n="@@torneo.categorias.superarlo-advierte-sugiere" class="hint">Al superarlo se advierte y se sugiere dividir.</span>
+                <input
+                  i18n-placeholder="@@torneo.categorias.sin-cupo"
+                  type="number"
+                  min="2"
+                  name="max"
+                  [(ngModel)]="ec.max_entrants"
+                  placeholder="Sin cupo"
+                />
+                <span i18n="@@torneo.categorias.superarlo-advierte-sugiere" class="hint"
+                  >Al superarlo se advierte y se sugiere dividir.</span
+                >
               </label>
               @if (c.modality === 'kumite') {
                 <div class="grid-2">
                   <label class="field">
                     <span i18n="@@torneo.categorias.peso-desde-kg">Peso desde (kg)</span>
-                    <input i18n-placeholder="@@torneo.categorias.etiqueta" type="number" step="0.1" name="wmin" [(ngModel)]="ec.weight_min_kg" placeholder="De la etiqueta" />
+                    <input
+                      i18n-placeholder="@@torneo.categorias.etiqueta"
+                      type="number"
+                      step="0.1"
+                      name="wmin"
+                      [(ngModel)]="ec.weight_min_kg"
+                      placeholder="De la etiqueta"
+                    />
                   </label>
                   <label class="field">
                     <span i18n="@@torneo.categorias.hasta-kg">Hasta (kg)</span>
-                    <input i18n-placeholder="@@torneo.categorias.etiqueta" type="number" step="0.1" name="wmax" [(ngModel)]="ec.weight_max_kg" placeholder="De la etiqueta" />
+                    <input
+                      i18n-placeholder="@@torneo.categorias.etiqueta"
+                      type="number"
+                      step="0.1"
+                      name="wmax"
+                      [(ngModel)]="ec.weight_max_kg"
+                      placeholder="De la etiqueta"
+                    />
                   </label>
                 </div>
               }
@@ -303,23 +581,47 @@ import { TournamentContext } from '../tournament-context';
               [competition]="ruleComp"
             />
             @if (formatLocked(c)) {
-              <p i18n="@@torneo.categorias.combates-iniciados-no-cambian" class="hint">Con combates iniciados no cambian el formato ni las reglas de kata.</p>
+              <p i18n="@@torneo.categorias.combates-iniciados-no-cambian" class="hint"
+                >Con combates iniciados no cambian el formato ni las reglas de kata.</p
+              >
             }
           </section>
           <div class="form-actions">
-            <button i18n="@@torneo.categorias.cancelar" type="button" class="btn" (click)="editCat.set(null)">Cancelar</button>
-            <button i18n="@@torneo.categorias.guardar-cambios" class="btn primary" [disabled]="!ec.name.trim() || saving()">Guardar cambios</button>
+            <button
+              i18n="@@torneo.categorias.cancelar"
+              type="button"
+              class="btn"
+              (click)="editCat.set(null)"
+              >Cancelar</button
+            >
+            <button
+              i18n="@@torneo.categorias.guardar-cambios"
+              class="btn primary"
+              [disabled]="!ec.name.trim() || saving()"
+              >Guardar cambios</button
+            >
           </div>
         </form>
       </app-modal>
     }
 
     @if (createOpen()) {
-      <app-modal i18n-title="@@torneo.categorias.nueva-categoria-manual" title="Nueva categoría manual" [wide]="true" (closed)="createOpen.set(false)">
+      <app-modal
+        i18n-title="@@torneo.categorias.nueva-categoria-manual"
+        title="Nueva categoría manual"
+        [wide]="true"
+        (closed)="createOpen.set(false)"
+      >
         <form (ngSubmit)="create()">
           <div class="grid-3">
-            <label class="field"><span i18n="@@torneo.categorias.codigo">Código *</span><input name="code" [(ngModel)]="nc.code" required /></label>
-            <label class="field" style="grid-column: span 2"><span i18n="@@torneo.categorias.nombre">Nombre *</span><input name="name" [(ngModel)]="nc.name" required /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.codigo">Código *</span
+              ><input name="code" [(ngModel)]="nc.code" required
+            /></label>
+            <label class="field" style="grid-column: span 2"
+              ><span i18n="@@torneo.categorias.nombre">Nombre *</span
+              ><input name="name" [(ngModel)]="nc.name" required
+            /></label>
             <label class="field">
               <span i18n="@@torneo.categorias.modalidad-2">Modalidad</span>
               <select name="mod" [(ngModel)]="nc.modality">
@@ -335,8 +637,14 @@ import { TournamentContext } from '../tournament-context';
                 <option i18n="@@torneo.categorias.mixto" value="X">Mixto</option>
               </select>
             </label>
-            <label class="field"><span i18n="@@torneo.categorias.edad-min">Edad mín.</span><input type="number" name="amin" [(ngModel)]="nc.age_min" /></label>
-            <label class="field"><span i18n="@@torneo.categorias.edad-max">Edad máx.</span><input type="number" name="amax" [(ngModel)]="nc.age_max" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.edad-min">Edad mín.</span
+              ><input type="number" name="amin" [(ngModel)]="nc.age_min"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.edad-max">Edad máx.</span
+              ><input type="number" name="amax" [(ngModel)]="nc.age_max"
+            /></label>
             <label class="field">
               <span i18n="@@torneo.categorias.grado-min">Grado mín.</span>
               <select name="gmin" [(ngModel)]="nc.grade_min">
@@ -355,24 +663,56 @@ import { TournamentContext } from '../tournament-context';
                 }
               </select>
             </label>
-            <label class="field"><span i18n="@@torneo.categorias.peso">Peso</span><input name="w" [(ngModel)]="nc.weight_class" placeholder="-60" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.peso">Peso</span
+              ><input name="w" [(ngModel)]="nc.weight_class" placeholder="-60"
+            /></label>
             <label class="field">
               <span i18n="@@torneo.categorias.formato">Formato</span>
               <select name="fmt" [(ngModel)]="nc.format">
-                <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null">Por defecto del torneo</option>
-                <option i18n="@@torneo.categorias.eliminacion-directa" value="single_elimination">Eliminación directa</option>
-                <option i18n="@@torneo.categorias.round-robin" value="round_robin">Round robin</option>
-                <option i18n="@@torneo.categorias.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
-                <option i18n="@@torneo.categorias.rondas-kata" value="kata_rounds">Rondas de kata</option>
+                <option i18n="@@torneo.categorias.defecto-torneo" [ngValue]="null"
+                  >Por defecto del torneo</option
+                >
+                <option i18n="@@torneo.categorias.eliminacion-directa" value="single_elimination"
+                  >Eliminación directa</option
+                >
+                <option i18n="@@torneo.categorias.round-robin" value="round_robin"
+                  >Round robin</option
+                >
+                <option i18n="@@torneo.categorias.grupos-eliminacion" value="groups_knockout"
+                  >Grupos + eliminación</option
+                >
+                <option i18n="@@torneo.categorias.rondas-kata" value="kata_rounds"
+                  >Rondas de kata</option
+                >
               </select>
             </label>
-            <label class="field"><span i18n="@@torneo.categorias.cupo-max-inscritos">Cupo (máx. inscritos)</span><input i18n-placeholder="@@torneo.categorias.sin-cupo" type="number" min="2" name="max" [(ngModel)]="nc.max_entrants" placeholder="Sin cupo" /></label>
-            <label i18n="@@torneo.categorias.equipos-2" class="field inline" style="align-self: end; min-height: 2.5rem"><input type="checkbox" name="team" [(ngModel)]="nc.is_team" /> Por equipos</label>
+            <label class="field"
+              ><span i18n="@@torneo.categorias.cupo-max-inscritos">Cupo (máx. inscritos)</span
+              ><input
+                i18n-placeholder="@@torneo.categorias.sin-cupo"
+                type="number"
+                min="2"
+                name="max"
+                [(ngModel)]="nc.max_entrants"
+                placeholder="Sin cupo"
+            /></label>
+            <label
+              i18n="@@torneo.categorias.equipos-2"
+              class="field inline"
+              style="align-self: end; min-height: 2.5rem"
+              ><input type="checkbox" name="team" [(ngModel)]="nc.is_team" /> Por equipos</label
+            >
             @if (nc.modality === 'kumite') {
-              <label class="field"><span i18n="@@torneo.categorias.duracion-seg">Duración (seg)</span><input type="number" name="dur" [(ngModel)]="nc.duration_seconds" /></label>
+              <label class="field"
+                ><span i18n="@@torneo.categorias.duracion-seg">Duración (seg)</span
+                ><input type="number" name="dur" [(ngModel)]="nc.duration_seconds"
+              /></label>
               @if (nc.is_team) {
                 <label class="field">
-                  <span i18n="@@torneo.categorias.combates-enfrentamiento">Combates por enfrentamiento</span>
+                  <span i18n="@@torneo.categorias.combates-enfrentamiento"
+                    >Combates por enfrentamiento</span
+                  >
                   <select name="tb" [(ngModel)]="nc.team_bouts">
                     <option [ngValue]="3">3</option>
                     <option [ngValue]="5">5</option>
@@ -381,8 +721,12 @@ import { TournamentContext } from '../tournament-context';
                 <label class="field">
                   <span i18n="@@torneo.categorias.empate-victorias">Empate en victorias</span>
                   <select name="ttr" [(ngModel)]="nc.team_tie_rule">
-                    <option i18n="@@torneo.categorias.gana-quien-suma-mas-puntos-si" value="points">Gana quien suma más puntos; si empatan, combate extra</option>
-                    <option i18n="@@torneo.categorias.combate-extra" value="extra_bout">Combate extra</option>
+                    <option i18n="@@torneo.categorias.gana-quien-suma-mas-puntos-si" value="points"
+                      >Gana quien suma más puntos; si empatan, combate extra</option
+                    >
+                    <option i18n="@@torneo.categorias.combate-extra" value="extra_bout"
+                      >Combate extra</option
+                    >
                   </select>
                 </label>
               }
@@ -407,8 +751,19 @@ import { TournamentContext } from '../tournament-context';
             }
           </div>
           <div class="form-actions">
-            <button i18n="@@torneo.categorias.cancelar" type="button" class="btn" (click)="createOpen.set(false)">Cancelar</button>
-            <button i18n="@@torneo.categorias.crear" class="btn primary" [disabled]="!nc.code || !nc.name">Crear</button>
+            <button
+              i18n="@@torneo.categorias.cancelar"
+              type="button"
+              class="btn"
+              (click)="createOpen.set(false)"
+              >Cancelar</button
+            >
+            <button
+              i18n="@@torneo.categorias.crear"
+              class="btn primary"
+              [disabled]="!nc.code || !nc.name"
+              >Crear</button
+            >
           </div>
         </form>
       </app-modal>
@@ -471,7 +826,8 @@ import { TournamentContext } from '../tournament-context';
   `,
 })
 export class CategoriesTab {
-  ariaSeleccionar = (nombre: string) => $localize`:@@torneo.categorias.seleccionar-categoria:Seleccionar ${nombre}:categoria:`;
+  ariaSeleccionar = (nombre: string) =>
+    $localize`:@@torneo.categorias.seleccionar-categoria:Seleccionar ${nombre}:categoria:`;
   tituloGenerarTodas(n: number): string {
     return n === 1
       ? $localize`:@@torneo.categorias.generar-llaves-1:Generar las llaves de 1 categoría con inscritos que aún no la tienen`
@@ -506,18 +862,28 @@ export class CategoriesTab {
 
   readonly filtered = computed(() => {
     const q = this.q().trim().toLowerCase();
-    return this.ctx.categories().filter(
-      (c) =>
-        (!this.hideEmpty() || c.status !== 'empty') &&
-        (!this.status() || c.status === this.status()) &&
-        (!this.modality() || c.modality === this.modality()) &&
-        (!q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)),
-    );
+    return this.ctx
+      .categories()
+      .filter(
+        (c) =>
+          (!this.hideEmpty() || c.status !== 'empty') &&
+          (!this.status() || c.status === this.status()) &&
+          (!this.modality() || c.modality === this.modality()) &&
+          (!q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)),
+      );
   });
   readonly mergeTargets = computed(
-    () => new Set(this.ctx.categories().filter((c) => c.merged_into_id).map((c) => c.merged_into_id as number)),
+    () =>
+      new Set(
+        this.ctx
+          .categories()
+          .filter((c) => c.merged_into_id)
+          .map((c) => c.merged_into_id as number),
+      ),
   );
-  readonly selectedCats = computed(() => this.ctx.categories().filter((c) => this.selected().has(c.id)));
+  readonly selectedCats = computed(() =>
+    this.ctx.categories().filter((c) => this.selected().has(c.id)),
+  );
 
   constructor() {
     this.reload();
@@ -541,7 +907,9 @@ export class CategoriesTab {
 
   tatamiName(id: number): string {
     const t = this.ctx.tournament()?.tatamis.find((x) => x.id === id);
-    return t ? t.name || $localize`:@@torneo.categorias.tatami-2:Tatami ${t.number}:number:` : '#' + id;
+    return t
+      ? t.name || $localize`:@@torneo.categorias.tatami-2:Tatami ${t.number}:number:`
+      : '#' + id;
   }
 
   clearSelection(): void {
@@ -568,9 +936,13 @@ export class CategoriesTab {
       new_name: this.merge.target_id ? null : this.merge.new_name || null,
       reason: this.merge.reason,
     };
-    const res = await this.mut.post<Category>(`/tournaments/${this.ctx.id()}/categories/merge`, body, {
-      success: $localize`:@@torneo.categorias.categorias-fusionadas:Categorías fusionadas`,
-    });
+    const res = await this.mut.post<Category>(
+      `/tournaments/${this.ctx.id()}/categories/merge`,
+      body,
+      {
+        success: $localize`:@@torneo.categorias.categorias-fusionadas:Categorías fusionadas`,
+      },
+    );
     if (res) {
       this.mergeOpen.set(false);
       this.selected.set(new Set());
@@ -585,7 +957,11 @@ export class CategoriesTab {
       confirmText: $localize`:@@torneo.categorias.separar:Separar`,
     });
     if (!ok) return;
-    const res = await this.mut.post<Category>(`/categories/${c.id}/unmerge`, {}, { success: $localize`:@@torneo.categorias.fusion-deshecha:Fusión deshecha` });
+    const res = await this.mut.post<Category>(
+      `/categories/${c.id}/unmerge`,
+      {},
+      { success: $localize`:@@torneo.categorias.fusion-deshecha:Fusión deshecha` },
+    );
     if (res) this.reload();
   }
 
@@ -596,7 +972,11 @@ export class CategoriesTab {
       confirmText: $localize`:@@torneo.categorias.deshacer:Deshacer`,
     });
     if (!ok) return;
-    const res = await this.mut.post<Category>(`/categories/${c.id}/unsplit`, {}, { success: $localize`:@@torneo.categorias.division-deshecha:División deshecha` });
+    const res = await this.mut.post<Category>(
+      `/categories/${c.id}/unsplit`,
+      {},
+      { success: $localize`:@@torneo.categorias.division-deshecha:División deshecha` },
+    );
     if (res) this.reload();
   }
 
@@ -609,7 +989,11 @@ export class CategoriesTab {
       confirmText: $localize`:@@torneo.categorias.cancelar-categoria-2:Cancelar categoría`,
     });
     if (!reason) return;
-    const res = await this.mut.post<Category>(`/categories/${c.id}/cancel`, { reason }, { success: $localize`:@@torneo.categorias.categoria-cancelada:Categoría cancelada` });
+    const res = await this.mut.post<Category>(
+      `/categories/${c.id}/cancel`,
+      { reason },
+      { success: $localize`:@@torneo.categorias.categoria-cancelada:Categoría cancelada` },
+    );
     if (res) this.reload();
   }
 
@@ -622,7 +1006,11 @@ export class CategoriesTab {
       confirmText: $localize`:@@torneo.categorias.reabrir:Reabrir`,
     });
     if (!reason) return;
-    const res = await this.mut.post(`/categories/${c.id}/reopen`, { reason }, { success: $localize`:@@torneo.categorias.categoria-reabierta:Categoría reabierta` });
+    const res = await this.mut.post(
+      `/categories/${c.id}/reopen`,
+      { reason },
+      { success: $localize`:@@torneo.categorias.categoria-reabierta:Categoría reabierta` },
+    );
     if (res) this.reload();
   }
 
@@ -637,8 +1025,15 @@ export class CategoriesTab {
   async saveTatami(c: Category): Promise<void> {
     const res = await this.mut.patch<Category>(
       `/categories/${c.id}`,
-      { version: c.version, tatami_id: this.tat.tatami_id, queue_position: this.tat.queue_position || null },
-      { success: $localize`:@@torneo.categorias.tatami-asignado:Tatami asignado`, onConflict: () => this.reload() },
+      {
+        version: c.version,
+        tatami_id: this.tat.tatami_id,
+        queue_position: this.tat.queue_position || null,
+      },
+      {
+        success: $localize`:@@torneo.categorias.tatami-asignado:Tatami asignado`,
+        onConflict: () => this.reload(),
+      },
     );
     if (res) {
       this.tatamiCat.set(null);
@@ -648,7 +1043,11 @@ export class CategoriesTab {
 
   async generate(c: Category): Promise<void> {
     // Con acreditación: ofrece excluir a los ausentes antes de sortear.
-    const res = await this.brackets.generate(c.id, {}, { success: $localize`:@@torneo.categorias.llave-generada:Llave generada` });
+    const res = await this.brackets.generate(
+      c.id,
+      {},
+      { success: $localize`:@@torneo.categorias.llave-generada:Llave generada` },
+    );
     if (res) this.router.navigate(['/categorias', c.id, 'llave']);
   }
 
@@ -701,8 +1100,15 @@ export class CategoriesTab {
       $localize`:@@torneo.categorias.llave-generada-2:llave generada`,
       $localize`:@@torneo.categorias.llaves-generadas:llaves generadas`,
     );
-    const fallidas = plural(failed.length, $localize`:@@torneo.categorias.fallo:falló`, $localize`:@@torneo.categorias.fallaron:fallaron`);
-    if (failed.length) this.toast.error($localize`:@@torneo.categorias.generadas-fallidas:${text}:generadas:; ${fallidas}:fallidas:: ${failed.join('; ')}:errores:`);
+    const fallidas = plural(
+      failed.length,
+      $localize`:@@torneo.categorias.fallo:falló`,
+      $localize`:@@torneo.categorias.fallaron:fallaron`,
+    );
+    if (failed.length)
+      this.toast.error(
+        $localize`:@@torneo.categorias.generadas-fallidas:${text}:generadas:; ${fallidas}:fallidas:: ${failed.join('; ')}:errores:`,
+      );
     else this.toast.ok(text);
   }
 
@@ -781,8 +1187,16 @@ export class CategoriesTab {
       next['kata_rules'] = kataPayload(rest);
     }
     // Solo se envía lo que cambió (lo estructural no se toca si la categoría ya empezó).
-    const structural = ['format', 'third_place_rule', 'kata_method', 'kata_structure', 'kata_judges', 'kata_rules'];
-    const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+    const structural = [
+      'format',
+      'third_place_rule',
+      'kata_method',
+      'kata_structure',
+      'kata_judges',
+      'kata_rules',
+    ];
+    const same = (a: unknown, b: unknown) =>
+      JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
     const body: Record<string, unknown> = { version: c.version };
     for (const [k, v] of Object.entries(next)) {
       if (structural.includes(k) && this.formatLocked(c)) continue;
@@ -837,7 +1251,8 @@ export class CategoriesTab {
       ...fields,
       weight_class: fields.weight_class || null,
       max_entrants: fields.max_entrants || null,
-      kumite_rules: fields.is_team && fields.modality === 'kumite' ? { team_bouts, team_tie_rule } : null,
+      kumite_rules:
+        fields.is_team && fields.modality === 'kumite' ? { team_bouts, team_tie_rule } : null,
     };
     const res = await this.mut.post<Category>(`/tournaments/${this.ctx.id()}/categories`, body, {
       success: $localize`:@@torneo.categorias.categoria-creada:Categoría creada`,

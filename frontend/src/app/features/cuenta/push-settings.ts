@@ -23,7 +23,8 @@ import { Icon } from '../../shared/icon';
   template: `
     <div class="page">
       <header class="top">
-        <a i18n-aria-label="@@avisos.ajustes.hajime"
+        <a
+          i18n-aria-label="@@avisos.ajustes.hajime"
           class="brand"
           [routerLink]="auth.user() ? '/perfil' : '/torneos-publicos'"
           aria-label="Hajime"
@@ -41,8 +42,16 @@ import { Icon } from '../../shared/icon';
         @if (push.support() !== 'ok') {
           <div class="alert warn" role="note">{{ push.message() }}</div>
         } @else if (!state().subscribed) {
-          <p i18n="@@avisos.ajustes.este-dispositivo-todavia-no">Este dispositivo todavía no recibe avisos.</p>
-          <button i18n="@@avisos.ajustes.activar-avisos-este-dispositivo" class="btn primary" type="button" (click)="activate()" [disabled]="busy()">
+          <p i18n="@@avisos.ajustes.este-dispositivo-todavia-no"
+            >Este dispositivo todavía no recibe avisos.</p
+          >
+          <button
+            i18n="@@avisos.ajustes.activar-avisos-este-dispositivo"
+            class="btn primary"
+            type="button"
+            (click)="activate()"
+            [disabled]="busy()"
+          >
             <app-icon name="bell" /> Activar avisos en este dispositivo
           </button>
         } @else {
@@ -63,13 +72,28 @@ import { Icon } from '../../shared/icon';
               </label>
             }
             <div class="form-actions">
-              <button i18n="@@avisos.ajustes.guardar" class="btn primary" [disabled]="busy()">Guardar</button>
+              <button i18n="@@avisos.ajustes.guardar" class="btn primary" [disabled]="busy()"
+                >Guardar</button
+              >
             </div>
           </form>
           @if (following()) {
-            <p i18n="@@avisos.ajustes.cuenta-sigues-este-dispositivo" class="small muted">{following(), plural, =1 {Con tu cuenta sigues 1 perfil o dojo en este dispositivo.} other {Con tu cuenta sigues {{ following() }} perfiles o dojos en este dispositivo.}}</p>
+            <p
+              i18n="@@avisos.ajustes.cuenta-sigues-este-dispositivo"
+              class="small muted"
+              >{following(), plural,
+                =1 {Con tu cuenta sigues 1 perfil o dojo en este dispositivo.}
+                other {Con tu cuenta sigues {{ following() }} perfiles o dojos en este dispositivo.}
+              }</p
+            >
           }
-          <button i18n="@@avisos.ajustes.dejar-recibir-avisos-este" class="btn ghost danger" type="button" (click)="off()" [disabled]="busy()">
+          <button
+            i18n="@@avisos.ajustes.dejar-recibir-avisos-este"
+            class="btn ghost danger"
+            type="button"
+            (click)="off()"
+            [disabled]="busy()"
+          >
             Dejar de recibir avisos en este dispositivo
           </button>
         }
@@ -194,10 +218,14 @@ export class PushSettingsPage {
     try {
       if (await this.push.ensure()) {
         await this.refresh();
-        this.toast.ok($localize`:@@avisos.ajustes.avisos-activados-este:Avisos activados en este dispositivo`);
+        this.toast.ok(
+          $localize`:@@avisos.ajustes.avisos-activados-este:Avisos activados en este dispositivo`,
+        );
       }
     } catch {
-      this.toast.error($localize`:@@avisos.ajustes.no-pudieron-activar-avisos:No se pudieron activar los avisos`);
+      this.toast.error(
+        $localize`:@@avisos.ajustes.no-pudieron-activar-avisos:No se pudieron activar los avisos`,
+      );
     } finally {
       this.busy.set(false);
     }
@@ -223,7 +251,9 @@ export class PushSettingsPage {
     try {
       await this.push.unsubscribe();
       this.state.set(EMPTY_PUSH_STATE);
-      this.toast.ok($localize`:@@avisos.ajustes.ya-no-recibiras-avisos-este:Ya no recibirás avisos en este dispositivo`);
+      this.toast.ok(
+        $localize`:@@avisos.ajustes.ya-no-recibiras-avisos-este:Ya no recibirás avisos en este dispositivo`,
+      );
     } catch {
       this.toast.error($localize`:@@avisos.ajustes.no-pudo-desactivar:No se pudo desactivar`);
     } finally {

@@ -20,7 +20,11 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, RouterLink, PageHead],
   template: `
     <div class="container narrow">
-      <app-page-head i18n-title="@@portal-dojo.invitacion.invitacion" kanji="招" title="Invitación" />
+      <app-page-head
+        i18n-title="@@portal-dojo.invitacion.invitacion"
+        kanji="招"
+        title="Invitación"
+      />
       @if (info(); as i) {
         <div class="card stack">
           <p i18n="@@portal-dojo.invitacion.te-invita-inscribir-tus">
@@ -38,7 +42,12 @@ import { PageHead } from '../../shared/page-head';
               inscribir.
             </div>
             <div class="form-actions">
-              <a i18n="@@portal-dojo.invitacion.ir-mis-competidores" class="btn primary" routerLink="/mis-competidores">Ir a Mis competidores</a>
+              <a
+                i18n="@@portal-dojo.invitacion.ir-mis-competidores"
+                class="btn primary"
+                routerLink="/mis-competidores"
+                >Ir a Mis competidores</a
+              >
             </div>
           } @else if (result() === 'pending_approval') {
             <div i18n="@@portal-dojo.invitacion.pedido-quedo-registrado" class="alert info">
@@ -55,16 +64,23 @@ import { PageHead } from '../../shared/page-head';
               <label class="field">
                 <span i18n="@@portal-dojo.invitacion.dojo">Tu dojo</span>
                 <select [(ngModel)]="dojoId">
-                  <option i18n="@@portal-dojo.invitacion.elige-dojo" [ngValue]="null">— Elige tu dojo —</option>
+                  <option i18n="@@portal-dojo.invitacion.elige-dojo" [ngValue]="null"
+                    >— Elige tu dojo —</option
+                  >
                   @for (d of dojos(); track d.id) {
                     <option [ngValue]="d.id">{{ d.name }}</option>
                   }
                 </select>
               </label>
-              <p i18n="@@portal-dojo.invitacion.organizador-aprobara-administres" class="small muted">El organizador aprobará que administres el dojo elegido.</p>
+              <p
+                i18n="@@portal-dojo.invitacion.organizador-aprobara-administres"
+                class="small muted"
+                >El organizador aprobará que administres el dojo elegido.</p
+              >
             }
             <div class="form-actions">
-              <button i18n="@@portal-dojo.invitacion.aceptar-invitacion"
+              <button
+                i18n="@@portal-dojo.invitacion.aceptar-invitacion"
                 class="btn primary"
                 (click)="accept()"
                 [disabled]="busy() || (!i.dojo_id && !dojoId)"

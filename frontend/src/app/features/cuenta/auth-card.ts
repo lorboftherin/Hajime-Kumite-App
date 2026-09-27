@@ -14,7 +14,11 @@ import { Icon } from '../../shared/icon';
   template: `
     <app-auth-frame>
       <div class="wrap">
-        <a i18n-aria-label="@@cuenta.acceso.hajime-ingresar" routerLink="/login" class="brand-link" aria-label="Hajime, ingresar"
+        <a
+          i18n-aria-label="@@cuenta.acceso.hajime-ingresar"
+          routerLink="/login"
+          class="brand-link"
+          aria-label="Hajime, ingresar"
           ><app-wordmark class="brand"
         /></a>
         <section class="card box" [attr.aria-labelledby]="'t-' + id()">
@@ -29,7 +33,9 @@ import { Icon } from '../../shared/icon';
             <a class="back-link" [routerLink]="backLink()"
               ><app-icon name="back" /> {{ backText() }}</a
             >
-            <a i18n="@@cuenta.acceso.privacidad" class="small muted" routerLink="/privacidad">Privacidad</a>
+            <a i18n="@@cuenta.acceso.privacidad" class="small muted" routerLink="/privacidad"
+              >Privacidad</a
+            >
           </div>
         </section>
       </div>

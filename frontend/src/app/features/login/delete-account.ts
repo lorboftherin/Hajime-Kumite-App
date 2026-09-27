@@ -23,10 +23,14 @@ import { Icon } from '../../shared/icon';
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="da-title">
           <div>
             <h1 i18n="@@cuenta.borrar.borrar-mi-cuenta" id="da-title">Borrar mi cuenta</h1>
-            <p i18n="@@cuenta.borrar.sesion" class="muted small lead">Sesión: {{ auth.user()?.username }}</p>
+            <p i18n="@@cuenta.borrar.sesion" class="muted small lead"
+              >Sesión: {{ auth.user()?.username }}</p
+            >
           </div>
           <div class="alert warn">
-            <strong i18n="@@cuenta.borrar.esto-no-puede-deshacer">Esto no se puede deshacer.</strong>
+            <strong i18n="@@cuenta.borrar.esto-no-puede-deshacer"
+              >Esto no se puede deshacer.</strong
+            >
             <div i18n="@@cuenta.borrar.borra-cuenta-acceso-cierran-tus" class="small">
               Se borra tu cuenta de acceso y se cierran tus sesiones. Los resultados de los torneos
               no cambian: pertenecen a cada torneo y a tu dojo. Si además quieres que tu nombre deje
@@ -46,7 +50,9 @@ import { Icon } from '../../shared/icon';
           </label>
           <label class="check">
             <input type="checkbox" name="sure" [(ngModel)]="sure" />
-            <span i18n="@@cuenta.borrar.entiendo-mi-cuenta-borrara-forma">Entiendo que mi cuenta se borrará de forma definitiva.</span>
+            <span i18n="@@cuenta.borrar.entiendo-mi-cuenta-borrara-forma"
+              >Entiendo que mi cuenta se borrará de forma definitiva.</span
+            >
           </label>
           @if (error()) {
             <div class="alert danger">{{ error() }}</div>
@@ -58,11 +64,15 @@ import { Icon } from '../../shared/icon';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }<ng-container i18n="@@cuenta.borrar.borrar-mi-cuenta-2">
-            Borrar mi cuenta
-          </ng-container></button>
+            }
+            <ng-container i18n="@@cuenta.borrar.borrar-mi-cuenta-2">
+              Borrar mi cuenta
+            </ng-container></button
+          >
           <div class="foot">
-            <a i18n="@@cuenta.borrar.volver" class="back-link" routerLink="/torneos"><app-icon name="back" /> Volver</a>
+            <a i18n="@@cuenta.borrar.volver" class="back-link" routerLink="/torneos"
+              ><app-icon name="back" /> Volver</a
+            >
           </div>
         </form>
       </div>

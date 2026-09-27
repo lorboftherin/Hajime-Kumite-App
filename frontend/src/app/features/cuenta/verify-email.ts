@@ -12,14 +12,24 @@ import { AuthCard } from './auth-card';
   selector: 'app-verify-email',
   imports: [AuthCard, RouterLink],
   template: `
-    <app-auth-card i18n-heading="@@cuenta.verificar.confirmar-correo" id="ve" heading="Confirmar correo" [backLink]="next()" [backText]="nextText()">
+    <app-auth-card
+      i18n-heading="@@cuenta.verificar.confirmar-correo"
+      id="ve"
+      heading="Confirmar correo"
+      [backLink]="next()"
+      [backText]="nextText()"
+    >
       @switch (state()) {
         @case ('busy') {
-          <p i18n="@@cuenta.verificar.confirmando" class="row"><span class="spinner"></span> Confirmando…</p>
+          <p i18n="@@cuenta.verificar.confirmando" class="row"
+            ><span class="spinner"></span> Confirmando…</p
+          >
         }
         @case ('ok') {
           <div class="alert ok" role="status">
-            <strong i18n="@@cuenta.verificar.listo-correo-quedo-confirmado">¡Listo! Tu correo quedó confirmado.</strong>
+            <strong i18n="@@cuenta.verificar.listo-correo-quedo-confirmado"
+              >¡Listo! Tu correo quedó confirmado.</strong
+            >
             <div i18n="@@cuenta.verificar.ya-puedes-recuperar-contrasena" class="small">
               Ya puedes recuperar tu contraseña con él y reclamar tu perfil deportivo.
             </div>
@@ -31,7 +41,9 @@ import { AuthCard } from './auth-card';
             @if (error()) {
               {{ error() }}
             } @else {
-              <ng-container i18n="@@cuenta.verificar.enlace-incompleto">El enlace está incompleto. Ábrelo tal como llegó en el correo.</ng-container>
+              <ng-container i18n="@@cuenta.verificar.enlace-incompleto"
+                >El enlace está incompleto. Ábrelo tal como llegó en el correo.</ng-container
+              >
             }
           </div>
           <p i18n="@@cuenta.verificar.puedes-pedir-enlace-nuevo-desde" class="small muted">

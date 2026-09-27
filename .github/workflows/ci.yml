@@ -178,11 +178,10 @@ jobs:
           retention-days: 14
 
   formato:
-    # Prettier sobre el frontend. Mientras el código no esté formateado de una
-    # vez (commit «Aplicar Prettier»), este job solo avisa: quitar
-    # continue-on-error en cuanto `npm run format:check` pase en main.
+    # Prettier sobre el frontend. Con htmlWhitespaceSensitivity «strict» no
+    # toca el espacio del texto de las plantillas (cambiarlo alteraría los
+    # textos que se traducen; ver docs/idiomas.md).
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: frontend

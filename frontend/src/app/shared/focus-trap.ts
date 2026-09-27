@@ -42,7 +42,8 @@ export class FocusTrap implements AfterViewInit {
       if (this.el.contains(document.activeElement)) return;
       const first =
         this.el.querySelector<HTMLElement>('[autofocus]') ?? focusables(this.el)[0] ?? this.el;
-      if (first === this.el && !this.el.hasAttribute('tabindex')) this.el.setAttribute('tabindex', '-1');
+      if (first === this.el && !this.el.hasAttribute('tabindex'))
+        this.el.setAttribute('tabindex', '-1');
       first.focus();
     });
   }

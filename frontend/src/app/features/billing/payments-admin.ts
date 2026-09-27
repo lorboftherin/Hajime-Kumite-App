@@ -27,21 +27,41 @@ import { PageHead } from '../../shared/page-head';
           @if (config(); as c) {
             <span i18n="@@cobro.admin.pasarela">Pasarela: {{ provider(c.provider) }}</span>
             <span i18n="@@cobro.admin.comprobantes"
-              >Comprobantes: @if (c.invoicing === 'nubefact') {Nubefact} @else {desactivados}</span
-            >
-            <span i18n="@@cobro.admin.modo">Modo: @if (c.mode === 'enforced') {cobro activo} @else {marcha blanca}</span>
+              >Comprobantes:
+              @if (c.invoicing === 'nubefact') {
+                Nubefact
+              } @else {
+                desactivados
+              }
+            </span>
+            <span i18n="@@cobro.admin.modo"
+              >Modo:
+              @if (c.mode === 'enforced') {
+                cobro activo
+              } @else {
+                marcha blanca
+              }
+            </span>
           }
         </div>
       </app-page-head>
 
       <form class="row filters" (ngSubmit)="load()">
-        <input i18n-aria-label="@@cobro.admin.buscar-pagos" i18n-placeholder="@@cobro.admin.referencia-organizacion-usuario"
+        <input
+          i18n-aria-label="@@cobro.admin.buscar-pagos"
+          i18n-placeholder="@@cobro.admin.referencia-organizacion-usuario"
           name="q"
           [(ngModel)]="q"
           placeholder="Referencia, organización o usuario"
           aria-label="Buscar pagos"
         />
-        <select i18n-aria-label="@@cobro.admin.estado" name="st" [(ngModel)]="status" aria-label="Estado" (ngModelChange)="load()">
+        <select
+          i18n-aria-label="@@cobro.admin.estado"
+          name="st"
+          [(ngModel)]="status"
+          aria-label="Estado"
+          (ngModelChange)="load()"
+        >
           <option i18n="@@cobro.admin.todos-estados" value="">Todos los estados</option>
           <option i18n="@@cobro.admin.aprobados" value="approved">Aprobados</option>
           <option i18n="@@cobro.admin.pendientes" value="pending">Pendientes</option>
@@ -94,8 +114,10 @@ import { PageHead } from '../../shared/page-head';
                       invStatus(inv.status)
                     }}</span>
                     @if (p.credit_note; as nc) {
-                      <ng-container i18n="@@cobro.admin.nota-credito"><br />Nota de crédito
-                      </ng-container>@if (nc.pdf_url) {
+                      <ng-container i18n="@@cobro.admin.nota-credito"
+                        ><br />Nota de crédito
+                      </ng-container>
+                      @if (nc.pdf_url) {
                         <a [href]="nc.pdf_url" target="_blank" rel="noopener">{{
                           num(nc.serie, nc.numero)
                         }}</a>
@@ -118,14 +140,26 @@ import { PageHead } from '../../shared/page-head';
                     config()?.invoicing === 'nubefact'
                   ) {
                     @if (!p.invoice || p.invoice.status === 'error') {
-                      <button i18n="@@cobro.admin.emitir-comprobante" class="btn sm" (click)="invoice(p)">Emitir comprobante</button>
+                      <button
+                        i18n="@@cobro.admin.emitir-comprobante"
+                        class="btn sm"
+                        (click)="invoice(p)"
+                        >Emitir comprobante</button
+                      >
                     }
                   }
                   @if (p.status === 'refunded' && p.credit_note?.status === 'error') {
-                    <button i18n="@@cobro.admin.reintentar-nota-credito" class="btn sm" (click)="invoice(p)">Reintentar nota de crédito</button>
+                    <button
+                      i18n="@@cobro.admin.reintentar-nota-credito"
+                      class="btn sm"
+                      (click)="invoice(p)"
+                      >Reintentar nota de crédito</button
+                    >
                   }
                   @if (p.status === 'approved') {
-                    <button i18n="@@cobro.admin.reembolsar" class="btn sm ghost" (click)="refund(p)">Reembolsar</button>
+                    <button i18n="@@cobro.admin.reembolsar" class="btn sm ghost" (click)="refund(p)"
+                      >Reembolsar</button
+                    >
                   }
                 </td>
               </tr>
@@ -134,9 +168,9 @@ import { PageHead } from '../../shared/page-head';
                 <td colspan="8" class="muted small">
                   @if (loading()) {
                     <span class="spinner"></span>
-                  } @else {<ng-container i18n="@@cobro.admin.sin-pagos">
-                    Sin pagos.
-                  </ng-container>}
+                  } @else {
+                    <ng-container i18n="@@cobro.admin.sin-pagos"> Sin pagos. </ng-container>
+                  }
                 </td>
               </tr>
             }
@@ -167,7 +201,15 @@ import { PageHead } from '../../shared/page-head';
                   </td>
                   <td class="nowrap">
                     {{ c.percent_off ? c.percent_off + ' %' : money(c.amount_off_pen ?? 0) }}
-                    <span class="small muted">@if (c.first_period_only) {<ng-container i18n="@@cobro.admin.primer-periodo">(primer periodo)</ng-container>} @else {<ng-container i18n="@@cobro.admin.siempre">(siempre)</ng-container>}</span>
+                    <span class="small muted">
+                      @if (c.first_period_only) {
+                        <ng-container i18n="@@cobro.admin.primer-periodo"
+                          >(primer periodo)</ng-container
+                        >
+                      } @else {
+                        <ng-container i18n="@@cobro.admin.siempre">(siempre)</ng-container>
+                      }
+                    </span>
                   </td>
                   <td class="small">
                     @if (c.plan_codes.length) {
@@ -194,14 +236,18 @@ import { PageHead } from '../../shared/page-head';
           </table>
         </div>
         <form class="row new-coupon" (ngSubmit)="createCoupon()">
-          <input i18n-aria-label="@@cobro.admin.codigo-3" i18n-placeholder="@@cobro.admin.codigo-2"
+          <input
+            i18n-aria-label="@@cobro.admin.codigo-3"
+            i18n-placeholder="@@cobro.admin.codigo-2"
             name="cc"
             [(ngModel)]="nc.code"
             placeholder="CÓDIGO"
             aria-label="Código"
             required
           />
-          <input i18n-aria-label="@@cobro.admin.porcentaje-descuento" i18n-placeholder="@@cobro.admin.desc"
+          <input
+            i18n-aria-label="@@cobro.admin.porcentaje-descuento"
+            i18n-placeholder="@@cobro.admin.desc"
             name="cp"
             type="number"
             min="1"
@@ -210,22 +256,37 @@ import { PageHead } from '../../shared/page-head';
             placeholder="% desc."
             aria-label="Porcentaje de descuento"
           />
-          <input i18n-aria-label="@@cobro.admin.descripcion" i18n-placeholder="@@cobro.admin.descripcion"
+          <input
+            i18n-aria-label="@@cobro.admin.descripcion"
+            i18n-placeholder="@@cobro.admin.descripcion"
             name="cd"
             [(ngModel)]="nc.description"
             placeholder="Descripción"
             aria-label="Descripción"
           />
-          <select i18n-aria-label="@@cobro.admin.planes-2" name="cpl" [(ngModel)]="nc.plans" aria-label="Planes">
+          <select
+            i18n-aria-label="@@cobro.admin.planes-2"
+            name="cpl"
+            [(ngModel)]="nc.plans"
+            aria-label="Planes"
+          >
             <option i18n="@@cobro.admin.todos-planes" value="">Todos los planes</option>
-            <option i18n="@@cobro.admin.dojo-organizador" value="dojo,organizador">Dojo y Organizador</option>
-            <option i18n="@@cobro.admin.competidor-plus" value="competidor_plus">Competidor Plus</option>
+            <option i18n="@@cobro.admin.dojo-organizador" value="dojo,organizador"
+              >Dojo y Organizador</option
+            >
+            <option i18n="@@cobro.admin.competidor-plus" value="competidor_plus"
+              >Competidor Plus</option
+            >
           </select>
           <label i18n="@@cobro.admin.solo-primer-periodo" class="small"
             ><input type="checkbox" name="cf" [(ngModel)]="nc.firstOnly" /> Solo primer
             periodo</label
           >
-          <button i18n="@@cobro.admin.crear" class="btn" [disabled]="!nc.code.trim() || !nc.percent">
+          <button
+            i18n="@@cobro.admin.crear"
+            class="btn"
+            [disabled]="!nc.code.trim() || !nc.percent"
+          >
             <app-icon name="plus" /> Crear
           </button>
         </form>
@@ -345,7 +406,11 @@ export class PaymentsAdminPage {
     const out = await this.mut.patch<Coupon>(
       `/coupons/${c.id}`,
       { active: !c.active },
-      { success: c.active ? $localize`:@@cobro.admin.cupon-desactivado:Cupón desactivado` : $localize`:@@cobro.admin.cupon-activado:Cupón activado` },
+      {
+        success: c.active
+          ? $localize`:@@cobro.admin.cupon-desactivado:Cupón desactivado`
+          : $localize`:@@cobro.admin.cupon-activado:Cupón activado`,
+      },
     );
     if (out) this.coupons.update((l) => l.map((x) => (x.id === out.id ? out : x)));
     else await this.loadCoupons();
@@ -359,7 +424,9 @@ export class PaymentsAdminPage {
       plan_codes: this.nc.plans ? this.nc.plans.split(',') : [],
       first_period_only: this.nc.firstOnly,
     };
-    const out = await this.mut.post<Coupon>('/coupons', body, { success: $localize`:@@cobro.admin.cupon-creado:Cupón creado` });
+    const out = await this.mut.post<Coupon>('/coupons', body, {
+      success: $localize`:@@cobro.admin.cupon-creado:Cupón creado`,
+    });
     if (out) {
       this.coupons.update((l) => [out, ...l]);
       this.nc = { code: '', percent: null, description: '', plans: '', firstOnly: true };

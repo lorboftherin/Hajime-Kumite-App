@@ -43,7 +43,9 @@ export function buscarIdioma(codigo: string | null | undefined): Idioma | undefi
 }
 
 /** Preferencia guardada en el dispositivo; null si no hay o el almacenamiento falla. */
-export function idiomaGuardado(almacen: Pick<Storage, 'getItem'> | null = almacenLocal()): CodigoIdioma | null {
+export function idiomaGuardado(
+  almacen: Pick<Storage, 'getItem'> | null = almacenLocal(),
+): CodigoIdioma | null {
   try {
     const v = almacen?.getItem(CLAVE_IDIOMA);
     return buscarIdioma(v)?.codigo ?? null;
@@ -134,7 +136,10 @@ export async function cargarIdioma(opciones: OpcionesCarga = {}): Promise<Idioma
 }
 
 /** Cambia el idioma del dispositivo y recarga la app (las traducciones se cargan al arrancar). */
-export function cambiarIdioma(codigo: CodigoIdioma, recargar: () => void = () => location.reload()): void {
+export function cambiarIdioma(
+  codigo: CodigoIdioma,
+  recargar: () => void = () => location.reload(),
+): void {
   if (codigo === actual.codigo && idiomaGuardado() === codigo) return;
   guardarIdioma(codigo);
   recargar();

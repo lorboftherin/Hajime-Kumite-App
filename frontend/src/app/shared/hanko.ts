@@ -1,7 +1,11 @@
 import { Component, computed, input } from '@angular/core';
 import { etiquetas } from '../core/i18n/etiquetas';
 
-const NAME: Record<number, string> = etiquetas(() => ({ 1: $localize`:@@hanko.oro:Oro`, 2: $localize`:@@hanko.plata:Plata`, 3: $localize`:@@hanko.bronce:Bronce` }));
+const NAME: Record<number, string> = etiquetas(() => ({
+  1: $localize`:@@hanko.oro:Oro`,
+  2: $localize`:@@hanko.plata:Plata`,
+  3: $localize`:@@hanko.bronce:Bronce`,
+}));
 const METAL: Record<number, string> = { 1: 'kin', 2: 'gin', 3: 'dou' };
 
 /**

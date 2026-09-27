@@ -53,7 +53,19 @@ const CHANGE_TEXT: Record<string, string> = etiquetas(() => ({
 
 @Component({
   selector: 'app-bracket-page',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, StatusBadge, Modal, LabelPipe, LimaPipe, PageHead, Icon, MoreMenu, Hanko],
+  imports: [
+    FormsModule,
+    NgTemplateOutlet,
+    RouterLink,
+    StatusBadge,
+    Modal,
+    LabelPipe,
+    LimaPipe,
+    PageHead,
+    Icon,
+    MoreMenu,
+    Hanko,
+  ],
   templateUrl: './bracket-page.html',
   styleUrl: './bracket-page.scss',
 })
@@ -78,7 +90,8 @@ export class BracketPage {
   readonly textoQuitarLlave = $localize`:@@llave.titulo-quitar-llave:Quitar de la llave`;
   readonly textoEjTardia = $localize`:@@llave.ej-inscripcion-tardia:Ej.: inscripción tardía`;
   readonly textoEjLesion = $localize`:@@llave.ej-lesion:Ej.: lesión`;
-  ariaNotaAtletica = (juez: number) => $localize`:@@llave.nota-atletica-juez:Nota atlética del juez ${juez}:juez:`;
+  ariaNotaAtletica = (juez: number) =>
+    $localize`:@@llave.nota-atletica-juez:Nota atlética del juez ${juez}:juez:`;
   ariaQuienJuez = (juez: number) => $localize`:@@llave.quien-juez:Quién es el juez ${juez}:juez:`;
 
   readonly category = signal<Category | null>(null);
@@ -93,7 +106,12 @@ export class BracketPage {
 
   // Regenerar
   readonly regenOpen = signal(false);
-  regen = { seed: '' as string | number, format: '' as string, third_place_rule: '' as string, reason: '' };
+  regen = {
+    seed: '' as string | number,
+    format: '' as string,
+    third_place_rule: '' as string,
+    reason: '',
+  };
 
   // Historial
   readonly versions = signal<BracketVersion[] | null>(null);
@@ -143,7 +161,9 @@ export class BracketPage {
   );
 
   readonly rrMatches = computed(() =>
-    [...(this.bracket()?.matches ?? [])].sort((a, b) => a.round - b.round || a.position - b.position),
+    [...(this.bracket()?.matches ?? [])].sort(
+      (a, b) => a.round - b.round || a.position - b.position,
+    ),
   );
 
   readonly kataRows = computed(() => {
@@ -186,7 +206,12 @@ export class BracketPage {
     return {
       method,
       judges,
-      discard: discard === undefined || discard === null || discard === '' ? (judges === 3 ? 0 : 1) : Number(discard),
+      discard:
+        discard === undefined || discard === null || discard === ''
+          ? judges === 3
+            ? 0
+            : 1
+          : Number(discard),
       split,
     };
   });
@@ -204,7 +229,9 @@ export class BracketPage {
   });
 
   /** Notas en orden de juez, con un decimal y marcando las descartadas (las k más bajas y las k más altas). */
-  scoreCells(scores: Array<number | string> | null | undefined): Array<{ text: string; discarded: boolean }> {
+  scoreCells(
+    scores: Array<number | string> | null | undefined,
+  ): Array<{ text: string; discarded: boolean }> {
     const vals = (scores ?? []).map((x) => Number(x));
     const k = this.discards();
     const out = vals.map((v) => ({ text: fmtScore(v), discarded: false }));
@@ -231,7 +258,9 @@ export class BracketPage {
       // Orden inicial del desempate: el que ya propone la clasificación.
       const tied = this.tiedRows();
       this.tieOrder.set(
-        [...tied].sort((a, b) => (a['rank'] ?? 0) - (b['rank'] ?? 0)).map((r) => r['registration_id'] as number),
+        [...tied]
+          .sort((a, b) => (a['rank'] ?? 0) - (b['rank'] ?? 0))
+          .map((r) => r['registration_id'] as number),
       );
     });
   }
@@ -242,10 +271,14 @@ export class BracketPage {
       const c = await firstValueFrom(this.api.get<Category>(`/categories/${this.catId()}`));
       this.category.set(c);
       if (this.tournament()?.id !== c.tournament_id) {
-        this.api.get<Tournament>(`/tournaments/${c.tournament_id}`).subscribe({ next: (t) => this.tournament.set(t), error: () => {} });
+        this.api
+          .get<Tournament>(`/tournaments/${c.tournament_id}`)
+          .subscribe({ next: (t) => this.tournament.set(t), error: () => {} });
       }
       try {
-        this.bracket.set(await firstValueFrom(this.api.get<Bracket>(`/categories/${this.catId()}/bracket`)));
+        this.bracket.set(
+          await firstValueFrom(this.api.get<Bracket>(`/categories/${this.catId()}/bracket`)),
+        );
         this.noBracket.set(false);
       } catch (e) {
         if (ApiError.from(e).status === 404) {
@@ -301,7 +334,11 @@ export class BracketPage {
   }
 
   canOpen(m: Match): boolean {
-    return !!m.aka_registration_id && !!m.ao_registration_id && ['ready', 'in_progress', 'finished', 'needs_review'].includes(m.status);
+    return (
+      !!m.aka_registration_id &&
+      !!m.ao_registration_id &&
+      ['ready', 'in_progress', 'finished', 'needs_review'].includes(m.status)
+    );
   }
 
   openMatch(m: Match): void {
@@ -324,7 +361,8 @@ export class BracketPage {
   }
 
   matchLabel(m: Match): string {
-    const who = (rid: number | null) => (rid ? this.pname(rid) : $localize`:@@llave.definir:por definir`);
+    const who = (rid: number | null) =>
+      rid ? this.pname(rid) : $localize`:@@llave.definir:por definir`;
     return $localize`:@@llave.combate-contra-abrir:Combate ${m.code}:code:: ${who(m.aka_registration_id)}:aka: contra ${who(m.ao_registration_id)}:ao:. Abrir`;
   }
 
@@ -338,7 +376,8 @@ export class BracketPage {
   slotLabel(slot: number, rid: number | null): string {
     const who = rid ? this.pname(rid) : $localize`:@@llave.vacia:vacía`;
     const picked = this.swapA();
-    if (picked === slot) return $localize`:@@llave.posicion-elegida-elige-otra-para:Posición ${slot + 1}:posicion: (${who}:who:), elegida. Elige otra para intercambiar o pulsa de nuevo para soltarla`;
+    if (picked === slot)
+      return $localize`:@@llave.posicion-elegida-elige-otra-para:Posición ${slot + 1}:posicion: (${who}:who:), elegida. Elige otra para intercambiar o pulsa de nuevo para soltarla`;
     return picked === null
       ? $localize`:@@llave.posicion-elegir-para:Posición ${slot + 1}:posicion: (${who}:who:). Elegir para intercambiar`
       : $localize`:@@llave.posicion-intercambiar-posicion:Posición ${slot + 1}:posicion: (${who}:who:). Intercambiar con la posición ${picked + 1}:otra:`;
@@ -366,7 +405,10 @@ export class BracketPage {
     const res = await this.mut.patch<Bracket>(
       `/brackets/${b.id}/slots`,
       { version: b.version, a, b: slot, reason: '' },
-      { success: $localize`:@@llave.posiciones-intercambiadas:Posiciones ${a + 1}:posicion: y ${slot + 1}:otra: intercambiadas`, onConflict: () => this.load() },
+      {
+        success: $localize`:@@llave.posiciones-intercambiadas:Posiciones ${a + 1}:posicion: y ${slot + 1}:otra: intercambiadas`,
+        onConflict: () => this.load(),
+      },
     );
     this.swapA.set(null);
     if (res) this.bracket.set(res);
@@ -389,7 +431,9 @@ export class BracketPage {
     if (this.regen.seed !== '' && this.regen.seed !== null) body['seed'] = Number(this.regen.seed);
     if (this.regen.format) body['format'] = this.regen.format;
     if (this.regen.third_place_rule) body['third_place_rule'] = this.regen.third_place_rule;
-    const res = await this.brackets.generate(this.catId(), body, { success: $localize`:@@llave.llave-generada:Llave generada` });
+    const res = await this.brackets.generate(this.catId(), body, {
+      success: $localize`:@@llave.llave-generada:Llave generada`,
+    });
     if (res) {
       this.regenOpen.set(false);
       this.bracket.set(res);
@@ -400,7 +444,11 @@ export class BracketPage {
 
   async showVersions(): Promise<void> {
     try {
-      this.versions.set(await firstValueFrom(this.api.get<BracketVersion[]>(`/categories/${this.catId()}/bracket/versions`)));
+      this.versions.set(
+        await firstValueFrom(
+          this.api.get<BracketVersion[]>(`/categories/${this.catId()}/bracket/versions`),
+        ),
+      );
     } catch (e) {
       this.dialog.alert($localize`:@@llave.error:Error`, ApiError.from(e).fullMessage);
     }
@@ -420,7 +468,10 @@ export class BracketPage {
     this.loadCatalog();
     const prevJudges = (row['judge_person_ids'] as Array<number | null> | null) ?? [];
     const assigned = this.judgeOptions()?.assigned ?? [];
-    this.judgeInputs = Array.from({ length: n }, (_, i) => prevJudges[i] ?? assigned[i]?.person_id ?? null);
+    this.judgeInputs = Array.from(
+      { length: n },
+      (_, i) => prevJudges[i] ?? assigned[i]?.person_id ?? null,
+    );
     if (!this.judgeOptions()) {
       this.api.get<SuggestedJudges>(`/categories/${this.catId()}/referees`).subscribe({
         next: (j) => {
@@ -443,7 +494,10 @@ export class BracketPage {
       this.scoreInputs.some((x) => x === null) ||
       (split && this.athleticInputs.some((x) => x === null))
     ) {
-      this.dialog.alert($localize`:@@llave.notas-incompletas:Notas incompletas`, $localize`:@@llave.ingresa-nota-cada-juez-decimal:Ingresa la nota de cada juez (un decimal).`);
+      this.dialog.alert(
+        $localize`:@@llave.notas-incompletas:Notas incompletas`,
+        $localize`:@@llave.ingresa-nota-cada-juez-decimal:Ingresa la nota de cada juez (un decimal).`,
+      );
       return;
     }
     const res = await this.mut.post<Bracket>(
@@ -457,7 +511,10 @@ export class BracketPage {
         kata_name: this.kataName || null,
         version: row['version'],
       },
-      { success: $localize`:@@llave.notas-registradas:Notas registradas`, onConflict: () => this.load() },
+      {
+        success: $localize`:@@llave.notas-registradas:Notas registradas`,
+        onConflict: () => this.load(),
+      },
     );
     if (res) {
       this.bracket.set(res);
@@ -467,7 +524,9 @@ export class BracketPage {
 
   private loadCatalog(): void {
     if (this.catalog().length) return;
-    this.api.get<KataCatalog>('/kata-catalog').subscribe({ next: (c) => this.catalog.set(c.katas), error: () => {} });
+    this.api
+      .get<KataCatalog>('/kata-catalog')
+      .subscribe({ next: (c) => this.catalog.set(c.katas), error: () => {} });
   }
 
   /** Orden de salida de la ronda en curso: subir o bajar a alguien. */
@@ -476,7 +535,9 @@ export class BracketPage {
     const j = i + dir;
     if (j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j], ids[i]];
-    const res = await this.mut.put<Bracket>(`/categories/${this.catId()}/kata-order`, { registration_ids: ids });
+    const res = await this.mut.put<Bracket>(`/categories/${this.catId()}/kata-order`, {
+      registration_ids: ids,
+    });
     if (res) this.bracket.set(res);
   }
 
@@ -521,13 +582,20 @@ export class BracketPage {
     const path = `/categories/${this.catId()}/bracket/entrants${mode === 'remove' ? '/remove' : ''}`;
     const res = await this.mut.post<BracketChange>(
       path,
-      { registration_id: this.entrant.registration_id, reason: this.entrant.reason, version: b.version },
+      {
+        registration_id: this.entrant.registration_id,
+        reason: this.entrant.reason,
+        version: b.version,
+      },
       { onConflict: () => this.load() },
     );
     if (res) {
-      const who = this.categoryRegs().find((r) => r.id === this.entrant.registration_id)?.person_name ?? '';
+      const who =
+        this.categoryRegs().find((r) => r.id === this.entrant.registration_id)?.person_name ?? '';
       this.dialog.alert(
-        mode === 'add' ? $localize`:@@llave.anadido-llave:Añadido a la llave` : $localize`:@@llave.quitado-llave:Quitado de la llave`,
+        mode === 'add'
+          ? $localize`:@@llave.anadido-llave:Añadido a la llave`
+          : $localize`:@@llave.quitado-llave:Quitado de la llave`,
         $localize`:@@llave.guardo-version-v:${who}:who:: ${CHANGE_TEXT[res.result.mode] ?? res.result.mode}:cambio:. Se guardó la versión v${res.bracket.version_number}:version_number:.`,
       );
       this.entrantMode.set(null);
@@ -546,7 +614,10 @@ export class BracketPage {
 
   async resolveTie(): Promise<void> {
     if (this.tieReason.trim().length < 3) {
-      this.dialog.alert($localize`:@@llave.falta-motivo:Falta el motivo`, $localize`:@@llave.indica-motivo-desempate-min-3:Indica el motivo del desempate (mín. 3 caracteres).`);
+      this.dialog.alert(
+        $localize`:@@llave.falta-motivo:Falta el motivo`,
+        $localize`:@@llave.indica-motivo-desempate-min-3:Indica el motivo del desempate (mín. 3 caracteres).`,
+      );
       return;
     }
     const res = await this.mut.post<Bracket>(

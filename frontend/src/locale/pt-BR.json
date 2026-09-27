@@ -685,7 +685,7 @@
     "hanko.plata": "Prata",
     "hanko.texto": "{$INTERPOLATION}º",
     "idioma.selector": "Idioma",
-    "llave.8-0-tachadas-notas-descartadas": "{$START_TAG_SPAN}8.0{$CLOSE_TAG_SPAN} riscadas: notas descartadas ({$INTERPOLATION} mais alta e {$INTERPOLATION} mais baixa por apresentação)",
+    "llave.8-0-tachadas-notas-descartadas": "{$START_TAG_SPAN}8.0{$CLOSE_TAG_SPAN} riscadas: notas descartadas ({$INTERPOLATION} mais alta e {$INTERPOLATION_1} mais baixa por apresentação)",
     "llave.abrir-mesa": "Abrir mesa",
     "llave.actual": "atual",
     "llave.agregaron-combates": "as lutas dele foram adicionadas",

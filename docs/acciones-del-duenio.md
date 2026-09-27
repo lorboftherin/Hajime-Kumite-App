@@ -32,9 +32,9 @@ quedó bien.
    subir resultados: actívalo, o desactiva el workflow (Actions → CodeQL →
    «Disable workflow») hasta tenerlo. Dependabot funciona sin eso: activar en
    **Settings → Code security → Dependabot alerts / security updates**.
-6. **Prettier:** cuando el paso de formateo final entre a `main` y
-   `npm run format:check` pase, quitar `continue-on-error: true` del job
-   `formato` en `.github/workflows/ci.yml` y agregarlo a los checks obligatorios.
+6. **Prettier:** el frontend ya está formateado y el job `formato` ya es
+   obligatorio en CI; al proteger `main`, agrégalo (y `e2e`) a los checks
+   requeridos.
 
 ## Azure: pruebas (actualizar lo que ya existe)
 

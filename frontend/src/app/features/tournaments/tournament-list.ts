@@ -31,11 +31,19 @@ function readIncludeTest(): boolean {
       <app-page-head i18n-title="@@torneos.torneos" kanji="大会" title="Torneos">
         <div meta class="meta-line">
           @if (!loading()) {
-            <span i18n="@@torneos.n-torneos">{tournaments().length, plural, =1 {1 torneo} other {{{ tournaments().length }} torneos}}</span>
+            <span i18n="@@torneos.n-torneos">{tournaments().length, plural,
+              =1 {1 torneo}
+              other {{{ tournaments().length }} torneos}
+            }</span>
           }
         </div>
-        <label i18n="@@torneos.incluir-torneos-prueba" class="field inline small"><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="onIncludeTest()" /> Incluir torneos de prueba</label>
-        <button i18n="@@torneos.nuevo-torneo" class="btn primary" (click)="openNew()"><app-icon name="plus" /> Nuevo torneo</button>
+        <label i18n="@@torneos.incluir-torneos-prueba" class="field inline small"
+          ><input type="checkbox" [(ngModel)]="includeTest" (ngModelChange)="onIncludeTest()" />
+          Incluir torneos de prueba</label
+        >
+        <button i18n="@@torneos.nuevo-torneo" class="btn primary" (click)="openNew()"
+          ><app-icon name="plus" /> Nuevo torneo</button
+        >
       </app-page-head>
       @if (loading()) {
         <div class="empty"><span class="spinner"></span></div>
@@ -44,19 +52,43 @@ function readIncludeTest(): boolean {
           <app-enso class="start-enso" tone="mono" />
           <div class="start-body">
             <h2 i18n="@@torneos.primeros-pasos">Primeros pasos</h2>
-            <p class="muted"><ng-container i18n="@@torneos.aun-no-hay-torneos">
-              Aún no hay torneos</ng-container>@if (!includeTest) {<ng-container i18n="@@torneos.prueba-estan-ocultos"> (los de prueba están ocultos)</ng-container>}<ng-container i18n="@@torneos.para-probar-hajime-punta-punta">. Para probar Hajime de punta a punta:
-            </ng-container></p>
+            <p class="muted"
+              ><ng-container i18n="@@torneos.aun-no-hay-torneos"> Aún no hay torneos</ng-container>
+              @if (!includeTest) {
+                <ng-container i18n="@@torneos.prueba-estan-ocultos">
+                  (los de prueba están ocultos)</ng-container
+                >
+              }
+              <ng-container i18n="@@torneos.para-probar-hajime-punta-punta"
+                >. Para probar Hajime de punta a punta:
+              </ng-container></p
+            >
             <ol class="steps">
               <li i18n="@@torneos.crear-torneo-elige-plantilla">
-                <strong>Crear torneo</strong>: elige la plantilla <em>"Plantilla base (borrador)"</em> y marca
-                <em>"Torneo de prueba"</em> para que no cuente en historial ni medallero.
+                <strong>Crear torneo</strong>: elige la plantilla
+                <em>"Plantilla base (borrador)"</em> y marca <em>"Torneo de prueba"</em> para que no
+                cuente en historial ni medallero.
               </li>
-              <li i18n="@@torneos.importar-excel-inscribir"><strong>Importar Excel o inscribir</strong> competidores (pestañas <em>Importar Excel</em> o <em>Inscripciones</em>).</li>
-              <li i18n="@@torneos.generar-llaves-pestana"><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li>
-              <li i18n="@@torneos.abrir-mesa-desde-pestana-tatamis"><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el combate.</li>
+              <li i18n="@@torneos.importar-excel-inscribir"
+                ><strong>Importar Excel o inscribir</strong> competidores (pestañas
+                <em>Importar Excel</em> o <em>Inscripciones</em>).</li
+              >
+              <li i18n="@@torneos.generar-llaves-pestana"
+                ><strong>Generar llaves</strong> en la pestaña <em>Categorías</em>.</li
+              >
+              <li i18n="@@torneos.abrir-mesa-desde-pestana-tatamis"
+                ><strong>Abrir la mesa</strong> desde la pestaña <em>Tatamis</em> y marcar el
+                combate.</li
+              >
             </ol>
-            <div><button i18n="@@torneos.crear-torneo-prueba" class="btn primary" (click)="openNew(true)"><app-icon name="plus" /> Crear torneo de prueba</button></div>
+            <div
+              ><button
+                i18n="@@torneos.crear-torneo-prueba"
+                class="btn primary"
+                (click)="openNew(true)"
+                ><app-icon name="plus" /> Crear torneo de prueba</button
+              ></div
+            >
           </div>
         </div>
       } @else {
@@ -88,7 +120,10 @@ function readIncludeTest(): boolean {
                   @if (t.is_test) {
                     <span i18n="@@torneos.prueba" class="badge yamabuki hollow">Prueba</span>
                   }
-                  <span i18n="@@torneos.n-tatamis" class="tatamis small">{t.tatamis.length, plural, =1 {1 tatami} other {{{ t.tatamis.length }} tatamis}}</span>
+                  <span i18n="@@torneos.n-tatamis" class="tatamis small">{t.tatamis.length, plural,
+                    =1 {1 tatami}
+                    other {{{ t.tatamis.length }} tatamis}
+                  }</span>
                 </div>
               </div>
             </a>
@@ -98,7 +133,11 @@ function readIncludeTest(): boolean {
     </div>
 
     @if (showNew()) {
-      <app-modal i18n-title="@@torneos.nuevo-torneo-2" title="Nuevo torneo" (closed)="showNew.set(false)">
+      <app-modal
+        i18n-title="@@torneos.nuevo-torneo-2"
+        title="Nuevo torneo"
+        (closed)="showNew.set(false)"
+      >
         <form (ngSubmit)="create()" class="stack">
           @if (orgs().length > 1) {
             <label class="field">
@@ -110,45 +149,85 @@ function readIncludeTest(): boolean {
               </select>
             </label>
           } @else if (orgs().length === 1) {
-            <p i18n="@@torneos.organizacion-2" class="small muted">Organización: <strong>{{ orgs()[0].name }}</strong></p>
+            <p i18n="@@torneos.organizacion-2" class="small muted"
+              >Organización: <strong>{{ orgs()[0].name }}</strong></p
+            >
           }
-          <label class="field"><span i18n="@@torneos.nombre">Nombre *</span><input name="name" [(ngModel)]="form.name" required minlength="3" /></label>
+          <label class="field"
+            ><span i18n="@@torneos.nombre">Nombre *</span
+            ><input name="name" [(ngModel)]="form.name" required minlength="3"
+          /></label>
           <div class="grid-2">
-            <label class="field"><span i18n="@@torneos.fecha-inicio">Fecha de inicio *</span><input type="date" name="sd" [(ngModel)]="form.start_date" required /></label>
-            <label class="field"><span i18n="@@torneos.fecha-fin">Fecha de fin</span><input type="date" name="ed" [(ngModel)]="form.end_date" /></label>
-            <label class="field"><span i18n="@@torneos.local-sede">Local / sede</span><input name="venue" [(ngModel)]="form.venue" /></label>
-            <label class="field"><span i18n="@@torneos.ciudad">Ciudad</span><input name="city" [(ngModel)]="form.city" /></label>
+            <label class="field"
+              ><span i18n="@@torneos.fecha-inicio">Fecha de inicio *</span
+              ><input type="date" name="sd" [(ngModel)]="form.start_date" required
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneos.fecha-fin">Fecha de fin</span
+              ><input type="date" name="ed" [(ngModel)]="form.end_date"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneos.local-sede">Local / sede</span
+              ><input name="venue" [(ngModel)]="form.venue"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneos.ciudad">Ciudad</span
+              ><input name="city" [(ngModel)]="form.city"
+            /></label>
             <label class="field">
               <span i18n="@@torneos.plantilla-categorias">Plantilla de categorías</span>
-              <select name="tpl" [(ngModel)]="form.template_id" (ngModelChange)="templatePicked = true">
+              <select
+                name="tpl"
+                [(ngModel)]="form.template_id"
+                (ngModelChange)="templatePicked = true"
+              >
                 <option i18n="@@torneos.sin-plantilla" [ngValue]="null">— Sin plantilla —</option>
                 @for (tp of templates(); track tp.id) {
                   <option [ngValue]="tp.id">{{ tp.name }} ({{ tp.items.length }})</option>
                 }
               </select>
             </label>
-            <label class="field"><span i18n="@@torneos.numero-tatamis">Número de tatamis</span><input type="number" min="1" max="12" name="tc" [(ngModel)]="form.tatami_count" /></label>
+            <label class="field"
+              ><span i18n="@@torneos.numero-tatamis">Número de tatamis</span
+              ><input type="number" min="1" max="12" name="tc" [(ngModel)]="form.tatami_count"
+            /></label>
             <label class="field">
               <span i18n="@@torneos.formato-defecto">Formato por defecto</span>
               <select name="fmt" [(ngModel)]="form.default_format">
-                <option i18n="@@torneos.eliminacion-directa" value="single_elimination">Eliminación directa</option>
+                <option i18n="@@torneos.eliminacion-directa" value="single_elimination"
+                  >Eliminación directa</option
+                >
                 <option i18n="@@torneos.round-robin" value="round_robin">Round robin</option>
-                <option i18n="@@torneos.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
+                <option i18n="@@torneos.grupos-eliminacion" value="groups_knockout"
+                  >Grupos + eliminación</option
+                >
               </select>
             </label>
             <label class="field">
               <span i18n="@@torneos.terceros-lugares">Terceros lugares</span>
               <select name="tp" [(ngModel)]="form.default_third_place_rule">
                 <option i18n="@@torneos.dos-bronces" value="two_bronzes">Dos bronces</option>
-                <option i18n="@@torneos.combate-3" value="third_place_match">Combate por el 3.º</option>
+                <option i18n="@@torneos.combate-3" value="third_place_match"
+                  >Combate por el 3.º</option
+                >
                 <option i18n="@@torneos.repechaje" value="repechage">Repechaje</option>
               </select>
             </label>
           </div>
-          <label i18n="@@torneos.torneo-prueba-no-cuenta" class="field inline"><input type="checkbox" name="test" [(ngModel)]="form.is_test" /> Torneo de prueba (no cuenta en historial ni medallero)</label>
+          <label i18n="@@torneos.torneo-prueba-no-cuenta" class="field inline"
+            ><input type="checkbox" name="test" [(ngModel)]="form.is_test" /> Torneo de prueba (no
+            cuenta en historial ni medallero)</label
+          >
           <div class="form-actions">
-            <button i18n="@@torneos.cancelar" type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
-            <button i18n="@@torneos.crear-torneo" class="btn primary" [disabled]="form.name.trim().length < 3 || !form.start_date || busy()">Crear torneo</button>
+            <button i18n="@@torneos.cancelar" type="button" class="btn" (click)="showNew.set(false)"
+              >Cancelar</button
+            >
+            <button
+              i18n="@@torneos.crear-torneo"
+              class="btn primary"
+              [disabled]="form.name.trim().length < 3 || !form.start_date || busy()"
+              >Crear torneo</button
+            >
           </div>
         </form>
       </app-modal>
@@ -377,8 +456,14 @@ export class TournamentListPage {
 
   async create(): Promise<void> {
     this.busy.set(true);
-    const body = { ...this.form, end_date: this.form.end_date || null, tatami_count: Number(this.form.tatami_count) || 1 };
-    const t = await this.mut.post<Tournament>('/tournaments', body, { success: $localize`:@@torneos.torneo-creado:Torneo creado` });
+    const body = {
+      ...this.form,
+      end_date: this.form.end_date || null,
+      tatami_count: Number(this.form.tatami_count) || 1,
+    };
+    const t = await this.mut.post<Tournament>('/tournaments', body, {
+      success: $localize`:@@torneos.torneo-creado:Torneo creado`,
+    });
     this.busy.set(false);
     if (t) {
       this.showNew.set(false);

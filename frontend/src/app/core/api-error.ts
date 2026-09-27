@@ -36,7 +36,10 @@ export class ApiError extends Error {
   get fullMessage(): string {
     const errs = this.details['errors'] as Array<{ loc: unknown[]; msg: string }> | undefined;
     if (this.code === 'VALIDATION_ERROR' && errs?.length) {
-      return `${this.message}: ` + errs.map((e) => `${e.loc.filter((x) => x !== 'body').join('.')}: ${e.msg}`).join('; ');
+      return (
+        `${this.message}: ` +
+        errs.map((e) => `${e.loc.filter((x) => x !== 'body').join('.')}: ${e.msg}`).join('; ')
+      );
     }
     return this.message;
   }
@@ -56,9 +59,17 @@ export class ApiError extends Error {
         return new ApiError(err.status, 'ERROR', b.detail);
       }
       if (err.status === 0) {
-        return new ApiError(0, 'NETWORK', $localize`:@@error.sin-conexion-servidor:Sin conexión con el servidor`);
+        return new ApiError(
+          0,
+          'NETWORK',
+          $localize`:@@error.sin-conexion-servidor:Sin conexión con el servidor`,
+        );
       }
-      return new ApiError(err.status, 'HTTP_' + err.status, err.statusText || $localize`:@@error.error-servidor:Error del servidor`);
+      return new ApiError(
+        err.status,
+        'HTTP_' + err.status,
+        err.statusText || $localize`:@@error.error-servidor:Error del servidor`,
+      );
     }
     return new ApiError(-1, 'CLIENT', err instanceof Error ? err.message : String(err));
   }

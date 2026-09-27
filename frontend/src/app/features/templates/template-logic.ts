@@ -90,22 +90,34 @@ export function validateRows(rows: EditRow[]): string[] {
   rows.forEach((r, i) => {
     const n = i + 1;
     const code = r.code.trim();
-    if (!code) errors.push($localize`:@@plantillas.fila-falta-codigo:Fila ${n}:n:: falta el código`);
+    if (!code)
+      errors.push($localize`:@@plantillas.fila-falta-codigo:Fila ${n}:n:: falta el código`);
     else if (seen.has(code.toUpperCase()))
       errors.push(
         $localize`:@@plantillas.fila-codigo-ya-esta-fila:Fila ${n}:n:: el código ${code}:code: ya está en la fila ${seen.get(code.toUpperCase())}:get:`,
       );
     else seen.set(code.toUpperCase(), n);
-    if (!r.name.trim()) errors.push($localize`:@@plantillas.fila-falta-nombre:Fila ${n}:n:: falta el nombre`);
+    if (!r.name.trim())
+      errors.push($localize`:@@plantillas.fila-falta-nombre:Fila ${n}:n:: falta el nombre`);
     const a = num(r.age_min);
     const b = num(r.age_max);
     const d = num(r.duration_seconds);
-    if (a === 'bad' || b === 'bad') errors.push($localize`:@@plantillas.fila-edad-debe-ser-numero-entero:Fila ${n}:n:: la edad debe ser un número entero`);
+    if (a === 'bad' || b === 'bad')
+      errors.push(
+        $localize`:@@plantillas.fila-edad-debe-ser-numero-entero:Fila ${n}:n:: la edad debe ser un número entero`,
+      );
     else if (a !== null && b !== null && a > b)
-      errors.push($localize`:@@plantillas.fila-edad-minima-mayor-maxima:Fila ${n}:n:: la edad mínima es mayor que la máxima`);
-    if (d === 'bad') errors.push($localize`:@@plantillas.fila-duracion-debe-ser-numero:Fila ${n}:n:: la duración debe ser un número de segundos`);
+      errors.push(
+        $localize`:@@plantillas.fila-edad-minima-mayor-maxima:Fila ${n}:n:: la edad mínima es mayor que la máxima`,
+      );
+    if (d === 'bad')
+      errors.push(
+        $localize`:@@plantillas.fila-duracion-debe-ser-numero:Fila ${n}:n:: la duración debe ser un número de segundos`,
+      );
     if (r.grade_min !== null && r.grade_max !== null && r.grade_min > r.grade_max) {
-      errors.push($localize`:@@plantillas.fila-grado-desde-mayor-hasta:Fila ${n}:n:: el grado «desde» es mayor que el «hasta»`);
+      errors.push(
+        $localize`:@@plantillas.fila-grado-desde-mayor-hasta:Fila ${n}:n:: el grado «desde» es mayor que el «hasta»`,
+      );
     }
   });
   return errors;

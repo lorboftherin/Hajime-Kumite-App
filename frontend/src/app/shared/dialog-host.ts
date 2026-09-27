@@ -19,8 +19,16 @@ import { FocusTrap } from './focus-trap';
             @case ('confirm') {
               <p>{{ d.message }}</p>
               <div class="form-actions">
-                <button i18n="@@dialogo.cancelar" class="btn" (click)="d.resolve(false)">Cancelar</button>
-                <button class="btn" [class.danger]="d.danger" [class.primary]="!d.danger" (click)="d.resolve(true)" autofocus>
+                <button i18n="@@dialogo.cancelar" class="btn" (click)="d.resolve(false)"
+                  >Cancelar</button
+                >
+                <button
+                  class="btn"
+                  [class.danger]="d.danger"
+                  [class.primary]="!d.danger"
+                  (click)="d.resolve(true)"
+                  autofocus
+                >
                   {{ d.confirmText || txtConfirmar }}
                 </button>
               </div>
@@ -35,7 +43,13 @@ import { FocusTrap } from './focus-trap';
                 </ul>
               }
               <div class="form-actions">
-                <button i18n="@@dialogo.entendido" class="btn primary" (click)="d.resolve(true)" autofocus>Entendido</button>
+                <button
+                  i18n="@@dialogo.entendido"
+                  class="btn primary"
+                  (click)="d.resolve(true)"
+                  autofocus
+                  >Entendido</button
+                >
               </div>
             }
             @case ('choice') {
@@ -49,7 +63,14 @@ import { FocusTrap } from './focus-trap';
               }
               <div class="choices">
                 @for (c of d.choices; track c.value; let first = $first) {
-                  <button type="button" class="btn choice" [class.primary]="c.primary" [class.danger]="c.danger" (click)="d.resolve(c.value)" [attr.autofocus]="first ? '' : null">
+                  <button
+                    type="button"
+                    class="btn choice"
+                    [class.primary]="c.primary"
+                    [class.danger]="c.danger"
+                    (click)="d.resolve(c.value)"
+                    [attr.autofocus]="first ? '' : null"
+                  >
                     <span class="choice-label">{{ c.label }}</span>
                     @if (c.hint) {
                       <span class="choice-hint">{{ c.hint }}</span>
@@ -58,7 +79,9 @@ import { FocusTrap } from './focus-trap';
                 }
               </div>
               <div class="form-actions">
-                <button class="btn" (click)="d.resolve(null)">{{ d.cancelText || txtDecidirDespues }}</button>
+                <button class="btn" (click)="d.resolve(null)">{{
+                  d.cancelText || txtDecidirDespues
+                }}</button>
               </div>
             }
             @case ('prompt') {
@@ -71,11 +94,23 @@ import { FocusTrap } from './focus-trap';
                   <textarea name="text" rows="3" [(ngModel)]="text" autofocus></textarea>
                 </label>
                 @if (d.minLength && text().trim().length < d.minLength) {
-                  <div i18n="@@dialogo.minimo-caracteres" class="hint">Mínimo {{ d.minLength }} caracteres.</div>
+                  <div i18n="@@dialogo.minimo-caracteres" class="hint"
+                    >Mínimo {{ d.minLength }} caracteres.</div
+                  >
                 }
                 <div class="form-actions">
-                  <button i18n="@@dialogo.cancelar" type="button" class="btn" (click)="d.resolve(null)">Cancelar</button>
-                  <button type="submit" class="btn primary" [disabled]="text().trim().length < d.minLength">
+                  <button
+                    i18n="@@dialogo.cancelar"
+                    type="button"
+                    class="btn"
+                    (click)="d.resolve(null)"
+                    >Cancelar</button
+                  >
+                  <button
+                    type="submit"
+                    class="btn primary"
+                    [disabled]="text().trim().length < d.minLength"
+                  >
                     {{ d.confirmText || txtAceptar }}
                   </button>
                 </div>
@@ -91,19 +126,39 @@ import { FocusTrap } from './focus-trap';
                 </ul>
               </div>
               <p i18n="@@dialogo.puedes-continuar-igualmente" class="small muted">
-                Puedes continuar igualmente: la excepción quedará registrada con tu usuario y el motivo.
+                Puedes continuar igualmente: la excepción quedará registrada con tu usuario y el
+                motivo.
               </p>
               <form (ngSubmit)="submitText(d)">
                 <label class="field">
                   <span i18n="@@dialogo.motivo-para-continuar">Motivo para continuar</span>
-                  <textarea i18n-placeholder="@@dialogo.ej-autorizado-organizador" name="reason" rows="2" [(ngModel)]="text" placeholder="Ej.: autorizado por el organizador" autofocus></textarea>
+                  <textarea
+                    i18n-placeholder="@@dialogo.ej-autorizado-organizador"
+                    name="reason"
+                    rows="2"
+                    [(ngModel)]="text"
+                    placeholder="Ej.: autorizado por el organizador"
+                    autofocus
+                  ></textarea>
                 </label>
                 @if (text().trim().length < 3) {
                   <div i18n="@@dialogo.minimo-3-caracteres" class="hint">Mínimo 3 caracteres.</div>
                 }
                 <div class="form-actions">
-                  <button i18n="@@dialogo.cancelar" type="button" class="btn" (click)="d.resolve(null)">Cancelar</button>
-                  <button i18n="@@dialogo.continuar-todos-modos" type="submit" class="btn danger" [disabled]="text().trim().length < 3">Continuar de todos modos</button>
+                  <button
+                    i18n="@@dialogo.cancelar"
+                    type="button"
+                    class="btn"
+                    (click)="d.resolve(null)"
+                    >Cancelar</button
+                  >
+                  <button
+                    i18n="@@dialogo.continuar-todos-modos"
+                    type="submit"
+                    class="btn danger"
+                    [disabled]="text().trim().length < 3"
+                    >Continuar de todos modos</button
+                  >
                 </div>
               </form>
             }
@@ -113,12 +168,28 @@ import { FocusTrap } from './focus-trap';
     }
     <div class="toasts" aria-live="polite">
       @for (t of toast.toasts(); track t.id) {
-        <div class="alert toast {{ t.kind }}" [attr.role]="t.kind === 'danger' ? 'alert' : 'status'" (click)="toast.dismiss(t.id)">
+        <div
+          class="alert toast {{ t.kind }}"
+          [attr.role]="t.kind === 'danger' ? 'alert' : 'status'"
+          (click)="toast.dismiss(t.id)"
+        >
           <span class="toast-text">{{ t.text }}</span>
           @if (t.link) {
-            <a class="toast-link" [routerLink]="t.link.path" (click)="toast.dismiss(t.id); $event.stopPropagation()">{{ t.link.label }}</a>
+            <a
+              class="toast-link"
+              [routerLink]="t.link.path"
+              (click)="toast.dismiss(t.id); $event.stopPropagation()"
+              >{{ t.link.label }}</a
+            >
           }
-          <button i18n-aria-label="@@dialogo.cerrar-aviso" type="button" class="toast-x" (click)="toast.dismiss(t.id); $event.stopPropagation()" aria-label="Cerrar aviso">✕</button>
+          <button
+            i18n-aria-label="@@dialogo.cerrar-aviso"
+            type="button"
+            class="toast-x"
+            (click)="toast.dismiss(t.id); $event.stopPropagation()"
+            aria-label="Cerrar aviso"
+            >✕</button
+          >
         </div>
       }
     </div>

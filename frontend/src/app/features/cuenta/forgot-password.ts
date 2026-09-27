@@ -10,7 +10,9 @@ import { AuthCard } from './auth-card';
   selector: 'app-forgot-password',
   imports: [FormsModule, AuthCard],
   template: `
-    <app-auth-card i18n-lead="@@cuenta.recuperar.escribe-correo-cuenta-te" i18n-heading="@@cuenta.recuperar.recupera-cuenta"
+    <app-auth-card
+      i18n-lead="@@cuenta.recuperar.escribe-correo-cuenta-te"
+      i18n-heading="@@cuenta.recuperar.recupera-cuenta"
       id="fp"
       heading="Recupera tu cuenta"
       lead="Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva."
@@ -19,7 +21,9 @@ import { AuthCard } from './auth-card';
         <div class="alert ok" role="status">
           <strong i18n="@@cuenta.recuperar.revisa-correo">Revisa tu correo.</strong>
           <div class="small">{{ sent() }}</div>
-          <div i18n="@@cuenta.recuperar.si-no-llega-unos-minutos-mira" class="small">Si no llega en unos minutos, mira la carpeta de spam.</div>
+          <div i18n="@@cuenta.recuperar.si-no-llega-unos-minutos-mira" class="small"
+            >Si no llega en unos minutos, mira la carpeta de spam.</div
+          >
         </div>
       } @else {
         <form class="stack" (ngSubmit)="submit()">
@@ -44,9 +48,11 @@ import { AuthCard } from './auth-card';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }<ng-container i18n="@@cuenta.recuperar.enviar-enlace">
-            Enviar enlace
-          </ng-container></button>
+            }
+            <ng-container i18n="@@cuenta.recuperar.enviar-enlace">
+              Enviar enlace
+            </ng-container></button
+          >
           <p i18n="@@cuenta.recuperar.cuenta-no-tiene-correo-pide" class="small muted">
             ¿Tu cuenta no tiene correo? Pide a la organización que te asigne una contraseña
             temporal.

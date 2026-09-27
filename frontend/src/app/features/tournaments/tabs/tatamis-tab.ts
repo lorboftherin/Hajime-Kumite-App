@@ -38,26 +38,70 @@ interface TatamiView {
   imports: [FormsModule, RouterLink, StatusBadge, Icon],
   template: `
     <div class="toolbar">
-      <span i18n="@@torneo.tatamis.actualiza-cada-15-s" class="muted small grow">Se actualiza cada 15 s.</span>
-      <button i18n-aria-label="@@torneo.tatamis.actualizar" i18n-title="@@torneo.tatamis.actualizar" class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
-      <button class="btn" [class.primary]="!planning() && unassignedWithBracket() > 0" (click)="planning.set(!planning())" [attr.aria-expanded]="planning()">
-        <ng-container i18n="@@torneo.tatamis.cerrar-organizar-colas">@if (planning()) {Cerrar colas} @else {Organizar colas}</ng-container>
+      <span i18n="@@torneo.tatamis.actualiza-cada-15-s" class="muted small grow"
+        >Se actualiza cada 15 s.</span
+      >
+      <button
+        i18n-aria-label="@@torneo.tatamis.actualizar"
+        i18n-title="@@torneo.tatamis.actualizar"
+        class="btn icon-only ghost"
+        (click)="load()"
+        title="Actualizar"
+        aria-label="Actualizar"
+        ><app-icon name="refresh"
+      /></button>
+      <button
+        class="btn"
+        [class.primary]="!planning() && unassignedWithBracket() > 0"
+        (click)="planning.set(!planning())"
+        [attr.aria-expanded]="planning()"
+      >
+        <ng-container i18n="@@torneo.tatamis.cerrar-organizar-colas">
+          @if (planning()) {
+            Cerrar colas
+          } @else {
+            Organizar colas
+          }
+        </ng-container>
       </button>
-      <button class="btn" (click)="toggleScheduling()" [attr.aria-expanded]="scheduling()" i18n="@@torneo.tatamis.cerrar-horarios">@if (scheduling()) {Cerrar horarios} @else {Horarios}</button>
-      <button i18n="@@torneo.tatamis.agregar-tatami" class="btn" (click)="addTatami()"><app-icon name="plus" /> Agregar tatami</button>
+      <button
+        class="btn"
+        (click)="toggleScheduling()"
+        [attr.aria-expanded]="scheduling()"
+        i18n="@@torneo.tatamis.cerrar-horarios"
+      >
+        @if (scheduling()) {
+          Cerrar horarios
+        } @else {
+          Horarios
+        }
+      </button>
+      <button i18n="@@torneo.tatamis.agregar-tatami" class="btn" (click)="addTatami()"
+        ><app-icon name="plus" /> Agregar tatami</button
+      >
     </div>
 
     @if (scheduling()) {
       <section class="card planner" aria-labelledby="h-horarios">
         <h2 i18n="@@torneo.tatamis.horarios-estimados" id="h-horarios">Horarios estimados</h2>
         <p i18n="@@torneo.tatamis.hora-inicio-cada-tatami-estima" class="small muted">
-          Con la hora de inicio de cada tatami se estima a qué hora empieza cada combate (duración de la categoría más el
-          margen, ajustada con el ritmo real del tatami). Se muestra en la página pública, en «¿Cuándo pelea?» y en las colas.
+          Con la hora de inicio de cada tatami se estima a qué hora empieza cada combate (duración
+          de la categoría más el margen, ajustada con el ritmo real del tatami). Se muestra en la
+          página pública, en «¿Cuándo pelea?» y en las colas.
         </p>
         <form class="sched-grid" (ngSubmit)="saveSettings()">
           <label class="field">
-            <span i18n="@@torneo.tatamis.margen-entre-combates-segundos">Margen entre combates (segundos)</span>
-            <input type="number" name="ovh" min="0" max="1800" step="5" [(ngModel)]="sched.overhead" />
+            <span i18n="@@torneo.tatamis.margen-entre-combates-segundos"
+              >Margen entre combates (segundos)</span
+            >
+            <input
+              type="number"
+              name="ovh"
+              min="0"
+              max="1800"
+              step="5"
+              [(ngModel)]="sched.overhead"
+            />
           </label>
           <label class="field">
             <span i18n="@@torneo.tatamis.zona-horaria">Zona horaria</span>
@@ -67,14 +111,25 @@ interface TatamiView {
               }
             </select>
           </label>
-          <div class="field end"><button i18n="@@torneo.tatamis.guardar" class="btn primary" [disabled]="busy()">Guardar</button></div>
+          <div class="field end"
+            ><button i18n="@@torneo.tatamis.guardar" class="btn primary" [disabled]="busy()"
+              >Guardar</button
+            ></div
+          >
         </form>
         <ul class="list-plain sched-list">
           @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
             <li>
               <label class="field inline">
-                <span i18n="@@torneo.tatamis.inicio" class="grow">{{ t.name || 'Tatami ' + t.number }} · inicio</span>
-                <input type="datetime-local" [value]="(t.planned_start ?? '').slice(0, 16)" (change)="savePlanned(t, $any($event.target).value)" [attr.aria-label]="ariaHoraInicio(t.name || 'Tatami ' + t.number)" />
+                <span i18n="@@torneo.tatamis.inicio" class="grow"
+                  >{{ t.name || 'Tatami ' + t.number }} · inicio</span
+                >
+                <input
+                  type="datetime-local"
+                  [value]="(t.planned_start ?? '').slice(0, 16)"
+                  (change)="savePlanned(t, $any($event.target).value)"
+                  [attr.aria-label]="ariaHoraInicio(t.name || 'Tatami ' + t.number)"
+                />
               </label>
             </li>
           }
@@ -83,72 +138,154 @@ interface TatamiView {
     }
     @if (!planning() && unassignedWithBracket() > 0) {
       <div class="alert warn small">
-        <ng-container i18n="@@torneo.tatamis.tatami-combates-no-aparecen">{unassignedWithBracket(), plural, =1 {1 categoría con llave no tiene tatami: sus combates no aparecen en ninguna cola.} other {{{ unassignedWithBracket() }} categorías con llave no tienen tatami: sus combates no aparecen en ninguna cola.}}</ng-container>
-        <button i18n="@@torneo.tatamis.organizar-colas" class="btn sm" (click)="planning.set(true)">Organizar colas</button>
+        <ng-container
+          i18n="@@torneo.tatamis.tatami-combates-no-aparecen"
+          >{unassignedWithBracket(), plural,
+            =1 {1 categoría con llave no tiene tatami: sus combates no aparecen en ninguna cola.}
+            other {
+              {{ unassignedWithBracket() }} categorías con llave no tienen tatami: sus combates no
+              aparecen en ninguna cola.
+            }
+          }</ng-container
+        >
+        <button i18n="@@torneo.tatamis.organizar-colas" class="btn sm" (click)="planning.set(true)"
+          >Organizar colas</button
+        >
       </div>
     }
 
     @if (planning()) {
-      <section i18n-aria-label="@@torneo.tatamis.colas-categorias-tatami" class="card planner" aria-label="Colas de categorías por tatami">
+      <section
+        i18n-aria-label="@@torneo.tatamis.colas-categorias-tatami"
+        class="card planner"
+        aria-label="Colas de categorías por tatami"
+      >
         <h2 i18n="@@torneo.tatamis.colas-categorias">Colas de categorías</h2>
         <p i18n="@@torneo.tatamis.elige-categorias-sin-tatami" class="small muted">
-          Elige categorías sin tatami y asígnalas; en cada tatami ordénalas con ↑ ↓ y guarda. El número de combates es una
-          estimación según los inscritos y el formato.
+          Elige categorías sin tatami y asígnalas; en cada tatami ordénalas con ↑ ↓ y guarda. El
+          número de combates es una estimación según los inscritos y el formato.
         </p>
         <div class="plan-grid">
           <div class="plan-col">
-            <h3 i18n="@@torneo.tatamis.sin-tatami">Sin tatami <span class="muted small">({{ unassigned().length }})</span></h3>
+            <h3 i18n="@@torneo.tatamis.sin-tatami"
+              >Sin tatami <span class="muted small">({{ unassigned().length }})</span></h3
+            >
             @if (unassigned().length) {
               <label i18n="@@torneo.tatamis.seleccionar-todas" class="field inline small all">
-                <input type="checkbox" [checked]="picked().size === unassigned().length" (change)="pickAll($any($event.target).checked)" />
+                <input
+                  type="checkbox"
+                  [checked]="picked().size === unassigned().length"
+                  (change)="pickAll($any($event.target).checked)"
+                />
                 Seleccionar todas
               </label>
               <ul class="list-plain plan-list">
                 @for (c of unassigned(); track c.id) {
                   <li>
                     <label class="field inline">
-                      <input type="checkbox" [checked]="picked().has(c.id)" (change)="togglePick(c.id)" />
+                      <input
+                        type="checkbox"
+                        [checked]="picked().has(c.id)"
+                        (change)="togglePick(c.id)"
+                      />
                       <span class="grow">{{ c.name }}</span>
-                      <span i18n="@@torneo.tatamis.n-combates" i18n-title="@@torneo.tatamis.combates-estimados" class="est num" title="Combates estimados">{est(c), plural, =1 {1 combate} other {{{ est(c) }} combates}}</span>
+                      <span
+                        i18n="@@torneo.tatamis.n-combates"
+                        i18n-title="@@torneo.tatamis.combates-estimados"
+                        class="est num"
+                        title="Combates estimados"
+                        >{est(c), plural, =1 {1 combate} other {{{ est(c) }} combates}}</span
+                      >
                     </label>
                   </li>
                 }
               </ul>
               <div class="row assign">
-                <select i18n-aria-label="@@torneo.tatamis.tatami-destino" [ngModel]="target()" (ngModelChange)="target.set($event)" aria-label="Tatami destino">
+                <select
+                  i18n-aria-label="@@torneo.tatamis.tatami-destino"
+                  [ngModel]="target()"
+                  (ngModelChange)="target.set($event)"
+                  aria-label="Tatami destino"
+                >
                   @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
                     <option [ngValue]="t.id">{{ t.name || 'Tatami ' + t.number }}</option>
                   }
                 </select>
-                <button i18n="@@torneo.tatamis.asignar" class="btn primary" [disabled]="!picked().size || !target() || busy()" (click)="assignPicked()">
-                  Asignar {{ picked().size ? '(' + picked().size + ')' : '' }} a {{ tatamiLabel(target()) }}
+                <button
+                  i18n="@@torneo.tatamis.asignar"
+                  class="btn primary"
+                  [disabled]="!picked().size || !target() || busy()"
+                  (click)="assignPicked()"
+                >
+                  Asignar {{ picked().size ? '(' + picked().size + ')' : '' }} a
+                  {{ tatamiLabel(target()) }}
                 </button>
               </div>
             } @else {
-              <p i18n="@@torneo.tatamis.todas-categorias-inscritos" class="muted small">Todas las categorías con inscritos tienen tatami.</p>
+              <p i18n="@@torneo.tatamis.todas-categorias-inscritos" class="muted small"
+                >Todas las categorías con inscritos tienen tatami.</p
+              >
             }
           </div>
           @for (t of ctx.tournament()?.tatamis ?? []; track t.id) {
             <div class="plan-col">
               <h3>
                 {{ t.name || 'Tatami ' + t.number }}
-                <span class="muted small">· <ng-container i18n="@@torneo.tatamis.aprox">{queueTotal(t.id), plural, =1 {1 combate aprox.} other {{{ queueTotal(t.id) }} combates aprox.}}</ng-container></span>
+                <span class="muted small"
+                  >·
+                  <ng-container i18n="@@torneo.tatamis.aprox">{queueTotal(t.id), plural,
+                    =1 {1 combate aprox.}
+                    other {{{ queueTotal(t.id) }} combates aprox.}
+                  }</ng-container></span
+                >
                 @if (dirty().has(t.id)) {
-                  <span i18n="@@torneo.tatamis.sin-guardar" class="badge yamabuki">sin guardar</span>
+                  <span i18n="@@torneo.tatamis.sin-guardar" class="badge yamabuki"
+                    >sin guardar</span
+                  >
                 }
               </h3>
               <ol class="list-plain plan-list queue-edit">
-                @for (cid of queueOf(t.id); track cid; let i = $index; let first = $first; let last = $last) {
+                @for (
+                  cid of queueOf(t.id);
+                  track cid;
+                  let i = $index;
+                  let first = $first;
+                  let last = $last
+                ) {
                   @let c = ctx.categoryById().get(cid);
                   <li>
                     <span class="pos num">{{ i + 1 }}</span>
                     <span class="grow">
                       {{ c?.name ?? '#' + cid }}
-                      <span i18n="@@torneo.tatamis.n-combates" class="est small num">{c ? est(c) : 0, plural, =1 {1 combate} other {{{ c ? est(c) : 0 }} combates}}</span>
+                      <span
+                        i18n="@@torneo.tatamis.n-combates"
+                        class="est small num"
+                        >{c ? est(c) : 0, plural,
+                          =1 {1 combate}
+                          other {{{ c ? est(c) : 0 }} combates}
+                        }</span
+                      >
                     </span>
-                    <button class="btn sm ghost icon-only" [disabled]="first" (click)="move(t.id, i, -1)" [attr.aria-label]="ariaSubir(c?.name ?? '')">↑</button>
-                    <button class="btn sm ghost icon-only" [disabled]="last" (click)="move(t.id, i, 1)" [attr.aria-label]="ariaBajar(c?.name ?? '')">↓</button>
-                    <button class="btn sm ghost icon-only" (click)="remove(t.id, cid)" [attr.aria-label]="ariaQuitarCola(c?.name ?? '')"><app-icon name="close" /></button>
+                    <button
+                      class="btn sm ghost icon-only"
+                      [disabled]="first"
+                      (click)="move(t.id, i, -1)"
+                      [attr.aria-label]="ariaSubir(c?.name ?? '')"
+                      >↑</button
+                    >
+                    <button
+                      class="btn sm ghost icon-only"
+                      [disabled]="last"
+                      (click)="move(t.id, i, 1)"
+                      [attr.aria-label]="ariaBajar(c?.name ?? '')"
+                      >↓</button
+                    >
+                    <button
+                      class="btn sm ghost icon-only"
+                      (click)="remove(t.id, cid)"
+                      [attr.aria-label]="ariaQuitarCola(c?.name ?? '')"
+                      ><app-icon name="close"
+                    /></button>
                   </li>
                 } @empty {
                   <li i18n="@@torneo.tatamis.cola-vacia" class="muted small">Cola vacía.</li>
@@ -156,8 +293,16 @@ interface TatamiView {
               </ol>
               @if (dirty().has(t.id)) {
                 <div class="row">
-                  <button i18n="@@torneo.tatamis.descartar" class="btn sm" (click)="discard(t.id)">Descartar</button>
-                  <button i18n="@@torneo.tatamis.guardar-cola" class="btn sm primary" [disabled]="busy()" (click)="saveQueue(t.id)">Guardar cola</button>
+                  <button i18n="@@torneo.tatamis.descartar" class="btn sm" (click)="discard(t.id)"
+                    >Descartar</button
+                  >
+                  <button
+                    i18n="@@torneo.tatamis.guardar-cola"
+                    class="btn sm primary"
+                    [disabled]="busy()"
+                    (click)="saveQueue(t.id)"
+                    >Guardar cola</button
+                  >
                 </div>
               }
             </div>
@@ -172,45 +317,74 @@ interface TatamiView {
             <h2>
               {{ v.tatami.name || 'Tatami ' + v.tatami.number }}
               @if (v.tatami.planned_start) {
-                <span i18n="@@torneo.tatamis.inicio-2" class="muted small num">· inicio {{ v.tatami.planned_start.slice(11, 16) }}</span>
+                <span i18n="@@torneo.tatamis.inicio-2" class="muted small num"
+                  >· inicio {{ v.tatami.planned_start.slice(11, 16) }}</span
+                >
               }
             </h2>
-            <button i18n="@@torneo.tatamis.planilla-pdf" i18n-title="@@torneo.tatamis.registro-oficial-papel-para" class="btn sm ghost" (click)="scoresheet(v.tatami.id)" title="Registro oficial en papel para Shadow Mode"><app-icon name="print" /> Planilla PDF</button>
+            <button
+              i18n="@@torneo.tatamis.planilla-pdf"
+              i18n-title="@@torneo.tatamis.registro-oficial-papel-para"
+              class="btn sm ghost"
+              (click)="scoresheet(v.tatami.id)"
+              title="Registro oficial en papel para Shadow Mode"
+              ><app-icon name="print" /> Planilla PDF</button
+            >
           </div>
           @if (v.data; as q) {
             @if (q.progress; as pr) {
               <div class="progress" [attr.aria-label]="ariaProgreso(pr.done, pr.total)">
-                <div class="bar"><span [style.width.%]="pr.total ? (100 * pr.done) / pr.total : 0"></span></div>
-                <span i18n="@@torneo.tatamis.combates" class="small muted num">{{ pr.done }} de {{ pr.total }} combates</span>
+                <div class="bar"
+                  ><span [style.width.%]="pr.total ? (100 * pr.done) / pr.total : 0"></span
+                ></div>
+                <span i18n="@@torneo.tatamis.combates" class="small muted num"
+                  >{{ pr.done }} de {{ pr.total }} combates</span
+                >
               </div>
             }
             <div class="people small">
               <div class="line">
                 <span i18n="@@torneo.tatamis.operando-ahora" class="muted">Operando ahora:</span>
                 @for (o of q.operators ?? []; track o.user) {
-                  <span class="op"><i aria-hidden="true"></i>{{ o.user }}<span class="muted">· {{ o.matches.join(', ') }}</span></span>
+                  <span class="op"
+                    ><i aria-hidden="true"></i>{{ o.user
+                    }}<span class="muted">· {{ o.matches.join(', ') }}</span></span
+                  >
                 } @empty {
                   <span i18n="@@torneo.tatamis.nadie" class="muted">nadie</span>
                 }
                 @if ((q.operators?.length ?? 0) > 1) {
-                  <span i18n="@@torneo.tatamis.varias-tablets" class="badge yamabuki">varias tablets</span>
+                  <span i18n="@@torneo.tatamis.varias-tablets" class="badge yamabuki"
+                    >varias tablets</span
+                  >
                 }
               </div>
               @if (q.assigned_operators?.length) {
-                <div class="line"><span i18n="@@torneo.tatamis.operadores-tatami" class="muted">Operadores del tatami:</span><span>{{ q.assigned_operators!.join(', ') }}</span></div>
+                <div class="line"
+                  ><span i18n="@@torneo.tatamis.operadores-tatami" class="muted"
+                    >Operadores del tatami:</span
+                  ><span>{{ q.assigned_operators!.join(', ') }}</span></div
+                >
               }
               @if (q.referees?.length) {
                 <div class="line">
                   <span i18n="@@torneo.tatamis.arbitros" class="muted">Árbitros:</span>
                   @for (r of q.referees!; track $index) {
-                    <span class="ref">{{ r.name }}@if (r.position) {<span class="muted">· {{ r.position }}</span>}</span>
+                    <span class="ref"
+                      >{{ r.name }}
+                      @if (r.position) {
+                        <span class="muted">· {{ r.position }}</span>
+                      }
+                    </span>
                   }
                 </div>
               }
             </div>
             @if (q.conflicts.length) {
               <div class="alert warn small">
-                <strong i18n="@@torneo.tatamis.competidores-combates-pendientes">Competidores con combates pendientes en otro tatami:</strong>
+                <strong i18n="@@torneo.tatamis.competidores-combates-pendientes"
+                  >Competidores con combates pendientes en otro tatami:</strong
+                >
                 <ul>
                   @for (c of q.conflicts; track c.registration_id) {
                     <li>{{ c.name }}</li>
@@ -222,14 +396,34 @@ interface TatamiView {
             @if (q.current; as cur) {
               <div class="match current">
                 <div class="grow">
-                  <div class="m-meta"><span i18n="@@torneo.tatamis.curso" class="badge matcha live">En curso</span> <span class="num n">{{ cur.number }}</span> {{ cur.category_name }} <span class="code">{{ cur.match.code }}</span></div>
-                  <div class="fighter aka"><span class="pname">{{ pname(q, cur.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small><span class="pts num">{{ cur.match.aka_score ?? 0 }}</span></div>
-                  <div class="fighter ao"><span class="pname">{{ pname(q, cur.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small><span class="pts num">{{ cur.match.ao_score ?? 0 }}</span></div>
+                  <div class="m-meta"
+                    ><span i18n="@@torneo.tatamis.curso" class="badge matcha live">En curso</span>
+                    <span class="num n">{{ cur.number }}</span> {{ cur.category_name }}
+                    <span class="code">{{ cur.match.code }}</span></div
+                  >
+                  <div class="fighter aka"
+                    ><span class="pname">{{ pname(q, cur.match.aka_registration_id) }}</span>
+                    <small class="muted">{{ pdojo(q, cur.match.aka_registration_id) }}</small
+                    ><span class="pts num">{{ cur.match.aka_score ?? 0 }}</span></div
+                  >
+                  <div class="fighter ao"
+                    ><span class="pname">{{ pname(q, cur.match.ao_registration_id) }}</span>
+                    <small class="muted">{{ pdojo(q, cur.match.ao_registration_id) }}</small
+                    ><span class="pts num">{{ cur.match.ao_score ?? 0 }}</span></div
+                  >
                 </div>
-                <a i18n="@@torneo.tatamis.abrir-mesa" class="btn primary" [routerLink]="['/mesa', cur.match.id]" [queryParams]="{ tatami: v.tatami.id }"><app-icon name="open" /> Abrir mesa</a>
+                <a
+                  i18n="@@torneo.tatamis.abrir-mesa"
+                  class="btn primary"
+                  [routerLink]="['/mesa', cur.match.id]"
+                  [queryParams]="{ tatami: v.tatami.id }"
+                  ><app-icon name="open" /> Abrir mesa</a
+                >
               </div>
             } @else {
-              <div i18n="@@torneo.tatamis.ninguno-curso" class="muted small quiet">Ninguno en curso.</div>
+              <div i18n="@@torneo.tatamis.ninguno-curso" class="muted small quiet"
+                >Ninguno en curso.</div
+              >
             }
             <div i18n="@@torneo.tatamis.siguiente-espera" class="label">Siguiente y en espera</div>
             @for (it of waiting(q); track it.match.id; let i = $index) {
@@ -239,18 +433,36 @@ interface TatamiView {
                     @if (i === 0) {
                       <span i18n="@@torneo.tatamis.siguiente" class="badge ai">Siguiente</span>
                     }
-                    <span class="num n">{{ it.number }}</span> {{ it.category_name }} <span class="code">{{ it.match.code }}</span>
+                    <span class="num n">{{ it.number }}</span> {{ it.category_name }}
+                    <span class="code">{{ it.match.code }}</span>
                     @if (it.eta) {
-                      <span i18n-title="@@torneo.tatamis.hora-estimada-inicio" class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
+                      <span
+                        i18n-title="@@torneo.tatamis.hora-estimada-inicio"
+                        class="eta num"
+                        title="Hora estimada de inicio"
+                        >≈ {{ hour(it.eta) }}</span
+                      >
                     }
                     @if (it.match.status !== 'ready') {
                       <app-status [status]="it.match.status" type="match" />
                     }
                   </div>
-                  <div class="fighter aka"><span class="pname">{{ pname(q, it.match.aka_registration_id) }}</span> <small class="muted">{{ pdojo(q, it.match.aka_registration_id) }}</small></div>
-                  <div class="fighter ao"><span class="pname">{{ pname(q, it.match.ao_registration_id) }}</span> <small class="muted">{{ pdojo(q, it.match.ao_registration_id) }}</small></div>
+                  <div class="fighter aka"
+                    ><span class="pname">{{ pname(q, it.match.aka_registration_id) }}</span>
+                    <small class="muted">{{ pdojo(q, it.match.aka_registration_id) }}</small></div
+                  >
+                  <div class="fighter ao"
+                    ><span class="pname">{{ pname(q, it.match.ao_registration_id) }}</span>
+                    <small class="muted">{{ pdojo(q, it.match.ao_registration_id) }}</small></div
+                  >
                 </div>
-                <a i18n="@@torneo.tatamis.mesa" class="btn sm" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: v.tatami.id }">Mesa</a>
+                <a
+                  i18n="@@torneo.tatamis.mesa"
+                  class="btn sm"
+                  [routerLink]="['/mesa', it.match.id]"
+                  [queryParams]="{ tatami: v.tatami.id }"
+                  >Mesa</a
+                >
               </div>
             } @empty {
               <div i18n="@@torneo.tatamis.cola-vacia" class="muted small quiet">Cola vacía.</div>
@@ -262,7 +474,15 @@ interface TatamiView {
           }
         </section>
       } @empty {
-        <div class="card empty"><p><strong i18n="@@torneo.tatamis.torneo-no-tiene-tatamis">El torneo no tiene tatamis.</strong></p><ng-container i18n="@@torneo.tatamis.agrega-uno-para-empezar">Agrega uno para empezar a programar combates.</ng-container></div>
+        <div class="card empty"
+          ><p
+            ><strong i18n="@@torneo.tatamis.torneo-no-tiene-tatamis"
+              >El torneo no tiene tatamis.</strong
+            ></p
+          ><ng-container i18n="@@torneo.tatamis.agrega-uno-para-empezar"
+            >Agrega uno para empezar a programar combates.</ng-container
+          ></div
+        >
       }
     </div>
   `,
@@ -493,11 +713,16 @@ interface TatamiView {
   `,
 })
 export class TatamisTab {
-  ariaHoraInicio = (tatami: string) => $localize`:@@torneo.tatamis.hora-inicio-de:Hora de inicio de ${tatami}:tatami:`;
-  ariaSubir = (categoria: string) => $localize`:@@torneo.tatamis.subir:Subir ${categoria}:categoria:`;
-  ariaBajar = (categoria: string) => $localize`:@@torneo.tatamis.bajar:Bajar ${categoria}:categoria:`;
-  ariaQuitarCola = (categoria: string) => $localize`:@@torneo.tatamis.quitar-cola:Quitar ${categoria}:categoria: de la cola`;
-  ariaProgreso = (hechos: number, total: number) => $localize`:@@torneo.tatamis.progreso:${hechos}:hechos: de ${total}:total: combates`;
+  ariaHoraInicio = (tatami: string) =>
+    $localize`:@@torneo.tatamis.hora-inicio-de:Hora de inicio de ${tatami}:tatami:`;
+  ariaSubir = (categoria: string) =>
+    $localize`:@@torneo.tatamis.subir:Subir ${categoria}:categoria:`;
+  ariaBajar = (categoria: string) =>
+    $localize`:@@torneo.tatamis.bajar:Bajar ${categoria}:categoria:`;
+  ariaQuitarCola = (categoria: string) =>
+    $localize`:@@torneo.tatamis.quitar-cola:Quitar ${categoria}:categoria: de la cola`;
+  ariaProgreso = (hechos: number, total: number) =>
+    $localize`:@@torneo.tatamis.progreso:${hechos}:hechos: de ${total}:total: combates`;
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
   private files = inject(FilesService);
@@ -515,7 +740,10 @@ export class TatamisTab {
 
   toggleScheduling(): void {
     const t = this.ctx.tournament();
-    this.sched = { overhead: t?.match_overhead_seconds ?? 60, timezone: t?.timezone ?? 'America/Lima' };
+    this.sched = {
+      overhead: t?.match_overhead_seconds ?? 60,
+      timezone: t?.timezone ?? 'America/Lima',
+    };
     this.scheduling.set(!this.scheduling());
   }
 
@@ -534,7 +762,11 @@ export class TatamisTab {
     const res = await this.mut.patch<Tatami>(
       `/tatamis/${t.id}`,
       { planned_start: value || null },
-      { success: value ? $localize`:@@torneo.tatamis.inicio-guardado:Inicio de ${t.name || 'Tatami ' + t.number}:tatami: guardado` : $localize`:@@torneo.tatamis.hora-inicio-quitada:Hora de inicio quitada` },
+      {
+        success: value
+          ? $localize`:@@torneo.tatamis.inicio-guardado:Inicio de ${t.name || 'Tatami ' + t.number}:tatami: guardado`
+          : $localize`:@@torneo.tatamis.hora-inicio-quitada:Hora de inicio quitada`,
+      },
     );
     if (res) this.load();
   }
@@ -560,14 +792,18 @@ export class TatamisTab {
 
   /** Categorías que pueden ir a una cola: con inscritos y no fusionadas ni canceladas. */
   private readonly schedulable = computed(() =>
-    this.ctx.categories().filter((c) => !['merged', 'cancelled', 'empty'].includes(c.status) && c.entrant_count > 0),
+    this.ctx
+      .categories()
+      .filter((c) => !['merged', 'cancelled', 'empty'].includes(c.status) && c.entrant_count > 0),
   );
   readonly unassigned = computed(() => {
     const inQueue = new Set(Object.values(this.queues()).flat());
     return this.schedulable().filter((c) => !inQueue.has(c.id));
   });
   readonly unassignedWithBracket = computed(
-    () => this.schedulable().filter((c) => !c.tatami_id && ['ready', 'in_progress'].includes(c.status)).length,
+    () =>
+      this.schedulable().filter((c) => !c.tatami_id && ['ready', 'in_progress'].includes(c.status))
+        .length,
   );
 
   /** Rearma las colas desde el servidor, sin pisar las que tienen cambios sin guardar. */
@@ -586,7 +822,8 @@ export class TatamisTab {
             .map((c) => c.id);
     }
     this.queues.set(next);
-    if (!this.target() || !tatamis.some((t) => t.id === this.target())) this.target.set(tatamis[0]?.id ?? 0);
+    if (!this.target() || !tatamis.some((t) => t.id === this.target()))
+      this.target.set(tatamis[0]?.id ?? 0);
   }
 
   queueOf(tid: number): number[] {
@@ -604,7 +841,10 @@ export class TatamisTab {
 
   queueTotal(tid: number): number {
     const byId = this.ctx.categoryById();
-    return this.queueOf(tid).reduce((n, cid) => n + (byId.get(cid) ? this.est(byId.get(cid)!) : 0), 0);
+    return this.queueOf(tid).reduce(
+      (n, cid) => n + (byId.get(cid) ? this.est(byId.get(cid)!) : 0),
+      0,
+    );
   }
 
   tatamiLabel(tid: number): string {
@@ -661,12 +901,22 @@ export class TatamisTab {
       $localize`:@@torneo.tatamis.categoria-asignada:categoría asignada`,
       $localize`:@@torneo.tatamis.categorias-asignadas:categorías asignadas`,
     );
-    await this.saveQueue(tid, $localize`:@@torneo.tatamis.asignadas-a:${asignadas}:asignadas: a ${this.tatamiLabel(tid)}:tatami:`);
+    await this.saveQueue(
+      tid,
+      $localize`:@@torneo.tatamis.asignadas-a:${asignadas}:asignadas: a ${this.tatamiLabel(tid)}:tatami:`,
+    );
   }
 
-  async saveQueue(tid: number, success = $localize`:@@torneo.tatamis.cola-guardada:Cola guardada`): Promise<void> {
+  async saveQueue(
+    tid: number,
+    success = $localize`:@@torneo.tatamis.cola-guardada:Cola guardada`,
+  ): Promise<void> {
     this.busy.set(true);
-    const res = await this.mut.put<Category[]>(`/tatamis/${tid}/queue`, { category_ids: this.queueOf(tid) }, { success });
+    const res = await this.mut.put<Category[]>(
+      `/tatamis/${tid}/queue`,
+      { category_ids: this.queueOf(tid) },
+      { success },
+    );
     this.busy.set(false);
     if (!res) return;
     this.dirty.update((d) => {
@@ -686,9 +936,16 @@ export class TatamisTab {
     const views = await Promise.all(
       tatamis.map(async (t): Promise<TatamiView> => {
         try {
-          return { tatami: t, data: await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${t.id}/queue`)) };
+          return {
+            tatami: t,
+            data: await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${t.id}/queue`)),
+          };
         } catch (e: any) {
-          return { tatami: t, data: null, error: e?.message ?? $localize`:@@torneo.tatamis.error:Error` };
+          return {
+            tatami: t,
+            data: null,
+            error: e?.message ?? $localize`:@@torneo.tatamis.error:Error`,
+          };
         }
       }),
     );
@@ -715,9 +972,18 @@ export class TatamisTab {
 
   async addTatami(): Promise<void> {
     const n = (this.ctx.tournament()?.tatamis.length ?? 0) + 1;
-    const name = await this.dialog.prompt({ title: $localize`:@@torneo.tatamis.agregar-tatami-2:Agregar tatami`, label: $localize`:@@torneo.tatamis.nombre:Nombre`, minLength: 1, initial: $localize`:@@torneo.tatamis.tatami-2:Tatami ${n}:n:` });
+    const name = await this.dialog.prompt({
+      title: $localize`:@@torneo.tatamis.agregar-tatami-2:Agregar tatami`,
+      label: $localize`:@@torneo.tatamis.nombre:Nombre`,
+      minLength: 1,
+      initial: $localize`:@@torneo.tatamis.tatami-2:Tatami ${n}:n:`,
+    });
     if (!name) return;
-    const res = await this.mut.post(`/tournaments/${this.ctx.id()}/tatamis`, { name }, { success: $localize`:@@torneo.tatamis.tatami-agregado:Tatami agregado` });
+    const res = await this.mut.post(
+      `/tournaments/${this.ctx.id()}/tatamis`,
+      { name },
+      { success: $localize`:@@torneo.tatamis.tatami-agregado:Tatami agregado` },
+    );
     if (res) this.load();
   }
 }

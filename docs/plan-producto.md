@@ -29,7 +29,7 @@ el paso a paso, en `docs/acciones-del-duenio.md`.
 | 2: acreditación, plantillas, kata, reglas | Hecho. Check-in, pesaje, credenciales con QR; plantillas editables; reglas configurables (faltas, senshu, punto de oro, kata WKF 2+2 y 70/30, rondas, grupos + eliminación, edad por año, división de categorías, inscripción tardía en llave) | `docs/acreditacion-y-pesaje.md`, `docs/reglas-configurables.md` |
 | 3: cobros | Hecho. Mercado Pago y Culqi, comprobantes con Nubefact y nota de crédito, prueba gratis, cupones, recibos y recordatorios por correo, Plus pagado por el tutor | `docs/cobros.md` |
 | 3: avisos, ranking, diplomas | Hecho. Web Push («te toca», resultados, medallas), ranking por temporada y de dojos, diplomas de podio y participación | `docs/avisos-push.md`, `docs/ranking.md` |
-| 3: idiomas | En integración: inglés y portugués de Brasil con un solo build | `docs/idiomas.md` |
+| 3: idiomas | Hecho. Español, inglés y portugués de Brasil con un solo build (3144 textos por idioma); correos y PDF siguen en español | `docs/idiomas.md` |
 
 ### Lo que no se hizo y por qué
 

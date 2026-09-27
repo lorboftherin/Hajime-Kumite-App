@@ -1,4 +1,9 @@
-import { HttpErrorResponse, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpHandlerFn,
+  HttpInterceptorFn,
+  HttpRequest,
+} from '@angular/common/http';
 import { inject, untracked } from '@angular/core';
 import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
@@ -66,7 +71,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         if (e.planRequired) toast.planRequired(e.message);
         return throwError(() => e);
       }
-      if (err.status !== 401 || endsWithAny(req.url, CREDENTIAL_PATHS) || endsWithAny(req.url, SESSION_PATHS)) {
+      if (
+        err.status !== 401 ||
+        endsWithAny(req.url, CREDENTIAL_PATHS) ||
+        endsWithAny(req.url, SESSION_PATHS)
+      ) {
         return toApiError(err);
       }
       return renewAndRetry(auth, expired, req, next, err);

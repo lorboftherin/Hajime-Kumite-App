@@ -17,7 +17,11 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, PageHead, Modal],
   template: `
     <div class="container">
-      <app-page-head i18n-title="@@cuenta.reclamos.solicitudes-perfil" kanji="申請" title="Solicitudes de perfil">
+      <app-page-head
+        i18n-title="@@cuenta.reclamos.solicitudes-perfil"
+        kanji="申請"
+        title="Solicitudes de perfil"
+      >
         <div meta class="meta-line">
           <span i18n="@@cuenta.reclamos.cuentas-piden-ligarse-competidor"
             >Cuentas que piden ligarse a un competidor: la propia persona adulta o su padre, madre o
@@ -26,7 +30,8 @@ import { PageHead } from '../../shared/page-head';
         </div>
         <label class="field inline">
           <span i18n="@@cuenta.reclamos.estado" class="sr-only">Estado</span>
-          <select i18n-aria-label="@@cuenta.reclamos.estado-2"
+          <select
+            i18n-aria-label="@@cuenta.reclamos.estado-2"
             [ngModel]="filter()"
             (ngModelChange)="filter.set($event); load()"
             aria-label="Estado"
@@ -51,7 +56,9 @@ import { PageHead } from '../../shared/page-head';
               <th i18n="@@cuenta.reclamos.relacion">Relación</th>
               <th i18n="@@cuenta.reclamos.comprobacion">Comprobación</th>
               <th i18n="@@cuenta.reclamos.estado">Estado</th>
-              <th class="right"><span i18n="@@cuenta.reclamos.acciones" class="sr-only">Acciones</span></th>
+              <th class="right"
+                ><span i18n="@@cuenta.reclamos.acciones" class="sr-only">Acciones</span></th
+              >
             </tr>
           </thead>
           <tbody>
@@ -79,9 +86,13 @@ import { PageHead } from '../../shared/page-head';
                 <td>{{ relation[c.relationship] }}</td>
                 <td class="small">
                   @if (c.document_match === true) {
-                    <span i18n="@@cuenta.reclamos.documento-coincide" class="badge matcha">Documento coincide</span>
+                    <span i18n="@@cuenta.reclamos.documento-coincide" class="badge matcha"
+                      >Documento coincide</span
+                    >
                   } @else if (c.document_match === false) {
-                    <span i18n="@@cuenta.reclamos.documento-no-coincide" class="badge shu">Documento no coincide</span>
+                    <span i18n="@@cuenta.reclamos.documento-no-coincide" class="badge shu"
+                      >Documento no coincide</span
+                    >
                   } @else {
                     <span i18n="@@cuenta.reclamos.sin-documento" class="muted">Sin documento</span>
                   }
@@ -101,15 +112,31 @@ import { PageHead } from '../../shared/page-head';
                 </td>
                 <td class="right nowrap">
                   @if (c.status === 'pending') {
-                    <button i18n="@@cuenta.reclamos.aprobar" class="btn sm primary" (click)="approve(c)">Aprobar</button>
-                    <button i18n="@@cuenta.reclamos.rechazar" class="btn sm" (click)="rejectFor.set(c); reason = ''">Rechazar</button>
+                    <button
+                      i18n="@@cuenta.reclamos.aprobar"
+                      class="btn sm primary"
+                      (click)="approve(c)"
+                      >Aprobar</button
+                    >
+                    <button
+                      i18n="@@cuenta.reclamos.rechazar"
+                      class="btn sm"
+                      (click)="rejectFor.set(c); reason = ''"
+                      >Rechazar</button
+                    >
                   }
                 </td>
               </tr>
             } @empty {
               <tr>
                 <td colspan="6" class="empty">
-                  <p i18n="@@cuenta.reclamos.no-hay-solicitudes">No hay solicitudes @if (filter() === 'pending') {pendientes}.</p>
+                  <p i18n="@@cuenta.reclamos.no-hay-solicitudes"
+                    >No hay solicitudes
+                    @if (filter() === 'pending') {
+                      pendientes
+                    }
+                    .</p
+                  >
                 </td>
               </tr>
             }
@@ -119,15 +146,29 @@ import { PageHead } from '../../shared/page-head';
     </div>
 
     @if (rejectFor(); as c) {
-      <app-modal i18n-title="@@cuenta.reclamos.rechazar-titulo" title="Rechazar · {{ c.person_name }}" (closed)="rejectFor.set(null)">
+      <app-modal
+        i18n-title="@@cuenta.reclamos.rechazar-titulo"
+        title="Rechazar · {{ c.person_name }}"
+        (closed)="rejectFor.set(null)"
+      >
         <form class="stack" (ngSubmit)="reject(c)">
           <label class="field">
-            <span i18n="@@cuenta.reclamos.motivo-recibe-cuenta-pidio">Motivo (lo recibe la cuenta que lo pidió)</span>
+            <span i18n="@@cuenta.reclamos.motivo-recibe-cuenta-pidio"
+              >Motivo (lo recibe la cuenta que lo pidió)</span
+            >
             <textarea name="r" rows="3" [(ngModel)]="reason" maxlength="500"></textarea>
           </label>
           <div class="form-actions">
-            <button i18n="@@cuenta.reclamos.cancelar" type="button" class="btn" (click)="rejectFor.set(null)">Cancelar</button>
-            <button i18n="@@cuenta.reclamos.rechazar-solicitud" class="btn danger">Rechazar solicitud</button>
+            <button
+              i18n="@@cuenta.reclamos.cancelar"
+              type="button"
+              class="btn"
+              (click)="rejectFor.set(null)"
+              >Cancelar</button
+            >
+            <button i18n="@@cuenta.reclamos.rechazar-solicitud" class="btn danger"
+              >Rechazar solicitud</button
+            >
           </div>
         </form>
       </app-modal>
@@ -168,7 +209,10 @@ export class ClaimsReviewPage {
         this.claims.set(c);
         this.error.set('');
       },
-      error: () => this.error.set($localize`:@@cuenta.reclamos.no-tienes-solicitudes-para:No tienes solicitudes para revisar.`),
+      error: () =>
+        this.error.set(
+          $localize`:@@cuenta.reclamos.no-tienes-solicitudes-para:No tienes solicitudes para revisar.`,
+        ),
     });
   }
 

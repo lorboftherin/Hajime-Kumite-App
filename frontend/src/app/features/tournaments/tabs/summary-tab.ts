@@ -5,7 +5,12 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/api.service';
 import { AuthService } from '../../../core/auth.service';
 import { DialogService } from '../../../core/dialog.service';
-import { CATEGORY_STATUS, FORMAT_LABEL, THIRD_PLACE_LABEL, TOURNAMENT_STATUS } from '../../../core/format';
+import {
+  CATEGORY_STATUS,
+  FORMAT_LABEL,
+  THIRD_PLACE_LABEL,
+  TOURNAMENT_STATUS,
+} from '../../../core/format';
 import { Registration, Template, Tournament } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
@@ -37,12 +42,27 @@ const SEVERITY_LABEL: Record<ReadinessIssue['severity'], string> = etiquetas(() 
 }));
 /** Dónde se resuelve cada problema. */
 const ISSUE_LINK: Record<string, { path: string; label: string }> = etiquetas(() => ({
-  NO_BRACKET: { path: '../categorias', label: $localize`:@@torneo.resumen.ir-categorias:Ir a Categorías` },
-  SINGLE_ENTRANT: { path: '../categorias', label: $localize`:@@torneo.resumen.ir-categorias:Ir a Categorías` },
-  NO_TATAMI: { path: '../tatamis', label: $localize`:@@torneo.resumen.organizar-colas:Organizar colas` },
-  TATAMI_WITHOUT_CATEGORIES: { path: '../tatamis', label: $localize`:@@torneo.resumen.organizar-colas:Organizar colas` },
+  NO_BRACKET: {
+    path: '../categorias',
+    label: $localize`:@@torneo.resumen.ir-categorias:Ir a Categorías`,
+  },
+  SINGLE_ENTRANT: {
+    path: '../categorias',
+    label: $localize`:@@torneo.resumen.ir-categorias:Ir a Categorías`,
+  },
+  NO_TATAMI: {
+    path: '../tatamis',
+    label: $localize`:@@torneo.resumen.organizar-colas:Organizar colas`,
+  },
+  TATAMI_WITHOUT_CATEGORIES: {
+    path: '../tatamis',
+    label: $localize`:@@torneo.resumen.organizar-colas:Organizar colas`,
+  },
   NO_TATAMIS: { path: '../tatamis', label: $localize`:@@torneo.resumen.ir-tatamis:Ir a Tatamis` },
-  MINOR_WITHOUT_CONSENT: { path: '../inscripciones', label: $localize`:@@torneo.resumen.ir-inscripciones:Ir a Inscripciones` },
+  MINOR_WITHOUT_CONSENT: {
+    path: '../inscripciones',
+    label: $localize`:@@torneo.resumen.ir-inscripciones:Ir a Inscripciones`,
+  },
 }));
 
 interface Transition {
@@ -55,19 +75,44 @@ interface Transition {
 /** Acciones sugeridas por estado (solo presentación; el servidor valida la transición). */
 const NEXT: Record<string, Transition[]> = etiquetas(() => ({
   draft: [
-    { to: 'registration_open', label: $localize`:@@torneo.resumen.abrir-inscripciones:Abrir inscripciones` },
-    { to: 'cancelled', label: $localize`:@@torneo.resumen.cancelar-torneo:Cancelar torneo`, danger: true },
+    {
+      to: 'registration_open',
+      label: $localize`:@@torneo.resumen.abrir-inscripciones:Abrir inscripciones`,
+    },
+    {
+      to: 'cancelled',
+      label: $localize`:@@torneo.resumen.cancelar-torneo:Cancelar torneo`,
+      danger: true,
+    },
   ],
   registration_open: [
-    { to: 'registration_closed', label: $localize`:@@torneo.resumen.cerrar-inscripciones:Cerrar inscripciones` },
-    { to: 'cancelled', label: $localize`:@@torneo.resumen.cancelar-torneo:Cancelar torneo`, danger: true },
+    {
+      to: 'registration_closed',
+      label: $localize`:@@torneo.resumen.cerrar-inscripciones:Cerrar inscripciones`,
+    },
+    {
+      to: 'cancelled',
+      label: $localize`:@@torneo.resumen.cancelar-torneo:Cancelar torneo`,
+      danger: true,
+    },
   ],
   registration_closed: [
     { to: 'in_progress', label: $localize`:@@torneo.resumen.iniciar-torneo:Iniciar torneo` },
-    { to: 'registration_open', label: $localize`:@@torneo.resumen.reabrir-inscripciones:Reabrir inscripciones` },
+    {
+      to: 'registration_open',
+      label: $localize`:@@torneo.resumen.reabrir-inscripciones:Reabrir inscripciones`,
+    },
   ],
-  in_progress: [{ to: 'finished', label: $localize`:@@torneo.resumen.finalizar-torneo:Finalizar torneo` }],
-  finished: [{ to: 'in_progress', label: $localize`:@@torneo.resumen.reabrir-torneo-auditado:Reabrir torneo (auditado)`, reopen: true }],
+  in_progress: [
+    { to: 'finished', label: $localize`:@@torneo.resumen.finalizar-torneo:Finalizar torneo` },
+  ],
+  finished: [
+    {
+      to: 'in_progress',
+      label: $localize`:@@torneo.resumen.reabrir-torneo-auditado:Reabrir torneo (auditado)`,
+      reopen: true,
+    },
+  ],
   cancelled: [],
 }));
 
@@ -83,7 +128,17 @@ const HINT: Record<string, string> = etiquetas(() => ({
 
 @Component({
   selector: 'app-summary-tab',
-  imports: [FormsModule, RouterLink, StatusBadge, Modal, DatePipe, LabelPipe, MoreMenu, Icon, TournamentRules],
+  imports: [
+    FormsModule,
+    RouterLink,
+    StatusBadge,
+    Modal,
+    DatePipe,
+    LabelPipe,
+    MoreMenu,
+    Icon,
+    TournamentRules,
+  ],
   template: `
     @if (ctx.tournament(); as t) {
       <div class="overview">
@@ -96,32 +151,49 @@ const HINT: Record<string, string> = etiquetas(() => ({
           <p class="next small">{{ nextHint(t.status) }}</p>
           <div class="row actions">
             @for (tr of mainTransitions(); track tr.to; let first = $first) {
-              <button class="btn" [class.primary]="first" (click)="changeStatus(tr)">{{ tr.label }}</button>
+              <button class="btn" [class.primary]="first" (click)="changeStatus(tr)">{{
+                tr.label
+              }}</button>
             } @empty {
               @if (!dangerTransitions().length) {
-                <span i18n="@@torneo.resumen.sin-acciones-disponibles" class="muted small">Sin acciones disponibles.</span>
+                <span i18n="@@torneo.resumen.sin-acciones-disponibles" class="muted small"
+                  >Sin acciones disponibles.</span
+                >
               }
             }
             @if (dangerTransitions().length) {
-              <app-more i18n-label="@@torneo.resumen.mas-acciones-torneo" label="Más acciones del torneo">
+              <app-more
+                i18n-label="@@torneo.resumen.mas-acciones-torneo"
+                label="Más acciones del torneo"
+              >
                 @for (tr of dangerTransitions(); track tr.to) {
-                  <button class="menu-item danger" (click)="changeStatus(tr)">{{ tr.label }}</button>
+                  <button class="menu-item danger" (click)="changeStatus(tr)">{{
+                    tr.label
+                  }}</button>
                 }
               </app-more>
             }
           </div>
           @if (t.status === 'finished' && !auth.isAdmin()) {
-            <p i18n="@@torneo.resumen.solo-admin-global-puede-reabrir" class="hint">Solo el Admin Global puede reabrir un torneo finalizado.</p>
+            <p i18n="@@torneo.resumen.solo-admin-global-puede-reabrir" class="hint"
+              >Solo el Admin Global puede reabrir un torneo finalizado.</p
+            >
           }
         </section>
 
         <section class="card kpi">
           <h3 i18n="@@torneo.resumen.inscripciones">Inscripciones</h3>
           <div class="figure">{{ activeRegs() }}</div>
-          <div i18n="@@torneo.resumen.activas-retiradas" class="muted small">activas · {{ withdrawnRegs() }} retiradas</div>
+          <div i18n="@@torneo.resumen.activas-retiradas" class="muted small"
+            >activas · {{ withdrawnRegs() }} retiradas</div
+          >
           <div class="row actions">
-            <a i18n="@@torneo.resumen.inscribir" class="btn sm" routerLink="../inscripciones">Inscribir</a>
-            <a i18n="@@torneo.resumen.importar-excel" class="btn sm ghost" routerLink="../importar"><app-icon name="upload" /> Importar Excel</a>
+            <a i18n="@@torneo.resumen.inscribir" class="btn sm" routerLink="../inscripciones"
+              >Inscribir</a
+            >
+            <a i18n="@@torneo.resumen.importar-excel" class="btn sm ghost" routerLink="../importar"
+              ><app-icon name="upload" /> Importar Excel</a
+            >
           </div>
         </section>
 
@@ -130,13 +202,25 @@ const HINT: Record<string, string> = etiquetas(() => ({
           <div class="figure">{{ ctx.categories().length }}</div>
           <ul class="stats">
             @for (s of catStats(); track s.status) {
-              <li><app-status [status]="s.status" /><span class="num">{{ s.count }}</span></li>
+              <li
+                ><app-status [status]="s.status" /><span class="num">{{ s.count }}</span></li
+              >
             }
           </ul>
           <div class="row actions">
-            <a i18n="@@torneo.resumen.ver-categorias" class="btn sm" routerLink="../categorias">Ver categorías</a>
-            <app-more i18n-label="@@torneo.resumen.mas-acciones-categorias" label="Más acciones de categorías">
-              <button i18n="@@torneo.resumen.generar-desde-plantilla" class="menu-item" (click)="openGenerate()"><app-icon name="plus" /> Generar desde plantilla</button>
+            <a i18n="@@torneo.resumen.ver-categorias" class="btn sm" routerLink="../categorias"
+              >Ver categorías</a
+            >
+            <app-more
+              i18n-label="@@torneo.resumen.mas-acciones-categorias"
+              label="Más acciones de categorías"
+            >
+              <button
+                i18n="@@torneo.resumen.generar-desde-plantilla"
+                class="menu-item"
+                (click)="openGenerate()"
+                ><app-icon name="plus" /> Generar desde plantilla</button
+              >
             </app-more>
           </div>
         </section>
@@ -145,15 +229,40 @@ const HINT: Record<string, string> = etiquetas(() => ({
       <section class="card general">
         <div class="general-head">
           <h3 i18n="@@torneo.resumen.datos-generales">Datos generales</h3>
-          <button i18n="@@torneo.resumen.editar-datos" class="btn sm" (click)="openEdit(t)">Editar datos</button>
+          <button i18n="@@torneo.resumen.editar-datos" class="btn sm" (click)="openEdit(t)"
+            >Editar datos</button
+          >
         </div>
         <dl class="dl cols">
-          <div><dt i18n="@@torneo.resumen.fechas">Fechas</dt><dd class="num">{{ t.start_date | fdate }}@if (t.end_date) { – {{ t.end_date | fdate }} }</dd></div>
-          <div><dt i18n="@@torneo.resumen.sede">Sede</dt><dd>{{ t.venue || '—' }}, {{ t.city || '—' }}</dd></div>
-          <div><dt i18n="@@torneo.resumen.referencia-edad">Referencia de edad</dt><dd class="num">{{ t.age_reference_date | fdate }}</dd></div>
-          <div><dt i18n="@@torneo.resumen.formato-defecto">Formato por defecto</dt><dd>{{ t.default_format | label: formatLabel }}</dd></div>
-          <div><dt i18n="@@torneo.resumen.terceros-lugares">Terceros lugares</dt><dd>{{ t.default_third_place_rule | label: thirdLabel }}</dd></div>
-          <div><dt i18n="@@torneo.resumen.tatamis">Tatamis</dt><dd class="num">{{ t.tatamis.length }}</dd></div>
+          <div
+            ><dt i18n="@@torneo.resumen.fechas">Fechas</dt
+            ><dd class="num"
+              >{{ t.start_date | fdate }}
+              @if (t.end_date) {
+                – {{ t.end_date | fdate }}
+              }
+            </dd></div
+          >
+          <div
+            ><dt i18n="@@torneo.resumen.sede">Sede</dt
+            ><dd>{{ t.venue || '—' }}, {{ t.city || '—' }}</dd></div
+          >
+          <div
+            ><dt i18n="@@torneo.resumen.referencia-edad">Referencia de edad</dt
+            ><dd class="num">{{ t.age_reference_date | fdate }}</dd></div
+          >
+          <div
+            ><dt i18n="@@torneo.resumen.formato-defecto">Formato por defecto</dt
+            ><dd>{{ t.default_format | label: formatLabel }}</dd></div
+          >
+          <div
+            ><dt i18n="@@torneo.resumen.terceros-lugares">Terceros lugares</dt
+            ><dd>{{ t.default_third_place_rule | label: thirdLabel }}</dd></div
+          >
+          <div
+            ><dt i18n="@@torneo.resumen.tatamis">Tatamis</dt
+            ><dd class="num">{{ t.tatamis.length }}</dd></div
+          >
         </dl>
       </section>
 
@@ -162,16 +271,22 @@ const HINT: Record<string, string> = etiquetas(() => ({
       <section class="card live" aria-labelledby="live-title">
         <div class="general-head">
           <div>
-            <h3 i18n="@@torneo.resumen.seguimiento-vivo-transmision" id="live-title">Seguimiento en vivo y transmisión</h3>
+            <h3 i18n="@@torneo.resumen.seguimiento-vivo-transmision" id="live-title"
+              >Seguimiento en vivo y transmisión</h3
+            >
             <p i18n="@@torneo.resumen.pagina-publica-para-familias" class="small muted">
-              Una página pública para familias y público, y un marcador para transmitir en vivo con OBS o vMix.
-              Sin inicio de sesión: quien tenga el enlace puede verla.
+              Una página pública para familias y público, y un marcador para transmitir en vivo con
+              OBS o vMix. Sin inicio de sesión: quien tenga el enlace puede verla.
             </p>
           </div>
           @if (t.public_token) {
-            <button i18n="@@torneo.resumen.desactivar" class="btn sm" (click)="setPublic(false)">Desactivar</button>
+            <button i18n="@@torneo.resumen.desactivar" class="btn sm" (click)="setPublic(false)"
+              >Desactivar</button
+            >
           } @else {
-            <button i18n="@@torneo.resumen.activar" class="btn sm primary" (click)="setPublic(true)">Activar</button>
+            <button i18n="@@torneo.resumen.activar" class="btn sm primary" (click)="setPublic(true)"
+              >Activar</button
+            >
           }
         </div>
         @if (t.public_token) {
@@ -179,102 +294,213 @@ const HINT: Record<string, string> = etiquetas(() => ({
             <label class="field">
               <span i18n="@@torneo.resumen.nombres-vista-publica">Nombres en la vista pública</span>
               <select [ngModel]="t.public_names" (ngModelChange)="setPublic(true, $event)">
-                <option i18n="@@torneo.resumen.abreviados-diego-r-recomendado" value="short">Abreviados: «Diego R.» (recomendado para menores)</option>
+                <option i18n="@@torneo.resumen.abreviados-diego-r-recomendado" value="short"
+                  >Abreviados: «Diego R.» (recomendado para menores)</option
+                >
                 <option i18n="@@torneo.resumen.completos" value="full">Completos</option>
               </select>
             </label>
             <div class="field">
-              <span i18n="@@torneo.resumen.pagina-publica-direccion-fija">Página pública (dirección fija, para compartir)</span>
+              <span i18n="@@torneo.resumen.pagina-publica-direccion-fija"
+                >Página pública (dirección fija, para compartir)</span
+              >
               @if (t.public_slug && !editingSlug()) {
                 <div class="row">
-                  <input i18n-aria-label="@@torneo.resumen.direccion-fija-pagina-publica" readonly [value]="slugUrl(t.public_slug)" (focus)="$any($event.target).select()" aria-label="Dirección fija de la página pública" />
-                  <button i18n="@@torneo.resumen.copiar" class="btn sm" (click)="copy(slugUrl(t.public_slug))">Copiar</button>
-                  <a i18n="@@torneo.resumen.abrir" class="btn sm" [href]="slugUrl(t.public_slug)" target="_blank" rel="noopener">Abrir</a>
-                  <button i18n="@@torneo.resumen.cambiar" class="btn sm ghost" (click)="startSlug(t.public_slug)">Cambiar</button>
+                  <input
+                    i18n-aria-label="@@torneo.resumen.direccion-fija-pagina-publica"
+                    readonly
+                    [value]="slugUrl(t.public_slug)"
+                    (focus)="$any($event.target).select()"
+                    aria-label="Dirección fija de la página pública"
+                  />
+                  <button
+                    i18n="@@torneo.resumen.copiar"
+                    class="btn sm"
+                    (click)="copy(slugUrl(t.public_slug))"
+                    >Copiar</button
+                  >
+                  <a
+                    i18n="@@torneo.resumen.abrir"
+                    class="btn sm"
+                    [href]="slugUrl(t.public_slug)"
+                    target="_blank"
+                    rel="noopener"
+                    >Abrir</a
+                  >
+                  <button
+                    i18n="@@torneo.resumen.cambiar"
+                    class="btn sm ghost"
+                    (click)="startSlug(t.public_slug)"
+                    >Cambiar</button
+                  >
                 </div>
               } @else {
                 <form class="row" (ngSubmit)="saveSlug()">
                   <span class="prefix muted small">{{ origin }}/t/</span>
-                  <input i18n-placeholder="@@torneo.resumen.copa-lima-2026" i18n-aria-label="@@torneo.resumen.direccion-fija" name="slug" [(ngModel)]="slugDraft" aria-label="Dirección fija" placeholder="copa-lima-2026" />
+                  <input
+                    i18n-placeholder="@@torneo.resumen.copa-lima-2026"
+                    i18n-aria-label="@@torneo.resumen.direccion-fija"
+                    name="slug"
+                    [(ngModel)]="slugDraft"
+                    aria-label="Dirección fija"
+                    placeholder="copa-lima-2026"
+                  />
                   <button i18n="@@torneo.resumen.guardar" class="btn sm primary">Guardar</button>
-                  @if (t.public_slug) {<button i18n="@@torneo.resumen.cancelar" type="button" class="btn sm" (click)="editingSlug.set(false)">Cancelar</button>}
+                  @if (t.public_slug) {
+                    <button
+                      i18n="@@torneo.resumen.cancelar"
+                      type="button"
+                      class="btn sm"
+                      (click)="editingSlug.set(false)"
+                      >Cancelar</button
+                    >
+                  }
                 </form>
-                <span i18n="@@torneo.resumen.minusculas-sin-tildes-numeros" class="small muted">Minúsculas sin tildes, números y guiones.</span>
+                <span i18n="@@torneo.resumen.minusculas-sin-tildes-numeros" class="small muted"
+                  >Minúsculas sin tildes, números y guiones.</span
+                >
               }
             </div>
           </div>
           <div class="field overlays">
-            <span i18n="@@torneo.resumen.enlace-secreto-vivo-siempre">Enlace secreto del vivo (el de siempre; sigue funcionando)</span>
+            <span i18n="@@torneo.resumen.enlace-secreto-vivo-siempre"
+              >Enlace secreto del vivo (el de siempre; sigue funcionando)</span
+            >
             <ul>
               <li>
                 <code>{{ publicUrl(t.public_token) }}</code>
-                <button i18n="@@torneo.resumen.copiar" class="btn sm ghost" (click)="copy(publicUrl(t.public_token))">Copiar</button>
+                <button
+                  i18n="@@torneo.resumen.copiar"
+                  class="btn sm ghost"
+                  (click)="copy(publicUrl(t.public_token))"
+                  >Copiar</button
+                >
               </li>
             </ul>
           </div>
           <div class="field overlays">
-            <span i18n="@@torneo.resumen.pantallas-coliseo-tv-pantalla">Pantallas del coliseo (TV a pantalla completa, sin interacción)</span>
+            <span i18n="@@torneo.resumen.pantallas-coliseo-tv-pantalla"
+              >Pantallas del coliseo (TV a pantalla completa, sin interacción)</span
+            >
             <ul>
               <li>
                 <strong i18n="@@torneo.resumen.todos-tatamis">Todos los tatamis</strong>
                 <code>{{ screenUrl(t.public_token) }}</code>
-                <button i18n="@@torneo.resumen.copiar" class="btn sm ghost" (click)="copy(screenUrl(t.public_token))">Copiar</button>
+                <button
+                  i18n="@@torneo.resumen.copiar"
+                  class="btn sm ghost"
+                  (click)="copy(screenUrl(t.public_token))"
+                  >Copiar</button
+                >
               </li>
               @for (tat of t.tatamis; track tat.id) {
                 <li>
                   <strong>{{ tat.name }}</strong>
                   <code>{{ screenUrl(t.public_token, tat.id) }}</code>
-                  <button i18n="@@torneo.resumen.copiar" class="btn sm ghost" (click)="copy(screenUrl(t.public_token, tat.id))">Copiar</button>
+                  <button
+                    i18n="@@torneo.resumen.copiar"
+                    class="btn sm ghost"
+                    (click)="copy(screenUrl(t.public_token, tat.id))"
+                    >Copiar</button
+                  >
                 </li>
               }
             </ul>
           </div>
           @if (t.tatamis.length) {
             <div class="field overlays">
-              <span i18n="@@torneo.resumen.overlay-transmision-fuente">Overlay de transmisión (fuente de navegador 1920×1080, fondo transparente)</span>
+              <span i18n="@@torneo.resumen.overlay-transmision-fuente"
+                >Overlay de transmisión (fuente de navegador 1920×1080, fondo transparente)</span
+              >
               <ul>
                 @for (tat of t.tatamis; track tat.id) {
                   <li>
                     <strong>{{ tat.name }}</strong>
                     <code>{{ overlayUrl(t.public_token, tat.id) }}</code>
-                    <button i18n="@@torneo.resumen.copiar" class="btn sm ghost" (click)="copy(overlayUrl(t.public_token, tat.id))">Copiar</button>
+                    <button
+                      i18n="@@torneo.resumen.copiar"
+                      class="btn sm ghost"
+                      (click)="copy(overlayUrl(t.public_token, tat.id))"
+                      >Copiar</button
+                    >
                   </li>
                 }
               </ul>
             </div>
           }
-          <p class="small muted"><ng-container i18n="@@torneo.resumen.solo-publican-nombres-dojos">
-            Solo se publican nombres, dojos, marcadores, horarios estimados, llaves, resultados y medallero; nunca documentos
-            ni fechas de nacimiento.
-            </ng-container>@if (!t.is_test) {<ng-container i18n="@@torneo.resumen.aparece-torneos-publicos">Aparece en <a routerLink="/torneos-publicos" target="_blank">Torneos públicos</a>.</ng-container>}
-            <ng-container i18n="@@torneo.resumen.cambiar-enlace-secreto-si"><button class="linkish" (click)="regenerate()">Cambiar el enlace secreto</button> si se compartió por error.
-          </ng-container></p>
+          <p class="small muted"
+            ><ng-container i18n="@@torneo.resumen.solo-publican-nombres-dojos">
+              Solo se publican nombres, dojos, marcadores, horarios estimados, llaves, resultados y
+              medallero; nunca documentos ni fechas de nacimiento.
+            </ng-container>
+            @if (!t.is_test) {
+              <ng-container i18n="@@torneo.resumen.aparece-torneos-publicos"
+                >Aparece en
+                <a routerLink="/torneos-publicos" target="_blank">Torneos públicos</a
+                >.</ng-container
+              >
+            }
+            <ng-container i18n="@@torneo.resumen.cambiar-enlace-secreto-si"
+              ><button class="linkish" (click)="regenerate()">Cambiar el enlace secreto</button> si
+              se compartió por error.
+            </ng-container></p
+          >
         }
       </section>
     }
 
     @if (edit(); as f) {
-      <app-modal i18n-title="@@torneo.resumen.editar-torneo" title="Editar torneo" (closed)="edit.set(null)">
+      <app-modal
+        i18n-title="@@torneo.resumen.editar-torneo"
+        title="Editar torneo"
+        (closed)="edit.set(null)"
+      >
         <form (ngSubmit)="saveEdit(f)" class="stack">
-          <label class="field"><span i18n="@@torneo.resumen.nombre">Nombre</span><input name="n" [(ngModel)]="f.name" /></label>
+          <label class="field"
+            ><span i18n="@@torneo.resumen.nombre">Nombre</span><input name="n" [(ngModel)]="f.name"
+          /></label>
           <div class="grid-2">
-            <label class="field"><span i18n="@@torneo.resumen.inicio">Inicio</span><input type="date" name="s" [(ngModel)]="f.start_date" /></label>
-            <label class="field"><span i18n="@@torneo.resumen.fin">Fin</span><input type="date" name="e" [(ngModel)]="f.end_date" /></label>
-            <label class="field"><span i18n="@@torneo.resumen.sede">Sede</span><input name="v" [(ngModel)]="f.venue" /></label>
-            <label class="field"><span i18n="@@torneo.resumen.ciudad">Ciudad</span><input name="c" [(ngModel)]="f.city" /></label>
-            <label class="field"><span i18n="@@torneo.resumen.referencia-edad">Referencia de edad</span><input type="date" name="a" [(ngModel)]="f.age_reference_date" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.resumen.inicio">Inicio</span
+              ><input type="date" name="s" [(ngModel)]="f.start_date"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.resumen.fin">Fin</span
+              ><input type="date" name="e" [(ngModel)]="f.end_date"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.resumen.sede">Sede</span><input name="v" [(ngModel)]="f.venue"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.resumen.ciudad">Ciudad</span
+              ><input name="c" [(ngModel)]="f.city"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.resumen.referencia-edad">Referencia de edad</span
+              ><input type="date" name="a" [(ngModel)]="f.age_reference_date"
+            /></label>
             <label class="field">
               <span i18n="@@torneo.resumen.terceros-lugares">Terceros lugares</span>
               <select name="tp" [(ngModel)]="f.default_third_place_rule">
                 <option i18n="@@torneo.resumen.dos-bronces" value="two_bronzes">Dos bronces</option>
-                <option i18n="@@torneo.resumen.combate-3" value="third_place_match">Combate por el 3.º</option>
+                <option i18n="@@torneo.resumen.combate-3" value="third_place_match"
+                  >Combate por el 3.º</option
+                >
                 <option i18n="@@torneo.resumen.repechaje" value="repechage">Repechaje</option>
               </select>
             </label>
           </div>
-          <label i18n="@@torneo.resumen.torneo-prueba" class="field inline"><input type="checkbox" name="t" [(ngModel)]="f.is_test" /> Torneo de prueba</label>
+          <label i18n="@@torneo.resumen.torneo-prueba" class="field inline"
+            ><input type="checkbox" name="t" [(ngModel)]="f.is_test" /> Torneo de prueba</label
+          >
           <div class="form-actions">
-            <button i18n="@@torneo.resumen.cancelar" type="button" class="btn" (click)="edit.set(null)">Cancelar</button>
+            <button
+              i18n="@@torneo.resumen.cancelar"
+              type="button"
+              class="btn"
+              (click)="edit.set(null)"
+              >Cancelar</button
+            >
             <button i18n="@@torneo.resumen.guardar" class="btn primary">Guardar</button>
           </div>
         </form>
@@ -282,57 +508,110 @@ const HINT: Record<string, string> = etiquetas(() => ({
     }
 
     @if (check(); as ck) {
-      <app-modal i18n-title="@@torneo.resumen.antes-iniciar-torneo" title="Antes de iniciar el torneo" [wide]="true" (closed)="closeCheck(false)">
+      <app-modal
+        i18n-title="@@torneo.resumen.antes-iniciar-torneo"
+        title="Antes de iniciar el torneo"
+        [wide]="true"
+        (closed)="closeCheck(false)"
+      >
         @if (ck.data.issues.length) {
           <p class="small">
-            @if (ck.data.ready) {<ng-container i18n="@@torneo.resumen.no-hay-nada-impida-iniciar-pero">
-              No hay nada que impida iniciar, pero conviene revisar:
-            </ng-container>} @else {<ng-container i18n="@@torneo.resumen.hay-cosas-conviene-resolver">
-              Hay cosas que conviene resolver antes de iniciar: sin ellas, algunos combates no llegarán a las mesas.
-            </ng-container>}
+            @if (ck.data.ready) {
+              <ng-container i18n="@@torneo.resumen.no-hay-nada-impida-iniciar-pero">
+                No hay nada que impida iniciar, pero conviene revisar:
+              </ng-container>
+            } @else {
+              <ng-container i18n="@@torneo.resumen.hay-cosas-conviene-resolver">
+                Hay cosas que conviene resolver antes de iniciar: sin ellas, algunos combates no
+                llegarán a las mesas.
+              </ng-container>
+            }
           </p>
           <ul class="list-plain issues">
             @for (i of ck.data.issues; track i.code) {
               <li class="issue {{ i.severity }}">
-                <span class="badge" [class.shu]="i.severity === 'error'" [class.yamabuki]="i.severity === 'warning'" [class.plain]="i.severity === 'info'">{{ severityLabel[i.severity] }}</span>
+                <span
+                  class="badge"
+                  [class.shu]="i.severity === 'error'"
+                  [class.yamabuki]="i.severity === 'warning'"
+                  [class.plain]="i.severity === 'info'"
+                  >{{ severityLabel[i.severity] }}</span
+                >
                 <div class="grow">
                   <div>{{ i.message }}</div>
                   @if (i.items.length) {
-                    <div class="small muted">{{ i.items.slice(0, 8).join(' · ') }}@if (i.items.length > 8) {<ng-container i18n="@@torneo.resumen.mas"> · y {{ i.items.length - 8 }} más </ng-container>}</div>
+                    <div class="small muted"
+                      >{{ i.items.slice(0, 8).join(' · ') }}
+                      @if (i.items.length > 8) {
+                        <ng-container i18n="@@torneo.resumen.mas">
+                          · y {{ i.items.length - 8 }} más
+                        </ng-container>
+                      }
+                    </div>
                   }
                 </div>
                 @if (issueLink[i.code]; as l) {
-                  <a class="btn sm ghost" [routerLink]="l.path" (click)="closeCheck(false)">{{ l.label }}</a>
+                  <a class="btn sm ghost" [routerLink]="l.path" (click)="closeCheck(false)">{{
+                    l.label
+                  }}</a>
                 }
               </li>
             }
           </ul>
         } @else {
-          <p i18n="@@torneo.resumen.todo-orden-categorias-llave">Todo en orden: categorías con llave y tatami, y tatamis con operador.</p>
+          <p i18n="@@torneo.resumen.todo-orden-categorias-llave"
+            >Todo en orden: categorías con llave y tatami, y tatamis con operador.</p
+          >
         }
         <div class="form-actions">
-          <button i18n="@@torneo.resumen.revisar-primero" class="btn" (click)="closeCheck(false)">Revisar primero</button>
-          <button class="btn" [class.danger]="!ck.data.ready" [class.primary]="ck.data.ready" (click)="closeCheck(true)">
-            <ng-container i18n="@@torneo.resumen.iniciar-igual-torneo">@if (ck.data.issues.length) {Iniciar igual} @else {Iniciar torneo}</ng-container>
+          <button i18n="@@torneo.resumen.revisar-primero" class="btn" (click)="closeCheck(false)"
+            >Revisar primero</button
+          >
+          <button
+            class="btn"
+            [class.danger]="!ck.data.ready"
+            [class.primary]="ck.data.ready"
+            (click)="closeCheck(true)"
+          >
+            <ng-container i18n="@@torneo.resumen.iniciar-igual-torneo">
+              @if (ck.data.issues.length) {
+                Iniciar igual
+              } @else {
+                Iniciar torneo
+              }
+            </ng-container>
           </button>
         </div>
       </app-modal>
     }
 
     @if (genOpen()) {
-      <app-modal i18n-title="@@torneo.resumen.generar-categorias" title="Generar categorías" (closed)="genOpen.set(false)">
-        <p i18n="@@torneo.resumen.copia-categorias-plantilla" class="small muted">Copia las categorías de una plantilla al torneo. Luego puedes editarlas, fusionarlas o cancelarlas.</p>
+      <app-modal
+        i18n-title="@@torneo.resumen.generar-categorias"
+        title="Generar categorías"
+        (closed)="genOpen.set(false)"
+      >
+        <p i18n="@@torneo.resumen.copia-categorias-plantilla" class="small muted"
+          >Copia las categorías de una plantilla al torneo. Luego puedes editarlas, fusionarlas o
+          cancelarlas.</p
+        >
         <label class="field">
           <span i18n="@@torneo.resumen.plantilla">Plantilla</span>
           <select [(ngModel)]="genTemplate">
             @for (tp of templates(); track tp.id) {
-              <option i18n="@@torneo.resumen.categorias-2" [ngValue]="tp.id">{{ tp.name }} ({{ tp.items.length }} categorías)</option>
+              <option i18n="@@torneo.resumen.categorias-2" [ngValue]="tp.id"
+                >{{ tp.name }} ({{ tp.items.length }} categorías)</option
+              >
             }
           </select>
         </label>
         <div class="form-actions">
-          <button i18n="@@torneo.resumen.cancelar" class="btn" (click)="genOpen.set(false)">Cancelar</button>
-          <button i18n="@@torneo.resumen.generar" class="btn primary" (click)="generate()">Generar</button>
+          <button i18n="@@torneo.resumen.cancelar" class="btn" (click)="genOpen.set(false)"
+            >Cancelar</button
+          >
+          <button i18n="@@torneo.resumen.generar" class="btn primary" (click)="generate()"
+            >Generar</button
+          >
         </div>
       </app-modal>
     }
@@ -556,16 +835,32 @@ export class SummaryTab {
       await navigator.clipboard.writeText(text);
       this.toast.ok($localize`:@@torneo.resumen.enlace-copiado:Enlace copiado`);
     } catch {
-      this.toast.warn($localize`:@@torneo.resumen.no-pudo-copiar-selecciona-enlace:No se pudo copiar: selecciona el enlace y cópialo a mano`);
+      this.toast.warn(
+        $localize`:@@torneo.resumen.no-pudo-copiar-selecciona-enlace:No se pudo copiar: selecciona el enlace y cópialo a mano`,
+      );
     }
   }
 
-  async setPublic(enabled: boolean, names?: string, regenerate = false, slug?: string): Promise<boolean> {
+  async setPublic(
+    enabled: boolean,
+    names?: string,
+    regenerate = false,
+    slug?: string,
+  ): Promise<boolean> {
     const t = this.ctx.tournament();
     if (!t) return false;
-    const body = { enabled, names: names ?? t.public_names ?? 'short', regenerate, ...(slug ? { slug } : {}) };
+    const body = {
+      enabled,
+      names: names ?? t.public_names ?? 'short',
+      regenerate,
+      ...(slug ? { slug } : {}),
+    };
     const res = await this.mut.put<Tournament>(`/tournaments/${t.id}/public`, body, {
-      success: slug ? $localize`:@@torneo.resumen.direccion-guardada:Dirección guardada` : enabled ? $localize`:@@torneo.resumen.seguimiento-vivo-activo:Seguimiento en vivo activo` : $localize`:@@torneo.resumen.seguimiento-vivo-desactivado:Seguimiento en vivo desactivado`,
+      success: slug
+        ? $localize`:@@torneo.resumen.direccion-guardada:Dirección guardada`
+        : enabled
+          ? $localize`:@@torneo.resumen.seguimiento-vivo-activo:Seguimiento en vivo activo`
+          : $localize`:@@torneo.resumen.seguimiento-vivo-desactivado:Seguimiento en vivo desactivado`,
     });
     if (res) this.ctx.reload();
     return !!res;
@@ -672,7 +967,10 @@ export class SummaryTab {
     const res = await this.mut.patch<Tournament>(
       `/tournaments/${t.id}/status`,
       { status: tr.to, version: t.version, reason },
-      { success: $localize`:@@torneo.resumen.estado-actualizado:Estado actualizado`, onConflict: () => this.ctx.reload() },
+      {
+        success: $localize`:@@torneo.resumen.estado-actualizado:Estado actualizado`,
+        onConflict: () => this.ctx.reload(),
+      },
     );
     if (res) {
       this.ctx.tournament.set(res);
@@ -698,7 +996,10 @@ export class SummaryTab {
     const res = await this.mut.patch<Tournament>(
       `/tournaments/${t.id}`,
       { ...f, end_date: f.end_date || null, version: t.version },
-      { success: $localize`:@@torneo.resumen.torneo-actualizado:Torneo actualizado`, onConflict: () => this.ctx.reload() },
+      {
+        success: $localize`:@@torneo.resumen.torneo-actualizado:Torneo actualizado`,
+        onConflict: () => this.ctx.reload(),
+      },
     );
     if (res) {
       this.ctx.tournament.set(res);
@@ -718,13 +1019,21 @@ export class SummaryTab {
   }
 
   async generate(): Promise<void> {
-    const res = await this.mut.post<{ created: number }>(`/tournaments/${this.ctx.id()}/generate-categories`, {
-      template_id: this.genTemplate,
-    });
+    const res = await this.mut.post<{ created: number }>(
+      `/tournaments/${this.ctx.id()}/generate-categories`,
+      {
+        template_id: this.genTemplate,
+      },
+    );
     if (res) {
       this.genOpen.set(false);
       this.ctx.loadCategories();
-      this.dialog.alert($localize`:@@torneo.resumen.categorias-generadas:Categorías generadas`, res.created === 1 ? $localize`:@@torneo.resumen.creo-1-categoria:Se creó 1 categoría.` : $localize`:@@torneo.resumen.crearon:Se crearon ${res.created}:n: categorías.`);
+      this.dialog.alert(
+        $localize`:@@torneo.resumen.categorias-generadas:Categorías generadas`,
+        res.created === 1
+          ? $localize`:@@torneo.resumen.creo-1-categoria:Se creó 1 categoría.`
+          : $localize`:@@torneo.resumen.crearon:Se crearon ${res.created}:n: categorías.`,
+      );
     }
   }
 }

@@ -28,9 +28,19 @@ interface View {
     <div class="container">
       <app-page-head i18n-title="@@mesa.mi-tatami.mi-tatami" kanji="畳" title="Mi tatami">
         <div meta class="meta-line">
-          <span i18n="@@mesa.mi-tatami.combates-tatami-orden-planilla">Combates de tu tatami, en el orden de la planilla</span>
+          <span i18n="@@mesa.mi-tatami.combates-tatami-orden-planilla"
+            >Combates de tu tatami, en el orden de la planilla</span
+          >
         </div>
-        <button i18n-aria-label="@@mesa.mi-tatami.actualizar" i18n-title="@@mesa.mi-tatami.actualizar" class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
+        <button
+          i18n-aria-label="@@mesa.mi-tatami.actualizar"
+          i18n-title="@@mesa.mi-tatami.actualizar"
+          class="btn icon-only ghost"
+          (click)="load()"
+          title="Actualizar"
+          aria-label="Actualizar"
+          ><app-icon name="refresh"
+        /></button>
       </app-page-head>
 
       @for (v of views(); track v.id) {
@@ -39,14 +49,46 @@ interface View {
             <div class="t-head">
               <h2>{{ tname(q) }}</h2>
               @if (q.progress; as pr) {
-                <span i18n="@@mesa.mi-tatami.hechos-de-total" class="muted small num">{pr.total, plural, =1 {{{ pr.done }} de 1 combate} other {{{ pr.done }} de {{ pr.total }} combates}}</span>
+                <span
+                  i18n="@@mesa.mi-tatami.hechos-de-total"
+                  class="muted small num"
+                  >{pr.total, plural,
+                    =1 {{{ pr.done }} de 1 combate}
+                    other {{{ pr.done }} de {{ pr.total }} combates}
+                  }</span
+                >
               }
             </div>
             @if (next(q); as it) {
-              <a class="go" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: q.tatami.id }">
-                <span i18n="@@mesa.mi-tatami.curso-siguiente" class="go-kicker">{it.match.status, select, in_progress {Combate en curso} other {Siguiente combate}}</span>
-                <span class="go-main"><ng-container i18n="@@mesa.mi-tatami.abrir-curso-siguiente">{it.match.status, select, in_progress {Abrir combate en curso} other {Abrir siguiente combate}}</ng-container> →</span>
-                <span class="go-sub"><span class="num">{{ it.number }}</span> · {{ it.category_name }}@if (it.eta && it.match.status !== 'in_progress') { · ≈ {{ hour(it.eta) }}}</span>
+              <a
+                class="go"
+                [routerLink]="['/mesa', it.match.id]"
+                [queryParams]="{ tatami: q.tatami.id }"
+              >
+                <span
+                  i18n="@@mesa.mi-tatami.curso-siguiente"
+                  class="go-kicker"
+                  >{it.match.status, select,
+                    in_progress {Combate en curso}
+                    other {Siguiente combate}
+                  }</span
+                >
+                <span class="go-main"
+                  ><ng-container
+                    i18n="@@mesa.mi-tatami.abrir-curso-siguiente"
+                    >{it.match.status, select,
+                      in_progress {Abrir combate en curso}
+                      other {Abrir siguiente combate}
+                    }</ng-container
+                  >
+                  →</span
+                >
+                <span class="go-sub"
+                  ><span class="num">{{ it.number }}</span> · {{ it.category_name }}
+                  @if (it.eta && it.match.status !== 'in_progress') {
+                    · ≈ {{ hour(it.eta) }}
+                  }
+                </span>
                 <span class="go-vs">
                   <span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span>
                   <span i18n="@@mesa.mi-tatami.vs" class="vs" aria-hidden="true">vs</span>
@@ -55,8 +97,15 @@ interface View {
               </a>
             } @else {
               <div class="empty-q">
-                <p><strong i18n="@@mesa.mi-tatami.no-hay-combates-listos-este">No hay combates listos en este tatami.</strong></p>
-                <p i18n="@@mesa.mi-tatami.cuando-organizador-genere-llaves" class="small muted">Cuando el organizador genere las llaves o termine la ronda anterior, aparecerán aquí.</p>
+                <p
+                  ><strong i18n="@@mesa.mi-tatami.no-hay-combates-listos-este"
+                    >No hay combates listos en este tatami.</strong
+                  ></p
+                >
+                <p i18n="@@mesa.mi-tatami.cuando-organizador-genere-llaves" class="small muted"
+                  >Cuando el organizador genere las llaves o termine la ronda anterior, aparecerán
+                  aquí.</p
+                >
               </div>
             }
             @if (rest(q).length) {
@@ -64,14 +113,25 @@ interface View {
               <ol class="queue">
                 @for (it of rest(q); track it.match.id) {
                   <li>
-                    <a [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: q.tatami.id }">
+                    <a
+                      [routerLink]="['/mesa', it.match.id]"
+                      [queryParams]="{ tatami: q.tatami.id }"
+                    >
                       <span class="num n">{{ it.number }}</span>
                       <span class="grow">
                         <span class="cat">{{ it.category_name }}</span>
-                        <span class="small"><span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span> · <span class="ao">{{ pname(q, it.match.ao_registration_id) }}</span></span>
+                        <span class="small"
+                          ><span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span> ·
+                          <span class="ao">{{ pname(q, it.match.ao_registration_id) }}</span></span
+                        >
                       </span>
                       @if (it.eta) {
-                        <span i18n-title="@@mesa.mi-tatami.hora-estimada-inicio" class="eta num" title="Hora estimada de inicio">≈ {{ hour(it.eta) }}</span>
+                        <span
+                          i18n-title="@@mesa.mi-tatami.hora-estimada-inicio"
+                          class="eta num"
+                          title="Hora estimada de inicio"
+                          >≈ {{ hour(it.eta) }}</span
+                        >
                       }
                       @if (it.match.status !== 'ready') {
                         <app-status [status]="it.match.status" type="match" />
@@ -83,7 +143,9 @@ interface View {
             }
             @if (q.conflicts.length) {
               <div class="alert warn small mt">
-                <strong i18n="@@mesa.mi-tatami.combates-pendientes-otro-tatami">Con combates pendientes en otro tatami:</strong>
+                <strong i18n="@@mesa.mi-tatami.combates-pendientes-otro-tatami"
+                  >Con combates pendientes en otro tatami:</strong
+                >
                 {{ conflictNames(q) }}
               </div>
             }
@@ -95,10 +157,15 @@ interface View {
         </section>
       } @empty {
         <div class="card empty">
-          <p><strong i18n="@@mesa.mi-tatami.no-tienes-tatami-asignado">No tienes un tatami asignado.</strong></p><ng-container i18n="@@mesa.mi-tatami.pide-organizador-te-asigne-como">
-          Pide al organizador que te asigne como operador de mesa de un tatami, o revisa
-          <a routerLink="/torneos">los torneos</a>.
-        </ng-container></div>
+          <p
+            ><strong i18n="@@mesa.mi-tatami.no-tienes-tatami-asignado"
+              >No tienes un tatami asignado.</strong
+            ></p
+          ><ng-container i18n="@@mesa.mi-tatami.pide-organizador-te-asigne-como">
+            Pide al organizador que te asigne como operador de mesa de un tatami, o revisa
+            <a routerLink="/torneos">los torneos</a>.
+          </ng-container></div
+        >
       }
     </div>
   `,
@@ -252,11 +319,19 @@ export class MyTatamiPage {
     const views = await Promise.all(
       this.ids().map(async (id): Promise<View> => {
         try {
-          return { id, data: await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${id}/queue`)), error: '' };
+          return {
+            id,
+            data: await firstValueFrom(this.api.get<TatamiQueue>(`/tatamis/${id}/queue`)),
+            error: '',
+          };
         } catch (e) {
           const prev = this.views().find((v) => v.id === id);
           // Sin señal se conserva lo último que se vio.
-          return { id, data: prev?.data ?? null, error: prev?.data ? '' : ApiError.from(e).fullMessage };
+          return {
+            id,
+            data: prev?.data ?? null,
+            error: prev?.data ? '' : ApiError.from(e).fullMessage,
+          };
         }
       }),
     );

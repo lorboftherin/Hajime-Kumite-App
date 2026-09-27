@@ -39,15 +39,17 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
             @if (o.my_role) {
               <span class="badge plain">{{ roleLabel(o.my_role) }}</span>
             }
-            <span class="small"
-              i18n="@@organizacion.n-torneos">{o.tournament_count, plural, =1 {1 torneo} other {{{ o.tournament_count }} torneos}}</span
-            >
+            <span class="small" i18n="@@organizacion.n-torneos">{o.tournament_count, plural,
+              =1 {1 torneo}
+              other {{{ o.tournament_count }} torneos}
+            }</span>
           }
         </div>
         @if (orgs().length > 1) {
           <label class="field inline small">
             <span i18n="@@organizacion.organizacion" class="sr-only">Organización</span>
-            <select i18n-aria-label="@@organizacion.elegir-organizacion"
+            <select
+              i18n-aria-label="@@organizacion.elegir-organizacion"
               [ngModel]="org()?.id"
               (ngModelChange)="go($event)"
               aria-label="Elegir organización"
@@ -69,9 +71,14 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
         <div class="empty"><span class="spinner"></span></div>
       } @else if (!org()) {
         <div class="card empty">
-          <p><strong i18n="@@organizacion.no-perteneces-ninguna">No perteneces a ninguna organización.</strong></p><ng-container i18n="@@organizacion.pide-dueno-liga-club-dojo-te">
-          Pide al dueño de tu liga, club o dojo que te invite con tu nombre de usuario.
-        </ng-container></div>
+          <p
+            ><strong i18n="@@organizacion.no-perteneces-ninguna"
+              >No perteneces a ninguna organización.</strong
+            ></p
+          ><ng-container i18n="@@organizacion.pide-dueno-liga-club-dojo-te">
+            Pide al dueño de tu liga, club o dojo que te invite con tu nombre de usuario.
+          </ng-container></div
+        >
       } @else {
         @let o = org()!;
         <div class="layout">
@@ -102,7 +109,8 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                 </label>
                 <label class="field"
                   ><span i18n="@@organizacion.logo-ruta-url">Logo (ruta o URL)</span
-                  ><input i18n-placeholder="@@organizacion.https"
+                  ><input
+                    i18n-placeholder="@@organizacion.https"
                     name="l"
                     [(ngModel)]="f.logo"
                     [disabled]="!o.can_manage"
@@ -149,7 +157,8 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                   ><input name="df" [(ngModel)]="f.tax_address" [disabled]="!o.can_manage"
                 /></label>
                 <label class="field"
-                  ><span i18n="@@organizacion.correo-para-comprobantes">Correo para comprobantes</span
+                  ><span i18n="@@organizacion.correo-para-comprobantes"
+                    >Correo para comprobantes</span
                   ><input
                     name="be"
                     type="email"
@@ -159,7 +168,11 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
               </div>
               @if (o.can_manage) {
                 <div class="form-actions">
-                  <button i18n="@@organizacion.guardar" class="btn primary" [disabled]="f.name.trim().length < 2 || busy()">
+                  <button
+                    i18n="@@organizacion.guardar"
+                    class="btn primary"
+                    [disabled]="f.name.trim().length < 2 || busy()"
+                  >
                     Guardar
                   </button>
                 </div>
@@ -177,12 +190,22 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
             @if (o.subscription; as sub) {
               <p>
                 <strong>{{ sub.plan_name }}</strong> · {{ statusLabel(sub.status) }}
-                @if (sub.current_period_end) {<ng-container i18n="@@organizacion.termina-vigente-hasta">
-                  · @if (sub.cancel_at_period_end) {termina} @else {vigente hasta} el
-                  {{ date(sub.current_period_end) }}
-                </ng-container>}
+                @if (sub.current_period_end) {
+                  <ng-container i18n="@@organizacion.termina-vigente-hasta">
+                    ·
+                    @if (sub.cancel_at_period_end) {
+                      termina
+                    } @else {
+                      vigente hasta
+                    }
+                    el
+                    {{ date(sub.current_period_end) }}
+                  </ng-container>
+                }
                 @if (sub.recurring) {
-                  <span i18n="@@organizacion.renovacion-automatica" class="badge matcha">Renovación automática</span>
+                  <span i18n="@@organizacion.renovacion-automatica" class="badge matcha"
+                    >Renovación automática</span
+                  >
                 }
               </p>
               @if (sub.in_grace) {
@@ -194,52 +217,88 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
               @if (o.can_manage && plans()?.mode === 'enforced') {
                 <div class="row actions">
                   @if (!sub.recurring && planOf(sub.plan_code); as p) {
-                    <button i18n="@@organizacion.renovar" class="btn sm primary" type="button" (click)="renew.set(p)">
+                    <button
+                      i18n="@@organizacion.renovar"
+                      class="btn sm primary"
+                      type="button"
+                      (click)="renew.set(p)"
+                    >
                       Renovar
                     </button>
                   }
                   @if (sub.status !== 'canceled' && !sub.cancel_at_period_end) {
-                    <button i18n="@@organizacion.cancelar-suscripcion" class="btn sm ghost" type="button" (click)="cancelOwn(sub)">
+                    <button
+                      i18n="@@organizacion.cancelar-suscripcion"
+                      class="btn sm ghost"
+                      type="button"
+                      (click)="cancelOwn(sub)"
+                    >
                       Cancelar suscripción
                     </button>
                   }
                 </div>
               }
             } @else {
-              <p i18n="@@organizacion.sin-suscripcion-vigente" class="muted">Sin suscripción vigente.</p>
+              <p i18n="@@organizacion.sin-suscripcion-vigente" class="muted"
+                >Sin suscripción vigente.</p
+              >
               @if (o.can_manage && plans()?.mode === 'enforced') {
-                <p><a i18n="@@organizacion.elegir-plan" class="btn sm primary" routerLink="/planes">Elegir un plan</a></p>
+                <p
+                  ><a i18n="@@organizacion.elegir-plan" class="btn sm primary" routerLink="/planes"
+                    >Elegir un plan</a
+                  ></p
+                >
               }
             }
             <div class="features">
               @for (feat of o.features; track feat) {
                 <span class="badge matcha">{{ plans()?.features?.[feat] ?? feat }}</span>
               } @empty {
-                <span i18n="@@organizacion.ninguna-funcion-pago-disponible" class="muted small">Ninguna función de pago disponible.</span>
+                <span i18n="@@organizacion.ninguna-funcion-pago-disponible" class="muted small"
+                  >Ninguna función de pago disponible.</span
+                >
               }
             </div>
-            <p><a i18n="@@organizacion.ver-planes-precios" routerLink="/planes">Ver planes y precios</a></p>
+            <p
+              ><a i18n="@@organizacion.ver-planes-precios" routerLink="/planes"
+                >Ver planes y precios</a
+              ></p
+            >
 
             @if (auth.isAdmin()) {
               <h3 i18n="@@organizacion.suscripciones-admin">Suscripciones (Admin)</h3>
               <form class="row assign" (ngSubmit)="assign()">
-                <select i18n-aria-label="@@organizacion.plan" name="pc" [(ngModel)]="sub.plan_code" aria-label="Plan">
+                <select
+                  i18n-aria-label="@@organizacion.plan"
+                  name="pc"
+                  [(ngModel)]="sub.plan_code"
+                  aria-label="Plan"
+                >
                   @for (p of orgPlans(); track p.code) {
                     <option [value]="p.code">{{ p.name }}</option>
                   }
                 </select>
-                <select i18n-aria-label="@@organizacion.estado" name="st" [(ngModel)]="sub.status" aria-label="Estado">
+                <select
+                  i18n-aria-label="@@organizacion.estado"
+                  name="st"
+                  [(ngModel)]="sub.status"
+                  aria-label="Estado"
+                >
                   <option i18n="@@organizacion.activa" value="active">Activa</option>
                   <option i18n="@@organizacion.prueba" value="trial">Prueba</option>
                 </select>
-                <input i18n-title="@@organizacion.vigente-hasta-vacio-sin" i18n-aria-label="@@organizacion.vigente-hasta"
+                <input
+                  i18n-title="@@organizacion.vigente-hasta-vacio-sin"
+                  i18n-aria-label="@@organizacion.vigente-hasta"
                   type="date"
                   name="pe"
                   [(ngModel)]="sub.period_end"
                   aria-label="Vigente hasta"
                   title="Vigente hasta (vacío = sin vencimiento)"
                 />
-                <button i18n="@@organizacion.asignar-plan" class="btn" [disabled]="busy()">Asignar plan</button>
+                <button i18n="@@organizacion.asignar-plan" class="btn" [disabled]="busy()"
+                  >Asignar plan</button
+                >
               </form>
               <div class="table-wrap">
                 <table class="table">
@@ -266,26 +325,44 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                           {{ s.current_period_end ? date(s.current_period_end) : '—' }}
                         </td>
                         <td class="small">
-                          <ng-container i18n="@@organizacion.manual-pago">{s.source, select, manual {Manual} other {Pago}}</ng-container>
+                          <ng-container i18n="@@organizacion.manual-pago">{s.source, select,
+                            manual {Manual}
+                            other {Pago}
+                          }</ng-container>
                           @if (s.reference) {
                             · {{ s.reference }}
                           }
                         </td>
                         <td class="right nowrap">
                           @if (s.status !== 'canceled') {
-                            <button i18n="@@organizacion.pagado-1-mes" class="btn sm" (click)="markPaid(s, 'month')">
+                            <button
+                              i18n="@@organizacion.pagado-1-mes"
+                              class="btn sm"
+                              (click)="markPaid(s, 'month')"
+                            >
                               Pagado 1 mes
                             </button>
-                            <button i18n="@@organizacion.pagado-1-ano" class="btn sm" (click)="markPaid(s, 'year')">
+                            <button
+                              i18n="@@organizacion.pagado-1-ano"
+                              class="btn sm"
+                              (click)="markPaid(s, 'year')"
+                            >
                               Pagado 1 año
                             </button>
-                            <button i18n="@@organizacion.cancelar" class="btn sm ghost" (click)="cancelSub(s)">Cancelar</button>
+                            <button
+                              i18n="@@organizacion.cancelar"
+                              class="btn sm ghost"
+                              (click)="cancelSub(s)"
+                              >Cancelar</button
+                            >
                           }
                         </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td i18n="@@organizacion.sin-suscripciones" colspan="5" class="muted small">Sin suscripciones.</td>
+                        <td i18n="@@organizacion.sin-suscripciones" colspan="5" class="muted small"
+                          >Sin suscripciones.</td
+                        >
                       </tr>
                     }
                   </tbody>
@@ -314,7 +391,11 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                         <td class="nowrap">{{ date(pay.created_at) }}</td>
                         <td>
                           {{ pay.plan_name }}
-                          <span i18n="@@cobro.culqi.periodo" class="small muted">{pay.period, select, year {anual} other {mensual}}</span>
+                          <span
+                            i18n="@@cobro.culqi.periodo"
+                            class="small muted"
+                            >{pay.period, select, year {anual} other {mensual}}</span
+                          >
                         </td>
                         <td class="right num nowrap">{{ cents(pay.amount_pen) }}</td>
                         <td>{{ payStatus(pay.status) }}</td>
@@ -322,15 +403,38 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                           @if (pay.invoice; as inv) {
                             {{ num(inv.serie, inv.numero) }} · {{ invStatus(inv.status) }}
                             @if (inv.pdf_url) {
-                              · <a i18n="@@organizacion.pdf" [href]="inv.pdf_url" target="_blank" rel="noopener">PDF</a>
+                              ·
+                              <a
+                                i18n="@@organizacion.pdf"
+                                [href]="inv.pdf_url"
+                                target="_blank"
+                                rel="noopener"
+                                >PDF</a
+                              >
                             }
                             @if (inv.xml_url) {
-                              · <a i18n="@@organizacion.xml" [href]="inv.xml_url" target="_blank" rel="noopener">XML</a>
+                              ·
+                              <a
+                                i18n="@@organizacion.xml"
+                                [href]="inv.xml_url"
+                                target="_blank"
+                                rel="noopener"
+                                >XML</a
+                              >
                             }
                             @if (pay.credit_note; as nc) {
-                              <ng-container i18n="@@organizacion.nota-credito"><br />Nota de crédito {{ num(nc.serie, nc.numero) }}
-                              </ng-container>@if (nc.pdf_url) {
-                                · <a i18n="@@organizacion.pdf" [href]="nc.pdf_url" target="_blank" rel="noopener">PDF</a>
+                              <ng-container i18n="@@organizacion.nota-credito"
+                                ><br />Nota de crédito {{ num(nc.serie, nc.numero) }}
+                              </ng-container>
+                              @if (nc.pdf_url) {
+                                ·
+                                <a
+                                  i18n="@@organizacion.pdf"
+                                  [href]="nc.pdf_url"
+                                  target="_blank"
+                                  rel="noopener"
+                                  >PDF</a
+                                >
                               }
                             }
                           } @else {
@@ -340,7 +444,9 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                       </tr>
                     } @empty {
                       <tr>
-                        <td i18n="@@organizacion.sin-pagos-todavia" colspan="5" class="muted small">Sin pagos todavía.</td>
+                        <td i18n="@@organizacion.sin-pagos-todavia" colspan="5" class="muted small"
+                          >Sin pagos todavía.</td
+                        >
                       </tr>
                     }
                   </tbody>
@@ -380,7 +486,9 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                             [attr.aria-label]="ariaRolDe(m.username)"
                           >
                             <option i18n="@@organizacion.dueno" value="owner">Dueño</option>
-                            <option i18n="@@organizacion.administrador" value="admin">Administrador</option>
+                            <option i18n="@@organizacion.administrador" value="admin"
+                              >Administrador</option
+                            >
                             <option i18n="@@organizacion.miembro" value="member">Miembro</option>
                           </select>
                         } @else {
@@ -389,7 +497,12 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                       </td>
                       <td class="right">
                         @if (o.can_manage) {
-                          <button i18n="@@organizacion.quitar" class="btn sm ghost" (click)="remove(m)">Quitar</button>
+                          <button
+                            i18n="@@organizacion.quitar"
+                            class="btn sm ghost"
+                            (click)="remove(m)"
+                            >Quitar</button
+                          >
                         }
                       </td>
                     </tr>
@@ -399,18 +512,29 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
             </div>
             @if (o.can_manage) {
               <form class="row invite" (ngSubmit)="invite()">
-                <input i18n-aria-label="@@organizacion.usuario-invitar" i18n-placeholder="@@organizacion.usuario-existente"
+                <input
+                  i18n-aria-label="@@organizacion.usuario-invitar"
+                  i18n-placeholder="@@organizacion.usuario-existente"
                   name="u"
                   [(ngModel)]="inv.username"
                   placeholder="Usuario existente"
                   aria-label="Usuario a invitar"
                 />
-                <select i18n-aria-label="@@organizacion.rol-2" name="r" [(ngModel)]="inv.role" aria-label="Rol">
+                <select
+                  i18n-aria-label="@@organizacion.rol-2"
+                  name="r"
+                  [(ngModel)]="inv.role"
+                  aria-label="Rol"
+                >
                   <option i18n="@@organizacion.miembro" value="member">Miembro</option>
                   <option i18n="@@organizacion.administrador" value="admin">Administrador</option>
                   <option i18n="@@organizacion.dueno" value="owner">Dueño</option>
                 </select>
-                <button i18n="@@organizacion.invitar" class="btn" [disabled]="!inv.username.trim() || busy()">
+                <button
+                  i18n="@@organizacion.invitar"
+                  class="btn"
+                  [disabled]="!inv.username.trim() || busy()"
+                >
                   <app-icon name="plus" /> Invitar
                 </button>
               </form>
@@ -425,10 +549,15 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
     }
 
     @if (showNew()) {
-      <app-modal i18n-title="@@organizacion.nueva-organizacion-2" title="Nueva organización" (closed)="showNew.set(false)">
+      <app-modal
+        i18n-title="@@organizacion.nueva-organizacion-2"
+        title="Nueva organización"
+        (closed)="showNew.set(false)"
+      >
         <form class="stack" (ngSubmit)="create()">
           <label class="field"
-            ><span i18n="@@organizacion.nombre">Nombre *</span><input name="n" [(ngModel)]="nf.name" required minlength="2"
+            ><span i18n="@@organizacion.nombre">Nombre *</span
+            ><input name="n" [(ngModel)]="nf.name" required minlength="2"
           /></label>
           <div class="grid-2">
             <label class="field">
@@ -441,13 +570,29 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
             </label>
             <label class="field"
               ><span i18n="@@organizacion.identificador-opcional">Identificador (opcional)</span
-              ><input i18n-placeholder="@@organizacion.liga-lima" name="s" [(ngModel)]="nf.slug" placeholder="liga-de-lima"
+              ><input
+                i18n-placeholder="@@organizacion.liga-lima"
+                name="s"
+                [(ngModel)]="nf.slug"
+                placeholder="liga-de-lima"
             /></label>
           </div>
-          <p i18n="@@organizacion.luego-invita-dueno-desde" class="small muted">Luego invita al dueño desde «Miembros» con su usuario.</p>
+          <p i18n="@@organizacion.luego-invita-dueno-desde" class="small muted"
+            >Luego invita al dueño desde «Miembros» con su usuario.</p
+          >
           <div class="form-actions">
-            <button i18n="@@organizacion.cancelar" type="button" class="btn" (click)="showNew.set(false)">Cancelar</button>
-            <button i18n="@@organizacion.crear" class="btn primary" [disabled]="nf.name.trim().length < 2 || busy()">
+            <button
+              i18n="@@organizacion.cancelar"
+              type="button"
+              class="btn"
+              (click)="showNew.set(false)"
+              >Cancelar</button
+            >
+            <button
+              i18n="@@organizacion.crear"
+              class="btn primary"
+              [disabled]="nf.name.trim().length < 2 || busy()"
+            >
               Crear
             </button>
           </div>

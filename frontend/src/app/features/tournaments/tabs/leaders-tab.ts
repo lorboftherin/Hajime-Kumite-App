@@ -9,15 +9,37 @@ import { lista } from '../../../core/i18n/etiquetas';
 type BoardKey = 'mvp' | 'wins' | 'ippon' | 'points' | 'senshu' | 'fastest_win';
 
 const BOARDS: Array<{ key: BoardKey; label: string; stat: string }> = lista(() => [
-  { key: 'mvp', label: $localize`:@@torneo.lideres.indice-hajime:Índice Hajime`, stat: $localize`:@@torneo.lideres.indice:Índice` },
-  { key: 'wins', label: $localize`:@@torneo.lideres.victorias-2:Victorias`, stat: $localize`:@@torneo.lideres.victorias-2:Victorias` },
+  {
+    key: 'mvp',
+    label: $localize`:@@torneo.lideres.indice-hajime:Índice Hajime`,
+    stat: $localize`:@@torneo.lideres.indice:Índice`,
+  },
+  {
+    key: 'wins',
+    label: $localize`:@@torneo.lideres.victorias-2:Victorias`,
+    stat: $localize`:@@torneo.lideres.victorias-2:Victorias`,
+  },
   { key: 'ippon', label: 'Ippon', stat: 'Ippon' },
-  { key: 'points', label: $localize`:@@torneo.lideres.puntos:Puntos`, stat: $localize`:@@torneo.lideres.puntos:Puntos` },
+  {
+    key: 'points',
+    label: $localize`:@@torneo.lideres.puntos:Puntos`,
+    stat: $localize`:@@torneo.lideres.puntos:Puntos`,
+  },
   { key: 'senshu', label: 'Senshu', stat: 'Senshu' },
-  { key: 'fastest_win', label: $localize`:@@torneo.lideres.mas-rapida:Más rápida`, stat: $localize`:@@torneo.lideres.tiempo:Tiempo` },
+  {
+    key: 'fastest_win',
+    label: $localize`:@@torneo.lideres.mas-rapida:Más rápida`,
+    stat: $localize`:@@torneo.lideres.tiempo:Tiempo`,
+  },
 ]);
 
-const AWARD_KANJI: Record<string, string> = { mvp: '賞', ippon: '一', fastest: '速', senshu: '先', kata: '型' };
+const AWARD_KANJI: Record<string, string> = {
+  mvp: '賞',
+  ippon: '一',
+  fastest: '速',
+  senshu: '先',
+  kata: '型',
+};
 
 /**
  * Líderes y premios del torneo (GET /tournaments/{id}/leaders): los «héroes»
@@ -29,7 +51,9 @@ const AWARD_KANJI: Record<string, string> = { mvp: '賞', ippon: '一', fastest:
   template: `
     @if (data(); as d) {
       @if (d.is_test) {
-        <div i18n="@@torneo.lideres.torneo-prueba-no-genera-premios" class="alert info">Torneo de prueba: no genera premios ni líderes (no cuenta para las estadísticas).</div>
+        <div i18n="@@torneo.lideres.torneo-prueba-no-genera-premios" class="alert info"
+          >Torneo de prueba: no genera premios ni líderes (no cuenta para las estadísticas).</div
+        >
       }
       @if (d.awards.length) {
         <h2 i18n="@@torneo.lideres.premios-torneo" class="section-title">Premios del torneo</h2>
@@ -38,7 +62,9 @@ const AWARD_KANJI: Record<string, string> = { mvp: '賞', ippon: '一', fastest:
             <article class="card award">
               <span class="seal" aria-hidden="true">{{ kanji(a.code) }}</span>
               <div class="grow">
-                <div class="eyebrow">{{ a.title }} · <span class="value">{{ a.value }}</span></div>
+                <div class="eyebrow"
+                  >{{ a.title }} · <span class="value">{{ a.value }}</span></div
+                >
                 @if (a.person_id) {
                   <a class="who" [routerLink]="['/personas', a.person_id]">{{ a.name }}</a>
                 } @else {
@@ -52,16 +78,31 @@ const AWARD_KANJI: Record<string, string> = { mvp: '賞', ippon: '一', fastest:
         </div>
       } @else if (!d.is_test) {
         <div class="empty">
-          <p><strong i18n="@@torneo.lideres.todavia-no-hay-premios">Todavía no hay premios.</strong></p><ng-container i18n="@@torneo.lideres.aparecen-solos-medida-mesa">
-          Aparecen solos a medida que la mesa cierra combates de kumite o registra notas de kata.
-        </ng-container></div>
+          <p
+            ><strong i18n="@@torneo.lideres.todavia-no-hay-premios"
+              >Todavía no hay premios.</strong
+            ></p
+          ><ng-container i18n="@@torneo.lideres.aparecen-solos-medida-mesa">
+            Aparecen solos a medida que la mesa cierra combates de kumite o registra notas de kata.
+          </ng-container></div
+        >
       }
 
       @if (!d.is_test) {
         <h2 i18n="@@torneo.lideres.lideres" class="section-title">Líderes</h2>
-        <div i18n-aria-label="@@torneo.lideres.tabla-lideres" class="seg" role="tablist" aria-label="Tabla de líderes">
+        <div
+          i18n-aria-label="@@torneo.lideres.tabla-lideres"
+          class="seg"
+          role="tablist"
+          aria-label="Tabla de líderes"
+        >
           @for (b of boards; track b.key) {
-            <button role="tab" [attr.aria-selected]="board() === b.key" [class.on]="board() === b.key" (click)="board.set(b.key)">
+            <button
+              role="tab"
+              [attr.aria-selected]="board() === b.key"
+              [class.on]="board() === b.key"
+              (click)="board.set(b.key)"
+            >
               {{ b.label }}
             </button>
           }
@@ -83,29 +124,50 @@ const AWARD_KANJI: Record<string, string> = { mvp: '賞', ippon: '一', fastest:
               @for (r of rows(); track r.person_id; let i = $index) {
                 <tr>
                   <td class="center rank" [class.top]="i < 3">{{ i + 1 }}</td>
-                  <td><a class="who" [routerLink]="['/personas', r.person_id]">{{ r.name }}</a></td>
+                  <td
+                    ><a class="who" [routerLink]="['/personas', r.person_id]">{{ r.name }}</a></td
+                  >
                   <td>{{ r.dojo }}</td>
                   <td class="right stat">{{ value(r) }}</td>
                   <td class="right">{{ r.matches }}</td>
                   <td class="right">{{ r.wins }}</td>
                   <td class="center medals">
-                    @if (r.medals.gold) {<span i18n-title="@@torneo.lideres.oro" class="m gold" title="Oro">{{ r.medals.gold }}</span>}
-                    @if (r.medals.silver) {<span i18n-title="@@torneo.lideres.plata" class="m silver" title="Plata">{{ r.medals.silver }}</span>}
-                    @if (r.medals.bronze) {<span i18n-title="@@torneo.lideres.bronce" class="m bronze" title="Bronce">{{ r.medals.bronze }}</span>}
+                    @if (r.medals.gold) {
+                      <span i18n-title="@@torneo.lideres.oro" class="m gold" title="Oro">{{
+                        r.medals.gold
+                      }}</span>
+                    }
+                    @if (r.medals.silver) {
+                      <span i18n-title="@@torneo.lideres.plata" class="m silver" title="Plata">{{
+                        r.medals.silver
+                      }}</span>
+                    }
+                    @if (r.medals.bronze) {
+                      <span i18n-title="@@torneo.lideres.bronce" class="m bronze" title="Bronce">{{
+                        r.medals.bronze
+                      }}</span>
+                    }
                   </td>
                 </tr>
               } @empty {
-                <tr><td i18n="@@torneo.lideres.sin-datos-todavia" colspan="7" class="empty">Sin datos todavía.</td></tr>
+                <tr
+                  ><td i18n="@@torneo.lideres.sin-datos-todavia" colspan="7" class="empty"
+                    >Sin datos todavía.</td
+                  ></tr
+                >
               }
             </tbody>
           </table>
         </div>
         @if (board() === 'mvp') {
           <p i18n="@@torneo.lideres.indice-hajime-victoria-oro-plata" class="small muted note">
-            Índice Hajime: victoria {{ d.leaders.mvp_weights['win'] }}, oro {{ d.leaders.mvp_weights['gold'] }}, plata
-            {{ d.leaders.mvp_weights['silver'] }}, bronce {{ d.leaders.mvp_weights['bronze'] }}, ippon {{ d.leaders.mvp_weights['ippon'] }},
-            waza-ari {{ d.leaders.mvp_weights['waza_ari'] }}, yuko {{ d.leaders.mvp_weights['yuko'] }}, senshu {{ d.leaders.mvp_weights['senshu'] }};
-            cada punto recibido resta {{ -d.leaders.mvp_weights['point_against'] }}. Sirve para reconocer, no es un ranking oficial.
+            Índice Hajime: victoria {{ d.leaders.mvp_weights['win'] }}, oro
+            {{ d.leaders.mvp_weights['gold'] }}, plata {{ d.leaders.mvp_weights['silver'] }}, bronce
+            {{ d.leaders.mvp_weights['bronze'] }}, ippon {{ d.leaders.mvp_weights['ippon'] }},
+            waza-ari {{ d.leaders.mvp_weights['waza_ari'] }}, yuko
+            {{ d.leaders.mvp_weights['yuko'] }}, senshu {{ d.leaders.mvp_weights['senshu'] }}; cada
+            punto recibido resta {{ -d.leaders.mvp_weights['point_against'] }}. Sirve para
+            reconocer, no es un ranking oficial.
           </p>
         }
       }
@@ -224,7 +286,9 @@ export class LeadersTab {
   readonly boards = BOARDS;
   readonly board = signal<BoardKey>('mvp');
   readonly current = computed(() => BOARDS.find((b) => b.key === this.board())!);
-  readonly rows = computed<LeaderRow[]>(() => (this.data()?.leaders as Leaders | undefined)?.[this.board()] ?? []);
+  readonly rows = computed<LeaderRow[]>(
+    () => (this.data()?.leaders as Leaders | undefined)?.[this.board()] ?? [],
+  );
 
   constructor() {
     this.api.get<TournamentLeaders>(`/tournaments/${this.ctx.id()}/leaders`).subscribe({

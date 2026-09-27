@@ -19,17 +19,25 @@ import { PageHead } from '../../shared/page-head';
   imports: [FormsModule, RouterLink, Icon, PageHead],
   template: `
     <div class="container">
-      <app-page-head
-        kanji="証"
-        [title]="tituloCredenciales()"
-      >
-        <a i18n="@@acreditacion.credenciales.acreditacion" back class="back-link" [routerLink]="['/torneos', id(), 'acreditacion']"
+      <app-page-head kanji="証" [title]="tituloCredenciales()">
+        <a
+          i18n="@@acreditacion.credenciales.acreditacion"
+          back
+          class="back-link"
+          [routerLink]="['/torneos', id(), 'acreditacion']"
           ><app-icon name="back" /> Acreditación</a
         >
         <div meta class="meta-line">
-          <span i18n="@@acreditacion.credenciales.n-credenciales">{shown().length, plural, =1 {1 credencial} other {{{ shown().length }} credenciales}}</span>
+          <span i18n="@@acreditacion.credenciales.n-credenciales">{shown().length, plural,
+            =1 {1 credencial}
+            other {{{ shown().length }} credenciales}
+          }</span>
         </div>
-        <button i18n="@@acreditacion.credenciales.abrir-pdf-para-imprimir" class="btn primary" (click)="print()">
+        <button
+          i18n="@@acreditacion.credenciales.abrir-pdf-para-imprimir"
+          class="btn primary"
+          (click)="print()"
+        >
           <app-icon name="print" /> Abrir PDF para imprimir
         </button>
       </app-page-head>
@@ -37,8 +45,15 @@ import { PageHead } from '../../shared/page-head';
         <div class="alert danger">{{ error() }}</div>
       }
       <div class="toolbar no-print">
-        <select i18n-aria-label="@@acreditacion.credenciales.dojo" aria-label="Dojo" [ngModel]="dojo()" (ngModelChange)="dojo.set($event)">
-          <option i18n="@@acreditacion.credenciales.todos-dojos" [ngValue]="''">Todos los dojos</option>
+        <select
+          i18n-aria-label="@@acreditacion.credenciales.dojo"
+          aria-label="Dojo"
+          [ngModel]="dojo()"
+          (ngModelChange)="dojo.set($event)"
+        >
+          <option i18n="@@acreditacion.credenciales.todos-dojos" [ngValue]="''"
+            >Todos los dojos</option
+          >
           @for (d of dojos(); track d) {
             <option [ngValue]="d">{{ d }}</option>
           }
@@ -62,7 +77,9 @@ import { PageHead } from '../../shared/page-head';
             <span class="code mono">{{ c.code }}</span>
           </article>
         } @empty {
-          <div i18n="@@acreditacion.credenciales.no-hay-inscripciones-activas" class="card empty">No hay inscripciones activas.</div>
+          <div i18n="@@acreditacion.credenciales.no-hay-inscripciones-activas" class="card empty"
+            >No hay inscripciones activas.</div
+          >
         }
       </div>
     </div>

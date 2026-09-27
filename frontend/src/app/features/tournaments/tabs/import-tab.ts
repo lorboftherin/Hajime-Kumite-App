@@ -25,38 +25,76 @@ interface Decision {
 const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = lista(() => [
   { key: 'nombres', label: $localize`:@@torneo.importar.nombres:Nombres` },
   { key: 'apellidos', label: $localize`:@@torneo.importar.apellidos:Apellidos` },
-  { key: 'fecha_nacimiento', label: $localize`:@@torneo.importar.fecha-nacimiento:Fecha de nacimiento`, placeholder: 'dd/mm/aaaa' },
+  {
+    key: 'fecha_nacimiento',
+    label: $localize`:@@torneo.importar.fecha-nacimiento:Fecha de nacimiento`,
+    placeholder: 'dd/mm/aaaa',
+  },
   { key: 'sexo', label: $localize`:@@torneo.importar.sexo-m-f:Sexo (M/F)` },
   { key: 'grado', label: $localize`:@@torneo.importar.grado:Grado`, placeholder: '8 kyu, 1 dan…' },
   { key: 'categoria_peso', label: $localize`:@@torneo.importar.peso:Peso`, placeholder: '-45' },
   { key: 'dojo', label: 'Dojo' },
-  { key: 'tipo_documento', label: $localize`:@@torneo.importar.tipo-documento:Tipo de documento`, placeholder: 'DNI, CE, PASSPORT' },
-  { key: 'numero_documento', label: $localize`:@@torneo.importar.numero-documento:Número de documento` },
-  { key: 'modalidades', label: $localize`:@@torneo.importar.modalidades:Modalidades`, placeholder: 'kumite, kata' },
-  { key: 'rol', label: $localize`:@@torneo.importar.rol:Rol`, placeholder: 'competidor, árbitro, sensei' },
+  {
+    key: 'tipo_documento',
+    label: $localize`:@@torneo.importar.tipo-documento:Tipo de documento`,
+    placeholder: 'DNI, CE, PASSPORT',
+  },
+  {
+    key: 'numero_documento',
+    label: $localize`:@@torneo.importar.numero-documento:Número de documento`,
+  },
+  {
+    key: 'modalidades',
+    label: $localize`:@@torneo.importar.modalidades:Modalidades`,
+    placeholder: 'kumite, kata',
+  },
+  {
+    key: 'rol',
+    label: $localize`:@@torneo.importar.rol:Rol`,
+    placeholder: 'competidor, árbitro, sensei',
+  },
 ]);
 // Palabras que acepta la importación (el backend las lee en español): no se traducen.
-const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: 'árbitro', sensei: 'sensei' };
+const ROLE_WORD: Record<string, string> = {
+  competitor: 'competidor',
+  referee: 'árbitro',
+  sensei: 'sensei',
+};
 
 @Component({
   selector: 'app-import-tab',
   imports: [FormsModule, StatusBadge, Icon],
   template: `
     <div class="card intro">
-      <h2 i18n="@@torneo.importar.importar-inscripciones-desde">Importar inscripciones desde Excel</h2>
+      <h2 i18n="@@torneo.importar.importar-inscripciones-desde"
+        >Importar inscripciones desde Excel</h2
+      >
       <ol class="steps">
-        <li i18n="@@torneo.importar.descarga-plantilla-columnas">Descarga la plantilla con columnas fijas y compártela con los dojos.</li>
-        <li i18n="@@torneo.importar.sube-archivo-veras-vista-previa">Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con error).</li>
-        <li i18n="@@torneo.importar.revisa-decisiones-categorias">Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li>
+        <li i18n="@@torneo.importar.descarga-plantilla-columnas"
+          >Descarga la plantilla con columnas fijas y compártela con los dojos.</li
+        >
+        <li i18n="@@torneo.importar.sube-archivo-veras-vista-previa"
+          >Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con
+          error).</li
+        >
+        <li i18n="@@torneo.importar.revisa-decisiones-categorias"
+          >Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li
+        >
       </ol>
       <div class="row">
-        <button i18n="@@torneo.importar.descargar-plantilla-xlsx" class="btn" (click)="downloadTemplate()"><app-icon name="download" /> Descargar plantilla .xlsx</button>
+        <button
+          i18n="@@torneo.importar.descargar-plantilla-xlsx"
+          class="btn"
+          (click)="downloadTemplate()"
+          ><app-icon name="download" /> Descargar plantilla .xlsx</button
+        >
         <label i18n="@@torneo.importar.subir-archivo" class="btn primary">
           <app-icon name="upload" /> Subir archivo
           <input type="file" accept=".xlsx" hidden (change)="upload($event)" />
         </label>
         @if (uploading()) {
-          <span class="spinner"></span> <span i18n="@@torneo.importar.procesando" class="small muted">Procesando…</span>
+          <span class="spinner"></span>
+          <span i18n="@@torneo.importar.procesando" class="small muted">Procesando…</span>
         }
       </div>
     </div>
@@ -64,10 +102,26 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
     @if (batch(); as b) {
       <div class="card">
         <div class="row">
-          <h2 i18n="@@torneo.importar.vista-previa" class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2>
-          <span i18n="@@torneo.importar.n-nuevas" class="badge matcha">{counts().new, plural, =1 {1 nueva} other {{{ counts().new }} nuevas}}</span>
-          <span i18n="@@torneo.importar.n-duplicados" class="badge yamabuki">{counts().duplicate, plural, =1 {1 posible duplicado} other {{{ counts().duplicate }} posibles duplicados}}</span>
-          <span i18n="@@torneo.importar.n-con-error" class="badge shu">{counts().error, plural, =1 {1 con error} other {{{ counts().error }} con error}}</span>
+          <h2 i18n="@@torneo.importar.vista-previa" class="grow preview-title"
+            >Vista previa <span class="muted file">{{ b.filename }}</span>
+            <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2
+          >
+          <span i18n="@@torneo.importar.n-nuevas" class="badge matcha">{counts().new, plural,
+            =1 {1 nueva}
+            other {{{ counts().new }} nuevas}
+          }</span>
+          <span
+            i18n="@@torneo.importar.n-duplicados"
+            class="badge yamabuki"
+            >{counts().duplicate, plural,
+              =1 {1 posible duplicado}
+              other {{{ counts().duplicate }} posibles duplicados}
+            }</span
+          >
+          <span i18n="@@torneo.importar.n-con-error" class="badge shu">{counts().error, plural,
+            =1 {1 con error}
+            other {{{ counts().error }} con error}
+          }</span>
         </div>
         <div class="table-wrap mt">
           <table class="table preview-table">
@@ -100,9 +154,16 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                       <span class="badge ai">{{ role }}</span>
                     }
                     <div class="muted small">
-                      {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} · {{ r.data['grado'] || 's/g' }}
-                      @if (r.data['numero_documento']) { · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }} }
-                      @if (r.data['categoria_peso']) {<ng-container i18n="@@torneo.importar.kg"> · {{ r.data['categoria_peso'] }} kg </ng-container>}
+                      {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} ·
+                      {{ r.data['grado'] || 's/g' }}
+                      @if (r.data['numero_documento']) {
+                        · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }}
+                      }
+                      @if (r.data['categoria_peso']) {
+                        <ng-container i18n="@@torneo.importar.kg">
+                          · {{ r.data['categoria_peso'] }} kg
+                        </ng-container>
+                      }
                     </div>
                   </td>
                   <td>
@@ -121,17 +182,28 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                       <div class="small warn-text">{{ w }}</div>
                     }
                     @if (b.status === 'preview' && editing() !== r.id) {
-                      <button class="btn sm mt-xs" [class.primary]="r.status === 'error'" [class.ghost]="r.status !== 'error'" (click)="startEdit(r)">
-                        <ng-container i18n="@@torneo.importar.corregir-editar">{r.status, select, error {Corregir} other {Editar datos}}</ng-container>
+                      <button
+                        class="btn sm mt-xs"
+                        [class.primary]="r.status === 'error'"
+                        [class.ghost]="r.status !== 'error'"
+                        (click)="startEdit(r)"
+                      >
+                        <ng-container i18n="@@torneo.importar.corregir-editar">{r.status, select,
+                          error {Corregir}
+                          other {Editar datos}
+                        }</ng-container>
                       </button>
                     }
                     @for (dup of r.duplicates; track $index) {
                       <div class="small">
                         @if (dup['person_id']) {
-                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) · {{ dupReasonText(dup['reason']) }}
-                        } @else {<ng-container i18n="@@torneo.importar.fila-mismo-archivo">
-                          ≈ fila {{ dup['row_number'] }} del mismo archivo
-                        </ng-container>}
+                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) ·
+                          {{ dupReasonText(dup['reason']) }}
+                        } @else {
+                          <ng-container i18n="@@torneo.importar.fila-mismo-archivo">
+                            ≈ fila {{ dup['row_number'] }} del mismo archivo
+                          </ng-container>
+                        }
                       </div>
                     }
                   </td>
@@ -139,17 +211,33 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                     @if (r.status === 'error') {
                       <span i18n="@@torneo.importar.omite" class="muted small">Se omite</span>
                     } @else if (d) {
-                      <select i18n-aria-label="@@torneo.importar.decision-2" class="cell-input" [ngModel]="d.action" (ngModelChange)="setAction(r, $event)" aria-label="Decisión">
-                        <option i18n="@@torneo.importar.crear-persona" value="create">Crear persona</option>
+                      <select
+                        i18n-aria-label="@@torneo.importar.decision-2"
+                        class="cell-input"
+                        [ngModel]="d.action"
+                        (ngModelChange)="setAction(r, $event)"
+                        aria-label="Decisión"
+                      >
+                        <option i18n="@@torneo.importar.crear-persona" value="create"
+                          >Crear persona</option
+                        >
                         @if (personDups(r).length) {
-                          <option i18n="@@torneo.importar.usar-existente" value="use_existing">Usar existente</option>
+                          <option i18n="@@torneo.importar.usar-existente" value="use_existing"
+                            >Usar existente</option
+                          >
                         }
                         <option i18n="@@torneo.importar.omitir" value="skip">Omitir</option>
                       </select>
                       @if (d.action === 'use_existing') {
-                        <select class="mt-xs cell-input" [ngModel]="d.person_id" (ngModelChange)="setPerson(r, $event)">
+                        <select
+                          class="mt-xs cell-input"
+                          [ngModel]="d.person_id"
+                          (ngModelChange)="setPerson(r, $event)"
+                        >
                           @for (dup of personDups(r); track dup['person_id']) {
-                            <option [ngValue]="dup['person_id']">{{ dup['full_name'] }} (#{{ dup['person_id'] }})</option>
+                            <option [ngValue]="dup['person_id']"
+                              >{{ dup['full_name'] }} (#{{ dup['person_id'] }})</option
+                            >
                           }
                         </select>
                       }
@@ -158,13 +246,34 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                   <td class="small">
                     @if (d && r.status !== 'error') {
                       @for (cid of rowCats(r); track cid) {
-                        <label class="field inline"><input type="checkbox" [checked]="d.category_ids.has(cid)" [disabled]="d.action === 'skip'" (change)="toggleCat(r, cid)" /> {{ catName(cid) }}</label>
+                        <label class="field inline"
+                          ><input
+                            type="checkbox"
+                            [checked]="d.category_ids.has(cid)"
+                            [disabled]="d.action === 'skip'"
+                            (change)="toggleCat(r, cid)"
+                          />
+                          {{ catName(cid) }}</label
+                        >
                       } @empty {
-                        <span i18n="@@torneo.importar.sin-sugerencias-elige-categoria" class="muted">Sin sugerencias: elige una categoría.</span>
+                        <span i18n="@@torneo.importar.sin-sugerencias-elige-categoria" class="muted"
+                          >Sin sugerencias: elige una categoría.</span
+                        >
                       }
                       @if (d.action !== 'skip' && isCompetitor(r)) {
-                        <select class="cell-input mt-xs" [ngModel]="0" (ngModelChange)="addCat(r, $event)" [attr.aria-label]="ariaOtraCategoria(r.row_number)">
-                          <option i18n="@@torneo.importar.otra-elegir-categoria" [ngValue]="0">@if (rowCats(r).length) {+ Otra categoría…} @else {Elegir categoría…}</option>
+                        <select
+                          class="cell-input mt-xs"
+                          [ngModel]="0"
+                          (ngModelChange)="addCat(r, $event)"
+                          [attr.aria-label]="ariaOtraCategoria(r.row_number)"
+                        >
+                          <option i18n="@@torneo.importar.otra-elegir-categoria" [ngValue]="0">
+                            @if (rowCats(r).length) {
+                              + Otra categoría…
+                            } @else {
+                              Elegir categoría…
+                            }
+                          </option>
                           @for (c of manualCategories(); track c.id) {
                             @if (!d.category_ids.has(c.id)) {
                               <option [ngValue]="c.id">{{ c.name }}</option>
@@ -183,13 +292,28 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
                           @for (f of rowFields; track f.key) {
                             <label class="field">
                               <span>{{ f.label }}</span>
-                              <input [name]="f.key" [(ngModel)]="rowForm[f.key]" [placeholder]="f.placeholder ?? ''" />
+                              <input
+                                [name]="f.key"
+                                [(ngModel)]="rowForm[f.key]"
+                                [placeholder]="f.placeholder ?? ''"
+                              />
                             </label>
                           }
                         </div>
                         <div class="row">
-                          <button i18n="@@torneo.importar.cancelar" type="button" class="btn sm" (click)="editing.set(null)">Cancelar</button>
-                          <button i18n="@@torneo.importar.guardar-revalidar" class="btn sm primary" [disabled]="busy()">Guardar y revalidar</button>
+                          <button
+                            i18n="@@torneo.importar.cancelar"
+                            type="button"
+                            class="btn sm"
+                            (click)="editing.set(null)"
+                            >Cancelar</button
+                          >
+                          <button
+                            i18n="@@torneo.importar.guardar-revalidar"
+                            class="btn sm primary"
+                            [disabled]="busy()"
+                            >Guardar y revalidar</button
+                          >
                         </div>
                       </form>
                     </td>
@@ -201,8 +325,16 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
         </div>
         @if (b.status === 'preview') {
           <div class="form-actions">
-            <button i18n="@@torneo.importar.cancelar-importacion" class="btn" (click)="cancel()">Cancelar importación</button>
-            <button i18n="@@torneo.importar.confirmar-e-inscribir" class="btn primary" [disabled]="busy()" (click)="confirm()">Confirmar e inscribir</button>
+            <button i18n="@@torneo.importar.cancelar-importacion" class="btn" (click)="cancel()"
+              >Cancelar importación</button
+            >
+            <button
+              i18n="@@torneo.importar.confirmar-e-inscribir"
+              class="btn primary"
+              [disabled]="busy()"
+              (click)="confirm()"
+              >Confirmar e inscribir</button
+            >
           </div>
         }
       </div>
@@ -213,7 +345,9 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
         <strong i18n="@@torneo.importar.importacion-confirmada">Importación confirmada.</strong>
         <ul>
           @for (kv of resultEntries(); track kv[0]) {
-            <li>{{ resultLabel[kv[0]] ?? kv[0] }}: <strong>{{ kv[1] }}</strong></li>
+            <li
+              >{{ resultLabel[kv[0]] ?? kv[0] }}: <strong>{{ kv[1] }}</strong></li
+            >
           }
         </ul>
       </div>
@@ -311,10 +445,14 @@ const ROLE_WORD: Record<string, string> = { competitor: 'competidor', referee: '
   `,
 })
 export class ImportTab {
-  ariaOtraCategoria = (fila: number) => $localize`:@@torneo.importar.otra-categoria-fila:Otra categoría para la fila ${fila}:fila:`;
+  ariaOtraCategoria = (fila: number) =>
+    $localize`:@@torneo.importar.otra-categoria-fila:Otra categoría para la fila ${fila}:fila:`;
   /** Roles distintos de competidor (árbitro, sensei) para mostrarlos en la vista previa. */
   staffRoles(roles: unknown): string[] {
-    const label: Record<string, string> = { referee: $localize`:@@torneo.importar.arbitro-2:Árbitro`, sensei: 'Sensei' };
+    const label: Record<string, string> = {
+      referee: $localize`:@@torneo.importar.arbitro-2:Árbitro`,
+      sensei: 'Sensei',
+    };
     return Array.isArray(roles) ? roles.filter((r) => r in label).map((r) => label[r]) : [];
   }
 
@@ -351,7 +489,9 @@ export class ImportTab {
     }
     return c;
   });
-  readonly resultEntries = computed(() => Object.entries(this.result() ?? {}).filter(([, v]) => typeof v !== 'object'));
+  readonly resultEntries = computed(() =>
+    Object.entries(this.result() ?? {}).filter(([, v]) => typeof v !== 'object'),
+  );
 
   constructor() {
     if (!this.ctx.categories().length) this.ctx.loadCategories();
@@ -418,7 +558,9 @@ export class ImportTab {
 
   async saveRow(b: ImportBatch, r: ImportRow): Promise<void> {
     this.busy.set(true);
-    const res = await this.mut.patch<ImportBatch>(`/imports/${b.id}/rows/${r.id}`, { data: this.rowForm });
+    const res = await this.mut.patch<ImportBatch>(`/imports/${b.id}/rows/${r.id}`, {
+      data: this.rowForm,
+    });
     this.busy.set(false);
     if (!res) return;
     const row = res.rows.find((x) => x.id === r.id);
@@ -454,7 +596,9 @@ export class ImportTab {
     this.uploading.set(true);
     this.result.set(null);
     try {
-      const b = await firstValueFrom(this.api.upload<ImportBatch>(`/tournaments/${this.ctx.id()}/imports`, file));
+      const b = await firstValueFrom(
+        this.api.upload<ImportBatch>(`/tournaments/${this.ctx.id()}/imports`, file),
+      );
       this.setBatch(b);
       this.setLote(b.id);
     } catch (e) {
@@ -486,7 +630,14 @@ export class ImportTab {
   }
 
   setAction(r: ImportRow, action: Decision['action']): void {
-    this.patch(r, (d) => ({ ...d, action, person_id: action === 'use_existing' ? (d.person_id ?? this.personDups(r)[0]?.['person_id']) : d.person_id }));
+    this.patch(r, (d) => ({
+      ...d,
+      action,
+      person_id:
+        action === 'use_existing'
+          ? (d.person_id ?? this.personDups(r)[0]?.['person_id'])
+          : d.person_id,
+    }));
   }
 
   setPerson(r: ImportRow, id: number): void {
@@ -520,9 +671,14 @@ export class ImportTab {
     // Confirmar crea personas e inscripciones en una transacción: puede tardar más que una petición normal.
     const res = await this.mut.run<Record<string, unknown>>(
       (override) =>
-        this.api.post(`/imports/${b.id}/confirm`, override ? { decisions, override } : { decisions }, undefined, {
-          timeoutMs: LONG_TIMEOUT_MS,
-        }),
+        this.api.post(
+          `/imports/${b.id}/confirm`,
+          override ? { decisions, override } : { decisions },
+          undefined,
+          {
+            timeoutMs: LONG_TIMEOUT_MS,
+          },
+        ),
       { success: $localize`:@@torneo.importar.importacion-confirmada-2:Importación confirmada` },
     );
     this.busy.set(false);
@@ -537,9 +693,16 @@ export class ImportTab {
   async cancel(): Promise<void> {
     const b = this.batch();
     if (!b) return;
-    const ok = await this.dialog.confirm({ title: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`, message: $localize`:@@torneo.importar.no-guardara-nada-este-archivo:No se guardará nada de este archivo.`, danger: true, confirmText: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación` });
+    const ok = await this.dialog.confirm({
+      title: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`,
+      message: $localize`:@@torneo.importar.no-guardara-nada-este-archivo:No se guardará nada de este archivo.`,
+      danger: true,
+      confirmText: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`,
+    });
     if (!ok) return;
-    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), { success: $localize`:@@torneo.importar.importacion-cancelada:Importación cancelada` });
+    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), {
+      success: $localize`:@@torneo.importar.importacion-cancelada:Importación cancelada`,
+    });
     if (res !== undefined) {
       this.batch.set(null);
       this.setLote(null);

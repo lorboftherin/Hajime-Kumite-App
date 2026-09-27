@@ -61,7 +61,11 @@ function keepAwake(destroy: DestroyRef): void {
               [class.run]="m.running"
               [class.over]="remaining() <= 0 && m.status !== 'finished'"
             >
-              @if (m.status === 'finished') {<ng-container i18n="@@publico.fin">FIN</ng-container>} @else {{{ clockText() }}}
+              @if (m.status === 'finished') {
+                <ng-container i18n="@@publico.fin">FIN</ng-container>
+              } @else {
+                {{ clockText() }}
+              }
             </span>
           } @else {
             <span class="cat">{{ d.tournament }}</span>
@@ -71,7 +75,13 @@ function keepAwake(destroy: DestroyRef): void {
           @if (m.team; as t) {
             <div class="team">
               {{ t.aka }} <strong>{{ t.wins[0] }}–{{ t.wins[1] }}</strong> {{ t.ao }} ·
-              @if (t.extra) {<ng-container i18n="@@publico.pantalla.combate-extra">combate extra</ng-container>} @else {<ng-container i18n="@@publico.pantalla.combate-n">combate {{ t.bout }}</ng-container>}
+              @if (t.extra) {
+                <ng-container i18n="@@publico.pantalla.combate-extra">combate extra</ng-container>
+              } @else {
+                <ng-container i18n="@@publico.pantalla.combate-n"
+                  >combate {{ t.bout }}</ng-container
+                >
+              }
             </div>
           }
           <main class="sides">
@@ -107,7 +117,9 @@ function keepAwake(destroy: DestroyRef): void {
             </section>
           </main>
         } @else {
-          <main class="idle"><span i18n="@@publico.pantalla.sin-combate-curso">Sin combate en curso</span></main>
+          <main class="idle"
+            ><span i18n="@@publico.pantalla.sin-combate-curso">Sin combate en curso</span></main
+          >
         }
         <footer class="foot">
           @if (d.next; as n) {
@@ -213,7 +225,9 @@ export class ScreenPage {
                   ><span class="pts">{{ m.score[1] }}</span>
                 </div>
               } @else {
-                <div i18n="@@publico.pantalla.sin-combate-curso" class="empty">Sin combate en curso</div>
+                <div i18n="@@publico.pantalla.sin-combate-curso" class="empty"
+                  >Sin combate en curso</div
+                >
               }
               @if (t.upcoming[0]; as u) {
                 <div i18n="@@publico.pantalla.sigue-vs" class="tnext">

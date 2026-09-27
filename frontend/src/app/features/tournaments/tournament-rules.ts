@@ -32,13 +32,18 @@ const TIE_LABEL: Record<string, string> = etiquetas(() => ({
               Valen para todas las categorías; cada categoría puede cambiarlas.
             </p>
           </div>
-          <button i18n="@@torneo.reglas.editar-reglas" class="btn sm" (click)="open(t)">Editar reglas</button>
+          <button i18n="@@torneo.reglas.editar-reglas" class="btn sm" (click)="open(t)"
+            >Editar reglas</button
+          >
         </div>
         <dl class="dl cols">
           <div>
             <dt i18n="@@torneo.reglas.edad">Edad</dt>
             <dd>
-              <ng-container i18n="@@torneo.reglas.modo-edad">{t.age_mode, select, birth_year {Por año de nacimiento} other {A la fecha de referencia}}</ng-container>
+              <ng-container i18n="@@torneo.reglas.modo-edad">{t.age_mode, select,
+                birth_year {Por año de nacimiento}
+                other {A la fecha de referencia}
+              }</ng-container>
             </dd>
           </div>
           <div>
@@ -52,7 +57,13 @@ const TIE_LABEL: Record<string, string> = etiquetas(() => ({
           <div>
             <dt i18n="@@torneo.reglas.faltas">Faltas</dt>
             <dd>
-              <ng-container i18n="@@torneo.reglas.escalera-faltas">{t.kumite_rules['sanction_preset'], select, two_categories {Dos categorías} other {Una escalera}}</ng-container>
+              <ng-container
+                i18n="@@torneo.reglas.escalera-faltas"
+                >{t.kumite_rules['sanction_preset'], select,
+                  two_categories {Dos categorías}
+                  other {Una escalera}
+                }</ng-container
+              >
             </dd>
           </div>
           <div>
@@ -68,22 +79,35 @@ const TIE_LABEL: Record<string, string> = etiquetas(() => ({
     }
 
     @if (editing()) {
-      <app-modal i18n-title="@@torneo.reglas.reglas-deportivas-torneo" title="Reglas deportivas del torneo" [wide]="true" (closed)="editing.set(false)">
+      <app-modal
+        i18n-title="@@torneo.reglas.reglas-deportivas-torneo"
+        title="Reglas deportivas del torneo"
+        [wide]="true"
+        (closed)="editing.set(false)"
+      >
         <form (ngSubmit)="save()" class="stack">
           <div class="grid-3">
             <label class="field">
               <span i18n="@@torneo.reglas.calculo-edad">Cálculo de la edad</span>
               <select name="am" [(ngModel)]="form.age_mode">
-                <option i18n="@@torneo.reglas.edad-cumplida-fecha-referencia" value="date">Edad cumplida a la fecha de referencia</option>
-                <option i18n="@@torneo.reglas.ano-nacimiento-ano-ano" value="birth_year">Por año de nacimiento (año − año de nacimiento)</option>
+                <option i18n="@@torneo.reglas.edad-cumplida-fecha-referencia" value="date"
+                  >Edad cumplida a la fecha de referencia</option
+                >
+                <option i18n="@@torneo.reglas.ano-nacimiento-ano-ano" value="birth_year"
+                  >Por año de nacimiento (año − año de nacimiento)</option
+                >
               </select>
             </label>
             <label class="field">
               <span i18n="@@torneo.reglas.formato-defecto">Formato por defecto</span>
               <select name="df" [(ngModel)]="form.default_format">
-                <option i18n="@@torneo.reglas.eliminacion-directa" value="single_elimination">Eliminación directa</option>
+                <option i18n="@@torneo.reglas.eliminacion-directa" value="single_elimination"
+                  >Eliminación directa</option
+                >
                 <option i18n="@@torneo.reglas.round-robin" value="round_robin">Round robin</option>
-                <option i18n="@@torneo.reglas.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
+                <option i18n="@@torneo.reglas.grupos-eliminacion" value="groups_knockout"
+                  >Grupos + eliminación</option
+                >
               </select>
             </label>
           </div>
@@ -98,8 +122,16 @@ const TIE_LABEL: Record<string, string> = etiquetas(() => ({
             categorías en curso.
           </p>
           <div class="form-actions">
-            <button i18n="@@torneo.reglas.cancelar" type="button" class="btn" (click)="editing.set(false)">Cancelar</button>
-            <button i18n="@@torneo.reglas.guardar-reglas" class="btn primary" [disabled]="saving()">Guardar reglas</button>
+            <button
+              i18n="@@torneo.reglas.cancelar"
+              type="button"
+              class="btn"
+              (click)="editing.set(false)"
+              >Cancelar</button
+            >
+            <button i18n="@@torneo.reglas.guardar-reglas" class="btn primary" [disabled]="saving()"
+              >Guardar reglas</button
+            >
           </div>
         </form>
       </app-modal>
@@ -141,9 +173,14 @@ export class TournamentRules {
   kataText(t: Tournament): string {
     const d = t.kata_defaults as Record<string, any>;
     if (d['preset'] === 'wkf') return 'Preset WKF';
-    const method = d['method'] === 'scores' ? $localize`:@@torneo.reglas.puntuacion:Puntuación` : $localize`:@@torneo.reglas.banderas:Banderas`;
+    const method =
+      d['method'] === 'scores'
+        ? $localize`:@@torneo.reglas.puntuacion:Puntuación`
+        : $localize`:@@torneo.reglas.banderas:Banderas`;
     const rounds =
-      Array.isArray(d['rounds']) && d['rounds'].length ? $localize`:@@torneo.reglas.pasan: · pasan ${d['rounds'].join(' → ')}:join:` : '';
+      Array.isArray(d['rounds']) && d['rounds'].length
+        ? $localize`:@@torneo.reglas.pasan: · pasan ${d['rounds'].join(' → ')}:join:`
+        : '';
     return `${method}${rounds}`;
   }
 
@@ -188,7 +225,10 @@ export class TournamentRules {
         kata_defaults: kataPayload(this.kata) ?? {},
         competition_rules: cleanRules(this.competition) ?? {},
       },
-      { success: $localize`:@@torneo.reglas.reglas-guardadas:Reglas guardadas`, onConflict: () => this.ctx.reload() },
+      {
+        success: $localize`:@@torneo.reglas.reglas-guardadas:Reglas guardadas`,
+        onConflict: () => this.ctx.reload(),
+      },
     );
     this.saving.set(false);
     if (res) {

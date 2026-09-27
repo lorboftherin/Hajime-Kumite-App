@@ -15,7 +15,9 @@ import { AuthCard } from './auth-card';
   selector: 'app-signup',
   imports: [FormsModule, AuthCard, RouterLink],
   template: `
-    <app-auth-card i18n-lead="@@cuenta.crear.para-competidores-adultos-para" i18n-heading="@@cuenta.crear.crear-cuenta"
+    <app-auth-card
+      i18n-lead="@@cuenta.crear.para-competidores-adultos-para"
+      i18n-heading="@@cuenta.crear.crear-cuenta"
       id="su"
       heading="Crear cuenta"
       lead="Para competidores adultos y para padres, madres o apoderados de competidores menores."
@@ -25,7 +27,9 @@ import { AuthCard } from './auth-card';
           <strong i18n="@@cuenta.crear.revisa-correo">Revisa tu correo.</strong>
           <div class="small">{{ done() }}</div>
         </div>
-        <a i18n="@@cuenta.crear.ir-ingresar" class="btn primary lg block" routerLink="/login">Ir a ingresar</a>
+        <a i18n="@@cuenta.crear.ir-ingresar" class="btn primary lg block" routerLink="/login"
+          >Ir a ingresar</a
+        >
       } @else {
         <form class="stack" (ngSubmit)="submit()">
           <label class="field">
@@ -69,9 +73,9 @@ import { AuthCard } from './auth-card';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }<ng-container i18n="@@cuenta.crear.crear-cuenta-2">
-            Crear cuenta
-          </ng-container></button>
+            }
+            <ng-container i18n="@@cuenta.crear.crear-cuenta-2"> Crear cuenta </ng-container></button
+          >
         </form>
       }
     </app-auth-card>

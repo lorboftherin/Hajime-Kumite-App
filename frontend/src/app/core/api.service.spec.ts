@@ -16,7 +16,12 @@ describe('withTimeout', () => {
   it('no toca las respuestas a tiempo ni otros errores', async () => {
     expect(await firstValueFrom(withTimeout(of(7), 20))).toBe(7);
     const other = new ApiError(400, 'X', 'malo');
-    const err = await firstValueFrom(withTimeout(throwError(() => other), 20)).catch((e) => e);
+    const err = await firstValueFrom(
+      withTimeout(
+        throwError(() => other),
+        20,
+      ),
+    ).catch((e) => e);
     expect(err).toBe(other);
   });
 

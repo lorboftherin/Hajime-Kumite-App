@@ -72,7 +72,12 @@ export async function shareProfileCard(p: PublicProfile, url: string): Promise<b
     `500 32px ${ui}`,
     '#4A463F',
   );
-  center($localize`:@@perfil.compartir.hajime-torneos-karate:Hajime · Torneos de karate`, 1000, `700 28px ${display}`, '#8A8377');
+  center(
+    $localize`:@@perfil.compartir.hajime-torneos-karate:Hajime · Torneos de karate`,
+    1000,
+    `700 28px ${display}`,
+    '#8A8377',
+  );
 
   const blob: Blob = await new Promise((res, rej) =>
     c.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'),
@@ -81,7 +86,11 @@ export async function shareProfileCard(p: PublicProfile, url: string): Promise<b
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: $localize`:@@perfil.compartir.hajime:${p.name}:name: · Hajime`, url });
+      await navigator.share({
+        files: [file],
+        title: $localize`:@@perfil.compartir.hajime:${p.name}:name: · Hajime`,
+        url,
+      });
       return true;
     } catch {
       /* cancelado: se descarga */

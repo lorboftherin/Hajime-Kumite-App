@@ -23,7 +23,13 @@ export const TAGLINE_VIEWBOX = '0 -9 190 9.4';
 @Component({
   selector: 'app-enso',
   template: `
-    <svg viewBox="0 0 100 100" [attr.aria-hidden]="label() ? null : 'true'" [attr.role]="label() ? 'img' : null" [attr.aria-label]="label() || null" focusable="false">
+    <svg
+      viewBox="0 0 100 100"
+      [attr.aria-hidden]="label() ? null : 'true'"
+      [attr.role]="label() ? 'img' : null"
+      [attr.aria-label]="label() || null"
+      focusable="false"
+    >
       <path class="aka" [attr.d]="aka" />
       <path class="ao" [attr.d]="ao" />
     </svg>
@@ -42,10 +48,16 @@ export const TAGLINE_VIEWBOX = '0 -9 190 9.4';
       height: 100%;
       overflow: visible;
     }
-    .aka { fill: var(--logo-aka, #be3b2c); }
-    .ao { fill: var(--logo-ao, #24477a); }
+    .aka {
+      fill: var(--logo-aka, #be3b2c);
+    }
+    .ao {
+      fill: var(--logo-ao, #24477a);
+    }
     :host(.mono) .aka,
-    :host(.mono) .ao { fill: currentColor; }
+    :host(.mono) .ao {
+      fill: currentColor;
+    }
   `,
 })
 export class Enso {
@@ -59,10 +71,21 @@ export class Enso {
 /** La palabra «Hajime» en trazos (toma currentColor). Alto = 1em aprox. del ojo de la letra. */
 @Component({
   selector: 'app-hajime-word',
-  template: `<svg [attr.viewBox]="vb" aria-hidden="true" focusable="false"><path [attr.d]="d" fill="currentColor" /></svg>`,
+  template: `<svg [attr.viewBox]="vb" aria-hidden="true" focusable="false">
+    <path [attr.d]="d" fill="currentColor" />
+  </svg>`,
   styles: `
-    :host { display: inline-block; line-height: 0; height: 1em; }
-    svg { height: 100%; width: auto; overflow: visible; display: block; }
+    :host {
+      display: inline-block;
+      line-height: 0;
+      height: 1em;
+    }
+    svg {
+      height: 100%;
+      width: auto;
+      overflow: visible;
+      display: block;
+    }
   `,
 })
 export class HajimeWord {
@@ -73,11 +96,37 @@ export class HajimeWord {
 /** Eslogan «TORNEOS DE KARATE» con la raya que lo precede. */
 @Component({
   selector: 'app-hajime-tagline',
-  template: `<span class="rule" aria-hidden="true"></span><svg i18n-aria-label="@@marca.torneos-karate" [attr.viewBox]="vb" role="img" aria-label="Torneos de karate" focusable="false"><path [attr.d]="d" fill="currentColor" /></svg>`,
+  template: `<span class="rule" aria-hidden="true"></span
+    ><svg
+      i18n-aria-label="@@marca.torneos-karate"
+      [attr.viewBox]="vb"
+      role="img"
+      aria-label="Torneos de karate"
+      focusable="false"
+    >
+      <path [attr.d]="d" fill="currentColor" />
+    </svg>`,
   styles: `
-    :host { display: inline-flex; align-items: center; gap: 0.9em; line-height: 0; height: 0.62em; color: var(--nezumi-ink, #6e6860); }
-    svg { height: 100%; width: auto; overflow: visible; display: block; }
-    .rule { width: 2.4em; height: 1px; background: currentColor; opacity: 0.8; }
+    :host {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9em;
+      line-height: 0;
+      height: 0.62em;
+      color: var(--nezumi-ink, #6e6860);
+    }
+    svg {
+      height: 100%;
+      width: auto;
+      overflow: visible;
+      display: block;
+    }
+    .rule {
+      width: 2.4em;
+      height: 1px;
+      background: currentColor;
+      opacity: 0.8;
+    }
   `,
 })
 export class HajimeTagline {
@@ -98,8 +147,13 @@ export class HajimeTagline {
       color: var(--sumi);
       line-height: 1;
     }
-    .mark { width: 1.5em; height: 1.5em; }
-    .word { height: 1.05em; }
+    .mark {
+      width: 1.5em;
+      height: 1.5em;
+    }
+    .word {
+      height: 1.05em;
+    }
   `,
 })
 export class Wordmark {}

@@ -12,7 +12,13 @@ import { apiBase } from './server';
 const user = { id: 1, username: 'mesa', display_name: 'Mesa', is_admin: false, person_id: null };
 
 function tokens(access: string, refresh: string): TokenOut {
-  return { access_token: access, refresh_token: refresh, token_type: 'bearer', expires_in: 3600, user };
+  return {
+    access_token: access,
+    refresh_token: refresh,
+    token_type: 'bearer',
+    expires_in: 3600,
+    user,
+  };
 }
 
 /** Deja que corran las promesas pendientes (la renovación es asíncrona). */
@@ -55,7 +61,10 @@ describe('renovación silenciosa de la sesión', () => {
     for (const path of ['/a', '/b', '/c']) {
       const req = ctrl.expectOne(`${api}${path}`);
       expect(req.request.headers.get('Authorization')).toBe('Bearer viejo');
-      req.flush({ error: { code: 'UNAUTHORIZED', message: 'vencida' } }, { status: 401, statusText: 'Unauthorized' });
+      req.flush(
+        { error: { code: 'UNAUTHORIZED', message: 'vencida' } },
+        { status: 401, statusText: 'Unauthorized' },
+      );
     }
     await settle();
     const refresh = ctrl.expectOne(`${api}/auth/refresh`);
@@ -79,7 +88,10 @@ describe('renovación silenciosa de la sesión', () => {
     await settle();
     ctrl
       .expectOne(`${api}/auth/refresh`)
-      .flush({ error: { code: 'UNAUTHORIZED', message: 'no' } }, { status: 401, statusText: 'Unauthorized' });
+      .flush(
+        { error: { code: 'UNAUTHORIZED', message: 'no' } },
+        { status: 401, statusText: 'Unauthorized' },
+      );
     await settle();
     expect(error).not.toBeNull();
     expect(auth.token()).toBeNull();

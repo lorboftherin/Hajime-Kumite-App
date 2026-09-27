@@ -10,26 +10,28 @@ import { etiquetas } from '../../core/i18n/etiquetas';
 
 type Result = 'exito' | 'pendiente' | 'error';
 
-const TEXT: Record<Result, { title: string; kanji: string; body: string; cls: string }> = etiquetas(() => ({
-  exito: {
-    title: $localize`:@@cobro.resultado.pago-recibido:Pago recibido`,
-    kanji: '完了',
-    body: $localize`:@@cobro.resultado.gracias-cuanto-pasarela-confirme:Gracias. En cuanto la pasarela confirme el pago, tu plan queda activo (suele tardar unos segundos).`,
-    cls: 'ok',
-  },
-  pendiente: {
-    title: $localize`:@@cobro.resultado.pago-pendiente:Pago pendiente`,
-    kanji: '保留',
-    body: $localize`:@@cobro.resultado.pasarela-todavia-esta-procesando:La pasarela todavía está procesando el pago (por ejemplo, un pago en efectivo o por transferencia). Te avisaremos cuando se confirme.`,
-    cls: 'info',
-  },
-  error: {
-    title: $localize`:@@cobro.resultado.pago-no-completo:El pago no se completó`,
-    kanji: '失敗',
-    body: $localize`:@@cobro.resultado.no-realizo-ningun-cobro-puedes:No se realizó ningún cobro. Puedes intentarlo otra vez con otra tarjeta o medio de pago.`,
-    cls: 'danger',
-  },
-}));
+const TEXT: Record<Result, { title: string; kanji: string; body: string; cls: string }> = etiquetas(
+  () => ({
+    exito: {
+      title: $localize`:@@cobro.resultado.pago-recibido:Pago recibido`,
+      kanji: '完了',
+      body: $localize`:@@cobro.resultado.gracias-cuanto-pasarela-confirme:Gracias. En cuanto la pasarela confirme el pago, tu plan queda activo (suele tardar unos segundos).`,
+      cls: 'ok',
+    },
+    pendiente: {
+      title: $localize`:@@cobro.resultado.pago-pendiente:Pago pendiente`,
+      kanji: '保留',
+      body: $localize`:@@cobro.resultado.pasarela-todavia-esta-procesando:La pasarela todavía está procesando el pago (por ejemplo, un pago en efectivo o por transferencia). Te avisaremos cuando se confirme.`,
+      cls: 'info',
+    },
+    error: {
+      title: $localize`:@@cobro.resultado.pago-no-completo:El pago no se completó`,
+      kanji: '失敗',
+      body: $localize`:@@cobro.resultado.no-realizo-ningun-cobro-puedes:No se realizó ningún cobro. Puedes intentarlo otra vez con otra tarjeta o medio de pago.`,
+      cls: 'danger',
+    },
+  }),
+);
 
 /** Páginas de retorno de la pasarela: /pago/exito, /pago/pendiente y /pago/error. */
 @Component({
@@ -46,23 +48,36 @@ const TEXT: Record<Result, { title: string; kanji: string; body: string; cls: st
             <strong>{{ s.plan_name }}</strong> ·
             @if (s.is_current) {
               <span i18n="@@cobro.resultado.activa" class="badge matcha">Activa</span>
-              @if (s.current_period_end) {<ng-container i18n="@@cobro.resultado.hasta">
-                hasta el {{ date(s.current_period_end) }}
-              </ng-container>}
+              @if (s.current_period_end) {
+                <ng-container i18n="@@cobro.resultado.hasta">
+                  hasta el {{ date(s.current_period_end) }}
+                </ng-container>
+              }
             } @else {
-              <span i18n="@@cobro.resultado.esperando-confirmacion" class="badge plain">Esperando confirmación</span>
+              <span i18n="@@cobro.resultado.esperando-confirmacion" class="badge plain"
+                >Esperando confirmación</span
+              >
             }
           </p>
         </section>
       }
       <div class="form-actions">
         @if (result() === 'error') {
-          <a i18n="@@cobro.resultado.intentar-otra-vez" class="btn primary" routerLink="/planes">Intentar otra vez</a>
+          <a i18n="@@cobro.resultado.intentar-otra-vez" class="btn primary" routerLink="/planes"
+            >Intentar otra vez</a
+          >
         }
         @if (sub()?.organization_id; as oid) {
-          <a i18n="@@cobro.resultado.ir-organizacion" class="btn" [routerLink]="['/organizacion', oid]">Ir a la organización</a>
+          <a
+            i18n="@@cobro.resultado.ir-organizacion"
+            class="btn"
+            [routerLink]="['/organizacion', oid]"
+            >Ir a la organización</a
+          >
         } @else {
-          <a i18n="@@cobro.resultado.ver-mis-planes" class="btn" routerLink="/planes">Ver mis planes</a>
+          <a i18n="@@cobro.resultado.ver-mis-planes" class="btn" routerLink="/planes"
+            >Ver mis planes</a
+          >
         }
       </div>
     </div>

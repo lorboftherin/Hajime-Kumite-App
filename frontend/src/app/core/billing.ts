@@ -37,7 +37,10 @@ export function alertText(a: BillingAlert): string {
     ? `${a.plan_name} de ${a.organization_name}`
     : $localize`:@@cobro.plan:Tu plan ${a.plan_name}:plan_name:`;
   if (a.in_grace) {
-    const d = a.days_left === 1 ? $localize`:@@cobro.1-dia:1 día` : $localize`:@@cobro.dias:${a.days_left}:dias: días`;
+    const d =
+      a.days_left === 1
+        ? $localize`:@@cobro.1-dia:1 día`
+        : $localize`:@@cobro.dias:${a.days_left}:dias: días`;
     return $localize`:@@cobro.pago-no-completo-tienes-gracia:${who}:who:: el pago no se completó. Tienes ${d}:d: de gracia antes de perder el acceso.`;
   }
   if (a.days_left <= 0) return $localize`:@@cobro.vence-hoy:${who}:who: vence hoy.`;
@@ -78,10 +81,16 @@ export function loadCulqi(doc: Document = document): Promise<CulqiGlobal> {
     s.src = CULQI_CHECKOUT_JS;
     s.async = true;
     s.onload = () =>
-      window.Culqi ? resolve(window.Culqi) : reject(new Error($localize`:@@cobro.culqi-checkout-no-cargo:Culqi Checkout no cargó`));
+      window.Culqi
+        ? resolve(window.Culqi)
+        : reject(new Error($localize`:@@cobro.culqi-checkout-no-cargo:Culqi Checkout no cargó`));
     s.onerror = () => {
       culqiLoading = null;
-      reject(new Error($localize`:@@cobro.no-pudo-cargar-culqi-checkout:No se pudo cargar Culqi Checkout. Revisa tu conexión.`));
+      reject(
+        new Error(
+          $localize`:@@cobro.no-pudo-cargar-culqi-checkout:No se pudo cargar Culqi Checkout. Revisa tu conexión.`,
+        ),
+      );
     };
     doc.head.appendChild(s);
   });
@@ -115,7 +124,11 @@ export function openCulqi(
         culqi.close();
         resolve({ token: t.id, email: t.email });
       } else {
-        resolve({ error: culqi.error?.user_message || $localize`:@@cobro.no-pudo-procesar-pago:No se pudo procesar el pago` });
+        resolve({
+          error:
+            culqi.error?.user_message ||
+            $localize`:@@cobro.no-pudo-procesar-pago:No se pudo procesar el pago`,
+        });
       }
     };
     culqi.open();

@@ -21,7 +21,9 @@ import { Icon } from './icon';
         (change)="cambiar($event)"
       >
         @for (i of idiomas; track i.codigo) {
-          <option [value]="i.codigo" [attr.lang]="i.locale" [selected]="i.codigo === actual">{{ i.nombre }}</option>
+          <option [value]="i.codigo" [attr.lang]="i.locale" [selected]="i.codigo === actual">{{
+            i.nombre
+          }}</option>
         }
       </select>
     </label>

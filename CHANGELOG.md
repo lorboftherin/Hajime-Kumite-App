@@ -21,38 +21,47 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   el mensaje del servidor como respaldo. `npm run i18n:extract` y
   `npm run i18n:check` (en CI). Correos, PDF y advertencias del backend siguen
   en español. Ver `docs/idiomas.md`.
+
 - **Correo transaccional** con bandeja de salida en la base (`outbox_emails`),
   reintentos con espera creciente, reserva entre procesos y proveedores
   `console`, `smtp` (STARTTLS) y `acs` (Azure Communication Services por REST).
   Hilo despachador en la API y `python -m app.mail_worker` para un Job.
+
 - **Correo en las cuentas:** recuperación de contraseña («¿Olvidaste tu
   contraseña?», enlace de un solo uso por 1 h que cierra todas las sesiones),
   verificación del correo, correo en «Mi cuenta» y en Usuarios; se entra
   también con el correo.
+
 - **Cuentas de competidor** (`HAJIME_OPEN_SIGNUP`): registro abierto, reclamo
   del propio perfil o del de un hijo o hija, revisión por el dojo u
   organizador, tutela con consentimiento del apoderado, «Mis perfiles» con
   historial, estadísticas e insignias.
+
 - **Perfil público** del competidor en `/competidor/<id>` sin datos sensibles y
   página de **Privacidad** (texto provisional).
+
 - **Avisos por correo** al sensei cuando se revisan sus inscripciones (aprobadas
   y rechazadas con motivo) y al dojo cuando llega una solicitud de perfil. El
   administrador del dojo ve el historial de sus competidores; la persona y su
   apoderado ven la hoja de sus combates.
+
 - **Organizaciones (multi-organizador):** cada torneo pertenece a una liga,
   dojo u organizador; owner/admin administran todos sus torneos y member los
   lee. Página «Organización» (datos, miembros, plan) y selector al crear un
   torneo. Rol con ámbito «organización».
+
 - **Planes y derechos verificados en la API:** tablas `plans` y
   `subscriptions`; con `HAJIME_BILLING_MODE=enforced` las funciones de pago
   responden 402 `PLAN_REQUIRED` (crear torneos, varios tatamis, overlay,
   Shadow Mode, importar Excel, autoinscripción). En marcha blanca (por
   defecto) todo está permitido. Suscripciones manuales del Admin, página
   «Planes» e interfaz `payments.Provider` con el proveedor manual.
+
 - **Autoinscripción por dojo:** el organizador abre la inscripción en línea y
   reparte enlaces de invitación; el sensei (admin de dojo) gestiona «Mis
   competidores» y los inscribe; las inscripciones quedan pendientes hasta que
   el organizador las aprueba o rechaza en lote (pestaña «Solicitudes»).
+
 - **Acreditación y pesaje:** pestaña «Acreditación» para la tablet de la
   entrada (buscador grande, «Presente» de un toque, peso con teclado numérico,
   filtros por dojo, pendientes y fuera de peso, contadores por categoría).
@@ -61,13 +70,16 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   advierte y se mueve a la categoría sugerida o se acepta con motivo. Ausentes:
   advertencia y «excluir ausentes» al generar la llave, o walkover si ya existe.
   Check-in obligatorio opcional por torneo, en la verificación previa.
+
 - **Plantillas editables:** nombre y descripción, duplicar, borrar (o archivar
   si un torneo la usó), edición de categorías en tabla e intercambio con Excel;
   cada organización edita las suyas (owner/admin) y las globales solo el Admin.
+
 - **Diplomas y certificados** en PDF: podio (oro, plata, bronce) y
   participación, por categoría, por dojo y por persona (también el apoderado),
   con firma y organizador editables por torneo. Derecho «certificates» del plan
   y aviso opcional por correo (`HAJIME_NOTIFY_DIPLOMAS`).
+
 - **Ranking por temporada y liga:** puntos por lugar, multiplicador por torneo,
   categorías equivalentes entre torneos, «mejor academia», puesto en el perfil
   de la persona y vista pública `/ranking/:temporada` (menores abreviados).
@@ -78,19 +90,24 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   compartir, «¿Cuándo pelea?» con buscador por nombre o dojo y favoritos en el
   dispositivo, llave de solo lectura por categoría y pantalla grande del
   coliseo (`/pantalla/<token>/<tatami>` y mosaico `/pantalla/<token>`).
+
 - **Horarios estimados:** hora planificada por tatami, zona horaria y margen
   entre combates del torneo; hora estimada de cada combate en el vivo, en
   «¿Cuándo pelea?», en la cola del tatami y en «Mi tatami». Cubre grupos +
   eliminación y kata por rondas (duración por ejecución configurable,
   `performance_seconds`, 3 min por defecto) y descuenta a los ausentes.
+
 - **Vista previa al compartir:** el backend sirve el `index.html` con título,
   descripción, URL e imagen del torneo, la categoría, el competidor o el
   ranking público en `/t/…`, `/competidor/…` y `/ranking/…`.
+
 - Los nombres del portal público enlazan al perfil `/competidor/<id>`.
+
 - **Actualización en vivo por SSE** (`GET /public/{token}/stream`): un sondeo
   compartido por torneo y proceso, latido cada 15 s, límite de conexiones
   (503 → el navegador sigue con el sondeo). `prueba_carga.py --sse N` mide la
   propagación de un punto.
+
 - **Pruebas de extremo a extremo** con Playwright (`frontend/e2e/`,
   `npm run e2e`) contra el servidor real (API con SQLite temporal sirviendo el
   frontend compilado): ingreso con cambio de clave y recuperación por correo,
@@ -98,18 +115,6 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   Excel, kata por banderas y por puntaje, vivo público y pantalla grande,
   autoinscripción, acreditación, accesibilidad con axe-core y teléfono sin
   scroll horizontal. Ver «Pruebas de extremo a extremo» en `CONTRIBUTING.md`.
-
-### Corregido
-
-- **Mesa sin red:** el marcador se quedaba en el último valor confirmado por el
-  servidor aunque el punto ya figurara «pendiente» en el historial (el
-  operador podía volver a marcarlo). Ahora muestra también los puntos y los
-  «Deshacer» que siguen en la cola, igual que el reloj.
-- Contraste insuficiente (axe, *serious*) en el kanji de la navegación lateral
-  y en el de HAJIME en la mesa.
-- «Nuevo torneo»: si se elegía «Sin plantilla» antes de que llegara la lista
-  de plantillas (red lenta), la app la reemplazaba por la plantilla base y el
-  torneo se creaba con todas sus categorías.
 
 - **Avisos push «te toca pronto»** (Web Push con VAPID, sin Firebase en la
   web): «Te toca en ~3 combates», «¡A tatami!», resultado de cada combate y
@@ -121,12 +126,34 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   `notification_outbox` deduplicada con reserva entre procesos, hilo en la API
   y `python -m app.push_worker`. Ver `docs/avisos-push.md`.
 
+### Cambiado
+
+- Frontend formateado con Prettier de una vez; el job `formato` de CI pasa
+  a ser obligatorio. `htmlWhitespaceSensitivity: strict` evita que Prettier
+  cambie el espacio del texto de las plantillas (alteraría los textos que se
+  traducen).
+
+### Corregido
+
+- **Mesa sin red:** el marcador se quedaba en el último valor confirmado por el
+  servidor aunque el punto ya figurara «pendiente» en el historial (el
+  operador podía volver a marcarlo). Ahora muestra también los puntos y los
+  «Deshacer» que siguen en la cola, igual que el reloj.
+
+- Contraste insuficiente (axe, *serious*) en el kanji de la navegación lateral
+  y en el de HAJIME en la mesa.
+
+- «Nuevo torneo»: si se elegía «Sin plantilla» antes de que llegara la lista
+  de plantillas (red lenta), la app la reemplazaba por la plantilla base y el
+  torneo se creaba con todas sus categorías.
+
 ### Seguridad
 
 - Avisos push: el endpoint de una suscripción debe ser https y de un servicio
   de push conocido (sin POST a URL arbitrarias); cambiarla sin sesión exige su
   secreto `auth`; los avisos abrevian el nombre de los menores y el clic solo
   abre rutas internas.
+
 - De los rivales, quien no es organizador ve solo el nombre abreviado en el
   historial. Los últimos dígitos del documento de un reclamo no se guardan.
 
@@ -138,34 +165,38 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   Pago rechazado o vencido: `past_due` con gracia configurable
   (`HAJIME_BILLING_GRACE_DAYS`). Cancelación por el titular y reembolso por el
   Admin (llamando a la pasarela). Ver `docs/cobros.md`.
+
 - **Comprobantes electrónicos (SUNAT)** detrás de `invoicing.Provider`
   (`HAJIME_INVOICING_PROVIDER`): Nubefact emite factura a la organización con
   RUC y boleta en los demás casos (DNI opcional para Competidor Plus) al
   aprobarse un pago; tabla `invoices` con serie, número, estado y enlaces
   PDF/XML. Datos fiscales en «Organización».
+
 - **Periodo de prueba y cupones:** `plans.trial_days` (30 días para Dojo y
   Organizador), tabla `coupons` (porcentaje o monto, planes, usos, vencimiento,
   solo primer periodo) y el cupón de ejemplo `PRIMER-TORNEO` sembrado
   desactivado.
+
 - **Correos de cobro** por la bandeja de salida con la plantilla de la marca:
   pago recibido (monto, plan, periodo, enlace al comprobante), pago no
   completado, periodo de gracia y «tu plan vence» 7 y 1 días antes, a los
   dueños de la organización o al titular de Competidor Plus. Revisión cada
   hora desde el despachador de correo y `python -m app.billing_reminders`,
   sin repetir avisos.
+
 - **Competidor Plus por persona:** el titular puede ser un perfil (el propio
   o el de un menor a cargo con tutela aprobada); los derechos quedan en esa
   persona.
+
 - **Nota de crédito** automática (SUNAT 07, anulación) al reembolsar un pago
   con boleta o factura emitida, con reserva de número y reintento.
+
 - **Interfaz de cobro:** «Suscribirse» en «Planes» (mensual/anual, cupón),
   pago con Culqi embebido o redirección a Mercado Pago, páginas de retorno
   (`/pago/exito|pendiente|error`), historial de pagos y comprobantes con
   Renovar/Cancelar en «Organización», pantalla «Pagos» del Admin (búsqueda,
   reembolso, comprobantes, cupones) y aviso «tu plan vence en N días» en el
   encabezado. Competidor Plus con el mismo flujo, con la cuenta como titular.
-
-### Seguridad
 
 - Ningún dato de tarjeta pasa por el servidor; de las respuestas de la
   pasarela se guarda solo una lista blanca de campos. Secretos de pasarelas y
@@ -178,19 +209,25 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 - CI: job `e2e` (después de `backend` y `frontend`) con Chromium de
   Playwright; un reintento con traza y el reporte como artefacto
   `playwright-report` si falla.
+
 - Migración `0014_pagos`: tablas `payments`, `invoices` y `coupons`; columnas
   opcionales o con valor por defecto en `organizations` (datos fiscales),
   `plans` (`trial_days`) y `subscriptions` (periodo, pasarela, gracia, cupón,
   titular de la boleta). Variables nuevas en `docs/despliegue.md`.
+
 - Migración `0009_organizaciones`: crea la «Organización principal» y le
   asigna todos los torneos existentes antes de volver obligatoria
   `tournaments.organization_id`. Ver `docs/organizaciones-y-planes.md`.
+
 - Migración `0012_checkin_ranking` (acreditación, plantillas archivadas, firma
   de diplomas y tablas `ranking_seasons`/`ranking_entries`; compatible hacia atrás).
+
 - Migración `0013_portal_publico` (columnas nuevas con valor por defecto o
   nulas; los torneos con vivo activo reciben su dirección fija).
+
 - Migración `0015_avisos_push` (tablas nuevas `push_subscriptions`,
   `push_follows` y `notification_outbox`; compatible hacia atrás).
+
 - Dependencias nuevas del backend: `cryptography` y `http-ece` (cifrado
   RFC 8291). Variables `HAJIME_VAPID_*` y `HAJIME_PUSH_*`; las claves se
   generan con `python -m app.seed vapid-keys` (ver `docs/despliegue.md`).

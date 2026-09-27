@@ -57,7 +57,9 @@ import { RulesDefaults } from '../core/models';
               <option [ngValue]="undefined">{{ inherit }}</option>
               <option i18n="@@reglas.hantei-jueces" value="hantei">Hantei (jueces)</option>
               <option i18n="@@reglas.punto-oro" value="golden_point">Punto de oro</option>
-              <option i18n="@@reglas.senshu-luego-hantei" value="senshu_hantei">Senshu y luego hantei</option>
+              <option i18n="@@reglas.senshu-luego-hantei" value="senshu_hantei"
+                >Senshu y luego hantei</option
+              >
             </select>
           </label>
           <label class="field">
@@ -87,7 +89,9 @@ import { RulesDefaults } from '../core/models';
               }
             </div>
             @if (mode === 'category' && !kumite['point_values']) {
-              <span i18n="@@reglas.sin-marcar-hereda-torneo" class="hint">Sin marcar: hereda del torneo</span>
+              <span i18n="@@reglas.sin-marcar-hereda-torneo" class="hint"
+                >Sin marcar: hereda del torneo</span
+              >
             }
           </div>
           <label class="field">
@@ -95,15 +99,21 @@ import { RulesDefaults } from '../core/models';
             <select name="sp" [(ngModel)]="kumite['sanction_preset']">
               <option [ngValue]="undefined">{{ inherit }}</option>
               <option i18n="@@reglas.escalera" value="single">Una escalera</option>
-              <option i18n="@@reglas.dos-categorias-contacto-resto" value="two_categories">Dos categorías (contacto / resto)</option>
+              <option i18n="@@reglas.dos-categorias-contacto-resto" value="two_categories"
+                >Dos categorías (contacto / resto)</option
+              >
             </select>
           </label>
           <label class="field">
-            <span i18n="@@reglas.senshu-perdido-automaticamente">Senshu perdido automáticamente</span>
+            <span i18n="@@reglas.senshu-perdido-automaticamente"
+              >Senshu perdido automáticamente</span
+            >
             <select name="sal" [(ngModel)]="kumite['senshu_auto_loss']">
               <option [ngValue]="undefined">{{ inherit }}</option>
               <option i18n="@@reglas.si" [ngValue]="true">Sí</option>
-              <option i18n="@@reglas.no-mesa-retira" [ngValue]="false">No (la mesa lo retira)</option>
+              <option i18n="@@reglas.no-mesa-retira" [ngValue]="false"
+                >No (la mesa lo retira)</option
+              >
             </select>
           </label>
           <label class="field">
@@ -144,7 +154,9 @@ import { RulesDefaults } from '../core/models';
               <span i18n="@@reglas.empate-victorias">Empate en victorias</span>
               <select name="ttr" [(ngModel)]="kumite['team_tie_rule']">
                 <option [ngValue]="undefined">{{ inherit }}</option>
-                <option i18n="@@reglas.mas-puntos-si-empatan-combate" value="points">Más puntos; si empatan, combate extra</option>
+                <option i18n="@@reglas.mas-puntos-si-empatan-combate" value="points"
+                  >Más puntos; si empatan, combate extra</option
+                >
                 <option i18n="@@reglas.combate-extra" value="extra_bout">Combate extra</option>
               </select>
             </label>
@@ -152,8 +164,12 @@ import { RulesDefaults } from '../core/models';
               <span i18n="@@reglas.combate-extra-empatado">Combate extra empatado</span>
               <select name="tet" [(ngModel)]="kumite['team_extra_bout_tie']">
                 <option [ngValue]="undefined">{{ inherit }}</option>
-                <option i18n="@@reglas.hantei-ese-combate-wkf" value="hantei">Hantei en ese combate (WKF)</option>
-                <option i18n="@@reglas.otro-combate-extra" value="repeat">Otro combate extra</option>
+                <option i18n="@@reglas.hantei-ese-combate-wkf" value="hantei"
+                  >Hantei en ese combate (WKF)</option
+                >
+                <option i18n="@@reglas.otro-combate-extra" value="repeat"
+                  >Otro combate extra</option
+                >
               </select>
             </label>
             <label class="field">
@@ -168,13 +184,16 @@ import { RulesDefaults } from '../core/models';
               <span i18n="@@reglas.orden-declarado">Orden declarado</span>
               <select name="tlo" [(ngModel)]="kumite['team_lock_order']">
                 <option [ngValue]="undefined">{{ inherit }}</option>
-                <option i18n="@@reglas.bloqueado-empezar" [ngValue]="true">Bloqueado al empezar</option>
+                <option i18n="@@reglas.bloqueado-empezar" [ngValue]="true"
+                  >Bloqueado al empezar</option
+                >
                 <option i18n="@@reglas.editable" [ngValue]="false">Editable</option>
               </select>
             </label>
             <label class="field">
               <span i18n="@@reglas.minimo-titulares">Mínimo de titulares</span>
-              <input i18n-placeholder="@@reglas.sin-minimo"
+              <input
+                i18n-placeholder="@@reglas.sin-minimo"
                 type="number"
                 min="1"
                 name="tms"
@@ -210,8 +229,12 @@ import { RulesDefaults } from '../core/models';
           <label class="field">
             <span i18n="@@reglas.preset">Preset</span>
             <select name="kp" [(ngModel)]="kata['preset']">
-              <option [ngValue]="undefined">{{ mode === 'category' ? inherit : txtNinguno }}</option>
-              <option i18n="@@reglas.wkf-7-jueces-2-2-descartes" value="wkf">WKF: 7 jueces, 2+2 descartes, técnico/atlético</option>
+              <option [ngValue]="undefined">{{
+                mode === 'category' ? inherit : txtNinguno
+              }}</option>
+              <option i18n="@@reglas.wkf-7-jueces-2-2-descartes" value="wkf"
+                >WKF: 7 jueces, 2+2 descartes, técnico/atlético</option
+              >
             </select>
           </label>
           <label class="field">
@@ -226,7 +249,9 @@ import { RulesDefaults } from '../core/models';
           <label class="field">
             <span i18n="@@reglas.descartes-extremo">Descartes por extremo</span>
             <select name="kd" [(ngModel)]="kata['discard_each_side']">
-              <option i18n="@@reglas.1-0-3-jueces" [ngValue]="undefined">{{ inherit }} (1; 0 con 3 jueces)</option>
+              <option i18n="@@reglas.1-0-3-jueces" [ngValue]="undefined"
+                >{{ inherit }} (1; 0 con 3 jueces)</option
+              >
               <option [ngValue]="0">0</option>
               <option [ngValue]="1">1</option>
               <option [ngValue]="2">2</option>
@@ -252,12 +277,15 @@ import { RulesDefaults } from '../core/models';
           }
           <label class="field">
             <span i18n="@@reglas.rondas-cuantos-pasan">Rondas: cuántos pasan</span>
-            <input i18n-placeholder="@@reglas.ronda-unica-p-ej-8-4"
+            <input
+              i18n-placeholder="@@reglas.ronda-unica-p-ej-8-4"
               name="kr"
               [(ngModel)]="kata['_rounds_text']"
               placeholder="Ronda única · p. ej. 8, 4"
             />
-            <span i18n="@@reglas.clasificados-ronda-antes-final" class="hint">Clasificados por ronda antes de la final</span>
+            <span i18n="@@reglas.clasificados-ronda-antes-final" class="hint"
+              >Clasificados por ronda antes de la final</span
+            >
           </label>
           <label class="field">
             <span i18n="@@reglas.grupos-1-ronda">Grupos en la 1.ª ronda</span>
@@ -269,10 +297,14 @@ import { RulesDefaults } from '../core/models';
             </select>
           </label>
           <label class="field">
-            <span i18n="@@reglas.orden-salida-2-ronda-adelante">Orden de salida (2.ª ronda en adelante)</span>
+            <span i18n="@@reglas.orden-salida-2-ronda-adelante"
+              >Orden de salida (2.ª ronda en adelante)</span
+            >
             <select name="ko" [(ngModel)]="kata['round_order']">
               <option [ngValue]="undefined">{{ inherit }}</option>
-              <option i18n="@@reglas.mejor-sale-ultimo-wkf" value="reverse_rank">El mejor sale último (WKF)</option>
+              <option i18n="@@reglas.mejor-sale-ultimo-wkf" value="reverse_rank"
+                >El mejor sale último (WKF)</option
+              >
               <option i18n="@@reglas.mejor-sale-primero" value="rank">El mejor sale primero</option>
               <option i18n="@@reglas.sorteo" value="random">Sorteo</option>
             </select>
@@ -281,7 +313,9 @@ import { RulesDefaults } from '../core/models';
             <span i18n="@@reglas.no-repetir-kata">No repetir kata</span>
             <select name="knr" [(ngModel)]="kata['no_repeat_kata']">
               <option [ngValue]="undefined">{{ inherit }}</option>
-              <option i18n="@@reglas.advertir-si-repite" [ngValue]="true">Advertir si repite</option>
+              <option i18n="@@reglas.advertir-si-repite" [ngValue]="true"
+                >Advertir si repite</option
+              >
               <option i18n="@@reglas.permite-repetir" [ngValue]="false">Se permite repetir</option>
             </select>
           </label>
@@ -294,7 +328,9 @@ import { RulesDefaults } from '../core/models';
         <legend i18n="@@reglas.llaves-clasificacion">Llaves y clasificación</legend>
         <div class="grid-2">
           <div class="field">
-            <span i18n="@@reglas.desempate-round-robin-orden">Desempate de round robin (en orden)</span>
+            <span i18n="@@reglas.desempate-round-robin-orden"
+              >Desempate de round robin (en orden)</span
+            >
             <ol class="criteria">
               @for (c of criteriaList(); track c.key; let i = $index; let l = $last) {
                 <li [class.off]="!c.on">
@@ -308,7 +344,8 @@ import { RulesDefaults } from '../core/models';
                     {{ criteriaLabel[c.key] }}
                   </label>
                   <span class="spacer"></span>
-                  <button i18n-aria-label="@@reglas.subir"
+                  <button
+                    i18n-aria-label="@@reglas.subir"
                     type="button"
                     class="btn sm ghost icon-only"
                     [disabled]="i === 0"
@@ -317,7 +354,8 @@ import { RulesDefaults } from '../core/models';
                   >
                     ↑
                   </button>
-                  <button i18n-aria-label="@@reglas.bajar"
+                  <button
+                    i18n-aria-label="@@reglas.bajar"
                     type="button"
                     class="btn sm ghost icon-only"
                     [disabled]="l"
@@ -330,7 +368,9 @@ import { RulesDefaults } from '../core/models';
               }
             </ol>
             @if (mode === 'category' && !competition['round_robin_criteria']) {
-              <span i18n="@@reglas.sin-cambios-hereda-orden-torneo" class="hint">Sin cambios: hereda el orden del torneo</span>
+              <span i18n="@@reglas.sin-cambios-hereda-orden-torneo" class="hint"
+                >Sin cambios: hereda el orden del torneo</span
+              >
             }
           </div>
           <div class="stack">
@@ -339,11 +379,15 @@ import { RulesDefaults } from '../core/models';
               <select name="rrb" [(ngModel)]="competition['round_robin_bronzes']">
                 <option [ngValue]="undefined">{{ inherit }}</option>
                 <option i18n="@@reglas.uno-3" [ngValue]="1">Uno (el 3.º)</option>
-                <option i18n="@@reglas.dos-3-4-desde-5-inscritos" [ngValue]="2">Dos (3.º y 4.º) desde 5 inscritos</option>
+                <option i18n="@@reglas.dos-3-4-desde-5-inscritos" [ngValue]="2"
+                  >Dos (3.º y 4.º) desde 5 inscritos</option
+                >
               </select>
             </label>
             <div class="field">
-              <span i18n="@@reglas.no-pasan-repechaje-quienes">No pasan al repechaje quienes perdieron por</span>
+              <span i18n="@@reglas.no-pasan-repechaje-quienes"
+                >No pasan al repechaje quienes perdieron por</span
+              >
               <div class="row checks">
                 @for (m of repechageMethods; track m.key) {
                   <label class="field inline small">
@@ -367,7 +411,9 @@ import { RulesDefaults } from '../core/models';
               >
                 <option [ngValue]="undefined">{{ inherit }}</option>
                 <option i18n="@@reglas.dojo" value="dojo">Por dojo</option>
-                <option i18n="@@reglas.dojo-ademas-ciudad" value="city">Por dojo y, además, por ciudad</option>
+                <option i18n="@@reglas.dojo-ademas-ciudad" value="city"
+                  >Por dojo y, además, por ciudad</option
+                >
               </select>
             </label>
             <div class="grid-2">
@@ -399,7 +445,9 @@ import { RulesDefaults } from '../core/models';
               <select name="shk" [(ngModel)]="competition['shikkaku_tournament_wide']">
                 <option [ngValue]="undefined">{{ inherit }}</option>
                 <option i18n="@@reglas.solo-combate" [ngValue]="false">Solo el combate</option>
-                <option i18n="@@reglas.proponer-descalificar-torneo" [ngValue]="true">Proponer descalificar del torneo</option>
+                <option i18n="@@reglas.proponer-descalificar-torneo" [ngValue]="true"
+                  >Proponer descalificar del torneo</option
+                >
               </select>
             </label>
           </div>
@@ -473,7 +521,9 @@ export class RulesForm {
   }
 
   get inherit(): string {
-    return this.mode === 'category' ? $localize`:@@reglas.heredar-torneo:Heredar del torneo` : $localize`:@@reglas.defecto:Por defecto`;
+    return this.mode === 'category'
+      ? $localize`:@@reglas.heredar-torneo:Heredar del torneo`
+      : $localize`:@@reglas.defecto:Por defecto`;
   }
   get showKumite(): boolean {
     return this.modality !== 'kata';

@@ -14,13 +14,39 @@ import { PersonStatsView } from '../../shared/person-stats';
   template: `
     @if (history(); as h) {
       <div class="summary">
-        <section i18n-aria-label="@@persona.historial.medallero-personal" class="card medals" aria-label="Medallero personal">
+        <section
+          i18n-aria-label="@@persona.historial.medallero-personal"
+          class="card medals"
+          aria-label="Medallero personal"
+        >
           <h3 i18n="@@persona.historial.medallero">Medallero</h3>
           <div class="medal-row">
-            <div class="medal"><app-hanko [place]="1" size="lg" /><div><span class="figure">{{ h.medals.gold }}</span><span i18n="@@persona.historial.oro" class="small muted">Oro</span></div></div>
-            <div class="medal"><app-hanko [place]="2" size="lg" /><div><span class="figure">{{ h.medals.silver }}</span><span i18n="@@persona.historial.plata" class="small muted">Plata</span></div></div>
-            <div class="medal"><app-hanko [place]="3" size="lg" /><div><span class="figure">{{ h.medals.bronze }}</span><span i18n="@@persona.historial.bronce" class="small muted">Bronce</span></div></div>
-            <div class="medal total"><div><span class="figure">{{ h.tournaments.length }}</span><span i18n="@@persona.historial.categorias-disputadas" class="small muted">Categorías disputadas</span></div></div>
+            <div class="medal"
+              ><app-hanko [place]="1" size="lg" /><div
+                ><span class="figure">{{ h.medals.gold }}</span
+                ><span i18n="@@persona.historial.oro" class="small muted">Oro</span></div
+              ></div
+            >
+            <div class="medal"
+              ><app-hanko [place]="2" size="lg" /><div
+                ><span class="figure">{{ h.medals.silver }}</span
+                ><span i18n="@@persona.historial.plata" class="small muted">Plata</span></div
+              ></div
+            >
+            <div class="medal"
+              ><app-hanko [place]="3" size="lg" /><div
+                ><span class="figure">{{ h.medals.bronze }}</span
+                ><span i18n="@@persona.historial.bronce" class="small muted">Bronce</span></div
+              ></div
+            >
+            <div class="medal total"
+              ><div
+                ><span class="figure">{{ h.tournaments.length }}</span
+                ><span i18n="@@persona.historial.categorias-disputadas" class="small muted"
+                  >Categorías disputadas</span
+                ></div
+              ></div
+            >
           </div>
         </section>
         <section class="card grades">
@@ -30,7 +56,15 @@ import { PersonStatsView } from '../../shared/person-stats';
               @for (g of h.grades; track $index; let last = $last) {
                 <li [class.current]="last">
                   <span class="grade">{{ g.grade }}</span>
-                  <span class="when">@if (g.awarded_on) {{{ fdate(g.awarded_on) }}} @else {<ng-container i18n="@@persona.historial.fecha-no-registrada">fecha no registrada</ng-container>}</span>
+                  <span class="when">
+                    @if (g.awarded_on) {
+                      {{ fdate(g.awarded_on) }}
+                    } @else {
+                      <ng-container i18n="@@persona.historial.fecha-no-registrada"
+                        >fecha no registrada</ng-container
+                      >
+                    }
+                  </span>
                   @if (last) {
                     <span i18n="@@persona.historial.vigente" class="badge sumi">vigente</span>
                   }
@@ -38,7 +72,9 @@ import { PersonStatsView } from '../../shared/person-stats';
               }
             </ol>
           } @else {
-            <p i18n="@@persona.historial.sin-grados-registrados" class="muted small">Sin grados registrados.</p>
+            <p i18n="@@persona.historial.sin-grados-registrados" class="muted small"
+              >Sin grados registrados.</p
+            >
           }
         </section>
       </div>
@@ -51,21 +87,38 @@ import { PersonStatsView } from '../../shared/person-stats';
           <div class="tour-head">
             <div class="grow">
               <div class="eyebrow num">{{ fdate(t.date) }}</div>
-              <h3><a [routerLink]="links() ? ['/torneos', t.tournament_id] : null">{{ t.tournament_name }}</a></h3>
+              <h3
+                ><a [routerLink]="links() ? ['/torneos', t.tournament_id] : null">{{
+                  t.tournament_name
+                }}</a></h3
+              >
               <div class="small cat">
-                <a [routerLink]="links() ? ['/categorias', t.category_id, 'llave'] : null">{{ t.category_name }}</a>
+                <a [routerLink]="links() ? ['/categorias', t.category_id, 'llave'] : null">{{
+                  t.category_name
+                }}</a>
                 @if (t.merged) {
-                  <span i18n="@@persona.historial.categoria-fusionada" i18n-title="@@persona.historial.categoria-original-fusiono-otra" class="badge nezumi" title="La categoría original se fusionó con otra">Categoría fusionada</span>
+                  <span
+                    i18n="@@persona.historial.categoria-fusionada"
+                    i18n-title="@@persona.historial.categoria-original-fusiono-otra"
+                    class="badge nezumi"
+                    title="La categoría original se fusionó con otra"
+                    >Categoría fusionada</span
+                  >
                 }
                 @if (t.status !== 'active') {
                   <span class="badge yamabuki">{{ regStatus[t.status] || t.status }}</span>
                 }
               </div>
               <div class="small muted">
-                @if (t.team_name) {<ng-container i18n="@@persona.historial.equipo">
-                  Equipo <strong>{{ t.team_name }}</strong> · {{ t.dojo_name || sinDojo }}
-                </ng-container>} @else {
-                  {{ t.dojo_name || sinDojo }} · {{ t.grade || gradoSinDato }}@if (t.weight_class) { · {{ t.weight_class }}}
+                @if (t.team_name) {
+                  <ng-container i18n="@@persona.historial.equipo">
+                    Equipo <strong>{{ t.team_name }}</strong> · {{ t.dojo_name || sinDojo }}
+                  </ng-container>
+                } @else {
+                  {{ t.dojo_name || sinDojo }} · {{ t.grade || gradoSinDato }}
+                  @if (t.weight_class) {
+                    · {{ t.weight_class }}
+                  }
                 }
               </div>
             </div>
@@ -73,18 +126,49 @@ import { PersonStatsView } from '../../shared/person-stats';
               @if (t.place && t.place <= 3) {
                 <app-hanko [place]="t.place" [withLabel]="true" size="lg" />
               } @else {
-                <span class="muted small">@if (t.place) {<ng-container i18n="@@comun.puesto-n">{{ t.place }}.º puesto</ng-container>} @else {<ng-container i18n="@@formato.sin-puesto">Sin puesto</ng-container>}</span>
+                <span class="muted small">
+                  @if (t.place) {
+                    <ng-container i18n="@@comun.puesto-n">{{ t.place }}.º puesto</ng-container>
+                  } @else {
+                    <ng-container i18n="@@formato.sin-puesto">Sin puesto</ng-container>
+                  }
+                </span>
               }
             </div>
           </div>
           @if (t.matches.length) {
             <table class="table small flush fights">
-              <thead><tr><th><span i18n="@@persona.historial.color" class="sr-only">Color</span></th><th i18n="@@persona.historial.combate">Combate</th><th i18n="@@persona.historial.resultado">Resultado</th><th i18n="@@persona.historial.marcador" class="center">Marcador</th><th i18n="@@persona.historial.rival">Rival</th><th i18n="@@persona.historial.forma">Forma</th></tr></thead>
+              <thead
+                ><tr
+                  ><th><span i18n="@@persona.historial.color" class="sr-only">Color</span></th
+                  ><th i18n="@@persona.historial.combate">Combate</th
+                  ><th i18n="@@persona.historial.resultado">Resultado</th
+                  ><th i18n="@@persona.historial.marcador" class="center">Marcador</th
+                  ><th i18n="@@persona.historial.rival">Rival</th
+                  ><th i18n="@@persona.historial.forma">Forma</th></tr
+                ></thead
+              >
               <tbody>
                 @for (m of t.matches; track m.match_id) {
                   <tr>
-                    <td class="color"><span class="strip" [class.aka]="m.color === 'aka'" [class.ao]="m.color === 'ao'" [title]="m.color === 'aka' ? 'Aka' : 'Ao'"></span><span class="sr-only">{{ m.color === 'aka' ? 'Aka' : 'Ao' }}</span></td>
-                    <td><a i18n-title="@@persona.historial.hoja-combate" class="code" [routerLink]="['/combates', m.match_id]" title="Hoja del combate">{{ m.code }}</a></td>
+                    <td class="color"
+                      ><span
+                        class="strip"
+                        [class.aka]="m.color === 'aka'"
+                        [class.ao]="m.color === 'ao'"
+                        [title]="m.color === 'aka' ? 'Aka' : 'Ao'"
+                      ></span
+                      ><span class="sr-only">{{ m.color === 'aka' ? 'Aka' : 'Ao' }}</span></td
+                    >
+                    <td
+                      ><a
+                        i18n-title="@@persona.historial.hoja-combate"
+                        class="code"
+                        [routerLink]="['/combates', m.match_id]"
+                        title="Hoja del combate"
+                        >{{ m.code }}</a
+                      ></td
+                    >
                     <td>
                       @if (m.method === 'draw') {
                         <span i18n="@@persona.historial.empate" class="badge plain">Empate</span>
@@ -94,7 +178,12 @@ import { PersonStatsView } from '../../shared/person-stats';
                         <span i18n="@@persona.historial.perdio" class="badge nezumi">Perdió</span>
                       }
                     </td>
-                    <td class="center nowrap score" [class.muted]="m.method === 'flags'" [class.flags]="m.method === 'flags'">{{ score(m.score, m.method) }}</td>
+                    <td
+                      class="center nowrap score"
+                      [class.muted]="m.method === 'flags'"
+                      [class.flags]="m.method === 'flags'"
+                      >{{ score(m.score, m.method) }}</td
+                    >
                     <td>
                       {{ m.opponent || '—' }}
                       @if (m.opponent_dojo) {
@@ -107,13 +196,22 @@ import { PersonStatsView } from '../../shared/person-stats';
               </tbody>
             </table>
           } @else {
-            <p i18n="@@persona.historial.sin-combates-finalizados-esta" class="muted small nofights">Sin combates finalizados en esta categoría.</p>
+            <p i18n="@@persona.historial.sin-combates-finalizados-esta" class="muted small nofights"
+              >Sin combates finalizados en esta categoría.</p
+            >
           }
         </article>
       } @empty {
         <div class="card empty">
-          <p><strong i18n="@@persona.historial.aun-no-tiene-torneos-historial">Aún no tiene torneos en su historial.</strong></p>
-          <p i18n="@@persona.historial.torneos-prueba-no-aparecen" class="small">Los torneos de prueba no aparecen en el historial. Solo cuentan los torneos oficiales.</p>
+          <p
+            ><strong i18n="@@persona.historial.aun-no-tiene-torneos-historial"
+              >Aún no tiene torneos en su historial.</strong
+            ></p
+          >
+          <p i18n="@@persona.historial.torneos-prueba-no-aparecen" class="small"
+            >Los torneos de prueba no aparecen en el historial. Solo cuentan los torneos
+            oficiales.</p
+          >
         </div>
       }
     } @else if (error()) {

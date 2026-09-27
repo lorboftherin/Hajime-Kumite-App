@@ -19,19 +19,42 @@ import { Modal } from './modal';
     @if (auth.isLoggedIn() && auth.expiringSoon() && !auth.reloginOpen() && !dismissed()) {
       <div class="session-warn alert warn" role="status">
         <span>
-          @if (auth.refreshFailed()) {<ng-container i18n="@@sesion.no-pudo-renovar-sesion-sin">
-            No se pudo renovar la sesión (¿sin conexión?); vence en {{ auth.minutesLeft() }} min.
-          </ng-container>} @else {<ng-container i18n="@@sesion.sesion-vence-min">
-            Tu sesión vence en {{ auth.minutesLeft() }} min.
-          </ng-container>}
+          @if (auth.refreshFailed()) {
+            <ng-container i18n="@@sesion.no-pudo-renovar-sesion-sin">
+              No se pudo renovar la sesión (¿sin conexión?); vence en {{ auth.minutesLeft() }} min.
+            </ng-container>
+          } @else {
+            <ng-container i18n="@@sesion.sesion-vence-min">
+              Tu sesión vence en {{ auth.minutesLeft() }} min.
+            </ng-container>
+          }
         </span>
-        <button i18n="@@sesion.volver-iniciar-sesion" type="button" class="btn sm primary" (click)="auth.requestRelogin()">Volver a iniciar sesión</button>
-        <button i18n-aria-label="@@sesion.ocultar" type="button" class="btn sm ghost icon-only" (click)="dismissed.set(true)" aria-label="Ocultar"><app-icon name="close" /></button>
+        <button
+          i18n="@@sesion.volver-iniciar-sesion"
+          type="button"
+          class="btn sm primary"
+          (click)="auth.requestRelogin()"
+          >Volver a iniciar sesión</button
+        >
+        <button
+          i18n-aria-label="@@sesion.ocultar"
+          type="button"
+          class="btn sm ghost icon-only"
+          (click)="dismissed.set(true)"
+          aria-label="Ocultar"
+          ><app-icon name="close"
+        /></button>
       </div>
     }
     @if (auth.reloginOpen()) {
-      <app-modal i18n-title="@@sesion.volver-iniciar-sesion-2" title="Volver a iniciar sesión" (closed)="close()">
-        <p i18n="@@sesion.sesion-esta-vencer-ingresa" class="small muted">Tu sesión está por vencer. Ingresa tu contraseña para seguir en esta misma pantalla.</p>
+      <app-modal
+        i18n-title="@@sesion.volver-iniciar-sesion-2"
+        title="Volver a iniciar sesión"
+        (closed)="close()"
+      >
+        <p i18n="@@sesion.sesion-esta-vencer-ingresa" class="small muted"
+          >Tu sesión está por vencer. Ingresa tu contraseña para seguir en esta misma pantalla.</p
+        >
         <form (ngSubmit)="submit()" class="stack">
           <label class="field">
             <span i18n="@@sesion.usuario">Usuario</span>
@@ -39,19 +62,32 @@ import { Modal } from './modal';
           </label>
           <label class="field">
             <span i18n="@@sesion.contrasena">Contraseña</span>
-            <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required autofocus />
+            <input
+              name="password"
+              type="password"
+              [(ngModel)]="password"
+              autocomplete="current-password"
+              required
+              autofocus
+            />
           </label>
           @if (error()) {
             <div class="alert danger">{{ error() }}</div>
           }
           <div class="form-actions">
-            <button i18n="@@sesion.ahora-no" type="button" class="btn" (click)="close()">Ahora no</button>
-            <button class="btn primary" type="submit" [disabled]="busy() || !username() || !password()">
+            <button i18n="@@sesion.ahora-no" type="button" class="btn" (click)="close()"
+              >Ahora no</button
+            >
+            <button
+              class="btn primary"
+              type="submit"
+              [disabled]="busy() || !username() || !password()"
+            >
               @if (busy()) {
                 <span class="spinner"></span>
-              }<ng-container i18n="@@sesion.ingresar">
-              Ingresar
-            </ng-container></button>
+              }
+              <ng-container i18n="@@sesion.ingresar"> Ingresar </ng-container></button
+            >
           </div>
         </form>
       </app-modal>
@@ -111,5 +147,4 @@ export class SessionGuard {
       this.busy.set(false);
     }
   }
-
 }

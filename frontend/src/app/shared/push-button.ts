@@ -26,7 +26,13 @@ import { Icon } from './icon';
       >
         <app-icon name="bell" />
         @if (!compact()) {
-          <span i18n="@@avisos.boton.avisando-avisarme">@if (on()) {Avisando} @else {Avisarme}</span>
+          <span i18n="@@avisos.boton.avisando-avisarme">
+            @if (on()) {
+              Avisando
+            } @else {
+              Avisarme
+            }
+          </span>
         }
       </button>
     }
@@ -61,7 +67,9 @@ export class PushButton {
       return who
         ? $localize`:@@avisos.boton.dejar-recibir-avisos-de:Dejar de recibir avisos de ${who}:quien:`
         : $localize`:@@avisos.boton.dejar-recibir-avisos:Dejar de recibir avisos`;
-    return who ? $localize`:@@avisos.boton.avisarme-de:Avisarme de ${who}:quien:` : $localize`:@@avisos.boton.avisarme:Avisarme`;
+    return who
+      ? $localize`:@@avisos.boton.avisarme-de:Avisarme de ${who}:quien:`
+      : $localize`:@@avisos.boton.avisarme:Avisarme`;
   });
 }
 

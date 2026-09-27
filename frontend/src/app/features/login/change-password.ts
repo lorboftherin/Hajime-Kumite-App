@@ -19,25 +19,54 @@ import { ToastService } from '../../core/toast.service';
         <form class="card box" (ngSubmit)="submit()" aria-labelledby="cp-title">
           <div>
             <h1 i18n="@@clave.cambiar.cambiar-contrasena" id="cp-title">Cambiar contraseña</h1>
-            <p i18n="@@clave.cambiar.sesion" class="muted small lead">Sesión: {{ auth.user()?.username }}</p>
+            <p i18n="@@clave.cambiar.sesion" class="muted small lead"
+              >Sesión: {{ auth.user()?.username }}</p
+            >
           </div>
           @if (forced()) {
             <div class="alert info">
-              <strong i18n="@@clave.cambiar.contrasena-fue-asignada">Tu contraseña fue asignada por el administrador; elige una nueva.</strong>
-              <div i18n="@@clave.cambiar.asi-solo-conoceras-usa" class="small">Así solo tú la conocerás. Usa la contraseña que te entregaron como "contraseña actual".</div>
+              <strong i18n="@@clave.cambiar.contrasena-fue-asignada"
+                >Tu contraseña fue asignada por el administrador; elige una nueva.</strong
+              >
+              <div i18n="@@clave.cambiar.asi-solo-conoceras-usa" class="small"
+                >Así solo tú la conocerás. Usa la contraseña que te entregaron como "contraseña
+                actual".</div
+              >
             </div>
           }
           <label class="field">
             <span i18n="@@clave.cambiar.contrasena-actual">Contraseña actual</span>
-            <input name="current" type="password" [(ngModel)]="current" autocomplete="current-password" required autofocus />
+            <input
+              name="current"
+              type="password"
+              [(ngModel)]="current"
+              autocomplete="current-password"
+              required
+              autofocus
+            />
           </label>
           <label class="field">
-            <span i18n="@@clave.cambiar.nueva-contrasena-min-caracteres">Nueva contraseña (mín. {{ min }} caracteres)</span>
-            <input name="next" type="password" [(ngModel)]="next" autocomplete="new-password" required [minlength]="min" />
+            <span i18n="@@clave.cambiar.nueva-contrasena-min-caracteres"
+              >Nueva contraseña (mín. {{ min }} caracteres)</span
+            >
+            <input
+              name="next"
+              type="password"
+              [(ngModel)]="next"
+              autocomplete="new-password"
+              required
+              [minlength]="min"
+            />
           </label>
           <label class="field">
             <span i18n="@@clave.cambiar.repite-nueva-contrasena">Repite la nueva contraseña</span>
-            <input name="confirm" type="password" [(ngModel)]="confirm" autocomplete="new-password" required />
+            <input
+              name="confirm"
+              type="password"
+              [(ngModel)]="confirm"
+              autocomplete="new-password"
+              required
+            />
           </label>
           @if (touched() && problem()) {
             <div class="error-text small">{{ problem() }}</div>
@@ -48,16 +77,28 @@ import { ToastService } from '../../core/toast.service';
           <button class="btn primary lg block" type="submit" [disabled]="busy()">
             @if (busy()) {
               <span class="spinner"></span>
-            }<ng-container i18n="@@clave.cambiar.guardar-nueva-contrasena">
-            Guardar nueva contraseña
-          </ng-container></button>
-          <p i18n="@@clave.cambiar.cambiarla-cierran-tus-sesiones" class="hint">Al cambiarla se cierran tus sesiones abiertas en otros equipos.</p>
+            }
+            <ng-container i18n="@@clave.cambiar.guardar-nueva-contrasena">
+              Guardar nueva contraseña
+            </ng-container></button
+          >
+          <p i18n="@@clave.cambiar.cambiarla-cierran-tus-sesiones" class="hint"
+            >Al cambiarla se cierran tus sesiones abiertas en otros equipos.</p
+          >
           <div class="foot">
             @if (!forced()) {
-              <a i18n="@@clave.cambiar.volver" class="back-link" routerLink="/torneos"><app-icon name="back" /> Volver</a>
+              <a i18n="@@clave.cambiar.volver" class="back-link" routerLink="/torneos"
+                ><app-icon name="back" /> Volver</a
+              >
             }
             <span class="grow"></span>
-            <button i18n="@@clave.cambiar.salir" type="button" class="btn ghost sm" (click)="auth.logout(false); router.navigate(['/login'])"><app-icon name="logout" /> Salir</button>
+            <button
+              i18n="@@clave.cambiar.salir"
+              type="button"
+              class="btn ghost sm"
+              (click)="auth.logout(false); router.navigate(['/login'])"
+              ><app-icon name="logout" /> Salir</button
+            >
           </div>
         </form>
       </div>
@@ -137,7 +178,9 @@ export class ChangePasswordPage {
       await this.auth.changePassword(this.current(), this.next());
       this.toast.ok($localize`:@@clave.cambiar.contrasena-actualizada:Contraseña actualizada`);
       const ret = this.route.snapshot.queryParamMap.get('returnUrl');
-      this.router.navigateByUrl(ret && ret.startsWith('/') && !ret.startsWith('/cambiar-clave') ? ret : '/torneos');
+      this.router.navigateByUrl(
+        ret && ret.startsWith('/') && !ret.startsWith('/cambiar-clave') ? ret : '/torneos',
+      );
     } catch (e) {
       this.error.set(ApiError.from(e).fullMessage);
     } finally {

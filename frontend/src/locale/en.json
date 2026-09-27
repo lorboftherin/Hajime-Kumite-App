@@ -685,7 +685,7 @@
     "hanko.plata": "Silver",
     "hanko.texto": "{$INTERPOLATION}th",
     "idioma.selector": "Language",
-    "llave.8-0-tachadas-notas-descartadas": "{$START_TAG_SPAN}8.0{$CLOSE_TAG_SPAN} struck through: discarded scores ({$INTERPOLATION} highest and {$INTERPOLATION} lowest per performance)",
+    "llave.8-0-tachadas-notas-descartadas": "{$START_TAG_SPAN}8.0{$CLOSE_TAG_SPAN} struck through: discarded scores ({$INTERPOLATION} highest and {$INTERPOLATION_1} lowest per performance)",
     "llave.abrir-mesa": "Open table",
     "llave.actual": "current",
     "llave.agregaron-combates": "their matches were added",

@@ -9,7 +9,11 @@ import { Icon } from '../../../shared/icon';
 import { TournamentContext } from '../tournament-context';
 import { etiquetas } from '../../../core/i18n/etiquetas';
 
-const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami', category: $localize`:@@torneo.arbitros.categoria-3:Categoría`, match: $localize`:@@torneo.arbitros.combate-3:Combate` }));
+const TARGET_LABEL: Record<string, string> = etiquetas(() => ({
+  tatami: 'Tatami',
+  category: $localize`:@@torneo.arbitros.categoria-3:Categoría`,
+  match: $localize`:@@torneo.arbitros.combate-3:Combate`,
+}));
 
 /**
  * Árbitros del torneo (sección 20): registro y asignación opcionales a un
@@ -21,37 +25,68 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
   imports: [FormsModule, RouterLink, Icon],
   template: `
     <p i18n="@@torneo.arbitros.opcional-registrar-arbitros" class="hint intro">
-      Opcional: registrar árbitros nunca impide operar el torneo. Un árbitro no necesita dojo. Si se asignan a un tatami,
-      categoría o combate, la mesa de kata los propone para anotar quién dio cada bandera o nota.
+      Opcional: registrar árbitros nunca impide operar el torneo. Un árbitro no necesita dojo. Si se
+      asignan a un tatami, categoría o combate, la mesa de kata los propone para anotar quién dio
+      cada bandera o nota.
     </p>
     <div class="cols">
       <section class="card">
-        <h3 i18n="@@torneo.arbitros.arbitros-torneo">Árbitros del torneo <span class="muted small">{{ data()?.referees?.length ?? 0 }}</span></h3>
+        <h3 i18n="@@torneo.arbitros.arbitros-torneo"
+          >Árbitros del torneo
+          <span class="muted small">{{ data()?.referees?.length ?? 0 }}</span></h3
+        >
         <ul class="list-plain refs">
           @for (r of data()?.referees ?? []; track r.person_id) {
             <li>
               <a [routerLink]="['/personas', r.person_id]">{{ r.name }}</a>
-              <span i18n="@@torneo.arbitros.n-asignaciones" class="muted small">{r.assignments, plural, =0 {sin asignar} =1 {1 asignación} other {{{ r.assignments }} asignaciones}}</span>
+              <span
+                i18n="@@torneo.arbitros.n-asignaciones"
+                class="muted small"
+                >{r.assignments, plural,
+                  =0 {sin asignar}
+                  =1 {1 asignación}
+                  other {{{ r.assignments }} asignaciones}
+                }</span
+              >
             </li>
           } @empty {
-            <li i18n="@@torneo.arbitros.todavia-no-hay-arbitros" class="muted small">Todavía no hay árbitros registrados.</li>
+            <li i18n="@@torneo.arbitros.todavia-no-hay-arbitros" class="muted small"
+              >Todavía no hay árbitros registrados.</li
+            >
           }
         </ul>
         <h4 i18n="@@torneo.arbitros.registrar-arbitro">Registrar árbitro</h4>
-        <input i18n-aria-label="@@torneo.arbitros.buscar-persona" i18n-placeholder="@@torneo.arbitros.buscar-persona-nombre" placeholder="Buscar persona por nombre…" [ngModel]="q()" (ngModelChange)="onSearch($event)" aria-label="Buscar persona" />
+        <input
+          i18n-aria-label="@@torneo.arbitros.buscar-persona"
+          i18n-placeholder="@@torneo.arbitros.buscar-persona-nombre"
+          placeholder="Buscar persona por nombre…"
+          [ngModel]="q()"
+          (ngModelChange)="onSearch($event)"
+          aria-label="Buscar persona"
+        />
         <ul class="list-plain results">
           @for (p of results(); track p.id) {
             <li>
               <span class="grow">{{ p.first_names }} {{ p.last_names }}</span>
-              <button i18n="@@torneo.arbitros.registrar" class="btn sm" (click)="registerRef(p.id)">Registrar</button>
+              <button i18n="@@torneo.arbitros.registrar" class="btn sm" (click)="registerRef(p.id)"
+                >Registrar</button
+              >
             </li>
           }
         </ul>
         <details class="new">
-          <summary i18n="@@torneo.arbitros.no-esta-lista-crear-persona">No está en la lista: crear persona</summary>
+          <summary i18n="@@torneo.arbitros.no-esta-lista-crear-persona"
+            >No está en la lista: crear persona</summary
+          >
           <div class="grid-3">
-            <label class="field"><span i18n="@@torneo.arbitros.nombres">Nombres</span><input [(ngModel)]="np.first_names" /></label>
-            <label class="field"><span i18n="@@torneo.arbitros.apellidos">Apellidos</span><input [(ngModel)]="np.last_names" /></label>
+            <label class="field"
+              ><span i18n="@@torneo.arbitros.nombres">Nombres</span
+              ><input [(ngModel)]="np.first_names"
+            /></label>
+            <label class="field"
+              ><span i18n="@@torneo.arbitros.apellidos">Apellidos</span
+              ><input [(ngModel)]="np.last_names"
+            /></label>
             <label class="field">
               <span i18n="@@torneo.arbitros.sexo">Sexo</span>
               <select [(ngModel)]="np.sex">
@@ -61,7 +96,12 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
             </label>
           </div>
           <div class="form-actions">
-            <button i18n="@@torneo.arbitros.crear-registrar" class="btn primary sm" [disabled]="!np.first_names.trim() || !np.last_names.trim()" (click)="createAndRegister()">
+            <button
+              i18n="@@torneo.arbitros.crear-registrar"
+              class="btn primary sm"
+              [disabled]="!np.first_names.trim() || !np.last_names.trim()"
+              (click)="createAndRegister()"
+            >
               Crear y registrar
             </button>
           </div>
@@ -72,7 +112,12 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
         <h3 i18n="@@torneo.arbitros.asignaciones">Asignaciones</h3>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th i18n="@@torneo.arbitros.arbitro">Árbitro</th><th i18n="@@torneo.arbitros.asignado">Asignado a</th><th i18n="@@torneo.arbitros.puesto">Puesto</th><th></th></tr></thead>
+            <thead
+              ><tr
+                ><th i18n="@@torneo.arbitros.arbitro">Árbitro</th
+                ><th i18n="@@torneo.arbitros.asignado">Asignado a</th
+                ><th i18n="@@torneo.arbitros.puesto">Puesto</th><th></th></tr
+            ></thead>
             <tbody>
               @for (a of data()?.assignments ?? []; track a.id) {
                 <tr>
@@ -84,10 +129,21 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
                     {{ a.target }}
                   </td>
                   <td>{{ a.position || '—' }}</td>
-                  <td class="right"><button i18n="@@torneo.arbitros.quitar" class="btn sm ghost" (click)="remove(a)">Quitar</button></td>
+                  <td class="right"
+                    ><button
+                      i18n="@@torneo.arbitros.quitar"
+                      class="btn sm ghost"
+                      (click)="remove(a)"
+                      >Quitar</button
+                    ></td
+                  >
                 </tr>
               } @empty {
-                <tr><td i18n="@@torneo.arbitros.sin-asignaciones" colspan="4" class="empty">Sin asignaciones.</td></tr>
+                <tr
+                  ><td i18n="@@torneo.arbitros.sin-asignaciones" colspan="4" class="empty"
+                    >Sin asignaciones.</td
+                  ></tr
+                >
               }
             </tbody>
           </table>
@@ -105,7 +161,12 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
           </label>
           <label class="field">
             <span i18n="@@torneo.arbitros.puesto-opcional">Puesto (opcional)</span>
-            <input i18n-placeholder="@@torneo.arbitros.arbitro-central-juez-1" [(ngModel)]="form.position" list="positions" placeholder="Árbitro central, Juez 1…" />
+            <input
+              i18n-placeholder="@@torneo.arbitros.arbitro-central-juez-1"
+              [(ngModel)]="form.position"
+              list="positions"
+              placeholder="Árbitro central, Juez 1…"
+            />
             <datalist id="positions">
               @for (p of positions; track p) {
                 <option [value]="p"></option>
@@ -144,7 +205,13 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
               <label class="field">
                 <span i18n="@@torneo.arbitros.combate-2">Combate</span>
                 <select [(ngModel)]="form.target_id" [disabled]="!matches().length">
-                  <option i18n="@@torneo.arbitros.sin-llave-elegir" [ngValue]="null">@if (catId() && !matches().length) {La categoría no tiene llave} @else {— Elegir —}</option>
+                  <option i18n="@@torneo.arbitros.sin-llave-elegir" [ngValue]="null">
+                    @if (catId() && !matches().length) {
+                      La categoría no tiene llave
+                    } @else {
+                      — Elegir —
+                    }
+                  </option>
                   @for (m of matches(); track m.id) {
                     <option [ngValue]="m.id">{{ m.code }}</option>
                   }
@@ -154,7 +221,13 @@ const TARGET_LABEL: Record<string, string> = etiquetas(() => ({ tatami: 'Tatami'
           }
         </div>
         <div class="form-actions">
-          <button i18n="@@torneo.arbitros.asignar-2" class="btn primary" [disabled]="!canAssign()" (click)="assign()"><app-icon name="plus" /> Asignar</button>
+          <button
+            i18n="@@torneo.arbitros.asignar-2"
+            class="btn primary"
+            [disabled]="!canAssign()"
+            (click)="assign()"
+            ><app-icon name="plus" /> Asignar</button
+          >
         </div>
       </section>
     </div>
@@ -220,7 +293,15 @@ export class RefereesTab {
   private api = inject(ApiService);
   private mut = inject(MutationService);
   readonly targetLabel = TARGET_LABEL;
-  readonly positions = [$localize`:@@torneo.arbitros.arbitro-central:Árbitro central`, $localize`:@@torneo.arbitros.juez-1:Juez 1`, $localize`:@@torneo.arbitros.juez-2:Juez 2`, $localize`:@@torneo.arbitros.juez-3:Juez 3`, $localize`:@@torneo.arbitros.juez-4:Juez 4`, 'Kansa', $localize`:@@torneo.arbitros.juez-principal:Juez principal`];
+  readonly positions = [
+    $localize`:@@torneo.arbitros.arbitro-central:Árbitro central`,
+    $localize`:@@torneo.arbitros.juez-1:Juez 1`,
+    $localize`:@@torneo.arbitros.juez-2:Juez 2`,
+    $localize`:@@torneo.arbitros.juez-3:Juez 3`,
+    $localize`:@@torneo.arbitros.juez-4:Juez 4`,
+    'Kansa',
+    $localize`:@@torneo.arbitros.juez-principal:Juez principal`,
+  ];
 
   readonly data = signal<RefereeOverview | null>(null);
   readonly q = signal('');
@@ -241,14 +322,20 @@ export class RefereesTab {
       .pipe(
         debounceTime(250),
         switchMap((q) =>
-          q.trim().length < 2 ? of([] as Person[]) : this.api.get<Person[]>('/persons', { q, limit: 15 }).pipe(catchError(() => of([] as Person[]))),
+          q.trim().length < 2
+            ? of([] as Person[])
+            : this.api
+                .get<Person[]>('/persons', { q, limit: 15 })
+                .pipe(catchError(() => of([] as Person[]))),
         ),
       )
       .subscribe((r) => this.results.set(r));
   }
 
   load(): void {
-    this.api.get<RefereeOverview>(`/tournaments/${this.ctx.id()}/referees`).subscribe({ next: (d) => this.data.set(d), error: () => {} });
+    this.api
+      .get<RefereeOverview>(`/tournaments/${this.ctx.id()}/referees`)
+      .subscribe({ next: (d) => this.data.set(d), error: () => {} });
   }
 
   onSearch(q: string): void {
@@ -257,7 +344,11 @@ export class RefereesTab {
   }
 
   async registerRef(personId: number): Promise<void> {
-    const res = await this.mut.post<RefereeOverview>(`/tournaments/${this.ctx.id()}/referees`, { person_id: personId }, { success: $localize`:@@torneo.arbitros.arbitro-registrado:Árbitro registrado` });
+    const res = await this.mut.post<RefereeOverview>(
+      `/tournaments/${this.ctx.id()}/referees`,
+      { person_id: personId },
+      { success: $localize`:@@torneo.arbitros.arbitro-registrado:Árbitro registrado` },
+    );
     if (res) {
       this.data.set(res);
       this.q.set('');
@@ -293,7 +384,12 @@ export class RefereesTab {
     this.matches.set([]);
     if (!cid) return;
     this.api.get<Bracket>(`/categories/${cid}/bracket`).subscribe({
-      next: (b) => this.matches.set(b.matches.filter((m) => m.status !== 'bye' && m.status !== 'void').map((m) => ({ id: m.id, code: m.code }))),
+      next: (b) =>
+        this.matches.set(
+          b.matches
+            .filter((m) => m.status !== 'bye' && m.status !== 'void')
+            .map((m) => ({ id: m.id, code: m.code })),
+        ),
       error: () => this.matches.set([]),
     });
   }
@@ -305,19 +401,31 @@ export class RefereesTab {
   async assign(): Promise<void> {
     const res = await this.mut.post<RefereeOverview>(
       `/tournaments/${this.ctx.id()}/referee-assignments`,
-      { person_id: this.form.person_id, target_type: this.targetType(), target_id: this.form.target_id, position: this.form.position },
+      {
+        person_id: this.form.person_id,
+        target_type: this.targetType(),
+        target_id: this.form.target_id,
+        position: this.form.position,
+      },
       { success: $localize`:@@torneo.arbitros.arbitro-asignado:Árbitro asignado` },
     );
     if (res) {
       this.data.set(res);
-      this.form = { ...this.form, target_id: this.targetType() === 'category' ? this.form.target_id : null, position: '' };
+      this.form = {
+        ...this.form,
+        target_id: this.targetType() === 'category' ? this.form.target_id : null,
+        position: '',
+      };
     }
   }
 
   async remove(a: RefereeAssignment): Promise<void> {
-    const res = await this.mut.run<RefereeOverview>(() => this.api.delete<RefereeOverview>(`/referee-assignments/${a.id}`), {
-      success: $localize`:@@torneo.arbitros.asignacion-quitada:Asignación quitada`,
-    });
+    const res = await this.mut.run<RefereeOverview>(
+      () => this.api.delete<RefereeOverview>(`/referee-assignments/${a.id}`),
+      {
+        success: $localize`:@@torneo.arbitros.asignacion-quitada:Asignación quitada`,
+      },
+    );
     if (res) this.data.set(res);
   }
 }

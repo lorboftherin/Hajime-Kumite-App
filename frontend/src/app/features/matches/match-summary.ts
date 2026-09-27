@@ -25,134 +25,240 @@ const M = { top: 16, right: 56, bottom: 30, left: 34 };
   imports: [RouterLink, PageHead],
   template: `
     <div class="container">
-    @if (data(); as d) {
-      <app-page-head kanji="試合" i18n-title="@@combate.resumen.titulo" title="Combate {{ d.match.code }}">
-        @if (competitor()) {
-          <a i18n="@@combate.resumen.mis-perfiles" back class="back-link" routerLink="/mis-perfiles">← Mis perfiles</a>
-        } @else {
-          <a back class="back-link" [routerLink]="['/categorias', d.category.id, 'llave']">← {{ d.category.name }}</a>
-        }
-        <div meta class="small muted">
-          @if (d.tournament) {
-            {{ d.tournament.name }} · {{ fdate(d.tournament.date) }}
+      @if (data(); as d) {
+        <app-page-head
+          kanji="試合"
+          i18n-title="@@combate.resumen.titulo"
+          title="Combate {{ d.match.code }}"
+        >
+          @if (competitor()) {
+            <a
+              i18n="@@combate.resumen.mis-perfiles"
+              back
+              class="back-link"
+              routerLink="/mis-perfiles"
+              >← Mis perfiles</a
+            >
+          } @else {
+            <a back class="back-link" [routerLink]="['/categorias', d.category.id, 'llave']"
+              >← {{ d.category.name }}</a
+            >
           }
-        </div>
-        @if (!competitor()) {
-          <a i18n="@@combate.resumen.abrir-mesa" class="btn" [routerLink]="['/mesa', d.match.id]">Abrir en la mesa</a>
-        }
-        <button i18n="@@combate.resumen.compartir-resultado" class="btn primary" (click)="share()" [disabled]="d.match.status !== 'finished'">Compartir resultado</button>
-      </app-page-head>
-
-      <section i18n-aria-label="@@combate.resumen.marcador-final" class="card board" aria-label="Marcador final">
-        @for (c of colors; track c) {
-          <div class="side {{ c }}" [class.won]="d.match.winner === c">
-            <span class="clabel">{{ c === 'aka' ? 'AKA' : 'AO' }}</span>
-            <span class="name">{{ d[c].name ?? '—' }}</span>
-            <span class="dojo">{{ d[c].dojo }}</span>
-            @if (d.match.winner === c) {
-              <span i18n-aria-label="@@combate.resumen.ganador" class="hanko" aria-label="Ganador">勝</span>
+          <div meta class="small muted">
+            @if (d.tournament) {
+              {{ d.tournament.name }} · {{ fdate(d.tournament.date) }}
             }
           </div>
-          @if (c === 'aka') {
-            <div class="score">
-              <span class="n">{{ d.aka.score }}</span><span class="dash">–</span><span class="n">{{ d.ao.score }}</span>
-              <span class="small muted">{{ resultText() }}</span>
-            </div>
+          @if (!competitor()) {
+            <a i18n="@@combate.resumen.abrir-mesa" class="btn" [routerLink]="['/mesa', d.match.id]"
+              >Abrir en la mesa</a
+            >
           }
-        }
-      </section>
+          <button
+            i18n="@@combate.resumen.compartir-resultado"
+            class="btn primary"
+            (click)="share()"
+            [disabled]="d.match.status !== 'finished'"
+            >Compartir resultado</button
+          >
+        </app-page-head>
 
-      <section class="card" aria-labelledby="worm-title">
-        <div class="chart-head">
-          <h3 i18n="@@combate.resumen.como-construyo-marcador" id="worm-title">Cómo se construyó el marcador</h3>
-          <ul i18n-aria-label="@@combate.resumen.leyenda" class="legend" aria-label="Leyenda">
-            <li i18n="@@combate.resumen.aka"><span class="key aka"></span>AKA</li>
-            <li i18n="@@combate.resumen.ao"><span class="key ao"></span>AO</li>
-          </ul>
-        </div>
-        @if (points().length) {
-          <div class="chart" (pointerleave)="hover.set(null)">
-            <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" [attr.aria-label]="chartLabel()" (pointermove)="onMove($event)">
-              @for (t of yTicks(); track t) {
-                <line class="grid" [attr.x1]="M.left" [attr.x2]="W - M.right" [attr.y1]="y(t)" [attr.y2]="y(t)" />
-                <text class="tick" [attr.x]="M.left - 8" [attr.y]="y(t) + 4" text-anchor="end">{{ t }}</text>
+        <section
+          i18n-aria-label="@@combate.resumen.marcador-final"
+          class="card board"
+          aria-label="Marcador final"
+        >
+          @for (c of colors; track c) {
+            <div class="side {{ c }}" [class.won]="d.match.winner === c">
+              <span class="clabel">{{ c === 'aka' ? 'AKA' : 'AO' }}</span>
+              <span class="name">{{ d[c].name ?? '—' }}</span>
+              <span class="dojo">{{ d[c].dojo }}</span>
+              @if (d.match.winner === c) {
+                <span i18n-aria-label="@@combate.resumen.ganador" class="hanko" aria-label="Ganador"
+                  >勝</span
+                >
               }
-              @for (t of xTicks(); track t) {
-                <text class="tick" [attr.x]="x(t)" [attr.y]="H - 8" text-anchor="middle">{{ mm(t) }}</text>
-              }
-              <line class="axis" [attr.x1]="M.left" [attr.x2]="W - M.right" [attr.y1]="y(0)" [attr.y2]="y(0)" />
-              <path class="line ao" [attr.d]="path('ao')" />
-              <path class="line aka" [attr.d]="path('aka')" />
-              @for (p of points(); track p.event_id) {
-                @if (p.type === 'point') {
-                  <circle class="dot {{ p.color }}" [attr.cx]="x(p.elapsed)" [attr.cy]="y(p.color === 'aka' ? p.aka : p.ao)" r="4.5" />
-                }
-              }
-              <text i18n="@@combate.resumen.aka-2" class="end aka" [attr.x]="W - M.right + 8" [attr.y]="endY('aka')">AKA {{ d.aka.score }}</text>
-              <text i18n="@@combate.resumen.ao-2" class="end ao" [attr.x]="W - M.right + 8" [attr.y]="endY('ao')">AO {{ d.ao.score }}</text>
-              @if (hover(); as h) {
-                <line class="cross" [attr.x1]="x(h.elapsed)" [attr.x2]="x(h.elapsed)" [attr.y1]="M.top" [attr.y2]="y(0)" />
-              }
-            </svg>
-            @if (hover(); as h) {
-              <div class="tip" [style.left.%]="(100 * x(h.elapsed)) / W">
-                <strong>{{ h.aka }}–{{ h.ao }}</strong>
-                <span>{{ describe(h) }}</span>
-                <span i18n="@@combate.resumen.reloj" class="muted">{{ mm(h.elapsed) }} de reloj</span>
+            </div>
+            @if (c === 'aka') {
+              <div class="score">
+                <span class="n">{{ d.aka.score }}</span
+                ><span class="dash">–</span><span class="n">{{ d.ao.score }}</span>
+                <span class="small muted">{{ resultText() }}</span>
               </div>
             }
-          </div>
-        } @else {
-          <p i18n="@@combate.resumen.combate-no-tiene-puntos" class="muted small">El combate no tiene puntos registrados.</p>
-        }
-      </section>
-
-      <div class="cols">
-        <section i18n-aria-label="@@combate.resumen.tecnicas-lado" class="card" aria-label="Técnicas por lado">
-          <h3 i18n="@@combate.resumen.tecnicas">Técnicas</h3>
-          <table class="table compact">
-            <thead>
-              <tr><th scope="col"></th><th i18n="@@combate.resumen.aka-3" scope="col" class="center">AKA</th><th i18n="@@combate.resumen.ao-3" scope="col" class="center">AO</th></tr>
-            </thead>
-            <tbody>
-              @for (t of techRows; track t.key) {
-                <tr>
-                  <th scope="row">{{ t.label }}</th>
-                  <td class="center num">{{ d.aka.techniques[t.key] }}</td>
-                  <td class="center num">{{ d.ao.techniques[t.key] }}</td>
-                </tr>
-              }
-              <tr>
-                <th i18n="@@combate.resumen.senshu" scope="row">Senshu</th>
-                <td class="center">{{ d.senshu === 'aka' ? '先' : '' }}</td>
-                <td class="center">{{ d.senshu === 'ao' ? '先' : '' }}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p class="small muted"><ng-container i18n="@@combate.resumen.tiempo-reloj">Tiempo de reloj: {{ mm(d.elapsed) }}</ng-container>@if (d.duration) {<ng-container i18n="@@combate.resumen.de"> de {{ mm(d.duration) }}</ng-container>}</p>
-        </section>
-        <section i18n-aria-label="@@combate.resumen.momentos-combate" class="card" aria-label="Momentos del combate">
-          <h3 i18n="@@combate.resumen.momentos">Momentos</h3>
-          <ol class="moments">
-            @for (p of points(); track p.event_id) {
-              <li>
-                <span class="t num">{{ mm(p.elapsed) }}</span>
-                <span class="mark {{ p.color ?? '' }}"></span>
-                <span class="grow">{{ describe(p) }}</span>
-                <span class="num">{{ p.aka }}–{{ p.ao }}</span>
-              </li>
-            } @empty {
-              <li i18n="@@combate.resumen.sin-eventos-marcador" class="muted small">Sin eventos de marcador.</li>
-            }
-          </ol>
-          @if (d.match.parent_match_id) {
-            <p class="small"><a i18n="@@combate.resumen.ver-enfrentamiento-equipos" [routerLink]="['/mesa', d.match.parent_match_id]">Ver el enfrentamiento por equipos</a></p>
           }
         </section>
-      </div>
-    } @else if (error()) {
-      <p class="alert danger">{{ error() }}</p>
-    }
+
+        <section class="card" aria-labelledby="worm-title">
+          <div class="chart-head">
+            <h3 i18n="@@combate.resumen.como-construyo-marcador" id="worm-title"
+              >Cómo se construyó el marcador</h3
+            >
+            <ul i18n-aria-label="@@combate.resumen.leyenda" class="legend" aria-label="Leyenda">
+              <li i18n="@@combate.resumen.aka"><span class="key aka"></span>AKA</li>
+              <li i18n="@@combate.resumen.ao"><span class="key ao"></span>AO</li>
+            </ul>
+          </div>
+          @if (points().length) {
+            <div class="chart" (pointerleave)="hover.set(null)">
+              <svg
+                [attr.viewBox]="'0 0 ' + W + ' ' + H"
+                role="img"
+                [attr.aria-label]="chartLabel()"
+                (pointermove)="onMove($event)"
+              >
+                @for (t of yTicks(); track t) {
+                  <line
+                    class="grid"
+                    [attr.x1]="M.left"
+                    [attr.x2]="W - M.right"
+                    [attr.y1]="y(t)"
+                    [attr.y2]="y(t)"
+                  />
+                  <text class="tick" [attr.x]="M.left - 8" [attr.y]="y(t) + 4" text-anchor="end">
+                    {{ t }}
+                  </text>
+                }
+                @for (t of xTicks(); track t) {
+                  <text class="tick" [attr.x]="x(t)" [attr.y]="H - 8" text-anchor="middle">
+                    {{ mm(t) }}
+                  </text>
+                }
+                <line
+                  class="axis"
+                  [attr.x1]="M.left"
+                  [attr.x2]="W - M.right"
+                  [attr.y1]="y(0)"
+                  [attr.y2]="y(0)"
+                />
+                <path class="line ao" [attr.d]="path('ao')" />
+                <path class="line aka" [attr.d]="path('aka')" />
+                @for (p of points(); track p.event_id) {
+                  @if (p.type === 'point') {
+                    <circle
+                      class="dot {{ p.color }}"
+                      [attr.cx]="x(p.elapsed)"
+                      [attr.cy]="y(p.color === 'aka' ? p.aka : p.ao)"
+                      r="4.5"
+                    />
+                  }
+                }
+                <text
+                  i18n="@@combate.resumen.aka-2"
+                  class="end aka"
+                  [attr.x]="W - M.right + 8"
+                  [attr.y]="endY('aka')"
+                >
+                  AKA {{ d.aka.score }}
+                </text>
+                <text
+                  i18n="@@combate.resumen.ao-2"
+                  class="end ao"
+                  [attr.x]="W - M.right + 8"
+                  [attr.y]="endY('ao')"
+                >
+                  AO {{ d.ao.score }}
+                </text>
+                @if (hover(); as h) {
+                  <line
+                    class="cross"
+                    [attr.x1]="x(h.elapsed)"
+                    [attr.x2]="x(h.elapsed)"
+                    [attr.y1]="M.top"
+                    [attr.y2]="y(0)"
+                  />
+                }
+              </svg>
+              @if (hover(); as h) {
+                <div class="tip" [style.left.%]="(100 * x(h.elapsed)) / W">
+                  <strong>{{ h.aka }}–{{ h.ao }}</strong>
+                  <span>{{ describe(h) }}</span>
+                  <span i18n="@@combate.resumen.reloj" class="muted"
+                    >{{ mm(h.elapsed) }} de reloj</span
+                  >
+                </div>
+              }
+            </div>
+          } @else {
+            <p i18n="@@combate.resumen.combate-no-tiene-puntos" class="muted small"
+              >El combate no tiene puntos registrados.</p
+            >
+          }
+        </section>
+
+        <div class="cols">
+          <section
+            i18n-aria-label="@@combate.resumen.tecnicas-lado"
+            class="card"
+            aria-label="Técnicas por lado"
+          >
+            <h3 i18n="@@combate.resumen.tecnicas">Técnicas</h3>
+            <table class="table compact">
+              <thead>
+                <tr
+                  ><th scope="col"></th
+                  ><th i18n="@@combate.resumen.aka-3" scope="col" class="center">AKA</th
+                  ><th i18n="@@combate.resumen.ao-3" scope="col" class="center">AO</th></tr
+                >
+              </thead>
+              <tbody>
+                @for (t of techRows; track t.key) {
+                  <tr>
+                    <th scope="row">{{ t.label }}</th>
+                    <td class="center num">{{ d.aka.techniques[t.key] }}</td>
+                    <td class="center num">{{ d.ao.techniques[t.key] }}</td>
+                  </tr>
+                }
+                <tr>
+                  <th i18n="@@combate.resumen.senshu" scope="row">Senshu</th>
+                  <td class="center">{{ d.senshu === 'aka' ? '先' : '' }}</td>
+                  <td class="center">{{ d.senshu === 'ao' ? '先' : '' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="small muted"
+              ><ng-container i18n="@@combate.resumen.tiempo-reloj"
+                >Tiempo de reloj: {{ mm(d.elapsed) }}</ng-container
+              >
+              @if (d.duration) {
+                <ng-container i18n="@@combate.resumen.de"> de {{ mm(d.duration) }}</ng-container>
+              }
+            </p>
+          </section>
+          <section
+            i18n-aria-label="@@combate.resumen.momentos-combate"
+            class="card"
+            aria-label="Momentos del combate"
+          >
+            <h3 i18n="@@combate.resumen.momentos">Momentos</h3>
+            <ol class="moments">
+              @for (p of points(); track p.event_id) {
+                <li>
+                  <span class="t num">{{ mm(p.elapsed) }}</span>
+                  <span class="mark {{ p.color ?? '' }}"></span>
+                  <span class="grow">{{ describe(p) }}</span>
+                  <span class="num">{{ p.aka }}–{{ p.ao }}</span>
+                </li>
+              } @empty {
+                <li i18n="@@combate.resumen.sin-eventos-marcador" class="muted small"
+                  >Sin eventos de marcador.</li
+                >
+              }
+            </ol>
+            @if (d.match.parent_match_id) {
+              <p class="small"
+                ><a
+                  i18n="@@combate.resumen.ver-enfrentamiento-equipos"
+                  [routerLink]="['/mesa', d.match.parent_match_id]"
+                  >Ver el enfrentamiento por equipos</a
+                ></p
+              >
+            }
+          </section>
+        </div>
+      } @else if (error()) {
+        <p class="alert danger">{{ error() }}</p>
+      }
     </div>
   `,
   styleUrl: './match-summary.scss',
@@ -179,7 +285,9 @@ export class MatchSummaryPage {
     { key: 'yuko', label: 'Yuko (1)' },
   ] as const;
 
-  readonly points = computed(() => this.data()?.timeline.filter((p) => p.type !== 'sanction') ?? []);
+  readonly points = computed(
+    () => this.data()?.timeline.filter((p) => p.type !== 'sanction') ?? [],
+  );
   private readonly xMax = computed(() => {
     const d = this.data();
     return Math.max(d?.duration ?? 0, d?.elapsed ?? 0, ...this.points().map((p) => p.elapsed), 10);
@@ -202,8 +310,10 @@ export class MatchSummaryPage {
   readonly resultText = computed(() => {
     const d = this.data();
     if (!d) return '';
-    if (d.match.status !== 'finished') return $localize`:@@combate.resumen.combate-curso:Combate en curso`;
-    if (d.match.method === 'draw') return $localize`:@@combate.resumen.hikiwake-empate:Hikiwake (empate)`;
+    if (d.match.status !== 'finished')
+      return $localize`:@@combate.resumen.combate-curso:Combate en curso`;
+    if (d.match.method === 'draw')
+      return $localize`:@@combate.resumen.hikiwake-empate:Hikiwake (empate)`;
     return $localize`:@@combate.resumen.por-metodo:por ${METHOD_LABEL[d.match.method ?? ''] ?? d.match.method ?? ''}:metodo:`;
   });
 
@@ -283,10 +393,12 @@ export class MatchSummaryPage {
 
   describe(p: TimelinePoint): string {
     const who = p.color ? p.color.toUpperCase() : '';
-    if (p.type === 'point') return `${who} · ${POINT_LABEL[p.value ?? 0] ?? $localize`:@@combate.resumen.punto:Punto`} +${p.value}`;
+    if (p.type === 'point')
+      return `${who} · ${POINT_LABEL[p.value ?? 0] ?? $localize`:@@combate.resumen.punto:Punto`} +${p.value}`;
     if (p.type === 'finish') {
       const d = this.data();
-      if (d?.match.method === 'draw' || !p.color) return $localize`:@@combate.resumen.cierre-hikiwake:Cierre: hikiwake`;
+      if (d?.match.method === 'draw' || !p.color)
+        return $localize`:@@combate.resumen.cierre-hikiwake:Cierre: hikiwake`;
       return $localize`:@@combate.resumen.cierre-gana:Cierre: gana ${who}:who:`;
     }
     return who;
@@ -299,7 +411,9 @@ export class MatchSummaryPage {
       const shared = await shareMatchCard(d, this.resultText());
       if (!shared) this.toast.ok($localize`:@@combate.resumen.imagen-descargada:Imagen descargada`);
     } catch {
-      this.toast.error($localize`:@@combate.resumen.no-pudo-generar-imagen:No se pudo generar la imagen`);
+      this.toast.error(
+        $localize`:@@combate.resumen.no-pudo-generar-imagen:No se pudo generar la imagen`,
+      );
     }
   }
 }

@@ -7,12 +7,17 @@ import { mesaPendingGuard } from './features/mesa/mesa-pending.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
-  { path: 'login', loadComponent: () => import('./features/login/login').then((m) => m.LoginPage), title: () => $localize`:@@rutas.ingresar-hajime:Ingresar · Hajime` },
+  {
+    path: 'login',
+    loadComponent: () => import('./features/login/login').then((m) => m.LoginPage),
+    title: () => $localize`:@@rutas.ingresar-hajime:Ingresar · Hajime`,
+  },
   {
     // Obligatoria si la contraseña la asignó el Admin (must_change_password); también desde el menú.
     path: 'cambiar-clave',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/login/change-password').then((m) => m.ChangePasswordPage),
+    loadComponent: () =>
+      import('./features/login/change-password').then((m) => m.ChangePasswordPage),
     title: () => $localize`:@@rutas.cambiar-contrasena-hajime:Cambiar contraseña · Hajime`,
   },
   {
@@ -24,13 +29,15 @@ export const routes: Routes = [
   // --- Cuentas sin sesión (docs/cuentas-y-correo.md) ---
   {
     path: 'recuperar-clave',
-    loadComponent: () => import('./features/cuenta/forgot-password').then((m) => m.ForgotPasswordPage),
+    loadComponent: () =>
+      import('./features/cuenta/forgot-password').then((m) => m.ForgotPasswordPage),
     title: () => $localize`:@@rutas.recuperar-contrasena-hajime:Recuperar contraseña · Hajime`,
   },
   {
     // El enlace del correo lleva el token en el fragmento: /restablecer-clave#<token>.
     path: 'restablecer-clave',
-    loadComponent: () => import('./features/cuenta/reset-password').then((m) => m.ResetPasswordPage),
+    loadComponent: () =>
+      import('./features/cuenta/reset-password').then((m) => m.ResetPasswordPage),
     title: () => $localize`:@@rutas.contrasena-nueva-hajime:Contraseña nueva · Hajime`,
   },
   {
@@ -57,7 +64,8 @@ export const routes: Routes = [
   {
     // Perfil público básico del competidor (sin inicio de sesión).
     path: 'competidor/:publicId',
-    loadComponent: () => import('./features/competidor/public-profile').then((m) => m.PublicProfilePage),
+    loadComponent: () =>
+      import('./features/competidor/public-profile').then((m) => m.PublicProfilePage),
     title: () => $localize`:@@rutas.competidor-hajime:Competidor · Hajime`,
   },
   // --- Portal público (sin inicio de sesión; solo con el público activo). Ver docs/portal-publico.md ---
@@ -102,7 +110,8 @@ export const routes: Routes = [
   {
     // Ranking público de una temporada marcada pública (sin inicio de sesión).
     path: 'ranking/:temporada',
-    loadComponent: () => import('./features/ranking/public-ranking').then((m) => m.PublicRankingPage),
+    loadComponent: () =>
+      import('./features/ranking/public-ranking').then((m) => m.PublicRankingPage),
     title: () => $localize`:@@rutas.ranking-hajime:Ranking · Hajime`,
   },
   {
@@ -138,7 +147,8 @@ export const routes: Routes = [
       },
       {
         path: 'solicitudes',
-        loadComponent: () => import('./features/cuenta/claims-review').then((m) => m.ClaimsReviewPage),
+        loadComponent: () =>
+          import('./features/cuenta/claims-review').then((m) => m.ClaimsReviewPage),
         title: () => $localize`:@@rutas.solicitudes-perfil-hajime:Solicitudes de perfil · Hajime`,
       },
       {
@@ -148,13 +158,15 @@ export const routes: Routes = [
       },
       {
         path: 'torneos',
-        loadComponent: () => import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),
+        loadComponent: () =>
+          import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),
         title: () => $localize`:@@rutas.torneos-hajime:Torneos · Hajime`,
       },
       {
         // Credenciales imprimibles con QR (antes de 'torneos/:id', que tiene pestañas hijas).
         path: 'torneos/:id/credenciales',
-        loadComponent: () => import('./features/checkin/credentials-page').then((m) => m.CredentialsPage),
+        loadComponent: () =>
+          import('./features/checkin/credentials-page').then((m) => m.CredentialsPage),
         title: () => $localize`:@@rutas.credenciales-hajime:Credenciales · Hajime`,
       },
       {
@@ -164,8 +176,10 @@ export const routes: Routes = [
       },
       {
         path: 'torneos/:id',
-        loadComponent: () => import('./features/tournaments/tournament-detail').then((m) => m.TournamentDetailPage),
-        loadChildren: () => import('./features/tournaments/tournament.routes').then((m) => m.TOURNAMENT_TABS),
+        loadComponent: () =>
+          import('./features/tournaments/tournament-detail').then((m) => m.TournamentDetailPage),
+        loadChildren: () =>
+          import('./features/tournaments/tournament.routes').then((m) => m.TOURNAMENT_TABS),
       },
       {
         path: 'categorias/:id/llave',
@@ -174,7 +188,8 @@ export const routes: Routes = [
       },
       {
         path: 'combates/:id',
-        loadComponent: () => import('./features/matches/match-summary').then((m) => m.MatchSummaryPage),
+        loadComponent: () =>
+          import('./features/matches/match-summary').then((m) => m.MatchSummaryPage),
         title: () => $localize`:@@rutas.combate-hajime:Combate · Hajime`,
       },
       {
@@ -184,7 +199,8 @@ export const routes: Routes = [
       },
       {
         path: 'personas/:id',
-        loadComponent: () => import('./features/persons/person-detail').then((m) => m.PersonDetailPage),
+        loadComponent: () =>
+          import('./features/persons/person-detail').then((m) => m.PersonDetailPage),
         title: () => $localize`:@@rutas.persona-hajime:Persona · Hajime`,
       },
       {
@@ -199,17 +215,20 @@ export const routes: Routes = [
       },
       {
         path: 'plantillas',
-        loadComponent: () => import('./features/templates/template-list').then((m) => m.TemplateListPage),
+        loadComponent: () =>
+          import('./features/templates/template-list').then((m) => m.TemplateListPage),
         title: () => $localize`:@@rutas.plantillas-hajime:Plantillas · Hajime`,
       },
       {
         path: 'organizacion',
-        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        loadComponent: () =>
+          import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
         title: () => $localize`:@@rutas.organizacion-hajime:Organización · Hajime`,
       },
       {
         path: 'organizacion/:id',
-        loadComponent: () => import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
+        loadComponent: () =>
+          import('./features/organizations/organization-page').then((m) => m.OrganizationPage),
         title: () => $localize`:@@rutas.organizacion-hajime:Organización · Hajime`,
       },
       {
@@ -227,24 +246,28 @@ export const routes: Routes = [
         // Retorno de la pasarela (Mercado Pago vuelve a estas URL).
         path: `pago/${result}`,
         data: { result },
-        loadComponent: () => import('./features/billing/payment-result').then((m) => m.PaymentResultPage),
+        loadComponent: () =>
+          import('./features/billing/payment-result').then((m) => m.PaymentResultPage),
         title: () => $localize`:@@rutas.pago-hajime:Pago · Hajime`,
       })),
       {
         path: 'pagos',
         canActivate: [adminGuard],
-        loadComponent: () => import('./features/billing/payments-admin').then((m) => m.PaymentsAdminPage),
+        loadComponent: () =>
+          import('./features/billing/payments-admin').then((m) => m.PaymentsAdminPage),
         title: () => $localize`:@@rutas.pagos-hajime:Pagos · Hajime`,
       },
       {
         path: 'mis-competidores',
-        loadComponent: () => import('./features/dojo-portal/dojo-portal').then((m) => m.DojoPortalPage),
+        loadComponent: () =>
+          import('./features/dojo-portal/dojo-portal').then((m) => m.DojoPortalPage),
         title: () => $localize`:@@rutas.mis-competidores-hajime:Mis competidores · Hajime`,
       },
       {
         // Enlace de invitación a la autoinscripción de un torneo.
         path: 'invitacion/:token',
-        loadComponent: () => import('./features/dojo-portal/invitation').then((m) => m.InvitationPage),
+        loadComponent: () =>
+          import('./features/dojo-portal/invitation').then((m) => m.InvitationPage),
         title: () => $localize`:@@rutas.invitacion-hajime:Invitación · Hajime`,
       },
       {

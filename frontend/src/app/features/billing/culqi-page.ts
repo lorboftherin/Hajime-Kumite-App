@@ -25,7 +25,11 @@ import { PageHead } from '../../shared/page-head';
         <section class="card stack">
           <p>
             <strong>{{ s.plan_name }}</strong> ·
-            <ng-container i18n="@@cobro.culqi.periodo">{s.period, select, year {anual} other {mensual}}</ng-container> ·
+            <ng-container i18n="@@cobro.culqi.periodo">{s.period, select,
+              year {anual}
+              other {mensual}
+            }</ng-container>
+            ·
             <span class="num">{{ amount() }}</span>
           </p>
           @if (s.period === 'month' && recurringHint()) {
@@ -35,10 +39,12 @@ import { PageHead } from '../../shared/page-head';
             </p>
             <div class="grid-2">
               <label class="field"
-                ><span i18n="@@cobro.culqi.nombres">Nombres</span><input name="fn" [(ngModel)]="firstName" maxlength="50"
+                ><span i18n="@@cobro.culqi.nombres">Nombres</span
+                ><input name="fn" [(ngModel)]="firstName" maxlength="50"
               /></label>
               <label class="field"
-                ><span i18n="@@cobro.culqi.apellidos">Apellidos</span><input name="ln" [(ngModel)]="lastName" maxlength="50"
+                ><span i18n="@@cobro.culqi.apellidos">Apellidos</span
+                ><input name="ln" [(ngModel)]="lastName" maxlength="50"
               /></label>
               <label class="field"
                 ><span i18n="@@cobro.culqi.celular">Celular</span
@@ -51,9 +57,9 @@ import { PageHead } from '../../shared/page-head';
             <button class="btn primary" type="button" (click)="pay()" [disabled]="busy()">
               @if (busy()) {
                 <span class="spinner"></span>
-              }<ng-container i18n="@@cobro.culqi.pagar">
-              Pagar {{ amount() }}
-            </ng-container></button>
+              }
+              <ng-container i18n="@@cobro.culqi.pagar"> Pagar {{ amount() }} </ng-container></button
+            >
           </div>
           <p i18n="@@cobro.culqi.pago-seguro-procesado-culqi" class="small muted">
             Pago seguro procesado por Culqi. Hajime no ve ni guarda los datos de tu tarjeta.
@@ -100,9 +106,14 @@ export class CulqiPage implements OnInit {
       ]);
       this.sub.set(sub);
       this.config.set(config);
-      if (!config.culqi_public_key) this.error.set($localize`:@@cobro.culqi.pago-culqi-no-esta-disponible:El pago con Culqi no está disponible ahora.`);
+      if (!config.culqi_public_key)
+        this.error.set(
+          $localize`:@@cobro.culqi.pago-culqi-no-esta-disponible:El pago con Culqi no está disponible ahora.`,
+        );
       else if (sub.is_current && sub.status === 'active' && !sub.in_grace)
-        this.error.set($localize`:@@cobro.culqi.esta-suscripcion-ya-esta-pagada:Esta suscripción ya está pagada.`);
+        this.error.set(
+          $localize`:@@cobro.culqi.esta-suscripcion-ya-esta-pagada:Esta suscripción ya está pagada.`,
+        );
     } catch (e) {
       this.error.set(ApiError.from(e).message);
     }

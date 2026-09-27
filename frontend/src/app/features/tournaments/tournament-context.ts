@@ -22,7 +22,9 @@ export class TournamentContext {
       this.tournament.set(await firstValueFrom(this.api.get<Tournament>(`/tournaments/${id}`)));
       this.error.set('');
     } catch (e: any) {
-      this.error.set(e?.message ?? $localize`:@@torneo.no-pudo-cargar-torneo:No se pudo cargar el torneo`);
+      this.error.set(
+        e?.message ?? $localize`:@@torneo.no-pudo-cargar-torneo:No se pudo cargar el torneo`,
+      );
     }
   }
 
@@ -32,7 +34,9 @@ export class TournamentContext {
 
   async loadPendingCount(): Promise<void> {
     try {
-      const r = await firstValueFrom(this.api.get<{ count: number }>(`/tournaments/${this.id()}/registration-requests/count`));
+      const r = await firstValueFrom(
+        this.api.get<{ count: number }>(`/tournaments/${this.id()}/registration-requests/count`),
+      );
       this.pendingCount.set(r.count);
     } catch {
       this.pendingCount.set(0); // sin permiso de organizador: no hay contador
@@ -41,7 +45,9 @@ export class TournamentContext {
 
   async loadCategories(): Promise<Category[]> {
     try {
-      const cats = await firstValueFrom(this.api.get<Category[]>(`/tournaments/${this.id()}/categories`));
+      const cats = await firstValueFrom(
+        this.api.get<Category[]>(`/tournaments/${this.id()}/categories`),
+      );
       this.categories.set(cats);
       return cats;
     } catch {

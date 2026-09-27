@@ -28,7 +28,10 @@ describe('plural', () => {
 describe('registrationSummary', () => {
   it('resume en una línea lo inscrito y lo que falló', () => {
     expect(
-      registrationSummary(['Kumite -45', 'Kata infantil'], [{ name: 'Kata 12–13 años', reason: 'ya inscrito' }]),
+      registrationSummary(
+        ['Kumite -45', 'Kata infantil'],
+        [{ name: 'Kata 12–13 años', reason: 'ya inscrito' }],
+      ),
     ).toBe('Inscrito en Kumite -45 y Kata infantil; falló Kata 12–13 años: ya inscrito');
     expect(registrationSummary(['Kumite -45'], [])).toBe('Inscrito en Kumite -45');
     expect(registrationSummary([], [{ name: 'Kata', reason: 'cerrada' }])).toBe(

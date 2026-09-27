@@ -35,7 +35,9 @@ import { RankingView } from './ranking-view';
             <span>{{ d.season.year }}</span>
             <span i18n="@@ranking.torneos">{{ d.season.tournaments?.length ?? 0 }} torneos</span>
             @if (d.season.computed_at) {
-              <span i18n="@@ranking.calculado" class="muted">Calculado {{ d.season.computed_at | lima }}</span>
+              <span i18n="@@ranking.calculado" class="muted"
+                >Calculado {{ d.season.computed_at | lima }}</span
+              >
             }
             @if (d.season.is_public) {
               <span i18n="@@ranking.publico" class="badge matcha">Público</span>
@@ -52,7 +54,12 @@ import { RankingView } from './ranking-view';
       </app-page-head>
 
       <div class="toolbar">
-        <select i18n-aria-label="@@ranking.temporada" aria-label="Temporada" [ngModel]="seasonId()" (ngModelChange)="pick($event)">
+        <select
+          i18n-aria-label="@@ranking.temporada"
+          aria-label="Temporada"
+          [ngModel]="seasonId()"
+          (ngModelChange)="pick($event)"
+        >
           @for (s of seasons(); track s.id) {
             <option [ngValue]="s.id">{{ s.name }} ({{ s.year }})</option>
           } @empty {
@@ -62,16 +69,34 @@ import { RankingView } from './ranking-view';
         <span class="grow"></span>
         @if (current(); as s) {
           @if (s.is_public) {
-            <button i18n="@@ranking.copiar-enlace-publico" i18n-title="@@ranking.enlace-publico-sin-inicio-sesion" class="btn" (click)="copyLink(s)" title="Enlace público, sin inicio de sesión">
+            <button
+              i18n="@@ranking.copiar-enlace-publico"
+              i18n-title="@@ranking.enlace-publico-sin-inicio-sesion"
+              class="btn"
+              (click)="copyLink(s)"
+              title="Enlace público, sin inicio de sesión"
+            >
               Copiar enlace público
             </button>
           }
           @if (staff()) {
-            <app-more i18n-label="@@ranking.mas-acciones-temporada" i18n-text="@@ranking.mas" text="Más" label="Más acciones de la temporada" [small]="false">
-              <button i18n="@@ranking.editar-temporada" class="menu-item" (click)="openForm(s)">Editar temporada…</button>
-              <button i18n="@@ranking.recalcular-ahora" class="menu-item" (click)="recompute(s)">Recalcular ahora</button>
+            <app-more
+              i18n-label="@@ranking.mas-acciones-temporada"
+              i18n-text="@@ranking.mas"
+              text="Más"
+              label="Más acciones de la temporada"
+              [small]="false"
+            >
+              <button i18n="@@ranking.editar-temporada" class="menu-item" (click)="openForm(s)"
+                >Editar temporada…</button
+              >
+              <button i18n="@@ranking.recalcular-ahora" class="menu-item" (click)="recompute(s)"
+                >Recalcular ahora</button
+              >
               <hr />
-              <button i18n="@@ranking.borrar-temporada" class="menu-item danger" (click)="remove(s)">Borrar temporada…</button>
+              <button i18n="@@ranking.borrar-temporada" class="menu-item danger" (click)="remove(s)"
+                >Borrar temporada…</button
+              >
             </app-more>
           }
         }
@@ -80,11 +105,15 @@ import { RankingView } from './ranking-view';
       @if (seasons().length === 0 && loaded()) {
         <div class="card empty">
           <p><strong i18n="@@ranking.no-hay-temporadas">No hay temporadas.</strong></p>
-          @if (staff()) {<ng-container i18n="@@ranking.crea-temporada-ejemplo-liga-lima">
-            Crea una temporada: por ejemplo «Liga Lima 2026» con todos los torneos del año.
-          </ng-container>} @else {<ng-container i18n="@@ranking.cuando-organizador-cree">
-            Cuando el organizador cree una temporada, el ranking aparecerá aquí.
-          </ng-container>}
+          @if (staff()) {
+            <ng-container i18n="@@ranking.crea-temporada-ejemplo-liga-lima">
+              Crea una temporada: por ejemplo «Liga Lima 2026» con todos los torneos del año.
+            </ng-container>
+          } @else {
+            <ng-container i18n="@@ranking.cuando-organizador-cree">
+              Cuando el organizador cree una temporada, el ranking aparecerá aquí.
+            </ng-container>
+          }
         </div>
       } @else {
         <app-ranking-view
@@ -110,17 +139,24 @@ import { RankingView } from './ranking-view';
           <div class="grid-2">
             <label class="field"
               ><span i18n="@@ranking.nombre">Nombre</span
-              ><input i18n-placeholder="@@ranking.liga-lima" name="n" [(ngModel)]="form.name" required placeholder="Liga Lima"
+              ><input
+                i18n-placeholder="@@ranking.liga-lima"
+                name="n"
+                [(ngModel)]="form.name"
+                required
+                placeholder="Liga Lima"
             /></label>
             <label class="field"
-              ><span i18n="@@ranking.ano">Año</span><input name="y" type="number" [(ngModel)]="form.year"
+              ><span i18n="@@ranking.ano">Año</span
+              ><input name="y" type="number" [(ngModel)]="form.year"
             /></label>
             <label class="field"
               ><span i18n="@@ranking.desde-opcional">Desde (opcional)</span
               ><input name="df" type="date" [(ngModel)]="form.date_from"
             /></label>
             <label class="field"
-              ><span i18n="@@ranking.hasta-opcional">Hasta (opcional)</span><input name="dt" type="date" [(ngModel)]="form.date_to"
+              ><span i18n="@@ranking.hasta-opcional">Hasta (opcional)</span
+              ><input name="dt" type="date" [(ngModel)]="form.date_to"
             /></label>
           </div>
           <fieldset>
@@ -142,9 +178,9 @@ import { RankingView } from './ranking-view';
                     {{ t.name }}
                     <span class="muted small"
                       >{{ t.start_date }}
-                      @if (t.is_test) {<ng-container i18n="@@ranking.prueba">
-                        · prueba
-                      </ng-container>}
+                      @if (t.is_test) {
+                        <ng-container i18n="@@ranking.prueba"> · prueba </ng-container>
+                      }
                     </span></label
                   >
                   <label class="field inline small"
@@ -181,7 +217,8 @@ import { RankingView } from './ranking-view';
               /></label>
             </div>
             <label class="field"
-              ><span i18n="@@ranking.minimo-competidores-para-puntuar">Mínimo de competidores para puntuar un podio sin combate</span
+              ><span i18n="@@ranking.minimo-competidores-para-puntuar"
+                >Mínimo de competidores para puntuar un podio sin combate</span
               ><input name="me" type="number" min="0" [(ngModel)]="form.min_entrants_walkover_gold"
             /></label>
             <p i18n="@@ranking.oro-sin-pelear-inscrito-unico" class="hint">
@@ -195,7 +232,12 @@ import { RankingView } from './ranking-view';
             abreviado)</label
           >
           <div class="form-actions">
-            <button i18n="@@ranking.guardar" class="btn primary" [disabled]="form.name.trim().length < 3">Guardar</button>
+            <button
+              i18n="@@ranking.guardar"
+              class="btn primary"
+              [disabled]="form.name.trim().length < 3"
+              >Guardar</button
+            >
           </div>
         </form>
       </app-modal>
@@ -243,7 +285,8 @@ import { RankingView } from './ranking-view';
 export class RankingPage {
   readonly txtEditarTemporada = $localize`:@@ranking.titulo-editar-temporada:Editar temporada`;
   readonly txtNuevaTemporada = $localize`:@@ranking.titulo-nueva-temporada:Nueva temporada`;
-  ariaMultiplicador = (torneo: string) => $localize`:@@ranking.multiplicador-de:Multiplicador de ${torneo}:torneo:`;
+  ariaMultiplicador = (torneo: string) =>
+    $localize`:@@ranking.multiplicador-de:Multiplicador de ${torneo}:torneo:`;
   private api = inject(ApiService);
   private auth = inject(AuthService);
   private mut = inject(MutationService);
@@ -338,7 +381,10 @@ export class RankingPage {
       ? await this.mut.patch<RankingSeason>(
           `/ranking/seasons/${s.id}`,
           { ...body, version: s.version },
-          { success: $localize`:@@ranking.temporada-guardada:Temporada guardada`, onConflict: () => this.loadSeasons() },
+          {
+            success: $localize`:@@ranking.temporada-guardada:Temporada guardada`,
+            onConflict: () => this.loadSeasons(),
+          },
         )
       : await this.mut.post<RankingSeason>('/ranking/seasons', body, {
           success: $localize`:@@ranking.temporada-creada:Temporada creada`,

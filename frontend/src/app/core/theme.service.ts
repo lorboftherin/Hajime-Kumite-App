@@ -21,7 +21,8 @@ function readMode(): ThemeMode {
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly mode = signal<ThemeMode>(readMode());
-  private media = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+  private media =
+    typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
   constructor() {
     this.apply();
@@ -53,7 +54,8 @@ export class ThemeService {
     else root.setAttribute('data-theme', m);
     // Hay una meta por esquema (media=…); con un tema elegido, ambas toman su color.
     document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      const scheme = m !== 'system' ? m : (meta.getAttribute('media') ?? '').includes('dark') ? 'dark' : 'light';
+      const scheme =
+        m !== 'system' ? m : (meta.getAttribute('media') ?? '').includes('dark') ? 'dark' : 'light';
       meta.setAttribute('content', BAR[scheme]);
     });
   }

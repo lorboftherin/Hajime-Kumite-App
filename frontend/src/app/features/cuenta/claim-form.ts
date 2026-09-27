@@ -35,7 +35,13 @@ import { MutationService } from '../../core/mutation.service';
       <form class="search" (ngSubmit)="search()">
         <label class="field grow">
           <span i18n="@@cuenta.reclamo.nombre-apellido">Nombre y apellido</span>
-          <input i18n-placeholder="@@cuenta.reclamo.ej-diego-ramirez" name="q" [(ngModel)]="q" placeholder="Ej.: Diego Ramírez" autocomplete="off" />
+          <input
+            i18n-placeholder="@@cuenta.reclamo.ej-diego-ramirez"
+            name="q"
+            [(ngModel)]="q"
+            placeholder="Ej.: Diego Ramírez"
+            autocomplete="off"
+          />
         </label>
         <label class="field">
           <span i18n="@@cuenta.reclamo.dojo">Dojo</span>
@@ -46,14 +52,23 @@ import { MutationService } from '../../core/mutation.service';
             }
           </select>
         </label>
-        <button i18n="@@cuenta.reclamo.buscar" class="btn" [disabled]="q().trim().length < 3 || busy()">Buscar</button>
+        <button
+          i18n="@@cuenta.reclamo.buscar"
+          class="btn"
+          [disabled]="q().trim().length < 3 || busy()"
+          >Buscar</button
+        >
       </form>
       @if (searchError()) {
         <div class="alert warn">{{ searchError() }}</div>
       }
 
       @if (results(); as rs) {
-        <ul i18n-aria-label="@@cuenta.reclamo.resultados" class="list-plain results" aria-label="Resultados">
+        <ul
+          i18n-aria-label="@@cuenta.reclamo.resultados"
+          class="list-plain results"
+          aria-label="Resultados"
+        >
           @for (r of rs; track r.public_id) {
             <li>
               <label class="result" [class.on]="selected()?.public_id === r.public_id">
@@ -69,18 +84,24 @@ import { MutationService } from '../../core/mutation.service';
                   <span class="small muted block">
                     @if (r.tournament_count) {
                       {{ r.tournaments.join(', ') }}
-                      @if (r.tournament_count > r.tournaments.length) {<ng-container i18n="@@cuenta.reclamo.mas">
-                        y {{ r.tournament_count - r.tournaments.length }} más
-                      </ng-container>}
-                    } @else {<ng-container i18n="@@cuenta.reclamo.sin-torneos-disputados">
-                      Sin torneos disputados
-                    </ng-container>}
+                      @if (r.tournament_count > r.tournaments.length) {
+                        <ng-container i18n="@@cuenta.reclamo.mas">
+                          y {{ r.tournament_count - r.tournaments.length }} más
+                        </ng-container>
+                      }
+                    } @else {
+                      <ng-container i18n="@@cuenta.reclamo.sin-torneos-disputados">
+                        Sin torneos disputados
+                      </ng-container>
+                    }
                   </span>
                 </span>
               </label>
             </li>
           } @empty {
-            <li i18n="@@cuenta.reclamo.sin-resultados-prueba-otro" class="muted small">Sin resultados. Prueba con otro nombre o sin elegir dojo.</li>
+            <li i18n="@@cuenta.reclamo.sin-resultados-prueba-otro" class="muted small"
+              >Sin resultados. Prueba con otro nombre o sin elegir dojo.</li
+            >
           }
         </ul>
       }
@@ -92,7 +113,9 @@ import { MutationService } from '../../core/mutation.service';
             >. Lo revisa su dojo o la organización.
           </p>
           <label class="field">
-            <span i18n="@@cuenta.reclamo.ultimos-4-digitos-documento">Últimos 4 dígitos del documento (opcional)</span>
+            <span i18n="@@cuenta.reclamo.ultimos-4-digitos-documento"
+              >Últimos 4 dígitos del documento (opcional)</span
+            >
             <input
               name="doc"
               [(ngModel)]="last4"
@@ -106,8 +129,11 @@ import { MutationService } from '../../core/mutation.service';
             >
           </label>
           <label class="field">
-            <span i18n="@@cuenta.reclamo.mensaje-para-quien-revisa">Mensaje para quien revisa (opcional)</span>
-            <textarea i18n-placeholder="@@cuenta.reclamo.ej-entrena-martes-sensei-luis"
+            <span i18n="@@cuenta.reclamo.mensaje-para-quien-revisa"
+              >Mensaje para quien revisa (opcional)</span
+            >
+            <textarea
+              i18n-placeholder="@@cuenta.reclamo.ej-entrena-martes-sensei-luis"
               name="ev"
               rows="2"
               [(ngModel)]="evidence"
@@ -119,14 +145,20 @@ import { MutationService } from '../../core/mutation.service';
             <label class="check">
               <input type="checkbox" name="consent" [(ngModel)]="consent" />
               <span i18n="@@cuenta.reclamo.como-autorizo-publicacion">
-                Como @if (relation() === 'parent') {padre o madre} @else {apoderado}, autorizo la
-                publicación de sus resultados deportivos y el uso de sus datos en estadísticas de
-                Hajime, como se explica en Privacidad.
+                Como
+                @if (relation() === 'parent') {
+                  padre o madre
+                } @else {
+                  apoderado
+                }
+                , autorizo la publicación de sus resultados deportivos y el uso de sus datos en
+                estadísticas de Hajime, como se explica en Privacidad.
               </span>
             </label>
           }
           <div class="form-actions">
-            <button i18n="@@cuenta.reclamo.enviar-solicitud"
+            <button
+              i18n="@@cuenta.reclamo.enviar-solicitud"
               class="btn primary"
               [disabled]="
                 busy() ||

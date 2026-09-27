@@ -37,7 +37,14 @@ function comparar(fuente, codigo) {
   try {
     t = leer(ruta).translations ?? {};
   } catch (e) {
-    return { faltan: Object.keys(fuente), sobran: [], vacias: [], marcas: [], iguales: 0, error: String(e) };
+    return {
+      faltan: Object.keys(fuente),
+      sobran: [],
+      vacias: [],
+      marcas: [],
+      iguales: 0,
+      error: String(e),
+    };
   }
   const faltan = Object.keys(fuente).filter((id) => !(id in t));
   const sobran = Object.keys(t).filter((id) => !(id in fuente));
@@ -61,7 +68,9 @@ function resumen(podar) {
   console.log(`Fuente (es-PE): ${Object.keys(fuente).length} textos en src/locale/messages.json`);
   for (const codigo of IDIOMAS) {
     const r = comparar(fuente, codigo);
-    console.log(`\n${codigo}: faltan ${r.faltan.length}, sobran ${r.sobran.length}, iguales al español ${r.iguales}`);
+    console.log(
+      `\n${codigo}: faltan ${r.faltan.length}, sobran ${r.sobran.length}, iguales al español ${r.iguales}`,
+    );
     lista('Faltan', r.faltan);
     lista('Sobran (IDs que ya no existen)', r.sobran);
     lista('Marcadores distintos del original', r.marcas);
@@ -75,8 +84,13 @@ function resumen(podar) {
 }
 
 function escribir(codigo, archivo) {
-  const ordenado = Object.fromEntries(Object.entries(archivo.translations).sort(([a], [b]) => a.localeCompare(b)));
-  writeFileSync(archivoIdioma(codigo), JSON.stringify({ locale: archivo.locale ?? codigo, translations: ordenado }, null, 2) + '\n');
+  const ordenado = Object.fromEntries(
+    Object.entries(archivo.translations).sort(([a], [b]) => a.localeCompare(b)),
+  );
+  writeFileSync(
+    archivoIdioma(codigo),
+    JSON.stringify({ locale: archivo.locale ?? codigo, translations: ordenado }, null, 2) + '\n',
+  );
 }
 
 function revisar(extraer) {
@@ -85,7 +99,10 @@ function revisar(extraer) {
   if (extraer) {
     const tmp = mkdtempSync(join(tmpdir(), 'hajime-i18n-'));
     try {
-      execFileSync('npx', ['ng', 'extract-i18n', '--output-path', tmp], { cwd: RAIZ, stdio: ['ignore', 'ignore', 'inherit'] });
+      execFileSync('npx', ['ng', 'extract-i18n', '--output-path', tmp], {
+        cwd: RAIZ,
+        stdio: ['ignore', 'ignore', 'inherit'],
+      });
       const nueva = leer(join(tmp, 'messages.json')).translations;
       const cambios = [
         ...Object.keys(nueva).filter((id) => fuente[id] !== nueva[id]),
@@ -93,7 +110,9 @@ function revisar(extraer) {
       ];
       if (cambios.length) {
         errores++;
-        console.log('src/locale/messages.json no está al día con el código: corre `npm run i18n:extract`.');
+        console.log(
+          'src/locale/messages.json no está al día con el código: corre `npm run i18n:extract`.',
+        );
         lista('IDs nuevos, cambiados o borrados', cambios);
       }
     } finally {
@@ -116,7 +135,9 @@ function revisar(extraer) {
     }
   }
   if (errores) {
-    console.log('\nFaltan traducciones o no coinciden con los textos en español (docs/idiomas.md).');
+    console.log(
+      '\nFaltan traducciones o no coinciden con los textos en español (docs/idiomas.md).',
+    );
     process.exit(1);
   }
 }

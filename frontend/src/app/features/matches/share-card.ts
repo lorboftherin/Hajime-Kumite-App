@@ -14,7 +14,10 @@ export async function shareMatchCard(d: MatchSummary, resultText: string): Promi
   if (!g) throw new Error('canvas');
   const display = "'Shippori Mincho B1', serif";
   const ui = "'Zen Kaku Gothic New', system-ui, sans-serif";
-  await Promise.all([document.fonts.load(`700 64px ${display}`), document.fonts.load(`700 32px ${ui}`)]).catch(() => undefined);
+  await Promise.all([
+    document.fonts.load(`700 64px ${display}`),
+    document.fonts.load(`700 32px ${ui}`),
+  ]).catch(() => undefined);
 
   // Papel y marco
   g.fillStyle = '#F5F0E6';
@@ -88,9 +91,15 @@ export async function shareMatchCard(d: MatchSummary, resultText: string): Promi
   g.textAlign = 'center';
   g.font = `700 28px ${display}`;
   g.fillStyle = '#8A8377';
-  g.fillText($localize`:@@combate.compartir.hajime-torneos-karate:Hajime · Torneos de karate`, S / 2, 1010);
+  g.fillText(
+    $localize`:@@combate.compartir.hajime-torneos-karate:Hajime · Torneos de karate`,
+    S / 2,
+    1010,
+  );
 
-  const blob: Blob = await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'));
+  const blob: Blob = await new Promise((res, rej) =>
+    c.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'),
+  );
   const file = new File([blob], `hajime-${d.match.code}.png`, { type: 'image/png' });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] })) {
@@ -131,7 +140,14 @@ function fit(g: CanvasRenderingContext2D, text: string, max: number): string {
   return t + '…';
 }
 
-function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundRect(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
   g.beginPath();
   g.moveTo(x + r, y);
   g.arcTo(x + w, y, x + w, y + h, r);

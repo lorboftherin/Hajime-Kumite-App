@@ -118,7 +118,16 @@ function buzz(pattern: number | number[]): void {
 
 @Component({
   selector: 'app-mesa',
-  imports: [FormsModule, RouterLink, LabelPipe, TeamMatchPanel, FocusTrap, KataMatchScores, InfractionSheet, HanteiSheet],
+  imports: [
+    FormsModule,
+    RouterLink,
+    LabelPipe,
+    TeamMatchPanel,
+    FocusTrap,
+    KataMatchScores,
+    InfractionSheet,
+    HanteiSheet,
+  ],
   templateUrl: './mesa.html',
   styleUrls: [
     './mesa.scss',
@@ -140,13 +149,20 @@ export class MesaPage {
   readonly txtNadaDeshacer = $localize`:@@mesa.nada-deshacer:Nada que deshacer`;
   readonly txtCorregirResultado = $localize`:@@mesa.corregir-resultado:Corregir resultado`;
   readonly txtConfirmarGanador = $localize`:@@mesa.confirmar-ganador:Confirmar ganador`;
-  ariaMasAcciones = (c: 'aka' | 'ao') => $localize`:@@mesa.mas-acciones-para:Más acciones para ${c.toUpperCase()}:color:`;
-  ariaPuntaje = (c: string, v: number) => $localize`:@@mesa.puntaje-color:Puntaje ${c}:color:: ${v}:puntaje:`;
-  ariaFaltasC2 = (c: string) => $localize`:@@mesa.faltas-categoria-2:Faltas de categoría 2 de ${c.toUpperCase()}:color:`;
-  ariaSanciones = (c: string) => $localize`:@@mesa.sanciones-de:Sanciones de ${c.toUpperCase()}:color:`;
-  tituloAplicar = (sancion: string) => $localize`:@@mesa.aplicar-sancion:Aplicar ${sancion}:sancion:`;
-  ariaBanderas = (c: string, v: number) => $localize`:@@mesa.banderas-color:Banderas ${c}:color:: ${v}:votos:`;
-  ariaBanderasJueces = (n: number) => $localize`:@@mesa.banderas-jueces:Banderas de ${n}:jueces: jueces`;
+  ariaMasAcciones = (c: 'aka' | 'ao') =>
+    $localize`:@@mesa.mas-acciones-para:Más acciones para ${c.toUpperCase()}:color:`;
+  ariaPuntaje = (c: string, v: number) =>
+    $localize`:@@mesa.puntaje-color:Puntaje ${c}:color:: ${v}:puntaje:`;
+  ariaFaltasC2 = (c: string) =>
+    $localize`:@@mesa.faltas-categoria-2:Faltas de categoría 2 de ${c.toUpperCase()}:color:`;
+  ariaSanciones = (c: string) =>
+    $localize`:@@mesa.sanciones-de:Sanciones de ${c.toUpperCase()}:color:`;
+  tituloAplicar = (sancion: string) =>
+    $localize`:@@mesa.aplicar-sancion:Aplicar ${sancion}:sancion:`;
+  ariaBanderas = (c: string, v: number) =>
+    $localize`:@@mesa.banderas-color:Banderas ${c}:color:: ${v}:votos:`;
+  ariaBanderasJueces = (n: number) =>
+    $localize`:@@mesa.banderas-jueces:Banderas de ${n}:jueces: jueces`;
   ariaQuienJuez = (n: number) => $localize`:@@mesa.quien-juez:Quién es el juez ${n}:juez:`;
 
   private api = inject(ApiService);
@@ -237,13 +253,17 @@ export class MesaPage {
   readonly ownerText = computed(() => {
     const o = this.owner();
     if (!o) return $localize`:@@mesa.otra-tablet:otra tablet`;
-    return o.same_user ? $localize`:@@mesa.otra-tablet-usuario:otra tablet con tu usuario` : $localize`:@@mesa.tablet:la tablet de ${o.user}:user:`;
+    return o.same_user
+      ? $localize`:@@mesa.otra-tablet-usuario:otra tablet con tu usuario`
+      : $localize`:@@mesa.tablet:la tablet de ${o.user}:user:`;
   });
   readonly othersText = computed(() => {
     const o = this.others();
     if (!o.length || this.readOnly()) return '';
     const names = joinList([
-      ...new Set(o.map((x) => (x.same_user ? $localize`:@@mesa.otra-sesion-tuya:otra sesión tuya` : x.user))),
+      ...new Set(
+        o.map((x) => (x.same_user ? $localize`:@@mesa.otra-sesion-tuya:otra sesión tuya` : x.user)),
+      ),
     ]);
     return $localize`:@@mesa.este-combate-tambien-esta:Este combate también está abierto en: ${names}:names:. Esta tablet lleva la mesa; la otra solo ve el marcador.`;
   });
@@ -350,8 +370,10 @@ export class MesaPage {
     if (!s) return '';
     if (s.winner)
       return $localize`:@@mesa.sugerencia-gana:Sugerencia: gana ${s.winner === 'aka' ? 'AKA' : 'AO'}:color: por ${METHOD_LABEL[s.method ?? ''] ?? s.method}:metodo:`;
-    if (s.needs === 'hantei') return $localize`:@@mesa.empate-necesita-hantei-decision:Empate: se necesita hantei (decisión de jueces)`;
-    if (s.needs === 'golden_point') return $localize`:@@mesa.empate-punto-oro-senshu:Empate: punto de oro (senshu)`;
+    if (s.needs === 'hantei')
+      return $localize`:@@mesa.empate-necesita-hantei-decision:Empate: se necesita hantei (decisión de jueces)`;
+    if (s.needs === 'golden_point')
+      return $localize`:@@mesa.empate-punto-oro-senshu:Empate: punto de oro (senshu)`;
     return s.reason ?? '';
   });
 
@@ -429,7 +451,9 @@ export class MesaPage {
       case 'over':
         return $localize`:@@mesa.tiempo:¡Tiempo!`;
       case 'running':
-        return this.sb()?.golden_point ? $localize`:@@mesa.punto-oro-2:Punto de oro` : $localize`:@@mesa.juego:En juego`;
+        return this.sb()?.golden_point
+          ? $localize`:@@mesa.punto-oro-2:Punto de oro`
+          : $localize`:@@mesa.juego:En juego`;
       case 'paused':
         return 'Yame';
       default:
@@ -463,8 +487,16 @@ export class MesaPage {
     const { aka, ao } = this.voteCount();
     const missing = this.votes().filter((v) => !v).length;
     const majority = this.majority();
-    if (aka >= majority) return { tone: 'aka', text: $localize`:@@mesa.gana-aka-banderas:Gana AKA · ${aka}:aka: de ${n}:n: banderas` };
-    if (ao >= majority) return { tone: 'ao', text: $localize`:@@mesa.gana-ao-banderas:Gana AO · ${ao}:ao: de ${n}:n: banderas` };
+    if (aka >= majority)
+      return {
+        tone: 'aka',
+        text: $localize`:@@mesa.gana-aka-banderas:Gana AKA · ${aka}:aka: de ${n}:n: banderas`,
+      };
+    if (ao >= majority)
+      return {
+        tone: 'ao',
+        text: $localize`:@@mesa.gana-ao-banderas:Gana AO · ${ao}:ao: de ${n}:n: banderas`,
+      };
     if (missing)
       return {
         tone: 'wait',
@@ -473,7 +505,10 @@ export class MesaPage {
             ? $localize`:@@mesa.falta-1-voto:Falta 1 voto · sin mayoría todavía`
             : $localize`:@@mesa.faltan-votos:Faltan ${missing}:faltan: votos · sin mayoría todavía`,
       };
-    return { tone: 'tie', text: $localize`:@@mesa.sin-mayoria-decide-juez:Sin mayoría: decide el juez principal` };
+    return {
+      tone: 'tie',
+      text: $localize`:@@mesa.sin-mayoria-decide-juez:Sin mayoría: decide el juez principal`,
+    };
   });
 
   constructor() {
@@ -814,14 +849,19 @@ export class MesaPage {
     this.primary.set(r.primary);
     this.owner.set(r.primary ? null : (r.owner ?? null));
     if (!was && r.primary) {
-      this.toast.show($localize`:@@mesa.esta-tablet-vuelve-llevar-mesa:Esta tablet vuelve a llevar la mesa`);
+      this.toast.show(
+        $localize`:@@mesa.esta-tablet-vuelve-llevar-mesa:Esta tablet vuelve a llevar la mesa`,
+      );
       this.flush();
     }
   }
 
   /** Otra tablet lleva la mesa: esta pasa a solo lectura; la cola se conserva. */
   private toReadOnly(): void {
-    if (this.primary()) this.toast.warn($localize`:@@mesa.otra-tablet-tomo-mesa-esta-queda:Otra tablet tomó la mesa: esta queda en solo lectura.`);
+    if (this.primary())
+      this.toast.warn(
+        $localize`:@@mesa.otra-tablet-tomo-mesa-esta-queda:Otra tablet tomó la mesa: esta queda en solo lectura.`,
+      );
     this.primary.set(false);
     this.moreOpen.set(null);
     this.heartbeat();
@@ -979,7 +1019,10 @@ export class MesaPage {
           const sb = finish ? (res as FinishOut).scoreboard : (res as Scoreboard);
           this.pending.update((q) => q.filter((x) => x !== p));
           this.offline.set(false);
-          if (finish) this.toast.ok($localize`:@@mesa.combate-cerrado-cierre-cola:Combate cerrado: el cierre en cola se envió`);
+          if (finish)
+            this.toast.ok(
+              $localize`:@@mesa.combate-cerrado-cierre-cola:Combate cerrado: el cierre en cola se envió`,
+            );
           if (p.matchId === this.id()) {
             this.setScoreboard(sb, seq);
             if (finish) this.unlocked.set(false);
@@ -1011,7 +1054,9 @@ export class MesaPage {
             if (this.destroyed) return;
             if (reason === null) {
               this.pending.update((q) => q.filter((x) => x !== p));
-              this.toast.show($localize`:@@mesa.cancelado:${EVENT_LABEL[p.body.type] ?? p.body.type}:evento:: cancelado`);
+              this.toast.show(
+                $localize`:@@mesa.cancelado:${EVENT_LABEL[p.body.type] ?? p.body.type}:evento:: cancelado`,
+              );
               continue;
             }
             p.body.override = { reason };
@@ -1103,7 +1148,9 @@ export class MesaPage {
       this.reloginPass.set('');
       this.session.resolved();
       this.authBlocked.set(false);
-      this.toast.ok($localize`:@@mesa.sesion-iniciada-reanuda-envio:Sesión iniciada: se reanuda el envío`);
+      this.toast.ok(
+        $localize`:@@mesa.sesion-iniciada-reanuda-envio:Sesión iniciada: se reanuda el envío`,
+      );
       this.heartbeat();
       if (this.pending().length) this.retryNow();
       else this.reload(true);
@@ -1255,7 +1302,8 @@ export class MesaPage {
       return $localize`:@@mesa.sugerencia-si-termino-tiempo:Sugerencia (si terminó el tiempo): gana ${t.winner === 'aka' ? 'AKA' : 'AO'}:color: por ${METHOD_LABEL[t.method ?? ''] ?? t.method}:metodo:`;
     if (t.needs === 'hantei')
       return $localize`:@@mesa.si-termino-tiempo-empate:Si terminó el tiempo: empate, se necesita hantei (decisión de jueces)`;
-    if (t.needs === 'golden_point') return $localize`:@@mesa.si-termino-tiempo-empate-punto:Si terminó el tiempo: empate, punto de oro`;
+    if (t.needs === 'golden_point')
+      return $localize`:@@mesa.si-termino-tiempo-empate-punto:Si terminó el tiempo: empate, punto de oro`;
     return t.reason ?? '';
   }
 
@@ -1297,7 +1345,9 @@ export class MesaPage {
   async confirmFinish(): Promise<void> {
     const f = this.finishForm;
     if (!f.winner) {
-      this.toast.warn($localize`:@@mesa.elige-ganador-antes-confirmar:Elige el ganador antes de confirmar.`);
+      this.toast.warn(
+        $localize`:@@mesa.elige-ganador-antes-confirmar:Elige el ganador antes de confirmar.`,
+      );
       return;
     }
     const data: FinishData = {
@@ -1404,12 +1454,16 @@ export class MesaPage {
     if (!res) return;
     if (res.needs_head_judge) {
       this.needsHead.set(true);
-      this.toast.warn($localize`:@@mesa.empate-banderas-decide-juez:Empate de banderas: decide el juez principal.`);
+      this.toast.warn(
+        $localize`:@@mesa.empate-banderas-decide-juez:Empate de banderas: decide el juez principal.`,
+      );
       return;
     }
     this.needsHead.set(false);
     this.flagsId = newId(); // decisión registrada: la próxima es otro evento
-    this.toast.ok($localize`:@@mesa.gana-banderas:Gana ${res.winner === 'aka' ? 'AKA' : 'AO'}:color: por banderas`);
+    this.toast.ok(
+      $localize`:@@mesa.gana-banderas:Gana ${res.winner === 'aka' ? 'AKA' : 'AO'}:color: por banderas`,
+    );
     await this.reload();
     if (res.affected?.length) {
       await this.dialog.alert(
@@ -1438,7 +1492,10 @@ export class MesaPage {
         q.queue.find((it) => it.match.id !== this.id() && it.match.status === 'in_progress') ??
         q.queue.find((it) => it.match.id !== this.id());
       if (!next) {
-        this.dialog.alert($localize`:@@mesa.cola-vacia:Cola vacía`, $localize`:@@mesa.no-hay-mas-combates-cola-este:No hay más combates en la cola de este tatami.`);
+        this.dialog.alert(
+          $localize`:@@mesa.cola-vacia:Cola vacía`,
+          $localize`:@@mesa.no-hay-mas-combates-cola-este:No hay más combates en la cola de este tatami.`,
+        );
         return;
       }
       this.router.navigate(['/mesa', next.match.id], { queryParams: { tatami: t } });

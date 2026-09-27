@@ -42,7 +42,11 @@ const STATUS: Record<string, string> = etiquetas(() => ({
   template: `
     <div class="page">
       <header class="top">
-        <a i18n-aria-label="@@publico.categoria.volver-torneo" class="brand" [routerLink]="back()" aria-label="Volver al torneo"
+        <a
+          i18n-aria-label="@@publico.categoria.volver-torneo"
+          class="brand"
+          [routerLink]="back()"
+          aria-label="Volver al torneo"
           ><app-enso class="mark" /><app-hajime-word class="word"
         /></a>
         <a class="btn-back" [routerLink]="back()">← {{ data()?.tournament?.name ?? txtTorneo }}</a>
@@ -52,7 +56,14 @@ const STATUS: Record<string, string> = etiquetas(() => ({
           <h1>{{ d.category.name }}</h1>
           <p>
             {{ status(d.category.status) }} ·
-            <ng-container i18n="@@publico.categoria.n-inscritos">{{ d.entrants.length }} @if (d.category.is_team) {equipos} @else {competidores}</ng-container>
+            <ng-container i18n="@@publico.categoria.n-inscritos"
+              >{{ d.entrants.length }}
+              @if (d.category.is_team) {
+                equipos
+              } @else {
+                competidores
+              }
+            </ng-container>
           </p>
         </section>
 
@@ -77,7 +88,10 @@ const STATUS: Record<string, string> = etiquetas(() => ({
         }
 
         @if (d.standings?.length) {
-          <h2 i18n="@@publico.categoria.puntuaciones-tabla" class="sec">{d.format, select, kata_rounds {Puntuaciones} other {Tabla}}</h2>
+          <h2 i18n="@@publico.categoria.puntuaciones-tabla" class="sec">{d.format, select,
+            kata_rounds {Puntuaciones}
+            other {Tabla}
+          }</h2>
           <table class="table">
             <thead>
               <tr>
@@ -121,7 +135,12 @@ const STATUS: Record<string, string> = etiquetas(() => ({
 
         @if (rounds().length) {
           <h2 i18n="@@publico.categoria.llave" class="sec">Llave</h2>
-          <div i18n-aria-label="@@publico.categoria.llave-rondas" class="bracket" role="list" aria-label="Llave por rondas">
+          <div
+            i18n-aria-label="@@publico.categoria.llave-rondas"
+            class="bracket"
+            role="list"
+            aria-label="Llave por rondas"
+          >
             @for (r of rounds(); track r.round) {
               <section class="round" role="listitem" [attr.aria-label]="r.label">
                 <h3>{{ r.label }}</h3>
@@ -138,7 +157,10 @@ const STATUS: Record<string, string> = etiquetas(() => ({
           </div>
         }
         @if (extra().length) {
-          <h2 i18n="@@publico.categoria.combates-otros" class="sec">{d.format, select, round_robin {Combates} other {Otros combates}}</h2>
+          <h2 i18n="@@publico.categoria.combates-otros" class="sec">{d.format, select,
+            round_robin {Combates}
+            other {Otros combates}
+          }</h2>
           <div class="extra">
             @for (m of extra(); track m.code) {
               <ng-container
@@ -156,10 +178,14 @@ const STATUS: Record<string, string> = etiquetas(() => ({
                 {{ e.name }} <span class="muted">{{ e.dojo }}</span>
               </li>
             } @empty {
-              <li i18n="@@publico.categoria.sin-inscritos-todavia" class="muted">Sin inscritos todavía.</li>
+              <li i18n="@@publico.categoria.sin-inscritos-todavia" class="muted"
+                >Sin inscritos todavía.</li
+              >
             }
           </ul>
-          <p i18n="@@publico.categoria.llave-publica-cuando" class="muted">La llave se publica cuando la organización la genera.</p>
+          <p i18n="@@publico.categoria.llave-publica-cuando" class="muted"
+            >La llave se publica cuando la organización la genera.</p
+          >
         }
       } @else if (error()) {
         <section class="hero">
@@ -268,7 +294,9 @@ export class PublicCategoryPage {
       const d = await firstValueFrom(this.api.get<PublicCategory>(this.apiPath()));
       this.data.set(d);
       this.error.set('');
-      this.title.setTitle($localize`:@@publico.categoria.hajime-vivo:${d.category.name}:name: · ${d.tournament.name}:name_2: · Hajime en vivo`);
+      this.title.setTitle(
+        $localize`:@@publico.categoria.hajime-vivo:${d.category.name}:name: · ${d.tournament.name}:name_2: · Hajime en vivo`,
+      );
       this.meta.updateTag(
         { property: 'og:title', content: `${d.category.name} · ${d.tournament.name}` },
         'property="og:title"',

@@ -65,7 +65,9 @@ export class AuthService {
   /** La contraseña la asignó el Admin: hay que cambiarla antes de seguir. */
   readonly mustChangePassword = computed(() => !!this.user()?.must_change_password);
   /** Solo Admin y organizadores ven documentos y fecha de nacimiento (el servidor los omite si no). */
-  readonly canViewDocuments = computed(() => !!this.user()?.is_admin || !!this.user()?.can_view_documents);
+  readonly canViewDocuments = computed(
+    () => !!this.user()?.is_admin || !!this.user()?.can_view_documents,
+  );
 
   /** Vencimiento del JWT (ms UNIX) o null si no se puede leer. */
   readonly expiresAt = computed(() => jwtExpiresAt(this.token()));
@@ -105,7 +107,9 @@ export class AuthService {
   }
 
   async login(username: string, password: string): Promise<User> {
-    const res = await firstValueFrom(this.api.post<TokenOut>('/auth/login', { username, password }));
+    const res = await firstValueFrom(
+      this.api.post<TokenOut>('/auth/login', { username, password }),
+    );
     this.setSession(res);
     return res.user;
   }
@@ -116,7 +120,10 @@ export class AuthService {
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<User> {
     const res = await firstValueFrom(
-      this.api.post<TokenOut>('/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
+      this.api.post<TokenOut>('/auth/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
     );
     this.setSession(res);
     return res.user;
@@ -173,7 +180,9 @@ export class AuthService {
     const used = read<string>(REFRESH_KEY) ?? this.refreshToken();
     if (!used) return 'invalid';
     try {
-      const res = await firstValueFrom(this.api.post<TokenOut>('/auth/refresh', { refresh_token: used }));
+      const res = await firstValueFrom(
+        this.api.post<TokenOut>('/auth/refresh', { refresh_token: used }),
+      );
       this.setSession(res);
       return 'ok';
     } catch (e) {
@@ -202,7 +211,10 @@ export class AuthService {
       if (u.must_change_password && !this.currentPath().startsWith(CHANGE_PASSWORD_PATH)) {
         const current = this.currentPath();
         this.router.navigate([CHANGE_PASSWORD_PATH], {
-          queryParams: current && current !== '/' && !current.startsWith('/login') ? { returnUrl: current } : {},
+          queryParams:
+            current && current !== '/' && !current.startsWith('/login')
+              ? { returnUrl: current }
+              : {},
         });
       }
     } catch {
@@ -227,7 +239,9 @@ export class AuthService {
   logout(redirect = true, notifyServer = true): void {
     const refreshToken = this.refreshToken();
     if (notifyServer && (this.token() || refreshToken)) {
-      this.api.post<void>('/auth/logout', { refresh_token: refreshToken }).subscribe({ error: () => {} });
+      this.api
+        .post<void>('/auth/logout', { refresh_token: refreshToken })
+        .subscribe({ error: () => {} });
     }
     remove(TOKEN_KEY);
     remove(REFRESH_KEY);
@@ -240,7 +254,8 @@ export class AuthService {
       // Al arrancar (401 en /auth/me) el router aún no navegó: se usa la URL real del navegador
       // para que una tablet con /mesa/123 en favoritos vuelva allí tras ingresar.
       const current = this.router.navigated ? this.router.url : this.currentLocation();
-      const returnUrl = !current || current === '/' || current.startsWith('/login') ? undefined : current;
+      const returnUrl =
+        !current || current === '/' || current.startsWith('/login') ? undefined : current;
       this.router.navigate(['/login'], { queryParams: returnUrl ? { returnUrl } : {} });
     }
   }

@@ -56,31 +56,70 @@ const FIELD_LABEL: Record<string, string> = etiquetas(() => ({
     <div class="toolbar">
       <div class="search">
         <app-icon name="search" />
-        <input i18n-aria-label="@@torneo.auditoria.filtrar-auditoria" i18n-placeholder="@@torneo.auditoria.filtrar-entidad-accion-usuario" placeholder="Filtrar por entidad, acción, usuario o motivo…" aria-label="Filtrar auditoría" [ngModel]="q()" (ngModelChange)="q.set($event)" />
+        <input
+          i18n-aria-label="@@torneo.auditoria.filtrar-auditoria"
+          i18n-placeholder="@@torneo.auditoria.filtrar-entidad-accion-usuario"
+          placeholder="Filtrar por entidad, acción, usuario o motivo…"
+          aria-label="Filtrar auditoría"
+          [ngModel]="q()"
+          (ngModelChange)="q.set($event)"
+        />
       </div>
-      <span i18n="@@torneo.auditoria.registros-horas-lima" class="count">{{ shown().length }} registros · horas de Lima</span>
-      <button i18n-aria-label="@@torneo.auditoria.actualizar" i18n-title="@@torneo.auditoria.actualizar" class="btn icon-only ghost" (click)="load()" title="Actualizar" aria-label="Actualizar"><app-icon name="refresh" /></button>
+      <span i18n="@@torneo.auditoria.registros-horas-lima" class="count"
+        >{{ shown().length }} registros · horas de Lima</span
+      >
+      <button
+        i18n-aria-label="@@torneo.auditoria.actualizar"
+        i18n-title="@@torneo.auditoria.actualizar"
+        class="btn icon-only ghost"
+        (click)="load()"
+        title="Actualizar"
+        aria-label="Actualizar"
+        ><app-icon name="refresh"
+      /></button>
     </div>
     <div class="table-wrap">
       <table class="table">
         <thead>
-          <tr><th i18n="@@torneo.auditoria.fecha-hora">Fecha y hora</th><th i18n="@@torneo.auditoria.usuario">Usuario</th><th i18n="@@torneo.auditoria.entidad">Entidad</th><th i18n="@@torneo.auditoria.accion">Acción</th><th i18n="@@torneo.auditoria.motivo">Motivo</th><th i18n="@@torneo.auditoria.cambios">Cambios</th></tr>
+          <tr
+            ><th i18n="@@torneo.auditoria.fecha-hora">Fecha y hora</th
+            ><th i18n="@@torneo.auditoria.usuario">Usuario</th
+            ><th i18n="@@torneo.auditoria.entidad">Entidad</th
+            ><th i18n="@@torneo.auditoria.accion">Acción</th
+            ><th i18n="@@torneo.auditoria.motivo">Motivo</th
+            ><th i18n="@@torneo.auditoria.cambios">Cambios</th></tr
+          >
         </thead>
         <tbody>
           @for (a of shown(); track a.id) {
             <tr>
               <td class="nowrap small num">{{ a.at | lima }}</td>
               <td>{{ a.user }}</td>
-              <td class="small nowrap">{{ entityLabel(a.entity) }} <span class="muted num">#{{ a.entity_id }}</span></td>
-              <td><span class="badge plain" [attr.title]="a.action">{{ actionLabel(a.action) }}</span></td>
+              <td class="small nowrap"
+                >{{ entityLabel(a.entity) }} <span class="muted num">#{{ a.entity_id }}</span></td
+              >
+              <td
+                ><span class="badge plain" [attr.title]="a.action">{{
+                  actionLabel(a.action)
+                }}</span></td
+              >
               <td class="small">{{ a.reason }}</td>
               <td>
                 @let ch = changes(a);
                 @if (ch.length) {
                   <details>
-                    <summary i18n="@@torneo.auditoria.n-cambios" class="small">{ch.length, plural, =1 {1 cambio} other {{{ ch.length }} cambios}}</summary>
+                    <summary i18n="@@torneo.auditoria.n-cambios" class="small">{ch.length, plural,
+                      =1 {1 cambio}
+                      other {{{ ch.length }} cambios}
+                    }</summary>
                     <table class="diff">
-                      <thead><tr><th i18n="@@torneo.auditoria.campo">Campo</th><th i18n="@@torneo.auditoria.antes">Antes</th><th i18n="@@torneo.auditoria.despues">Después</th></tr></thead>
+                      <thead
+                        ><tr
+                          ><th i18n="@@torneo.auditoria.campo">Campo</th
+                          ><th i18n="@@torneo.auditoria.antes">Antes</th
+                          ><th i18n="@@torneo.auditoria.despues">Después</th></tr
+                        ></thead
+                      >
                       <tbody>
                         @for (c of ch; track c.field) {
                           <tr>
@@ -96,7 +135,14 @@ const FIELD_LABEL: Record<string, string> = etiquetas(() => ({
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="empty"><p><strong i18n="@@torneo.auditoria.sin-registros">Sin registros.</strong></p><ng-container i18n="@@torneo.auditoria.cada-cambio-importante-quedara">Cada cambio importante quedará anotado aquí.</ng-container></td></tr>
+            <tr
+              ><td colspan="6" class="empty"
+                ><p><strong i18n="@@torneo.auditoria.sin-registros">Sin registros.</strong></p
+                ><ng-container i18n="@@torneo.auditoria.cada-cambio-importante-quedara"
+                  >Cada cambio importante quedará anotado aquí.</ng-container
+                ></td
+              ></tr
+            >
           }
         </tbody>
       </table>
@@ -143,9 +189,15 @@ export class AuditTab {
     const q = this.q().trim().toLowerCase();
     if (!q) return this.entries();
     return this.entries().filter((a) =>
-      [a.entity, a.action, this.entityLabel(a.entity), this.actionLabel(a.action), a.user ?? '', a.reason ?? '', a.entity_id].some(
-        (x) => String(x).toLowerCase().includes(q),
-      ),
+      [
+        a.entity,
+        a.action,
+        this.entityLabel(a.entity),
+        this.actionLabel(a.action),
+        a.user ?? '',
+        a.reason ?? '',
+        a.entity_id,
+      ].some((x) => String(x).toLowerCase().includes(q)),
     );
   });
 

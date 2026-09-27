@@ -25,10 +25,21 @@ function formato(tipo: 'dt' | 't' | 'd'): Intl.DateTimeFormat {
     const hora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false } as const;
     f =
       tipo === 'dt'
-        ? new Intl.DateTimeFormat(locale, { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric', ...hora })
+        ? new Intl.DateTimeFormat(locale, {
+            timeZone: TZ,
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            ...hora,
+          })
         : tipo === 't'
           ? new Intl.DateTimeFormat(locale, { timeZone: TZ, ...hora })
-          : new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
+          : new Intl.DateTimeFormat(locale, {
+              timeZone: 'UTC',
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            });
     formatos.set(clave, f);
   }
   return f;
@@ -126,8 +137,16 @@ export const REGISTRATION_STATUS: Record<string, string> = etiquetas(() => ({
   rejected: $localize`:@@estado-inscripcion.rechazada:Rechazada`,
 }));
 
-export const ORG_ROLE_LABEL: Record<string, string> = etiquetas(() => ({ owner: $localize`:@@rol-organizacion.dueno:Dueño`, admin: $localize`:@@rol-organizacion.administrador:Administrador`, member: $localize`:@@rol-organizacion.miembro:Miembro` }));
-export const ORG_KIND_LABEL: Record<string, string> = etiquetas(() => ({ league: $localize`:@@tipo-organizacion.liga:Liga`, dojo: 'Dojo', organizer: $localize`:@@tipo-organizacion.organizador:Organizador` }));
+export const ORG_ROLE_LABEL: Record<string, string> = etiquetas(() => ({
+  owner: $localize`:@@rol-organizacion.dueno:Dueño`,
+  admin: $localize`:@@rol-organizacion.administrador:Administrador`,
+  member: $localize`:@@rol-organizacion.miembro:Miembro`,
+}));
+export const ORG_KIND_LABEL: Record<string, string> = etiquetas(() => ({
+  league: $localize`:@@tipo-organizacion.liga:Liga`,
+  dojo: 'Dojo',
+  organizer: $localize`:@@tipo-organizacion.organizador:Organizador`,
+}));
 export const SUBSCRIPTION_STATUS: Record<string, string> = etiquetas(() => ({
   trial: $localize`:@@estado-suscripcion.prueba:Prueba`,
   active: $localize`:@@estado-suscripcion.activa:Activa`,
@@ -236,7 +255,11 @@ export const EVENT_LABEL: Record<string, string> = etiquetas(() => ({
 export const POINT_LABEL: Record<number, string> = { 1: 'Yuko', 2: 'Waza-ari', 3: 'Ippon' };
 
 export const MODALITY_LABEL: Record<string, string> = { kumite: 'Kumite', kata: 'Kata' };
-export const SEX_LABEL: Record<string, string> = etiquetas(() => ({ M: $localize`:@@sexo.masculino:Masculino`, F: $localize`:@@sexo.femenino:Femenino`, X: $localize`:@@sexo.mixto:Mixto` }));
+export const SEX_LABEL: Record<string, string> = etiquetas(() => ({
+  M: $localize`:@@sexo.masculino:Masculino`,
+  F: $localize`:@@sexo.femenino:Femenino`,
+  X: $localize`:@@sexo.mixto:Mixto`,
+}));
 
 export const GRADES: string[] = [
   ...Array.from({ length: 10 }, (_, i) => `${10 - i} kyu`),
@@ -297,8 +320,14 @@ export const MEDAL_ICON: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '�
 /** "🥇 Oro", "🥈 Plata", "🥉 Bronce", "5.º puesto" o "Sin puesto". */
 export function placeLabel(place: number | null | undefined): string {
   if (!place) return $localize`:@@formato.sin-puesto:Sin puesto`;
-  const name: Record<number, string> = { 1: $localize`:@@medalla.oro:Oro`, 2: $localize`:@@medalla.plata:Plata`, 3: $localize`:@@medalla.bronce:Bronce` };
-  return name[place] ? `${MEDAL_ICON[place]} ${name[place]}` : $localize`:@@formato.puesto-n:${place}:puesto:.º puesto`;
+  const name: Record<number, string> = {
+    1: $localize`:@@medalla.oro:Oro`,
+    2: $localize`:@@medalla.plata:Plata`,
+    3: $localize`:@@medalla.bronce:Bronce`,
+  };
+  return name[place]
+    ? `${MEDAL_ICON[place]} ${name[place]}`
+    : $localize`:@@formato.puesto-n:${place}:puesto:.º puesto`;
 }
 
 /** Marcador "propio – rival"; guion si el combate no tiene puntaje (p. ej. kiken). */

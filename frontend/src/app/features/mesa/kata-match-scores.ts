@@ -35,7 +35,8 @@ interface KataScoreOut {
           </header>
           <label class="kname">
             <span i18n="@@mesa.kata.kata">Kata</span>
-            <input i18n-placeholder="@@mesa.kata.nombre-kata"
+            <input
+              i18n-placeholder="@@mesa.kata.nombre-kata"
               [(ngModel)]="names[c]"
               [name]="'kn' + c"
               list="kata-catalog-mesa"
@@ -57,7 +58,8 @@ interface KataScoreOut {
                   [attr.aria-label]="ariaNotaJuez(j + 1)"
                 />
                 @if (split()) {
-                  <input i18n-placeholder="@@mesa.kata.atl"
+                  <input
+                    i18n-placeholder="@@mesa.kata.atl"
                     type="number"
                     step="0.1"
                     min="0"
@@ -87,24 +89,48 @@ interface KataScoreOut {
       <section class="kfoot">
         @if (needsHead()) {
           <div class="head">
-            <span i18n="@@mesa.kata.empate-todo-decide-juez">Empate en todo: decide el juez principal.</span>
-            <button i18n="@@mesa.kata.aka" class="flag aka" [class.on]="head() === 'aka'" (click)="head.set('aka')">
+            <span i18n="@@mesa.kata.empate-todo-decide-juez"
+              >Empate en todo: decide el juez principal.</span
+            >
+            <button
+              i18n="@@mesa.kata.aka"
+              class="flag aka"
+              [class.on]="head() === 'aka'"
+              (click)="head.set('aka')"
+            >
               AKA
             </button>
-            <button i18n="@@mesa.kata.ao" class="flag ao" [class.on]="head() === 'ao'" (click)="head.set('ao')">
+            <button
+              i18n="@@mesa.kata.ao"
+              class="flag ao"
+              [class.on]="head() === 'ao'"
+              (click)="head.set('ao')"
+            >
               AO
             </button>
           </div>
         }
         <p i18n="@@mesa.kata.jueces" class="hint">
-          {{ judges() }} jueces@if (split()) { · técnica y atlética (70 / 30)}@if (discard()) { · se descartan {{ discard() }} nota(s) por extremo}
+          {{ judges() }} jueces
+          @if (split()) {
+            · técnica y atlética (70 / 30)
+          }
+          @if (discard()) {
+            · se descartan {{ discard() }} nota(s) por extremo
+          }
         </p>
         <button
           class="go"
           [disabled]="busy() || locked() || (needsHead() && !head())"
           (click)="submit()"
         >
-          <ng-container i18n="@@mesa.kata.cerrado-registrar">@if (locked()) {Combate cerrado} @else {Registrar notas}</ng-container>
+          <ng-container i18n="@@mesa.kata.cerrado-registrar">
+            @if (locked()) {
+              Combate cerrado
+            } @else {
+              Registrar notas
+            }
+          </ng-container>
         </button>
       </section>
     </main>
@@ -217,7 +243,8 @@ interface KataScoreOut {
 })
 export class KataMatchScores implements OnInit {
   ariaNotaJuez = (juez: number) => $localize`:@@mesa.kata.nota-juez:Nota del juez ${juez}:juez:`;
-  ariaNotaAtletica = (juez: number) => $localize`:@@llave.nota-atletica-juez:Nota atlética del juez ${juez}:juez:`;
+  ariaNotaAtletica = (juez: number) =>
+    $localize`:@@llave.nota-atletica-juez:Nota atlética del juez ${juez}:juez:`;
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -265,7 +292,10 @@ export class KataMatchScores implements OnInit {
     if (!aka || !ao || (this.split() && (!akaAth || !aoAth))) {
       this.needsHead.set(false);
       this.result.set(null);
-      this.dialog.alert($localize`:@@mesa.kata.notas-incompletas:Notas incompletas`, $localize`:@@mesa.kata.ingresa-nota-cada-juez-decimal:Ingresa la nota de cada juez (un decimal).`);
+      this.dialog.alert(
+        $localize`:@@mesa.kata.notas-incompletas:Notas incompletas`,
+        $localize`:@@mesa.kata.ingresa-nota-cada-juez-decimal:Ingresa la nota de cada juez (un decimal).`,
+      );
       return;
     }
     this.busy.set(true);

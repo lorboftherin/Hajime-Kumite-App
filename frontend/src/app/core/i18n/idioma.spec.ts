@@ -20,7 +20,10 @@ function respuesta(cuerpo: unknown, status = 200): typeof fetch {
   return vi.fn(async () =>
     typeof cuerpo === 'string'
       ? new Response(cuerpo, { status, headers: { 'Content-Type': 'text/html' } })
-      : new Response(JSON.stringify(cuerpo), { status, headers: { 'Content-Type': 'application/json' } }),
+      : new Response(JSON.stringify(cuerpo), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
   ) as unknown as typeof fetch;
 }
 
@@ -53,7 +56,10 @@ describe('idioma: elección', () => {
     expect(idiomaGuardado(roto)).toBeNull();
     expect(guardarIdioma('en', roto)).toBe(false);
     const mapa = new Map<string, string>();
-    const bueno = { getItem: (k: string) => mapa.get(k) ?? null, setItem: (k: string, v: string) => void mapa.set(k, v) };
+    const bueno = {
+      getItem: (k: string) => mapa.get(k) ?? null,
+      setItem: (k: string, v: string) => void mapa.set(k, v),
+    };
     expect(guardarIdioma('pt-BR', bueno)).toBe(true);
     expect(mapa.get(CLAVE_IDIOMA)).toBe('pt-BR');
     expect(idiomaGuardado(bueno)).toBe('pt-BR');
@@ -79,7 +85,10 @@ describe('idioma: carga antes del arranque', () => {
   });
 
   it('carga las traducciones de /i18n/<idioma>.json y las aplica a $localize', async () => {
-    const f = respuesta({ locale: 'en', translations: { 'prueba.saludo': 'Hi {$nombre}, ready?' } });
+    const f = respuesta({
+      locale: 'en',
+      translations: { 'prueba.saludo': 'Hi {$nombre}, ready?' },
+    });
     const idioma = await cargarIdioma({ guardado: 'en', navegador: [], fetch: f });
     expect(f).toHaveBeenCalledWith('i18n/en.json', { cache: 'no-cache' });
     expect(idioma.codigo).toBe('en');
@@ -99,7 +108,12 @@ describe('idioma: carga antes del arranque', () => {
     ['el archivo no existe (404)', respuesta({ error: 'no' }, 404)],
     ['el servidor devuelve index.html en vez del JSON', respuesta('<!doctype html><html></html>')],
     ['el JSON no tiene traducciones', respuesta({ locale: 'en' })],
-    ['la red falla', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))) as unknown as typeof fetch],
+    [
+      'la red falla',
+      vi.fn(async () =>
+        Promise.reject(new TypeError('Failed to fetch')),
+      ) as unknown as typeof fetch,
+    ],
   ])('vuelve a español si %s', async (_caso, f) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const idioma = await cargarIdioma({ guardado: 'pt-BR', navegador: [], fetch: f });
@@ -155,11 +169,17 @@ describe('idioma: formatos por locale', () => {
   });
 
   it('portugués de Brasil: registra los datos de Angular (pipes y plurales de ICU)', async () => {
-    await cargarIdioma({ guardado: 'pt-BR', navegador: [], fetch: respuesta({ translations: {} }) });
+    await cargarIdioma({
+      guardado: 'pt-BR',
+      navegador: [],
+      fetch: respuesta({ translations: {} }),
+    });
     expect(idiomaActual().locale).toBe('pt-BR');
     expect(getLocaleId('pt-BR')).toBe('pt');
     expect(formatNumber(1234.5, 'pt-BR', '1.2-2')).toBe('1.234,50');
-    expect(formatDate('2026-10-01T12:00:00Z', 'mediumDate', 'pt-BR', 'UTC')).toBe('1 de out. de 2026');
+    expect(formatDate('2026-10-01T12:00:00Z', 'mediumDate', 'pt-BR', 'UTC')).toBe(
+      '1 de out. de 2026',
+    );
     expect(fmtDate('2026-10-01')).toBe('01 de out. de 2026');
     expect(fmtSoles(34.5)).toBe('PEN 34,50');
     expect(joinList(['a', 'b'])).toBe('a e b');

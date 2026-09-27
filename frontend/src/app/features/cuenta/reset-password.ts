@@ -17,20 +17,28 @@ import { AuthCard } from './auth-card';
   selector: 'app-reset-password',
   imports: [FormsModule, AuthCard, RouterLink],
   template: `
-    <app-auth-card i18n-lead="@@cuenta.restablecer.guardarla-cierran-todas-tus" i18n-heading="@@cuenta.restablecer.contrasena-nueva"
+    <app-auth-card
+      i18n-lead="@@cuenta.restablecer.guardarla-cierran-todas-tus"
+      i18n-heading="@@cuenta.restablecer.contrasena-nueva"
       id="rp"
       heading="Contraseña nueva"
       lead="Al guardarla se cierran todas tus sesiones abiertas."
     >
       @if (!token) {
-        <div i18n="@@cuenta.restablecer.enlace-esta-incompleto-abrelo" class="alert danger" role="alert">
+        <div
+          i18n="@@cuenta.restablecer.enlace-esta-incompleto-abrelo"
+          class="alert danger"
+          role="alert"
+        >
           El enlace está incompleto. Ábrelo tal como llegó en el correo o
           <a routerLink="/recuperar-clave">pide uno nuevo</a>.
         </div>
       } @else {
         <form class="stack" (ngSubmit)="submit()">
           <label class="field">
-            <span i18n="@@cuenta.restablecer.contrasena-nueva-min">Contraseña nueva (mín. {{ min }})</span>
+            <span i18n="@@cuenta.restablecer.contrasena-nueva-min"
+              >Contraseña nueva (mín. {{ min }})</span
+            >
             <input
               name="p1"
               type="password"
@@ -51,13 +59,22 @@ import { AuthCard } from './auth-card';
             />
           </label>
           @if (confirm() && confirm() !== password()) {
-            <p i18n="@@cuenta.restablecer.contrasenas-no-coinciden" class="small danger-text" role="status">Las contraseñas no coinciden.</p>
+            <p
+              i18n="@@cuenta.restablecer.contrasenas-no-coinciden"
+              class="small danger-text"
+              role="status"
+              >Las contraseñas no coinciden.</p
+            >
           }
           @if (error()) {
             <div class="alert danger" role="alert">
               {{ error() }}
               @if (expired()) {
-                <div><a i18n="@@cuenta.restablecer.pedir-enlace-nuevo" routerLink="/recuperar-clave">Pedir un enlace nuevo</a></div>
+                <div
+                  ><a i18n="@@cuenta.restablecer.pedir-enlace-nuevo" routerLink="/recuperar-clave"
+                    >Pedir un enlace nuevo</a
+                  ></div
+                >
               }
             </div>
           }
@@ -68,9 +85,11 @@ import { AuthCard } from './auth-card';
           >
             @if (busy()) {
               <span class="spinner"></span>
-            }<ng-container i18n="@@cuenta.restablecer.guardar-contrasena">
-            Guardar contraseña
-          </ng-container></button>
+            }
+            <ng-container i18n="@@cuenta.restablecer.guardar-contrasena">
+              Guardar contraseña
+            </ng-container></button
+          >
         </form>
       }
     </app-auth-card>
@@ -112,7 +131,9 @@ export class ResetPasswordPage {
           new_password: this.password(),
         }),
       );
-      this.toast.ok($localize`:@@cuenta.restablecer.contrasena-guardada-ingresa:Contraseña guardada. Ingresa con la nueva.`);
+      this.toast.ok(
+        $localize`:@@cuenta.restablecer.contrasena-guardada-ingresa:Contraseña guardada. Ingresa con la nueva.`,
+      );
       await this.router.navigate(['/login']);
     } catch (e) {
       const err = ApiError.from(e);

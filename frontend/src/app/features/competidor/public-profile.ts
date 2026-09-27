@@ -21,7 +21,11 @@ import { shareProfileCard } from '../../shared/profile-share-card';
   template: `
     <div class="page">
       <header class="top">
-        <a i18n-aria-label="@@perfil-publico.hajime" class="brand" routerLink="/login" aria-label="Hajime"
+        <a
+          i18n-aria-label="@@perfil-publico.hajime"
+          class="brand"
+          routerLink="/login"
+          aria-label="Hajime"
           ><app-enso class="mark" /><app-hajime-word class="word"
         /></a>
       </header>
@@ -48,10 +52,20 @@ import { shareProfileCard } from '../../shared/profile-share-card';
             </div>
             <div>
               <span class="figure">{{ p.tournament_count }}</span
-              ><span i18n="@@perfil-publico.torneo-torneos" class="small muted">{p.tournament_count, plural, =1 {Torneo} other {Torneos}}</span>
+              ><span
+                i18n="@@perfil-publico.torneo-torneos"
+                class="small muted"
+                >{p.tournament_count, plural, =1 {Torneo} other {Torneos}}</span
+              >
             </div>
           </div>
-          <button i18n="@@perfil-publico.compartir-tarjeta" class="btn" type="button" (click)="share(p)" [disabled]="sharing()">
+          <button
+            i18n="@@perfil-publico.compartir-tarjeta"
+            class="btn"
+            type="button"
+            (click)="share(p)"
+            [disabled]="sharing()"
+          >
             Compartir tarjeta
           </button>
         </section>
@@ -65,9 +79,11 @@ import { shareProfileCard } from '../../shared/profile-share-card';
                 <h3>{{ e.tournament_name }}</h3>
                 <div class="small muted">
                   {{ e.category_name }}
-                  @if (e.team_name) {<ng-container i18n="@@perfil-publico.equipo">
-                    · Equipo {{ e.team_name }}
-                  </ng-container>}
+                  @if (e.team_name) {
+                    <ng-container i18n="@@perfil-publico.equipo">
+                      · Equipo {{ e.team_name }}
+                    </ng-container>
+                  }
                   @if (e.dojo_name) {
                     · {{ e.dojo_name }}
                   }
@@ -77,18 +93,30 @@ import { shareProfileCard } from '../../shared/profile-share-card';
                 @if (e.place && e.place <= 3) {
                   <app-hanko [place]="e.place" [withLabel]="true" size="lg" />
                 } @else {
-                  <span class="muted small">@if (e.place) {<ng-container i18n="@@comun.puesto-n">{{ e.place }}.º puesto</ng-container>} @else {<ng-container i18n="@@perfil-publico.participo">Participó</ng-container>}</span>
+                  <span class="muted small">
+                    @if (e.place) {
+                      <ng-container i18n="@@comun.puesto-n">{{ e.place }}.º puesto</ng-container>
+                    } @else {
+                      <ng-container i18n="@@perfil-publico.participo">Participó</ng-container>
+                    }
+                  </span>
                 }
               </div>
             </article>
           } @empty {
-            <div class="card empty"><p i18n="@@perfil-publico.aun-no-tiene-torneos-oficiales">Aún no tiene torneos oficiales disputados.</p></div>
+            <div class="card empty"
+              ><p i18n="@@perfil-publico.aun-no-tiene-torneos-oficiales"
+                >Aún no tiene torneos oficiales disputados.</p
+              ></div
+            >
           }
         </section>
-        <footer class="foot small muted"><ng-container i18n="@@perfil-publico.perfil-basico-publico-historial">
-          Perfil básico público. El historial completo lo ven la propia persona, su padre, madre o
-          apoderado y su dojo.
-          <a routerLink="/privacidad">Privacidad</a></ng-container>
+        <footer class="foot small muted"
+          ><ng-container i18n="@@perfil-publico.perfil-basico-publico-historial">
+            Perfil básico público. El historial completo lo ven la propia persona, su padre, madre o
+            apoderado y su dojo.
+            <a routerLink="/privacidad">Privacidad</a></ng-container
+          >
           <div class="foot-lang"><app-language-select /></div>
         </footer>
       } @else if (error()) {
@@ -191,11 +219,16 @@ export class PublicProfilePage {
       firstValueFrom(this.api.get<PublicProfile>(`/public/persons/${encodeURIComponent(id)}`))
         .then((p) => {
           this.profile.set(p);
-          if (typeof document !== 'undefined') document.title = $localize`:@@perfil-publico.hajime-2:${p.name}:name: · Hajime`;
+          if (typeof document !== 'undefined')
+            document.title = $localize`:@@perfil-publico.hajime-2:${p.name}:name: · Hajime`;
         })
         .catch((e) => {
           const err = ApiError.from(e);
-          this.error.set(err.status === 404 ? $localize`:@@perfil-publico.este-perfil-no-existe:Este perfil no existe.` : err.fullMessage);
+          this.error.set(
+            err.status === 404
+              ? $localize`:@@perfil-publico.este-perfil-no-existe:Este perfil no existe.`
+              : err.fullMessage,
+          );
         });
     });
   }

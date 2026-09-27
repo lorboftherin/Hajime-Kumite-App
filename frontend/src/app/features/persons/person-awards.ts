@@ -40,15 +40,20 @@ import { DatePipe } from '../../shared/pipes';
               <div class="muted small">{{ r.group_label }}</div>
             </div>
             <div class="pts">
-              <strong>{{ r.points }}</strong> <span i18n="@@persona.premios.pts" class="muted small">pts</span>
+              <strong>{{ r.points }}</strong>
+              <span i18n="@@persona.premios.pts" class="muted small">pts</span>
             </div>
           </article>
         } @empty {
-          <p i18n="@@persona.premios.todavia-no-aparece-ningun" class="muted small">Todavía no aparece en ningún ranking.</p>
+          <p i18n="@@persona.premios.todavia-no-aparece-ningun" class="muted small"
+            >Todavía no aparece en ningún ranking.</p
+          >
         }
       </section>
       <section>
-        <h2 i18n="@@persona.premios.diplomas-certificados" class="section-title">Diplomas y certificados</h2>
+        <h2 i18n="@@persona.premios.diplomas-certificados" class="section-title"
+          >Diplomas y certificados</h2
+        >
         @for (t of certs(); track t.tournament_id) {
           <article class="card tour">
             <header>
@@ -59,7 +64,11 @@ import { DatePipe } from '../../shared/pipes';
                   <span i18n="@@persona.premios.prueba" class="badge yamabuki hollow">prueba</span>
                 }
               </div>
-              <button i18n="@@persona.premios.diplomas" class="btn sm" (click)="open(t.tournament_id)">
+              <button
+                i18n="@@persona.premios.diplomas"
+                class="btn sm"
+                (click)="open(t.tournament_id)"
+              >
                 <app-icon name="print" /> Diplomas
               </button>
             </header>
@@ -69,7 +78,13 @@ import { DatePipe } from '../../shared/pipes';
                   @if (i.place) {
                     <app-hanko [place]="i.place" />
                   } @else {
-                    <span i18n="@@persona.premios.p" i18n-title="@@persona.premios.participacion" class="part" title="Participación">P</span>
+                    <span
+                      i18n="@@persona.premios.p"
+                      i18n-title="@@persona.premios.participacion"
+                      class="part"
+                      title="Participación"
+                      >P</span
+                    >
                   }
                   <span>{{ i.category_name }}</span>
                 </li>
@@ -77,7 +92,9 @@ import { DatePipe } from '../../shared/pipes';
             </ul>
           </article>
         } @empty {
-          <p i18n="@@persona.premios.sin-diplomas-todavia-salen" class="muted small">Sin diplomas todavía: salen de las categorías finalizadas.</p>
+          <p i18n="@@persona.premios.sin-diplomas-todavia-salen" class="muted small"
+            >Sin diplomas todavía: salen de las categorías finalizadas.</p
+          >
         }
       </section>
     </div>

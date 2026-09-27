@@ -41,7 +41,9 @@ export function qrScanSupported(): boolean {
     @if (error()) {
       <p class="alert warn small">{{ error() }}</p>
     } @else {
-      <p i18n="@@acreditacion.qr.apunta-camara-qr-credencial" class="hint">Apunta la cámara al QR de la credencial.</p>
+      <p i18n="@@acreditacion.qr.apunta-camara-qr-credencial" class="hint"
+        >Apunta la cámara al QR de la credencial.</p
+      >
     }
   `,
   styles: `

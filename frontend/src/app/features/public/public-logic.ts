@@ -65,13 +65,18 @@ export function fightText(n: NextFight, timeZone?: string): string {
     const turn = n.turn
       ? $localize`:@@publico.ronda-turno:ronda ${n.kata_round}:ronda:, turno ${n.turn}:turno:`
       : $localize`:@@publico.ronda-kata:ronda ${n.kata_round}:ronda:`;
-    if (n.ahead === 0) return $localize`:@@publico.siguiente-salir:Es el siguiente en salir en ${where}:where: (${turn}:turn:)${eta}:eta:`;
-    if (n.ahead === 1) return $localize`:@@publico.sale-falta-1-turno:Sale en ${where}:where: (${turn}:turn:), falta 1 turno${eta}:eta:`;
+    if (n.ahead === 0)
+      return $localize`:@@publico.siguiente-salir:Es el siguiente en salir en ${where}:where: (${turn}:turn:)${eta}:eta:`;
+    if (n.ahead === 1)
+      return $localize`:@@publico.sale-falta-1-turno:Sale en ${where}:where: (${turn}:turn:), falta 1 turno${eta}:eta:`;
     return $localize`:@@publico.sale-faltan-turnos:Sale en ${where}:where: (${turn}:turn:), faltan ${n.ahead}:faltan: turnos${eta}:eta:`;
   }
-  if (n.status === 'in_progress') return $localize`:@@publico.peleando-ahora-combate:Peleando ahora en ${where}:where:, combate ${n.number}:number:`;
-  const rival = n.status === 'pending' ? $localize`:@@publico.rival-definir:, rival por definir` : '';
-  if (n.ahead === 0) return $localize`:@@publico.siguiente-combate:Es el siguiente en ${where}:where:, combate ${n.number}:number:${rival}:rival:${eta}:eta:`;
+  if (n.status === 'in_progress')
+    return $localize`:@@publico.peleando-ahora-combate:Peleando ahora en ${where}:where:, combate ${n.number}:number:`;
+  const rival =
+    n.status === 'pending' ? $localize`:@@publico.rival-definir:, rival por definir` : '';
+  if (n.ahead === 0)
+    return $localize`:@@publico.siguiente-combate:Es el siguiente en ${where}:where:, combate ${n.number}:number:${rival}:rival:${eta}:eta:`;
   if (n.ahead === 1)
     return $localize`:@@publico.pelea-falta-1-combate:Pelea en ${where}:where:, combate ${n.number}:number:, falta 1 combate${rival}:rival:${eta}:eta:`;
   return $localize`:@@publico.pelea-faltan-combates:Pelea en ${where}:where:, combate ${n.number}:number:, faltan ${n.ahead}:faltan: combates${rival}:rival:${eta}:eta:`;

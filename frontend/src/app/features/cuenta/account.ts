@@ -33,11 +33,18 @@ import { PageHead } from '../../shared/page-head';
             }
           </p>
           @if (!auth.user()?.email_verified_at) {
-            <div class="alert warn"><ng-container i18n="@@cuenta.confirma-correo-enlace-te">
-              Confirma tu correo con el enlace que te enviamos. Sin eso no puedes recuperar la
-              contraseña ni reclamar perfiles.
-              </ng-container><div>
-                <button i18n="@@cuenta.enviar-otro-enlace" class="btn sm" type="button" (click)="resend()" [disabled]="busy()">
+            <div class="alert warn"
+              ><ng-container i18n="@@cuenta.confirma-correo-enlace-te">
+                Confirma tu correo con el enlace que te enviamos. Sin eso no puedes recuperar la
+                contraseña ni reclamar perfiles. </ng-container
+              ><div>
+                <button
+                  i18n="@@cuenta.enviar-otro-enlace"
+                  class="btn sm"
+                  type="button"
+                  (click)="resend()"
+                  [disabled]="busy()"
+                >
                   Enviar otro enlace
                 </button>
               </div>
@@ -50,11 +57,19 @@ import { PageHead } from '../../shared/page-head';
         }
         <form class="stack" (ngSubmit)="saveEmail()">
           <label class="field">
-            <span i18n="@@cuenta.cambiar-correo-correo">@if (auth.user()?.email) {Cambiar correo} @else {Correo}</span>
+            <span i18n="@@cuenta.cambiar-correo-correo">
+              @if (auth.user()?.email) {
+                Cambiar correo
+              } @else {
+                Correo
+              }
+            </span>
             <input name="email" type="email" [(ngModel)]="email" autocomplete="email" />
           </label>
           <label class="field">
-            <span i18n="@@cuenta.contrasena-actual-para-confirmar">Tu contraseña actual (para confirmar)</span>
+            <span i18n="@@cuenta.contrasena-actual-para-confirmar"
+              >Tu contraseña actual (para confirmar)</span
+            >
             <input
               name="pw"
               type="password"
@@ -66,7 +81,8 @@ import { PageHead } from '../../shared/page-head';
             <div class="alert danger" role="alert">{{ error() }}</div>
           }
           <div class="form-actions">
-            <button i18n="@@cuenta.guardar-correo"
+            <button
+              i18n="@@cuenta.guardar-correo"
               class="btn primary"
               [disabled]="busy() || !email().includes('@') || !password()"
             >
@@ -79,14 +95,17 @@ import { PageHead } from '../../shared/page-head';
       <section class="card stack">
         <h2 i18n="@@cuenta.nombre-visible" class="h3">Nombre visible</h2>
         <form class="row" (ngSubmit)="saveName()">
-          <input i18n-aria-label="@@cuenta.nombre-visible-2"
+          <input
+            i18n-aria-label="@@cuenta.nombre-visible-2"
             class="grow"
             name="name"
             [(ngModel)]="name"
             autocomplete="name"
             aria-label="Nombre visible"
           />
-          <button i18n="@@cuenta.guardar" class="btn" [disabled]="busy() || !name().trim()">Guardar</button>
+          <button i18n="@@cuenta.guardar" class="btn" [disabled]="busy() || !name().trim()"
+            >Guardar</button
+          >
         </form>
       </section>
 
@@ -99,13 +118,21 @@ import { PageHead } from '../../shared/page-head';
       </section>
 
       <section class="card links">
-        <a i18n="@@cuenta.mis-perfiles-deportivos" routerLink="/mis-perfiles"><app-icon name="open" /> Mis perfiles deportivos</a>
-        <a i18n="@@cuenta.avisos-este-dispositivo" routerLink="/avisos"><app-icon name="bell" /> Avisos en este dispositivo</a>
-        <a i18n="@@cuenta.cambiar-contrasena" routerLink="/cambiar-clave"><app-icon name="key" /> Cambiar contraseña</a>
+        <a i18n="@@cuenta.mis-perfiles-deportivos" routerLink="/mis-perfiles"
+          ><app-icon name="open" /> Mis perfiles deportivos</a
+        >
+        <a i18n="@@cuenta.avisos-este-dispositivo" routerLink="/avisos"
+          ><app-icon name="bell" /> Avisos en este dispositivo</a
+        >
+        <a i18n="@@cuenta.cambiar-contrasena" routerLink="/cambiar-clave"
+          ><app-icon name="key" /> Cambiar contraseña</a
+        >
         <a i18n="@@cuenta.privacidad-datos-muestran-quien" routerLink="/privacidad"
           ><app-icon name="open" /> Privacidad: qué datos se muestran y a quién</a
         >
-        <a i18n="@@cuenta.borrar-mi-cuenta" routerLink="/mi-cuenta" class="danger"><app-icon name="close" /> Borrar mi cuenta</a>
+        <a i18n="@@cuenta.borrar-mi-cuenta" routerLink="/mi-cuenta" class="danger"
+          ><app-icon name="close" /> Borrar mi cuenta</a
+        >
       </section>
     </div>
   `,
@@ -174,7 +201,10 @@ export class AccountPage {
   }
 
   async saveName(): Promise<void> {
-    await this.patch({ display_name: this.name().trim() }, $localize`:@@cuenta.nombre-guardado:Nombre guardado`);
+    await this.patch(
+      { display_name: this.name().trim() },
+      $localize`:@@cuenta.nombre-guardado:Nombre guardado`,
+    );
   }
 
   async resend(): Promise<void> {

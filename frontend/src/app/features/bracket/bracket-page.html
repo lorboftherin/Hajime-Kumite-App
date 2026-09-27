@@ -1,7 +1,13 @@
 <div class="container">
   @if (category(); as c) {
     <app-page-head kanji="表" [title]="c.name">
-      <a i18n="@@llave.categorias-torneo" back class="back-link" [routerLink]="['/torneos', c.tournament_id, 'categorias']"><app-icon name="back" /> Categorías del torneo</a>
+      <a
+        i18n="@@llave.categorias-torneo"
+        back
+        class="back-link"
+        [routerLink]="['/torneos', c.tournament_id, 'categorias']"
+        ><app-icon name="back" /> Categorías del torneo</a
+      >
       <div meta class="meta-line">
         <span i18n="@@llave.llave" class="eyebrow">Llave</span>
         <app-status [status]="c.status" />
@@ -13,26 +19,50 @@
           @if (bracket()!.format === 'single_elimination') {
             <button class="btn" [class.primary]="swapMode()" (click)="toggleSwap()">
               @if (swapMode()) {
-                <ng-container i18n="@@llave.terminar-intercambio"><app-icon name="check" /> Terminar intercambio
-              </ng-container>} @else {
-                <ng-container i18n="@@llave.intercambiar"><app-icon name="swap" /> Intercambiar
-              </ng-container>}
+                <ng-container i18n="@@llave.terminar-intercambio"
+                  ><app-icon name="check" /> Terminar intercambio
+                </ng-container>
+              } @else {
+                <ng-container i18n="@@llave.intercambiar"
+                  ><app-icon name="swap" /> Intercambiar
+                </ng-container>
+              }
             </button>
           }
-          <button i18n="@@llave.pdf" class="btn" (click)="printPdf(false)"><app-icon name="print" /> PDF</button>
-          <app-more i18n-label="@@llave.mas-acciones-llave" i18n-text="@@llave.mas" text="Más" label="Más acciones de la llave" [small]="false">
-            <button i18n="@@llave.pdf-blanco" class="menu-item" (click)="printPdf(true)"><app-icon name="print" /> PDF en blanco</button>
-            <button i18n="@@llave.historial-versiones" class="menu-item" (click)="showVersions()"><app-icon name="history" /> Historial de versiones</button>
+          <button i18n="@@llave.pdf" class="btn" (click)="printPdf(false)"
+            ><app-icon name="print" /> PDF</button
+          >
+          <app-more
+            i18n-label="@@llave.mas-acciones-llave"
+            i18n-text="@@llave.mas"
+            text="Más"
+            label="Más acciones de la llave"
+            [small]="false"
+          >
+            <button i18n="@@llave.pdf-blanco" class="menu-item" (click)="printPdf(true)"
+              ><app-icon name="print" /> PDF en blanco</button
+            >
+            <button i18n="@@llave.historial-versiones" class="menu-item" (click)="showVersions()"
+              ><app-icon name="history" /> Historial de versiones</button
+            >
             @if (c.status !== 'finished') {
               <hr />
-              <button i18n="@@llave.anadir-llave" class="menu-item" (click)="openEntrants('add')"><app-icon name="plus" /> Añadir a la llave…</button>
-              <button i18n="@@llave.quitar-llave" class="menu-item" (click)="openEntrants('remove')">Quitar de la llave…</button>
+              <button i18n="@@llave.anadir-llave" class="menu-item" (click)="openEntrants('add')"
+                ><app-icon name="plus" /> Añadir a la llave…</button
+              >
+              <button i18n="@@llave.quitar-llave" class="menu-item" (click)="openEntrants('remove')"
+                >Quitar de la llave…</button
+              >
             }
             <hr />
-            <button i18n="@@llave.regenerar-llave" class="menu-item" (click)="openRegen()"><app-icon name="refresh" /> Regenerar llave…</button>
+            <button i18n="@@llave.regenerar-llave" class="menu-item" (click)="openRegen()"
+              ><app-icon name="refresh" /> Regenerar llave…</button
+            >
           </app-more>
         } @else if (noBracket()) {
-          <button i18n="@@llave.generar-llave" class="btn primary" (click)="openRegen()">Generar llave</button>
+          <button i18n="@@llave.generar-llave" class="btn primary" (click)="openRegen()"
+            >Generar llave</button
+          >
         }
       </div>
     </app-page-head>
@@ -41,25 +71,52 @@
   @if (loading() && !bracket()) {
     <div class="empty"><span class="spinner"></span></div>
   } @else if (noBracket()) {
-    <div class="card empty"><p><strong i18n="@@llave.esta-categoria-todavia-no-tiene">Esta categoría todavía no tiene llave.</strong></p><ng-container i18n="@@llave.generala-cuando-inscripciones">Genérala cuando las inscripciones estén completas.</ng-container></div>
+    <div class="card empty"
+      ><p
+        ><strong i18n="@@llave.esta-categoria-todavia-no-tiene"
+          >Esta categoría todavía no tiene llave.</strong
+        ></p
+      ><ng-container i18n="@@llave.generala-cuando-inscripciones"
+        >Genérala cuando las inscripciones estén completas.</ng-container
+      ></div
+    >
   }
 
   @if (bracket(); as b) {
     <div class="facts">
       <dl>
-        <div><dt i18n="@@llave.formato">Formato</dt><dd>{{ b.format | label: formatLabel }}</dd></div>
-        <div><dt i18n="@@llave.terceros">Terceros</dt><dd>{{ b.third_place_rule | label: thirdLabel }}</dd></div>
-        <div><dt i18n="@@llave.version">Versión</dt><dd i18n="@@llave.v" class="num">v{{ b.version_number }}</dd></div>
-        <div><dt i18n="@@llave.semilla">Semilla</dt><dd class="num">{{ b.seed }}</dd></div>
-        <div><dt i18n="@@llave.tamano">Tamaño</dt><dd class="num">{{ b.size }}</dd></div>
+        <div
+          ><dt i18n="@@llave.formato">Formato</dt><dd>{{ b.format | label: formatLabel }}</dd></div
+        >
+        <div
+          ><dt i18n="@@llave.terceros">Terceros</dt
+          ><dd>{{ b.third_place_rule | label: thirdLabel }}</dd></div
+        >
+        <div
+          ><dt i18n="@@llave.version">Versión</dt
+          ><dd i18n="@@llave.v" class="num">v{{ b.version_number }}</dd></div
+        >
+        <div
+          ><dt i18n="@@llave.semilla">Semilla</dt><dd class="num">{{ b.seed }}</dd></div
+        >
+        <div
+          ><dt i18n="@@llave.tamano">Tamaño</dt><dd class="num">{{ b.size }}</dd></div
+        >
         <div>
           <dt i18n="@@llave.mismo-dojo-1-ronda">Mismo dojo en 1.ª ronda</dt>
-          <dd class="num" [class.warn-text]="b.same_dojo_first_round > 0">{{ b.same_dojo_first_round }}</dd>
+          <dd class="num" [class.warn-text]="b.same_dojo_first_round > 0">{{
+            b.same_dojo_first_round
+          }}</dd>
         </div>
       </dl>
       @if (podium().length) {
         <section i18n-aria-label="@@llave.podio" class="podium" aria-label="Podio">
-          <div i18n="@@llave.podio-parcial" class="eyebrow">Podio@if (!b.podium.complete) { (parcial)}</div>
+          <div i18n="@@llave.podio-parcial" class="eyebrow"
+            >Podio
+            @if (!b.podium.complete) {
+              (parcial)
+            }
+          </div>
           <ol>
             @for (p of podium(); track p.registration_id) {
               <li>
@@ -76,10 +133,14 @@
     </div>
 
     @if (swapMode()) {
-      <div class="alert info no-print"><ng-container i18n="@@llave.modo-intercambio-toca-posicion">
-        Modo intercambio: toca la posición A y luego la posición B de la primera ronda.
-        </ng-container>@if (swapA() !== null) {
-          <strong i18n="@@llave.seleccionada-posicion">Seleccionada: posición {{ swapA()! + 1 }}</strong>
+      <div class="alert info no-print"
+        ><ng-container i18n="@@llave.modo-intercambio-toca-posicion">
+          Modo intercambio: toca la posición A y luego la posición B de la primera ronda.
+        </ng-container>
+        @if (swapA() !== null) {
+          <strong i18n="@@llave.seleccionada-posicion"
+            >Seleccionada: posición {{ swapA()! + 1 }}</strong
+          >
         }
       </div>
     }
@@ -94,14 +155,29 @@
             <div class="table-wrap">
               <table class="table">
                 <thead>
-                  <tr><th>#</th><th i18n="@@llave.competidor">Competidor</th><th i18n="@@llave.g" class="center">G</th><th i18n="@@llave.j" class="center">J</th><th i18n="@@llave.dif" class="center">Dif.</th></tr>
+                  <tr
+                    ><th>#</th><th i18n="@@llave.competidor">Competidor</th
+                    ><th i18n="@@llave.g" class="center">G</th
+                    ><th i18n="@@llave.j" class="center">J</th
+                    ><th i18n="@@llave.dif" class="center">Dif.</th></tr
+                  >
                 </thead>
                 <tbody>
                   @for (s of g.standings; track s['registration_id']) {
                     <tr>
-                      <td>{{ s['rank'] }} @if (s['tied']) {<span i18n="@@llave.empate" class="badge warn">empate</span>}</td>
-                      <td>{{ pname(s['registration_id']) }}<div class="muted small">{{ pdojo(s['registration_id']) }}</div></td>
-                      <td class="center"><strong>{{ s['wins'] }}</strong></td>
+                      <td
+                        >{{ s['rank'] }}
+                        @if (s['tied']) {
+                          <span i18n="@@llave.empate" class="badge warn">empate</span>
+                        }
+                      </td>
+                      <td
+                        >{{ pname(s['registration_id'])
+                        }}<div class="muted small">{{ pdojo(s['registration_id']) }}</div></td
+                      >
+                      <td class="center"
+                        ><strong>{{ s['wins'] }}</strong></td
+                      >
                       <td class="center">{{ s['played'] }}</td>
                       <td class="center">{{ s['points_for'] - s['points_against'] }}</td>
                     </tr>
@@ -111,7 +187,10 @@
             </div>
             <div class="extras">
               @for (m of g.matches; track m.id) {
-                <ng-container [ngTemplateOutlet]="matchTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                <ng-container
+                  [ngTemplateOutlet]="matchTpl"
+                  [ngTemplateOutletContext]="{ $implicit: m }"
+                />
               }
             </div>
           </section>
@@ -119,7 +198,9 @@
       </div>
       <h2 i18n="@@llave.fase-final" class="section-title mt">Fase final</h2>
       @if (!mainRounds()[0]?.matches?.[0]?.aka_registration_id) {
-        <p i18n="@@llave.cruces-a1-b2-b1-a2-arman" class="small muted">Los cruces (A1–B2, B1–A2…) se arman al terminar todos los grupos.</p>
+        <p i18n="@@llave.cruces-a1-b2-b1-a2-arman" class="small muted"
+          >Los cruces (A1–B2, B1–A2…) se arman al terminar todos los grupos.</p
+        >
       }
     }
 
@@ -133,7 +214,10 @@
               <div class="round-body">
                 @for (m of r.matches; track m.id) {
                   <div class="m-wrap">
-                    <ng-container [ngTemplateOutlet]="matchTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                    <ng-container
+                      [ngTemplateOutlet]="matchTpl"
+                      [ngTemplateOutletContext]="{ $implicit: m }"
+                    />
                   </div>
                 }
               </div>
@@ -148,7 +232,10 @@
           @for (m of extraMatches(); track m.id) {
             <div>
               <div class="small muted">{{ m.kind | label: kindLabel }}</div>
-              <ng-container [ngTemplateOutlet]="matchTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+              <ng-container
+                [ngTemplateOutlet]="matchTpl"
+                [ngTemplateOutletContext]="{ $implicit: m }"
+              />
             </div>
           }
         </div>
@@ -162,7 +249,10 @@
           <h3 i18n="@@llave.combates">Combates</h3>
           <div class="extras">
             @for (m of rrMatches(); track m.id) {
-              <ng-container [ngTemplateOutlet]="matchTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+              <ng-container
+                [ngTemplateOutlet]="matchTpl"
+                [ngTemplateOutletContext]="{ $implicit: m }"
+              />
             }
           </div>
         </div>
@@ -171,14 +261,30 @@
           <div class="table-wrap">
             <table class="table">
               <thead>
-                <tr><th>#</th><th i18n="@@llave.competidor">Competidor</th><th i18n="@@llave.g" class="center">G</th><th i18n="@@llave.j" class="center">J</th><th i18n="@@llave.pf" class="center">PF</th><th i18n="@@llave.pc" class="center">PC</th></tr>
+                <tr
+                  ><th>#</th><th i18n="@@llave.competidor">Competidor</th
+                  ><th i18n="@@llave.g" class="center">G</th
+                  ><th i18n="@@llave.j" class="center">J</th
+                  ><th i18n="@@llave.pf" class="center">PF</th
+                  ><th i18n="@@llave.pc" class="center">PC</th></tr
+                >
               </thead>
               <tbody>
                 @for (s of b.standings ?? []; track s['registration_id']) {
                   <tr>
-                    <td>{{ s['rank'] }} @if (s['tied']) {<span i18n="@@llave.empate" class="badge warn">empate</span>}</td>
-                    <td>{{ pname(s['registration_id']) }}<div class="muted small">{{ pdojo(s['registration_id']) }}</div></td>
-                    <td class="center"><strong>{{ s['wins'] }}</strong></td>
+                    <td
+                      >{{ s['rank'] }}
+                      @if (s['tied']) {
+                        <span i18n="@@llave.empate" class="badge warn">empate</span>
+                      }
+                    </td>
+                    <td
+                      >{{ pname(s['registration_id'])
+                      }}<div class="muted small">{{ pdojo(s['registration_id']) }}</div></td
+                    >
+                    <td class="center"
+                      ><strong>{{ s['wins'] }}</strong></td
+                    >
                     <td class="center">{{ s['played'] }}</td>
                     <td class="center">{{ s['points_for'] }}</td>
                     <td class="center">{{ s['points_against'] }}</td>
@@ -197,35 +303,54 @@
         @if (kr.total > 1) {
           <div class="alert info rounds-info">
             <strong i18n="@@llave.ronda">Ronda {{ kr.current }} de {{ kr.total }}</strong>
-            @if (kr.current < kr.total) {<ng-container i18n="@@llave.pasan-siguiente-ronda">
-              · pasan {{ kr.cuts[kr.current - 1] }} a la siguiente ronda
-            </ng-container>} @else {<ng-container i18n="@@llave.final">
-              · final
-            </ng-container>}
+            @if (kr.current < kr.total) {
+              <ng-container i18n="@@llave.pasan-siguiente-ronda">
+                · pasan {{ kr.cuts[kr.current - 1] }} a la siguiente ronda
+              </ng-container>
+            } @else {
+              <ng-container i18n="@@llave.final"> · final </ng-container>
+            }
             @if (kr.needs_review) {
-              <span i18n="@@llave.revisar-cambio-clasificacion" class="badge warn">revisar: cambió la clasificación de una ronda anterior</span>
+              <span i18n="@@llave.revisar-cambio-clasificacion" class="badge warn"
+                >revisar: cambió la clasificación de una ronda anterior</span
+              >
             }
           </div>
         }
         @for (r of previousRounds(); track r.round) {
           <details class="card tight prev-round">
-            <summary i18n="@@llave.ronda-clasificaron">Ronda {{ r.round }} · clasificaron {{ r.qualified.length }}</summary>
+            <summary i18n="@@llave.ronda-clasificaron"
+              >Ronda {{ r.round }} · clasificaron {{ r.qualified.length }}</summary
+            >
             <ol class="small">
               @for (s of r.standings; track s['registration_id']) {
                 <li [class.qualified]="r.qualified.includes(s['registration_id'])">
                   {{ pname(s['registration_id']) }} — {{ fmtScore(s['total']) }}
-                  @if (r.qualified.includes(s['registration_id'])) {<span i18n="@@llave.clasifico" class="badge ai">clasificó</span>}
+                  @if (r.qualified.includes(s['registration_id'])) {
+                    <span i18n="@@llave.clasifico" class="badge ai">clasificó</span>
+                  }
                 </li>
               }
             </ol>
           </details>
         }
       }
-      <h3 i18n="@@llave.orden-ejecucion-notas-jueces">Orden de ejecución y notas ({{ judges() }} jueces@if (kataCfg().split) {, técnico / atlético})</h3>
+      <h3 i18n="@@llave.orden-ejecucion-notas-jueces"
+        >Orden de ejecución y notas ({{ judges() }} jueces
+        @if (kataCfg().split) {
+          , técnico / atlético
+        }
+        )</h3
+      >
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr><th i18n="@@llave.orden">Orden</th><th i18n="@@llave.competidor">Competidor</th><th i18n="@@llave.kata">Kata</th><th i18n="@@llave.notas">Notas</th><th i18n="@@llave.total" class="center">Total</th><th i18n="@@llave.puesto" class="center">Puesto</th><th></th></tr>
+            <tr
+              ><th i18n="@@llave.orden">Orden</th><th i18n="@@llave.competidor">Competidor</th
+              ><th i18n="@@llave.kata">Kata</th><th i18n="@@llave.notas">Notas</th
+              ><th i18n="@@llave.total" class="center">Total</th
+              ><th i18n="@@llave.puesto" class="center">Puesto</th><th></th
+            ></tr>
             <!-- Orden de salida: se cambia con ↑ ↓ mientras nadie ejecutó en la ronda. -->
           </thead>
           <tbody>
@@ -233,18 +358,42 @@
               <tr>
                 <td class="nowrap">
                   {{ row['order'] }}
-                  @if (row['group_number']) {<span i18n="@@llave.g-2" class="badge plain">G{{ row['group_number'] }}</span>}
+                  @if (row['group_number']) {
+                    <span i18n="@@llave.g-2" class="badge plain">G{{ row['group_number'] }}</span>
+                  }
                   @if (!roundStarted()) {
                     <span class="order-btns no-print">
-                      <button i18n-aria-label="@@llave.subir-orden" class="btn sm ghost icon-only" [disabled]="i === 0" (click)="moveOrder(i, -1)" aria-label="Subir en el orden">↑</button>
-                      <button i18n-aria-label="@@llave.bajar-orden" class="btn sm ghost icon-only" [disabled]="l" (click)="moveOrder(i, 1)" aria-label="Bajar en el orden">↓</button>
+                      <button
+                        i18n-aria-label="@@llave.subir-orden"
+                        class="btn sm ghost icon-only"
+                        [disabled]="i === 0"
+                        (click)="moveOrder(i, -1)"
+                        aria-label="Subir en el orden"
+                        >↑</button
+                      >
+                      <button
+                        i18n-aria-label="@@llave.bajar-orden"
+                        class="btn sm ghost icon-only"
+                        [disabled]="l"
+                        (click)="moveOrder(i, 1)"
+                        aria-label="Bajar en el orden"
+                        >↓</button
+                      >
                     </span>
                   }
                 </td>
-                <td>{{ pname(row['registration_id']) }}<div class="muted small">{{ pdojo(row['registration_id']) }}</div></td>
+                <td
+                  >{{ pname(row['registration_id'])
+                  }}<div class="muted small">{{ pdojo(row['registration_id']) }}</div></td
+                >
                 @if (scoring() === row['registration_id']) {
                   <td>
-                    <input i18n-placeholder="@@llave.nombre-kata" [(ngModel)]="kataName" placeholder="Nombre del kata" list="kata-catalog" />
+                    <input
+                      i18n-placeholder="@@llave.nombre-kata"
+                      [(ngModel)]="kataName"
+                      placeholder="Nombre del kata"
+                      list="kata-catalog"
+                    />
                     <datalist id="kata-catalog">
                       @for (k of catalog(); track k) {
                         <option [value]="k"></option>
@@ -255,14 +404,38 @@
                     <div class="row">
                       @for (s of scoreInputs; track $index) {
                         <label class="field judge">
-                          <span i18n="@@llave.juez-tecnica">J{{ $index + 1 }}@if (kataCfg().split) { técnica}</span>
-                          <input type="number" step="0.1" min="0" max="10" [(ngModel)]="scoreInputs[$index]" />
+                          <span i18n="@@llave.juez-tecnica"
+                            >J{{ $index + 1 }}
+                            @if (kataCfg().split) {
+                              técnica
+                            }
+                          </span>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="10"
+                            [(ngModel)]="scoreInputs[$index]"
+                          />
                           @if (kataCfg().split) {
-                            <input i18n-placeholder="@@llave.atletica" type="number" step="0.1" min="0" max="10" [(ngModel)]="athleticInputs[$index]" [attr.aria-label]="ariaNotaAtletica($index + 1)" placeholder="Atlética" />
+                            <input
+                              i18n-placeholder="@@llave.atletica"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              [(ngModel)]="athleticInputs[$index]"
+                              [attr.aria-label]="ariaNotaAtletica($index + 1)"
+                              placeholder="Atlética"
+                            />
                           }
                           @if (judgeOptions(); as jo) {
                             @if (jo.assigned.length || jo.others.length) {
-                              <select class="jsel" [(ngModel)]="judgeInputs[$index]" [attr.aria-label]="ariaQuienJuez($index + 1)">
+                              <select
+                                class="jsel"
+                                [(ngModel)]="judgeInputs[$index]"
+                                [attr.aria-label]="ariaQuienJuez($index + 1)"
+                              >
                                 <option [ngValue]="null">—</option>
                                 @for (r of jo.assigned; track r.person_id) {
                                   <option [ngValue]="r.person_id">{{ r.name }}</option>
@@ -278,19 +451,54 @@
                     </div>
                   </td>
                   <td class="nowrap">
-                    <button i18n="@@llave.guardar" class="btn sm primary" (click)="saveScore(row)">Guardar</button>
-                    <button i18n-aria-label="@@llave.cancelar" class="btn sm ghost icon-only" (click)="scoring.set(null)" aria-label="Cancelar"><app-icon name="close" /></button>
+                    <button i18n="@@llave.guardar" class="btn sm primary" (click)="saveScore(row)"
+                      >Guardar</button
+                    >
+                    <button
+                      i18n-aria-label="@@llave.cancelar"
+                      class="btn sm ghost icon-only"
+                      (click)="scoring.set(null)"
+                      aria-label="Cancelar"
+                      ><app-icon name="close"
+                    /></button>
                   </td>
                 } @else {
                   <td>{{ row['kata_name'] }}</td>
                   <td class="mono small scores">
                     @for (sc of scoreCells(row['scores']); track $index; let l = $last) {
-                      <span class="sc" [class.discarded]="sc.discarded" [attr.title]="sc.discarded ? textoNotaDescartada : null">{{ sc.text }}</span>@if (!l) {<span class="sep" aria-hidden="true"> · </span>}
+                      <span
+                        class="sc"
+                        [class.discarded]="sc.discarded"
+                        [attr.title]="sc.discarded ? textoNotaDescartada : null"
+                        >{{ sc.text }}</span
+                      >
+                      @if (!l) {
+                        <span class="sep" aria-hidden="true"> · </span>
+                      }
                     }
                   </td>
-                  <td class="center"><strong class="num">{{ fmtScore(row['total']) }}</strong></td>
-                  <td class="center">{{ row['rank'] ?? '—' }} @if (row['tied']) {<span i18n="@@llave.empate" class="badge warn">empate</span>}</td>
-                  <td><button i18n="@@llave.corregir-puntuar" class="btn sm" (click)="startScore(row)">@if (row['scores']?.length) {Corregir} @else {Puntuar}</button></td>
+                  <td class="center"
+                    ><strong class="num">{{ fmtScore(row['total']) }}</strong></td
+                  >
+                  <td class="center"
+                    >{{ row['rank'] ?? '—' }}
+                    @if (row['tied']) {
+                      <span i18n="@@llave.empate" class="badge warn">empate</span>
+                    }
+                  </td>
+                  <td
+                    ><button
+                      i18n="@@llave.corregir-puntuar"
+                      class="btn sm"
+                      (click)="startScore(row)"
+                    >
+                      @if (row['scores']?.length) {
+                        Corregir
+                      } @else {
+                        Puntuar
+                      }
+                    </button></td
+                  >
                 }
               </tr>
             }
@@ -298,12 +506,20 @@
         </table>
       </div>
       @if (discards() > 0) {
-        <p i18n="@@llave.8-0-tachadas-notas-descartadas" class="small muted legend"><span class="sc discarded mono">8.0</span> tachadas: notas descartadas ({{ discards() }} más alta y {{ discards() }} más baja por ejecución)</p>
+        <p i18n="@@llave.8-0-tachadas-notas-descartadas" class="small muted legend"
+          ><span class="sc discarded mono">8.0</span> tachadas: notas descartadas ({{
+            discards()
+          }}
+          más alta y {{ discards() }} más baja por ejecución)</p
+        >
       }
       @if (tiedRows().length) {
         <div class="card mt">
           <h3 i18n="@@llave.desempate">Desempate</h3>
-          <p i18n="@@llave.hay-empates-sin-resolver-nueva" class="small muted">Hay empates sin resolver (nueva ejecución o decisión del juez principal). Ordena a los empatados y registra el motivo.</p>
+          <p i18n="@@llave.hay-empates-sin-resolver-nueva" class="small muted"
+            >Hay empates sin resolver (nueva ejecución o decisión del juez principal). Ordena a los
+            empatados y registra el motivo.</p
+          >
           <ol class="tie">
             @for (rid of tieOrder(); track rid; let i = $index; let l = $last) {
               <li>
@@ -314,8 +530,15 @@
             }
           </ol>
           <div class="row">
-            <input i18n-placeholder="@@llave.motivo-p-ej-nueva-ejecucion" class="grow" [(ngModel)]="tieReason" placeholder="Motivo (p. ej. nueva ejecución)" />
-            <button i18n="@@llave.registrar-desempate" class="btn primary" (click)="resolveTie()">Registrar desempate</button>
+            <input
+              i18n-placeholder="@@llave.motivo-p-ej-nueva-ejecucion"
+              class="grow"
+              [(ngModel)]="tieReason"
+              placeholder="Motivo (p. ej. nueva ejecución)"
+            />
+            <button i18n="@@llave.registrar-desempate" class="btn primary" (click)="resolveTie()"
+              >Registrar desempate</button
+            >
           </div>
         </div>
       }
@@ -373,28 +596,44 @@
           } @else if (isBye(m, color === 'aka' ? 'aka' : 'ao')) {
             <em i18n="@@llave.bye" class="bye">bye</em>
           } @else {
-            <em class="tbd">@if (sourceHint(src); as hint) {{{ hint }}} @else {<ng-container i18n="@@llave.por-definir">Por definir</ng-container>}</em>
+            <em class="tbd">
+              @if (sourceHint(src); as hint) {
+                {{ hint }}
+              } @else {
+                <ng-container i18n="@@llave.por-definir">Por definir</ng-container>
+              }
+            </em>
           }
         </span>
-        <span class="score">{{ m.method === 'flags' ? '' : color === 'aka' ? (m.aka_score ?? '') : (m.ao_score ?? '') }}</span>
+        <span class="score">{{
+          m.method === 'flags' ? '' : color === 'aka' ? (m.aka_score ?? '') : (m.ao_score ?? '')
+        }}</span>
       </div>
     }
   </div>
 </ng-template>
 
 @if (regenOpen()) {
-  <app-modal [title]="bracket() ? textoRegenerarLlave : textoGenerarLlave" (closed)="regenOpen.set(false)">
+  <app-modal
+    [title]="bracket() ? textoRegenerarLlave : textoGenerarLlave"
+    (closed)="regenOpen.set(false)"
+  >
     <p i18n="@@llave.crea-nueva-version-anteriores" class="small muted">
-      Se crea una nueva versión (las anteriores quedan en el historial). Si ya hay combates iniciados el servidor advertirá.
+      Se crea una nueva versión (las anteriores quedan en el historial). Si ya hay combates
+      iniciados el servidor advertirá.
     </p>
     <div class="grid-2">
       <label class="field">
         <span i18n="@@llave.formato">Formato</span>
         <select [(ngModel)]="regen.format">
           <option i18n="@@llave.defecto-categoria" value="">Por defecto de la categoría</option>
-          <option i18n="@@llave.eliminacion-directa" value="single_elimination">Eliminación directa</option>
+          <option i18n="@@llave.eliminacion-directa" value="single_elimination"
+            >Eliminación directa</option
+          >
           <option i18n="@@llave.round-robin" value="round_robin">Round robin</option>
-          <option i18n="@@llave.grupos-eliminacion" value="groups_knockout">Grupos + eliminación</option>
+          <option i18n="@@llave.grupos-eliminacion" value="groups_knockout"
+            >Grupos + eliminación</option
+          >
         </select>
       </label>
       <label class="field">
@@ -408,32 +647,57 @@
       </label>
       <label class="field">
         <span i18n="@@llave.semilla-opcional">Semilla (opcional)</span>
-        <input i18n-placeholder="@@llave.aleatoria" type="number" [(ngModel)]="regen.seed" placeholder="Aleatoria" />
-        <span i18n="@@llave.misma-semilla-reproduce-misma" class="hint">La misma semilla reproduce la misma llave.</span>
+        <input
+          i18n-placeholder="@@llave.aleatoria"
+          type="number"
+          [(ngModel)]="regen.seed"
+          placeholder="Aleatoria"
+        />
+        <span i18n="@@llave.misma-semilla-reproduce-misma" class="hint"
+          >La misma semilla reproduce la misma llave.</span
+        >
       </label>
-      <label class="field"><span i18n="@@llave.motivo">Motivo</span><input [(ngModel)]="regen.reason" /></label>
+      <label class="field"
+        ><span i18n="@@llave.motivo">Motivo</span><input [(ngModel)]="regen.reason"
+      /></label>
     </div>
     <div class="form-actions">
       <button i18n="@@llave.cancelar-2" class="btn" (click)="regenOpen.set(false)">Cancelar</button>
-      <button i18n="@@llave.regenerar-generar" class="btn primary" (click)="doRegen()">@if (bracket()) {Regenerar} @else {Generar}</button>
+      <button i18n="@@llave.regenerar-generar" class="btn primary" (click)="doRegen()">
+        @if (bracket()) {
+          Regenerar
+        } @else {
+          Generar
+        }
+      </button>
     </div>
   </app-modal>
 }
 
 @if (entrantMode(); as mode) {
-  <app-modal [title]="mode === 'add' ? textoAnadirLlave : textoQuitarLlave" (closed)="entrantMode.set(null)">
+  <app-modal
+    [title]="mode === 'add' ? textoAnadirLlave : textoQuitarLlave"
+    (closed)="entrantMode.set(null)"
+  >
     <p class="small muted">
-      @if (mode === 'add') {<ng-container i18n="@@llave.ocupa-bye-primera-ronda-aun-no">
-        Ocupa un bye de primera ronda que aún no se disputó (el que mejor separa dojos). En round robin se agregan sus
-        combates. Primero inscríbelo en la categoría.
-      </ng-container>} @else {<ng-container i18n="@@llave.si-primer-combate-no-empezo">
-        Si su primer combate no empezó, su lugar queda como bye; si ya ganó, pierde por walkover el combate pendiente. La
-        inscripción queda retirada.
-      </ng-container>}
+      @if (mode === 'add') {
+        <ng-container i18n="@@llave.ocupa-bye-primera-ronda-aun-no">
+          Ocupa un bye de primera ronda que aún no se disputó (el que mejor separa dojos). En round
+          robin se agregan sus combates. Primero inscríbelo en la categoría.
+        </ng-container>
+      } @else {
+        <ng-container i18n="@@llave.si-primer-combate-no-empezo">
+          Si su primer combate no empezó, su lugar queda como bye; si ya ganó, pierde por walkover
+          el combate pendiente. La inscripción queda retirada.
+        </ng-container>
+      }
     </p>
     <div class="stack">
       <label class="field">
-        <span i18n="@@llave.inscrito-fuera-competidor">{mode, select, add {Inscrito fuera de la llave} other {Competidor}}</span>
+        <span i18n="@@llave.inscrito-fuera-competidor">{mode, select,
+          add {Inscrito fuera de la llave}
+          other {Competidor}
+        }</span>
         <select [(ngModel)]="entrant.registration_id">
           <option i18n="@@llave.elige" [ngValue]="null">— Elige —</option>
           @for (r of entrantChoices(); track r.id) {
@@ -441,23 +705,49 @@
           }
         </select>
         @if (!entrantChoices().length) {
-          <span i18n="@@llave.no-hay-inscritos-competidores" class="hint">{mode, select, add {No hay inscritos activos fuera de la llave.} other {No hay competidores activos en la llave.}}</span>
+          <span i18n="@@llave.no-hay-inscritos-competidores" class="hint">{mode, select,
+            add {No hay inscritos activos fuera de la llave.}
+            other {No hay competidores activos en la llave.}
+          }</span>
         }
       </label>
-      <label class="field"><span i18n="@@llave.motivo">Motivo</span><input [(ngModel)]="entrant.reason" [placeholder]="mode === 'add' ? textoEjTardia : textoEjLesion" /></label>
+      <label class="field"
+        ><span i18n="@@llave.motivo">Motivo</span
+        ><input
+          [(ngModel)]="entrant.reason"
+          [placeholder]="mode === 'add' ? textoEjTardia : textoEjLesion"
+      /></label>
     </div>
     <div class="form-actions">
-      <button i18n="@@llave.cancelar-2" class="btn" (click)="entrantMode.set(null)">Cancelar</button>
-      <button i18n="@@llave.anadir-quitar" class="btn primary" [disabled]="!entrant.registration_id" (click)="saveEntrant()">{mode, select, add {Añadir} other {Quitar}}</button>
+      <button i18n="@@llave.cancelar-2" class="btn" (click)="entrantMode.set(null)"
+        >Cancelar</button
+      >
+      <button
+        i18n="@@llave.anadir-quitar"
+        class="btn primary"
+        [disabled]="!entrant.registration_id"
+        (click)="saveEntrant()"
+        >{mode, select, add {Añadir} other {Quitar}}</button
+      >
     </div>
   </app-modal>
 }
 
 @if (versions(); as vs) {
-  <app-modal i18n-title="@@llave.historial-versiones-2" title="Historial de versiones" [wide]="true" (closed)="versions.set(null)">
+  <app-modal
+    i18n-title="@@llave.historial-versiones-2"
+    title="Historial de versiones"
+    [wide]="true"
+    (closed)="versions.set(null)"
+  >
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th i18n="@@llave.version">Versión</th><th i18n="@@llave.formato">Formato</th><th i18n="@@llave.semilla">Semilla</th><th i18n="@@llave.creada">Creada</th><th i18n="@@llave.motivo">Motivo</th><th></th></tr></thead>
+        <thead
+          ><tr
+            ><th i18n="@@llave.version">Versión</th><th i18n="@@llave.formato">Formato</th
+            ><th i18n="@@llave.semilla">Semilla</th><th i18n="@@llave.creada">Creada</th
+            ><th i18n="@@llave.motivo">Motivo</th><th></th></tr
+        ></thead>
         <tbody>
           @for (v of vs; track v.id) {
             <tr [class.selected]="v.current">
@@ -466,7 +756,11 @@
               <td class="mono">{{ v.seed }}</td>
               <td class="small">{{ v.created_at | lima }}</td>
               <td class="small">{{ v.reason }}</td>
-              <td>@if (v.current) {<span i18n="@@llave.actual" class="badge ai">actual</span>}</td>
+              <td>
+                @if (v.current) {
+                  <span i18n="@@llave.actual" class="badge ai">actual</span>
+                }
+              </td>
             </tr>
           }
         </tbody>

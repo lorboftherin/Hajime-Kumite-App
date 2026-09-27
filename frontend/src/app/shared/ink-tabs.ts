@@ -30,7 +30,9 @@ export class InkTabs implements AfterViewInit {
     update();
     const onScroll = () => this.edges();
     this.el.addEventListener('scroll', onScroll, { passive: true });
-    const sub = this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe(update);
+    const sub = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe(update);
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null;
     ro?.observe(this.el);
     // routerLinkActive y [class.active] cambian después de la navegación: se observa la clase.
