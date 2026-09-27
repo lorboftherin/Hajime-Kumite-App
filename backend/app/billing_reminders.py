@@ -22,6 +22,9 @@ log = logging.getLogger("hajime.pagos")
 def main() -> int:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_format)
+    if not entitlements.payments_enabled():
+        log.info("Cobros apagados (HAJIME_PAYMENTS_ENABLED=false): no hay avisos de vencimiento")
+        return 0
     if entitlements.billing_mode() != "enforced":
         log.info("Marcha blanca: no hay avisos de vencimiento")
         return 0

@@ -12,7 +12,8 @@ from tests.api.test_permissions import login_as
 
 
 @pytest.fixture()
-def enforced(monkeypatch):
+def enforced(monkeypatch, cobros_activos):
+    """Cobro real: modo enforced con los cobros encendidos (sin ellos, enforced no rige)."""
     monkeypatch.setattr(get_settings(), "billing_mode", "enforced")
 
 

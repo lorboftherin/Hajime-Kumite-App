@@ -12,6 +12,19 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Cobros apagados por defecto** (decisión del dueño: por ahora no se cobra).
+  Nuevo interruptor `HAJIME_PAYMENTS_ENABLED` (`false` por defecto): todo queda
+  permitido como en la marcha blanca aunque `HAJIME_BILLING_MODE=enforced`
+  (aviso en el log al arrancar; nunca 402); checkout, prueba gratis,
+  cancelación, cargo de Culqi, avisos de las pasarelas, comprobantes,
+  reembolsos y cupones responden 404 `PAYMENTS_DISABLED`; no salen
+  recordatorios de vencimiento ni correos de cobro. `GET /billing/config`
+  informa `payments_enabled` y la interfaz oculta el menú «Pagos», el aviso
+  «tu plan vence», «Suscribirse», cupones, pagos, comprobantes y datos
+  fiscales; las rutas `/pago/*` llevan al inicio y «Planes» queda
+  informativa. La asignación manual de planes del Admin sigue. El código de
+  cobros no se borró: se activa con la variable (ver `docs/cobros.md`).
+
 - **Idiomas:** la interfaz también en inglés y portugués de Brasil, con un
   solo build (`@angular/localize` con traducciones cargadas al arrancar). El
   español sigue siendo el idioma por defecto; se elige por la preferencia del

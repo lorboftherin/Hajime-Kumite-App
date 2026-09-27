@@ -34,12 +34,15 @@ export class ToastService {
   warn(text: string): void {
     this.show(text, 'warn', 6000);
   }
-  /** 402 PLAN_REQUIRED: aviso fijo con enlace a la página de planes. */
-  planRequired(text: string): void {
-    this.show(text, 'warn', 0, {
-      label: $localize`:@@aviso.ver-planes:Ver planes`,
-      path: '/planes',
-    });
+  /**
+   * 402 PLAN_REQUIRED: aviso fijo con enlace a la página de planes. Con los cobros apagados
+   * (`paymentsOn` false) va sin «Ver planes»: no hay cómo contratar.
+   */
+  planRequired(text: string, paymentsOn = true): void {
+    const link = paymentsOn
+      ? { label: $localize`:@@aviso.ver-planes:Ver planes`, path: '/planes' }
+      : undefined;
+    this.show(text, 'warn', 0, link);
   }
   dismiss(id: number): void {
     this.toasts.update((l) => l.filter((t) => t.id !== id));

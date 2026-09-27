@@ -33,6 +33,7 @@ from app.config import DEFAULT_SECRET, get_settings
 from app.db.base import get_engine
 from app.observability import RequestContextMiddleware, configure_azure_monitor, configure_logging
 from app.prepare import prepare_database
+from app.services import entitlements
 
 # Rutas de la interfaz que se pueden incrustar en un marco: el overlay para OBS
 # (frontend/src/app/features/public/overlay.ts, /overlay/<token>/<tatami>).
@@ -51,6 +52,8 @@ async def lifespan(_: FastAPI):
         raise RuntimeError(
             "HAJIME_JWT_SECRET (mínimo 32 caracteres) o HAJIME_SECRET_FILE debe configurarse fuera de dev/test"
         )
+    if aviso := entitlements.billing_mode_warning():
+        logging.getLogger("hajime.pagos").warning(aviso)
     if settings.migrate_on_startup:
         # Desarrollo (uvicorn a mano): cada proceso prepara la base al arrancar,
         # con un candado para que varios no choquen. En el contenedor viene en

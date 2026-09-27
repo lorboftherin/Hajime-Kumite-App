@@ -1040,6 +1040,8 @@ export interface Plan {
 export type BillingPeriod = 'month' | 'year';
 
 export interface BillingConfig {
+  /** false: cobros apagados en el servidor (HAJIME_PAYMENTS_ENABLED); ver core/payments.ts. */
+  payments_enabled: boolean;
   mode: 'marcha_blanca' | 'enforced';
   provider: 'manual' | 'mercadopago' | 'culqi';
   culqi_public_key: string | null;

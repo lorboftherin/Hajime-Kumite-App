@@ -163,10 +163,18 @@ class Settings(BaseSettings):
         "notify.windows.com",
         "push.apple.com",
     ]
-    # --- Planes y cobros (ver docs/organizaciones-y-planes.md) ---
+    # --- Planes y cobros (ver docs/organizaciones-y-planes.md y docs/cobros.md) ---
+    # Interruptor general de cobros. Apagado por decisión del dueño: sin
+    # pasarela, checkout, prueba gratis, cupones, comprobantes, reembolsos ni
+    # correos de cobro (esos endpoints responden 404 PAYMENTS_DISABLED) y el
+    # sistema se comporta como marcha blanca aunque billing_mode sea enforced:
+    # sin forma de pagar, exigir un plan sería bloquear. El código queda listo
+    # para activarlo (HAJIME_PAYMENTS_ENABLED=true).
+    payments_enabled: bool = False
     # marcha_blanca: toda cuenta tiene acceso completo (pruebas y marcha blanca).
     # enforced: cada función de pago exige una suscripción vigente de la
-    # organización (o de la persona, para Competidor Plus).
+    # organización (o de la persona, para Competidor Plus). Solo rige con
+    # payments_enabled=true (ver arriba).
     billing_mode: Literal["marcha_blanca", "enforced"] = "marcha_blanca"
     # Pasarela de pagos: manual (el Admin marca pagado), mercadopago o culqi.
     payment_provider: Literal["manual", "mercadopago", "culqi"] = "manual"

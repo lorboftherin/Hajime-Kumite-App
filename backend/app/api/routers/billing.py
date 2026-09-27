@@ -1,17 +1,24 @@
 """Cobros: checkout, prueba gratis, pagos, reembolsos, cupones, comprobantes y avisos de la pasarela.
 
 Ver docs/cobros.md.
+
+Con los cobros apagados (``HAJIME_PAYMENTS_ENABLED=false``, el valor por
+defecto) las rutas que cobran, emiten o cambian algo de un cobro llevan la
+dependencia ``COBROS`` y responden 404 ``PAYMENTS_DISABLED``. Siguen en el
+router (el contrato de la API no cambia al activarlos) y siguen respondiendo
+las lecturas: configuración, avisos (vacíos), suscripciones y el historial de
+pagos que hubiera.
 """
 
 from __future__ import annotations
 
 import anyio.to_thread
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_, select
 
 from app.api import schemas as s
 from app.api.deps import DB, AdminUser, CurrentUser, is_org_admin, memberships_of
-from app.api.errors import AppError, Forbidden, InvalidState, NotFound
+from app.api.errors import AppError, Forbidden, InvalidState, NotFound, PaymentsDisabled
 from app.config import get_settings
 from app.db.base import get_session, utcnow
 from app.db.models import Coupon, Invoice, Organization, Payment, Person, Subscription, User
@@ -22,6 +29,18 @@ from app.services.audit import audit, snapshot
 from app.services.gateway_http import GatewayError
 
 router = APIRouter(tags=["billing"])
+
+PAYMENTS_DISABLED_MESSAGE = "Los cobros no están activos"
+
+
+def cobros_activos() -> None:
+    """Dependencia: 404 ``PAYMENTS_DISABLED`` si los cobros están apagados."""
+    if not entitlements.payments_enabled():
+        raise PaymentsDisabled(PAYMENTS_DISABLED_MESSAGE)
+
+
+# Rutas que solo existen con los cobros activos.
+COBROS = [Depends(cobros_activos)]
 
 
 class PayloadTooLarge(AppError):
@@ -87,9 +106,12 @@ def _finish(db) -> None:
 
 @router.get("/billing/config", response_model=s.BillingConfigOut)
 def billing_config():
-    """Pasarela activa y llave pública de Culqi (no es secreta). Sin sesión."""
+    """Si los cobros están activos, la pasarela y la llave pública de Culqi (no es secreta).
+
+    Sin sesión: la interfaz lo consulta al arrancar para mostrar u ocultar pagos."""
     st = get_settings()
     return s.BillingConfigOut(
+        payments_enabled=st.payments_enabled,
         mode=entitlements.billing_mode(),
         provider=st.payment_provider,
         culqi_public_key=st.culqi_public_key if st.payment_provider == "culqi" else None,
@@ -98,7 +120,7 @@ def billing_config():
     )
 
 
-@router.get("/plans/{code}/quote", response_model=s.QuoteOut)
+@router.get("/plans/{code}/quote", response_model=s.QuoteOut, dependencies=COBROS)
 def quote(code: str, db: DB, _: CurrentUser, period: str = "month", coupon_code: str | None = None):
     """Precio a pagar con el cupón (sin crear nada): para mostrarlo antes de pagar."""
     if period not in ("month", "year"):
@@ -123,7 +145,7 @@ def quote(code: str, db: DB, _: CurrentUser, period: str = "month", coupon_code:
 # --- Checkout ----------------------------------------------------------------------------------
 
 
-@router.post("/organizations/{oid}/checkout", response_model=s.CheckoutOut)
+@router.post("/organizations/{oid}/checkout", response_model=s.CheckoutOut, dependencies=COBROS)
 def organization_checkout(oid: int, data: s.CheckoutIn, request: Request, db: DB, user: CurrentUser):
     """Contrata o renueva un plan para la organización: suscripción pendiente + cobro de la pasarela."""
     _manager(db, user, oid)
@@ -144,7 +166,7 @@ def organization_checkout(oid: int, data: s.CheckoutIn, request: Request, db: DB
     return _checkout_out(sub, co, q)
 
 
-@router.post("/organizations/{oid}/trial", response_model=s.SubscriptionOut, status_code=201)
+@router.post("/organizations/{oid}/trial", response_model=s.SubscriptionOut, status_code=201, dependencies=COBROS)
 def organization_trial(oid: int, data: s.TrialIn, db: DB, user: CurrentUser):
     """Periodo de prueba gratis del plan (una vez por organización)."""
     org = _manager(db, user, oid)
@@ -153,7 +175,7 @@ def organization_trial(oid: int, data: s.TrialIn, db: DB, user: CurrentUser):
     return orgs.subscription_out(db, sub)
 
 
-@router.post("/me/checkout", response_model=s.CheckoutOut)
+@router.post("/me/checkout", response_model=s.CheckoutOut, dependencies=COBROS)
 def my_checkout(data: s.CheckoutIn, request: Request, db: DB, user: CurrentUser):
     """Competidor Plus. Titular: la cuenta del usuario o, con ``person_id``, un perfil: el
     propio o el de un menor a su cargo (tutela aprobada)."""
@@ -209,7 +231,7 @@ def _can_see(db, user: User, sub: Subscription) -> bool:
     return sub.created_by_id == user.id or svc.can_manage_subscription(db, user, sub)
 
 
-@router.post("/subscriptions/{sid}/cancel", response_model=s.SubscriptionOut)
+@router.post("/subscriptions/{sid}/cancel", response_model=s.SubscriptionOut, dependencies=COBROS)
 def cancel_subscription(sid: int, db: DB, user: CurrentUser):
     """El titular cancela: no se renueva y conserva el acceso hasta el fin del periodo pagado."""
     sub = db.get(Subscription, sid)
@@ -220,7 +242,7 @@ def cancel_subscription(sid: int, db: DB, user: CurrentUser):
     return orgs.subscription_out(db, sub)
 
 
-@router.post("/payments/culqi/charge", response_model=s.PaymentOut)
+@router.post("/payments/culqi/charge", response_model=s.PaymentOut, dependencies=COBROS)
 def culqi_charge(data: s.CulqiChargeIn, db: DB, user: CurrentUser):
     """Cobra el token de Culqi Checkout (la tarjeta nunca pasa por el servidor)."""
     from app.services.gateways.culqi import CulqiProvider
@@ -272,7 +294,7 @@ def list_payments(
     return [payment_out(db, p) for p in rows]
 
 
-@router.post("/payments/{pid}/refund", response_model=s.PaymentOut)
+@router.post("/payments/{pid}/refund", response_model=s.PaymentOut, dependencies=COBROS)
 def refund_payment(pid: int, data: s.RefundIn, db: DB, admin: AdminUser):
     """Reembolso (Admin Global): devuelve en la pasarela y, si se pide, corta el acceso."""
     pay = db.get(Payment, pid)
@@ -284,7 +306,7 @@ def refund_payment(pid: int, data: s.RefundIn, db: DB, admin: AdminUser):
     return payment_out(db, pay)
 
 
-@router.post("/payments/{pid}/invoice", response_model=s.PaymentOut)
+@router.post("/payments/{pid}/invoice", response_model=s.PaymentOut, dependencies=COBROS)
 def emit_invoice(pid: int, db: DB, admin: AdminUser):
     """Emite o reintenta el comprobante de un pago (Admin Global); si se reembolsó, su nota de crédito."""
     pay = db.get(Payment, pid)
@@ -300,7 +322,7 @@ def emit_invoice(pid: int, db: DB, admin: AdminUser):
     return payment_out(db, pay)
 
 
-@router.post("/invoices/{iid}/refresh", response_model=s.InvoiceOut)
+@router.post("/invoices/{iid}/refresh", response_model=s.InvoiceOut, dependencies=COBROS)
 def refresh_invoice(iid: int, db: DB, _: AdminUser):
     """Consulta a SUNAT (vía el proveedor) el estado de un comprobante."""
     inv = db.get(Invoice, iid)
@@ -314,12 +336,12 @@ def refresh_invoice(iid: int, db: DB, _: AdminUser):
 # --- Cupones -------------------------------------------------------------------------------------------
 
 
-@router.get("/coupons", response_model=list[s.CouponOut])
+@router.get("/coupons", response_model=list[s.CouponOut], dependencies=COBROS)
 def list_coupons(db: DB, _: AdminUser):
     return db.scalars(select(Coupon).order_by(Coupon.id.desc())).all()
 
 
-@router.post("/coupons", response_model=s.CouponOut, status_code=201)
+@router.post("/coupons", response_model=s.CouponOut, status_code=201, dependencies=COBROS)
 def create_coupon(data: s.CouponIn, db: DB, admin: AdminUser):
     if not data.percent_off and not data.amount_off_pen:
         raise InvalidState("Indica un porcentaje o un monto de descuento")
@@ -335,7 +357,7 @@ def create_coupon(data: s.CouponIn, db: DB, admin: AdminUser):
     return c
 
 
-@router.patch("/coupons/{cid}", response_model=s.CouponOut)
+@router.patch("/coupons/{cid}", response_model=s.CouponOut, dependencies=COBROS)
 def update_coupon(cid: int, data: s.CouponUpdate, db: DB, admin: AdminUser):
     c = db.get(Coupon, cid)
     if c is None:
@@ -359,7 +381,8 @@ ALERT_DAYS = 7
 @router.get("/billing/alerts", response_model=list[s.BillingAlert])
 def billing_alerts(db: DB, user: CurrentUser):
     """Planes que vencen en los próximos días (o en gracia) de las organizaciones que el
-    usuario administra y de su propia cuenta. En marcha blanca no hay avisos."""
+    usuario administra y de su propia cuenta. En marcha blanca (o con los cobros
+    apagados) no hay avisos."""
     if entitlements.billing_mode() != "enforced":
         return []
     now = utcnow()
@@ -406,7 +429,7 @@ def billing_alerts(db: DB, user: CurrentUser):
 # --- Avisos de la pasarela (webhooks) -----------------------------------------------------------------------
 
 
-@router.post("/payments/webhook/{provider_name}")
+@router.post("/payments/webhook/{provider_name}", dependencies=COBROS)
 async def payment_webhook(provider_name: str, request: Request):
     """Aviso de la pasarela. Sin sesión, pero con firma (o autenticación) y consulta a la API.
 

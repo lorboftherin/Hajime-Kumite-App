@@ -86,7 +86,15 @@ Global nunca se bloquea** (opera la plataforma).
 
 ### Marcha blanca y cómo pasar a `enforced`
 
-`HAJIME_BILLING_MODE` (por defecto `marcha_blanca`):
+> **Hoy los cobros están apagados** por decisión del dueño
+> (`HAJIME_PAYMENTS_ENABLED=false`, ver [cobros.md](cobros.md#cobros-apagados-y-cómo-activarlos)).
+> Mientras tanto el modo efectivo es siempre `marcha_blanca`, aunque se
+> configure `enforced` (la API lo avisa en el log al arrancar y nunca responde
+> 402), y la interfaz no muestra pagos, suscripciones de pago ni comprobantes.
+> La asignación manual de planes (abajo) sigue disponible.
+
+`HAJIME_BILLING_MODE` (por defecto `marcha_blanca`; solo rige con
+`HAJIME_PAYMENTS_ENABLED=true`):
 
 - `marcha_blanca`: toda cuenta tiene todas las funciones; las suscripciones se
   registran pero no se exigen. Es lo que corre en pruebas y en la marcha blanca.
@@ -99,13 +107,17 @@ Para el lanzamiento:
 1. Asignar antes los planes de quienes participaron en la marcha blanca (por
    ejemplo `marcha_blanca` con fecha de fin, como beneficio de fundador) y los
    de las organizaciones que ya pagan (ver abajo).
-2. Configurar `HAJIME_BILLING_MODE=enforced` en el ambiente (en Azure, variable
-   del Container App; en local, `.env` o variable de entorno) y reiniciar.
+2. Configurar `HAJIME_PAYMENTS_ENABLED=true` y `HAJIME_BILLING_MODE=enforced`
+   en el ambiente (en Azure, variables del Container App; en local, `.env` o
+   variables de entorno) y reiniciar.
 3. Revisar que `GET /api/v1/plans` responda `"mode": "enforced"`.
 
 Volver atrás es cambiar la variable a `marcha_blanca`: no se pierde nada.
 
 ### Asignar planes a mano
+
+Funciona también con los cobros apagados (no cobra ni envía correos): sirve
+para dejar anotados los planes de fundadores antes de cobrar.
 
 En la página **Organización** (Admin Global) → «Suscripciones»: elegir el
 plan, el estado y la fecha de fin (vacía = sin vencimiento) y «Asignar plan».
@@ -130,7 +142,9 @@ Todo queda en la auditoría (`entity = subscription`).
 
 ### Cobros
 
-Ver **[cobros.md](cobros.md)**: pasarelas reales detrás de la interfaz
+**Desactivados por ahora** (`HAJIME_PAYMENTS_ENABLED=false`): todo lo de esta
+sección queda oculto en la interfaz y sus rutas responden 404
+`PAYMENTS_DISABLED`. Ver **[cobros.md](cobros.md)**: pasarelas reales detrás de la interfaz
 `payments.Provider` (`HAJIME_PAYMENT_PROVIDER`: `manual` por defecto,
 `mercadopago` o `culqi`), comprobantes de SUNAT con Nubefact
 (`HAJIME_INVOICING_PROVIDER`), cupones, 30 días de prueba para Dojo y

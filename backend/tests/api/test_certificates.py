@@ -187,6 +187,7 @@ def test_certificates_require_plan_when_enforced(client, monkeypatch):
     c, regs = category_with(api, t["id"], 2)
     play_out(api, c["id"])
     monkeypatch.setattr(get_settings(), "billing_mode", "enforced")
+    monkeypatch.setattr(get_settings(), "payments_enabled", True)
     r = owner.raw("GET", f"/categories/{c['id']}/diplomas.pdf")
     assert r.status_code == 402 and r.json()["error"]["details"]["feature"] == "certificates"
     assert owner.raw("GET", f"/tournaments/{t['id']}/diplomas.pdf").status_code == 402
