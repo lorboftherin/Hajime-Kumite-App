@@ -8,7 +8,6 @@ import { DialogService } from '../../core/dialog.service';
 import { fmtDate, ORG_KIND_LABEL, ORG_ROLE_LABEL, SUBSCRIPTION_STATUS } from '../../core/format';
 import { INVOICE_STATUS, invoiceNumber, PAYMENT_STATUS, penFromCents } from '../../core/billing';
 import {
-  BillingConfig,
   Organization,
   OrgMember,
   OrgRole,
@@ -18,6 +17,7 @@ import {
   Subscription,
 } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { PaymentsService } from '../../core/payments';
 import { Icon } from '../../shared/icon';
 import { Modal } from '../../shared/modal';
 import { PageHead } from '../../shared/page-head';
@@ -133,39 +133,42 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                     [disabled]="!o.can_manage"
                 /></label>
               </div>
-              <h3 i18n="@@organizacion.datos-para-comprobante">Datos para el comprobante</h3>
-              <p i18n="@@organizacion.ruc-emite-factura-razon-social" class="small muted">
-                Con RUC se emite factura a la razón social; sin RUC, boleta.
-              </p>
-              <div class="grid-2">
-                <label class="field"
-                  ><span i18n="@@organizacion.ruc">RUC</span
-                  ><input
-                    name="ruc"
-                    [(ngModel)]="f.tax_id"
-                    inputmode="numeric"
-                    maxlength="11"
-                    pattern="[0-9]{11}"
-                    [disabled]="!o.can_manage"
-                /></label>
-                <label class="field"
-                  ><span i18n="@@organizacion.razon-social">Razón social</span
-                  ><input name="rs" [(ngModel)]="f.legal_name" [disabled]="!o.can_manage"
-                /></label>
-                <label class="field"
-                  ><span i18n="@@organizacion.domicilio-fiscal">Domicilio fiscal</span
-                  ><input name="df" [(ngModel)]="f.tax_address" [disabled]="!o.can_manage"
-                /></label>
-                <label class="field"
-                  ><span i18n="@@organizacion.correo-para-comprobantes"
-                    >Correo para comprobantes</span
-                  ><input
-                    name="be"
-                    type="email"
-                    [(ngModel)]="f.billing_email"
-                    [disabled]="!o.can_manage"
-                /></label>
-              </div>
+              <!-- Datos fiscales: solo con los cobros activos (core/payments.ts). -->
+              @if (payments.enabled()) {
+                <h3 i18n="@@organizacion.datos-para-comprobante">Datos para el comprobante</h3>
+                <p i18n="@@organizacion.ruc-emite-factura-razon-social" class="small muted">
+                  Con RUC se emite factura a la razón social; sin RUC, boleta.
+                </p>
+                <div class="grid-2">
+                  <label class="field"
+                    ><span i18n="@@organizacion.ruc">RUC</span
+                    ><input
+                      name="ruc"
+                      [(ngModel)]="f.tax_id"
+                      inputmode="numeric"
+                      maxlength="11"
+                      pattern="[0-9]{11}"
+                      [disabled]="!o.can_manage"
+                  /></label>
+                  <label class="field"
+                    ><span i18n="@@organizacion.razon-social">Razón social</span
+                    ><input name="rs" [(ngModel)]="f.legal_name" [disabled]="!o.can_manage"
+                  /></label>
+                  <label class="field"
+                    ><span i18n="@@organizacion.domicilio-fiscal">Domicilio fiscal</span
+                    ><input name="df" [(ngModel)]="f.tax_address" [disabled]="!o.can_manage"
+                  /></label>
+                  <label class="field"
+                    ><span i18n="@@organizacion.correo-para-comprobantes"
+                      >Correo para comprobantes</span
+                    ><input
+                      name="be"
+                      type="email"
+                      [(ngModel)]="f.billing_email"
+                      [disabled]="!o.can_manage"
+                  /></label>
+                </div>
+              }
               @if (o.can_manage) {
                 <div class="form-actions">
                   <button
@@ -214,7 +217,7 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                   {{ date(sub.access_until ?? sub.grace_until ?? '') }}: renueva para no perderlo.
                 </p>
               }
-              @if (o.can_manage && plans()?.mode === 'enforced') {
+              @if (o.can_manage && payments.enabled() && plans()?.mode === 'enforced') {
                 <div class="row actions">
                   @if (!sub.recurring && planOf(sub.plan_code); as p) {
                     <button
@@ -242,7 +245,7 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
               <p i18n="@@organizacion.sin-suscripcion-vigente" class="muted"
                 >Sin suscripción vigente.</p
               >
-              @if (o.can_manage && plans()?.mode === 'enforced') {
+              @if (o.can_manage && payments.enabled() && plans()?.mode === 'enforced') {
                 <p
                   ><a i18n="@@organizacion.elegir-plan" class="btn sm primary" routerLink="/planes"
                     >Elegir un plan</a
@@ -371,7 +374,7 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
             }
           </section>
 
-          @if (o.can_manage) {
+          @if (o.can_manage && payments.enabled()) {
             <section class="card wide" aria-labelledby="h-pagos">
               <h2 i18n="@@organizacion.pagos-comprobantes" id="h-pagos">Pagos y comprobantes</h2>
               <div class="table-wrap">
@@ -386,7 +389,7 @@ import { SubscribeDialog } from '../billing/subscribe-dialog';
                     </tr>
                   </thead>
                   <tbody>
-                    @for (pay of payments(); track pay.id) {
+                    @for (pay of paymentList(); track pay.id) {
                       <tr>
                         <td class="nowrap">{{ date(pay.created_at) }}</td>
                         <td>
@@ -655,9 +658,11 @@ export class OrganizationPage {
   readonly org = signal<Organization | null>(null);
   readonly members = signal<OrgMember[]>([]);
   readonly subscriptions = signal<Subscription[]>([]);
-  readonly payments = signal<PaymentOut[]>([]);
+  readonly paymentList = signal<PaymentOut[]>([]);
   readonly plans = signal<PlansOut | null>(null);
-  readonly config = signal<BillingConfig | null>(null);
+  /** Cobros activos: sin ellos no hay pagos, comprobantes, datos fiscales ni «Renovar». */
+  readonly payments = inject(PaymentsService);
+  readonly config = this.payments.config;
   /** Plan a renovar (abre el diálogo de suscripción). */
   readonly renew = signal<Plan | null>(null);
   readonly loading = signal(true);
@@ -686,9 +691,6 @@ export class OrganizationPage {
 
   constructor() {
     this.api.get<PlansOut>('/plans').subscribe({ next: (p) => this.plans.set(p), error: () => {} });
-    this.api
-      .get<BillingConfig>('/billing/config')
-      .subscribe({ next: (c) => this.config.set(c), error: () => {} });
     effect(() => {
       const wanted = Number(this.id() ?? 0) || null;
       void this.load(wanted);
@@ -714,6 +716,7 @@ export class OrganizationPage {
 
   async load(wanted: number | null): Promise<void> {
     this.loading.set(true);
+    await firstValueFrom(this.payments.load());
     try {
       const list = await firstValueFrom(this.api.get<Organization[]>('/organizations'));
       this.orgs.set(list);
@@ -784,8 +787,8 @@ export class OrganizationPage {
       ),
     );
     const org = this.orgs().find((x) => x.id === oid);
-    if (org?.can_manage) {
-      this.payments.set(
+    if (org?.can_manage && this.payments.enabled()) {
+      this.paymentList.set(
         await firstValueFrom(this.api.get<PaymentOut[]>(`/organizations/${oid}/payments`)).catch(
           () => [],
         ),

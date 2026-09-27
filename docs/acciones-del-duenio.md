@@ -89,9 +89,12 @@ quedó bien.
 15. **Ensayo de restauración** antes del primer torneo real:
     `bash restaurar-prueba.sh prod` y `bash respaldar.sh prod`.
 
-## Cobros (antes de pasar a `enforced`)
+## Cuando se decida cobrar
 
-Detalle y pasos de prueba en [cobros.md](cobros.md).
+Hoy los cobros están **apagados por decisión tuya** (`HAJIME_PAYMENTS_ENABLED`
+sin definir o en `false`): no hay nada que hacer aquí hasta que decidas
+cobrar. Mientras tanto no configures `HAJIME_BILLING_MODE=enforced` (se ignora
+y deja un aviso en el log). Detalle y pasos de prueba en [cobros.md](cobros.md).
 
 1. **Elegir pasarela** (Mercado Pago o Culqi), crear la cuenta de empresa y
    obtener las credenciales de prueba y de producción.
@@ -109,7 +112,11 @@ Detalle y pasos de prueba en [cobros.md](cobros.md).
    `HAJIME_NUBEFACT_URL`, `HAJIME_NUBEFACT_TOKEN`; y las variables
    `HAJIME_PAYMENT_PROVIDER`, `HAJIME_INVOICING_PROVIDER`, `HAJIME_PUBLIC_URL`.
 6. **Decidir** precios finales, días de prueba y si se activa el cupón
-   `PRIMER-TORNEO`; luego `HAJIME_BILLING_MODE=enforced`.
+   `PRIMER-TORNEO`.
+7. **Encender los cobros:** `HAJIME_PAYMENTS_ENABLED=true` (primero en TEST y,
+   probado, en producción) y luego `HAJIME_BILLING_MODE=enforced`.
+   *Comprobar:* `GET /api/v1/billing/config` responde `"payments_enabled": true`
+   y aparece el menú «Pagos» para el Admin.
 
 ## Más adelante
 

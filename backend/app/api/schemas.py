@@ -1243,7 +1243,10 @@ class CouponOut(ORM):
 
 
 class BillingConfigOut(BaseModel):
-    mode: str  # marcha_blanca | enforced
+    # false: cobros apagados (HAJIME_PAYMENTS_ENABLED); la interfaz oculta pagos,
+    # suscripciones y comprobantes, y el modo efectivo es marcha_blanca.
+    payments_enabled: bool = False
+    mode: str  # marcha_blanca | enforced (el efectivo)
     provider: str  # manual | mercadopago | culqi
     # Llave pública de Culqi (solo si la pasarela es Culqi).
     culqi_public_key: str | None = None

@@ -21,6 +21,9 @@ from tests.api.test_cobros import (  # noqa: F401 - fixtures
 from tests.api.test_organizaciones import as_user, org_with_owner
 from tests.api.test_permissions import login_as
 
+# Los cobros vienen apagados (HAJIME_PAYMENTS_ENABLED=false): aquí se prueba su código.
+pytestmark = pytest.mark.usefixtures("cobros_activos")
+
 
 @pytest.fixture(autouse=True)
 def _limpiar_correo():

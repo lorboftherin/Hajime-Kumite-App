@@ -33,7 +33,8 @@
 | `HAJIME_EXPOSE_DOCS` | `false` | `/docs` y `/openapi.json`. Sin definir: visibles salvo en `prod` |
 | `HAJIME_LOG_LEVEL` | `INFO` | `DEBUG` muestra también las sondas de salud |
 | `HAJIME_LOG_FORMAT` | `json` | `json` (una línea por evento, para Log Analytics) o `text` |
-| `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan a las funciones de pago (ver `docs/organizaciones-y-planes.md`) |
+| `HAJIME_PAYMENTS_ENABLED` | `false` | Interruptor de cobros. `false` (decisión del dueño): sin pasarela, checkout, cupones, comprobantes ni correos de cobro (404 `PAYMENTS_DISABLED`), todo permitido y la interfaz sin pagos. Ver `docs/cobros.md` |
+| `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan a las funciones de pago (ver `docs/organizaciones-y-planes.md`). Solo rige con `HAJIME_PAYMENTS_ENABLED=true`; si no, se ignora con un aviso en el log |
 | `HAJIME_PAYMENT_PROVIDER` | `manual` | Pasarela: `manual`, `mercadopago` o `culqi` (ver `docs/cobros.md`) |
 | `HAJIME_BILLING_GRACE_DAYS` | `7` | Días de acceso tras un pago rechazado o vencido |
 | `HAJIME_PUBLIC_URL` | `https://hajime.example.pe` | URL pública: retornos y avisos de la pasarela. Sin definir, la de la petición |

@@ -1,5 +1,69 @@
 # Cobros: pasarelas, comprobantes, cupones y prueba gratis
 
+> **Desactivado por decisión del dueño.** Por ahora Hajime no cobra: sin
+> pasarela, sin suscripciones pagadas y sin comprobantes. El código sigue en
+> el repositorio y se enciende con una variable (`HAJIME_PAYMENTS_ENABLED`,
+> `false` por defecto). Ver [Cobros apagados y cómo activarlos](#cobros-apagados-y-cómo-activarlos).
+
+## Cobros apagados y cómo activarlos
+
+Con `HAJIME_PAYMENTS_ENABLED=false` (el valor por defecto):
+
+- **Planes y derechos:** todo permitido, como en la marcha blanca, **aunque
+  `HAJIME_BILLING_MODE=enforced`**: la API nunca responde 402 (sin forma de
+  pagar, exigir un plan sería bloquear). Si alguien configura `enforced` con
+  los cobros apagados, la API lo avisa en el log al arrancar (`hajime.pagos`,
+  nivel WARNING) y lo ignora. `GET /plans` y `GET /billing/config` informan el
+  modo efectivo (`marcha_blanca`).
+- **API:** estas rutas siguen publicadas en el contrato (`docs/openapi.json`)
+  pero responden **404** con el código `PAYMENTS_DISABLED` y el mensaje «Los
+  cobros no están activos» (dependencia `COBROS` en `app/api/routers/billing.py`):
+
+  | Ruta | Qué hace |
+  | --- | --- |
+  | `GET /plans/{code}/quote` | Precio con cupón antes de pagar |
+  | `POST /organizations/{id}/checkout`, `POST /me/checkout` | Contratar o renovar |
+  | `POST /organizations/{id}/trial` | Prueba gratis |
+  | `POST /subscriptions/{id}/cancel` | Cancelación por el titular |
+  | `POST /payments/culqi/charge` | Cargo de Culqi |
+  | `POST /payments/webhook/{pasarela}` | Avisos de Mercado Pago y Culqi |
+  | `POST /payments/{id}/refund` | Reembolso |
+  | `POST /payments/{id}/invoice`, `POST /invoices/{id}/refresh` | Emitir o consultar comprobantes |
+  | `GET/POST /coupons`, `PATCH /coupons/{id}` | Cupones |
+
+  Se dejaron en el router (en vez de quitarlas) para que el contrato de la API
+  no cambie al activar los cobros y para que la respuesta diga el motivo.
+- **Siguen funcionando:** `GET /billing/config` (sin sesión, con
+  `payments_enabled: false`), `GET /billing/alerts` (siempre vacío), las
+  lecturas de suscripciones y del historial de pagos que hubiera, y la
+  **asignación manual** del Admin Global (`POST/PATCH /subscriptions`,
+  `POST /subscriptions/{id}/mark-paid`, `PATCH /plans/{code}`): no cobra nada
+  ni envía correos, y sirve para dejar anotados los planes de fundadores.
+- **Correos:** no sale ninguno de cobro (pago recibido o rechazado, gracia,
+  «tu plan vence»). Los avisos de vencimiento no se revisan ni se reservan:
+  al activar los cobros sale el que toque ese día.
+- **Interfaz:** la app lee `GET /billing/config` al arrancar
+  (`frontend/src/app/core/payments.ts`; si no responde, se considera apagado).
+  Se ocultan el menú «Pagos», el aviso «tu plan vence», «Suscribirse»,
+  «Probar gratis», cupones, «Mi Competidor Plus», «Renovar» / «Cancelar
+  suscripción», «Pagos y comprobantes» y «Datos para el comprobante» en
+  «Organización», y el botón «Ver planes» del aviso de plan requerido. Las
+  rutas `/pago/*` y `/pagos` llevan al inicio. «Planes» queda como página
+  informativa con el aviso «Durante la marcha blanca todo está incluido sin
+  costo.».
+
+**Cómo activarlos** (cuando el dueño decida cobrar):
+
+1. Hacer lo de [acciones-del-duenio.md](acciones-del-duenio.md#cuando-se-decida-cobrar)
+   y probar todo en TEST (ver [De la marcha blanca al cobro real](#de-la-marcha-blanca-al-cobro-real)).
+2. En el ambiente: `HAJIME_PAYMENTS_ENABLED=true` (variable del Container App)
+   y reiniciar. Con eso vuelven las rutas, los correos y la interfaz de pagos;
+   la exigencia de planes sigue dependiendo de `HAJIME_BILLING_MODE`.
+3. Comprobar `GET /api/v1/billing/config` → `"payments_enabled": true`.
+
+Volver a apagarlos es poner la variable en `false`: los pagos, suscripciones y
+comprobantes quedan registrados y todo vuelve a estar permitido.
+
 Cómo se cobra la membresía de organización (Dojo, Organizador) y Competidor
 Plus, cómo se emiten las boletas y facturas de SUNAT y qué tiene que hacer el
 dueño para activarlo. La base (planes, derechos, marcha blanca) está en
@@ -252,7 +316,8 @@ Organizador anual sin RUC): pedir el RUC a esas organizaciones.
 
 | Variable | Por defecto | Qué hace |
 | --- | --- | --- |
-| `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan (ver organizaciones-y-planes.md) |
+| `HAJIME_PAYMENTS_ENABLED` | `false` | Interruptor general de cobros. `false`: todo lo de esta página apagado y todo permitido (ver arriba) |
+| `HAJIME_BILLING_MODE` | `marcha_blanca` | `enforced` exige plan (ver organizaciones-y-planes.md); solo rige con `HAJIME_PAYMENTS_ENABLED=true` |
 | `HAJIME_PAYMENT_PROVIDER` | `manual` | `manual`, `mercadopago` o `culqi` |
 | `HAJIME_BILLING_GRACE_DAYS` | `7` | Días de acceso tras un pago rechazado o vencido |
 | `HAJIME_PUBLIC_URL` | URL de la petición | `https://<dominio>`: retornos y URL de aviso de la pasarela (y enlaces de los correos) |
@@ -289,7 +354,7 @@ autenticación básica (Culqi) y la consulta a la API. El cuerpo se limita a
 
 ## De la marcha blanca al cobro real
 
-1. En TEST: `HAJIME_BILLING_MODE=enforced`, la pasarela con credenciales de
+1. En TEST: `HAJIME_PAYMENTS_ENABLED=true`, `HAJIME_BILLING_MODE=enforced`, la pasarela con credenciales de
    **prueba** y Nubefact en modo demo. Probar: suscribirse mensual y anual,
    cupón, prueba gratis, rechazo, reembolso, cancelación y el comprobante.
 2. Revisar precios definitivos (`PATCH /plans/{code}`) y los días de prueba.
@@ -297,12 +362,13 @@ autenticación básica (Culqi) y la consulta a la API. El cuerpo se limita a
    fecha de fin, o un cupón).
 4. En producción: credenciales de **producción**, URL de aviso registradas con
    el dominio de producción, `HAJIME_PUBLIC_URL`, y recién entonces
-   `HAJIME_BILLING_MODE=enforced`. Comprobar `GET /api/v1/billing/config`.
+   `HAJIME_PAYMENTS_ENABLED=true` y `HAJIME_BILLING_MODE=enforced`. Comprobar `GET /api/v1/billing/config`.
 5. Hacer un pago real pequeño (p. ej. Competidor Plus mensual) y reembolsarlo
    desde «Pagos» para confirmar todo el circuito.
 
-Volver atrás es cambiar `HAJIME_BILLING_MODE` a `marcha_blanca`: los pagos y
-suscripciones quedan registrados.
+Volver atrás es cambiar `HAJIME_BILLING_MODE` a `marcha_blanca` (se sigue
+cobrando a quien quiera pagar, sin exigir) o `HAJIME_PAYMENTS_ENABLED` a
+`false` (nada de cobros): los pagos y suscripciones quedan registrados.
 
 ## Conciliación
 

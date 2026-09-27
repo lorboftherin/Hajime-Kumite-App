@@ -72,6 +72,17 @@ class PlanRequired(AppError):
     code = "PLAN_REQUIRED"
 
 
+class PaymentsDisabled(AppError):
+    """404: los cobros están apagados (``HAJIME_PAYMENTS_ENABLED=false``).
+
+    Lo responden checkout, prueba gratis, cancelación, cargo de Culqi, avisos
+    de las pasarelas, comprobantes, reembolsos y cupones (ver docs/cobros.md).
+    """
+
+    status_code = 404
+    code = "PAYMENTS_DISABLED"
+
+
 class Conflict(AppError):
     status_code = 409
     code = "CONFLICT"

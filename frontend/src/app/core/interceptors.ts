@@ -8,6 +8,7 @@ import { inject, untracked } from '@angular/core';
 import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { AuthService } from './auth.service';
+import { PaymentsService } from './payments';
 import { SessionExpiredService } from './session-expired.service';
 import { ToastService } from './toast.service';
 import { apiBase } from './server';
@@ -62,13 +63,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const expired = inject(SessionExpiredService);
   const toast = inject(ToastService);
+  const payments = inject(PaymentsService);
   return next(req).pipe(
     catchError((err: unknown) => {
       if (!(err instanceof HttpErrorResponse)) return throwError(() => ApiError.from(err));
       if (err.status === 402) {
         // Plan requerido: aviso claro con «Ver planes», venga de donde venga la petición.
         const e = ApiError.from(err);
-        if (e.planRequired) toast.planRequired(e.message);
+        if (e.planRequired) toast.planRequired(e.message, payments.enabled());
         return throwError(() => e);
       }
       if (

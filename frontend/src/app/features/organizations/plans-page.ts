@@ -5,8 +5,9 @@ import { ApiService } from '../../core/api.service';
 import { INVOICE_STATUS, invoiceNumber, PAYMENT_STATUS, penFromCents } from '../../core/billing';
 import { DialogService } from '../../core/dialog.service';
 import { fmtDate, fmtSoles, SUBSCRIPTION_STATUS } from '../../core/format';
-import { BillingConfig, PaymentOut, Plan, PlansOut, Subscription } from '../../core/models';
+import { PaymentOut, Plan, PlansOut, Subscription } from '../../core/models';
 import { MutationService } from '../../core/mutation.service';
+import { PaymentsService } from '../../core/payments';
 import { PageHead } from '../../shared/page-head';
 import { SubscribeDialog } from '../billing/subscribe-dialog';
 import { etiquetas } from '../../core/i18n/etiquetas';
@@ -25,6 +26,18 @@ const AUDIENCE: Record<string, string> = etiquetas(() => ({
   organization: $localize`:@@planes.dojos-ligas-organizadores:Dojos, ligas y organizadores`,
 }));
 
+/**
+ * ¿Se muestra «Suscribirse» para el plan? Solo con los cobros activos, en modo enforced y si el
+ * plan tiene precio.
+ */
+export function canSubscribe(
+  paymentsOn: boolean,
+  mode: PlansOut['mode'] | undefined,
+  p: Pick<Plan, 'price_pen_month' | 'price_pen_year'>,
+): boolean {
+  return paymentsOn && mode === 'enforced' && !!(p.price_pen_month || p.price_pen_year);
+}
+
 /** Página «Planes»: niveles, precios (provisionales) y el modo de cobro vigente. */
 @Component({
   selector: 'app-plans-page',
@@ -40,7 +53,16 @@ const AUDIENCE: Record<string, string> = etiquetas(() => ({
       </app-page-head>
 
       @if (data(); as d) {
-        @if (d.mode === 'marcha_blanca') {
+        @if (!payments.enabled()) {
+          <!-- Cobros apagados (core/payments.ts): la página queda solo informativa. -->
+          <div
+            i18n="@@planes.marcha-blanca-todo-incluido"
+            class="alert ok"
+            data-testid="sin-cobros"
+          >
+            Durante la marcha blanca todo está incluido sin costo.
+          </div>
+        } @else if (d.mode === 'marcha_blanca') {
           <div i18n="@@planes.marcha-blanca-durante-pruebas" class="alert ok">
             <strong>Marcha blanca:</strong> durante las pruebas todo es gratis para cualquier
             cuenta. Los niveles ya existen y se activarán en el lanzamiento.
@@ -114,7 +136,7 @@ const AUDIENCE: Record<string, string> = etiquetas(() => ({
             </tbody>
           </table>
         </div>
-        @if (mySubs().length || myPayments().length) {
+        @if (payments.enabled() && (mySubs().length || myPayments().length)) {
           <section class="card mine" aria-labelledby="h-mio">
             <h2 i18n="@@planes.mi-competidor-plus" id="h-mio">Mi Competidor Plus</h2>
             @for (sub of mySubs(); track sub.id) {
@@ -234,8 +256,10 @@ export class PlansPage {
   private api = inject(ApiService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
+  /** Cobros activos: sin ellos no hay «Suscribirse», pagos ni comprobantes. */
+  readonly payments = inject(PaymentsService);
   readonly data = signal<PlansOut | null>(null);
-  readonly config = signal<BillingConfig | null>(null);
+  readonly config = this.payments.config;
   readonly error = signal('');
   /** Plan elegido para «Suscribirse» (abre el diálogo). */
   readonly chosen = signal<Plan | null>(null);
@@ -255,11 +279,9 @@ export class PlansPage {
             $localize`:@@planes.no-pudieron-cargar-planes:No se pudieron cargar los planes`,
         ),
     });
-    this.api.get<BillingConfig>('/billing/config').subscribe({
-      next: (c) => this.config.set(c),
-      error: () => {},
+    this.payments.load().subscribe((on) => {
+      if (on) void this.loadMine();
     });
-    void this.loadMine();
   }
 
   private async loadMine(): Promise<void> {
@@ -272,9 +294,9 @@ export class PlansPage {
     );
   }
 
-  /** Se contrata lo que tiene precio; la marcha blanca no cobra. */
+  /** Se contrata lo que tiene precio; la marcha blanca (o sin cobros activos) no cobra. */
   canSubscribe(p: Plan): boolean {
-    return this.data()?.mode === 'enforced' && !!(p.price_pen_month || p.price_pen_year);
+    return canSubscribe(this.payments.enabled(), this.data()?.mode, p);
   }
   cents(v: number): string {
     return penFromCents(v);

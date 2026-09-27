@@ -4,6 +4,8 @@ Cada función de pago tiene un nombre (``FEATURES``). ``has(db, sujeto, función
 responde si el sujeto la tiene:
 
 * ``HAJIME_BILLING_MODE=marcha_blanca`` (por defecto): toda cuenta tiene todo.
+* ``HAJIME_PAYMENTS_ENABLED=false`` (por defecto): igual que la marcha blanca,
+  sea cual sea el modo (ver :func:`billing_mode`).
 * ``enforced``: una organización necesita una suscripción vigente a un plan que
   incluya la función; una persona (o su cuenta), para Competidor Plus.
 
@@ -87,8 +89,28 @@ CATALOG = (
 VALID_STATUSES = ("trial", "active")
 
 
+def payments_enabled() -> bool:
+    """¿Están activos los cobros (``HAJIME_PAYMENTS_ENABLED``)?"""
+    return get_settings().payments_enabled
+
+
 def billing_mode() -> str:
-    return get_settings().billing_mode
+    """Modo efectivo. Con los cobros apagados es siempre marcha blanca, aunque
+    ``HAJIME_BILLING_MODE`` diga ``enforced``: sin forma de pagar, exigir un plan
+    (402) sería bloquear a los usuarios."""
+    st = get_settings()
+    return st.billing_mode if st.payments_enabled else "marcha_blanca"
+
+
+def billing_mode_warning() -> str | None:
+    """Aviso para el log al arrancar si la configuración es contradictoria."""
+    st = get_settings()
+    if st.billing_mode == "enforced" and not st.payments_enabled:
+        return (
+            "HAJIME_BILLING_MODE=enforced sin HAJIME_PAYMENTS_ENABLED=true: los cobros están apagados, "
+            "así que se ignora y todo queda permitido (marcha blanca). Nunca se responde 402."
+        )
+    return None
 
 
 def ensure_plans(db: Session) -> None:

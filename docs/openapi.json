@@ -9372,7 +9372,7 @@
      "billing"
     ],
     "summary": "Billing Config",
-    "description": "Pasarela activa y llave pública de Culqi (no es secreta). Sin sesión.",
+    "description": "Si los cobros están activos, la pasarela y la llave pública de Culqi (no es secreta).\n\nSin sesión: la interfaz lo consulta al arrancar para mostrar u ocultar pagos.",
     "operationId": "billing_config_api_v1_billing_config_get",
     "responses": {
      "200": {
@@ -10272,7 +10272,7 @@
      "billing"
     ],
     "summary": "Billing Alerts",
-    "description": "Planes que vencen en los próximos días (o en gracia) de las organizaciones que el\nusuario administra y de su propia cuenta. En marcha blanca no hay avisos.",
+    "description": "Planes que vencen en los próximos días (o en gracia) de las organizaciones que el\nusuario administra y de su propia cuenta. En marcha blanca (o con los cobros\napagados) no hay avisos.",
     "operationId": "billing_alerts_api_v1_billing_alerts_get",
     "responses": {
      "200": {
@@ -12600,6 +12600,11 @@
    },
    "BillingConfigOut": {
     "properties": {
+     "payments_enabled": {
+      "type": "boolean",
+      "title": "Payments Enabled",
+      "default": false
+     },
      "mode": {
       "type": "string",
       "title": "Mode"

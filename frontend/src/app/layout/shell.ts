@@ -6,7 +6,8 @@ import { filter, map } from 'rxjs';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { alertText } from '../core/billing';
-import { BillingAlert } from '../core/models';
+import { BillingAlert, User } from '../core/models';
+import { PaymentsService } from '../core/payments';
 import {
   canReviewClaims,
   dojoAdminOf,
@@ -82,6 +83,24 @@ const ORGANIZATION: NavItem = etiquetas(() => ({
   label: $localize`:@@menu.organizacion:Organización`,
 }));
 
+/**
+ * Entradas del menú según la cuenta. «Pagos» (Admin) solo aparece con los cobros activos
+ * (`HAJIME_PAYMENTS_ENABLED`, ver core/payments.ts).
+ */
+export function menuItems(u: User | null, isAdmin: boolean, paymentsOn: boolean): NavItem[] {
+  if (isCompetitorOnly(u)) return [MY_PROFILES];
+  const staff = isStaff(u);
+  const base = NAV.filter((it) => staff || !it.staff);
+  const mine = [
+    ...(tatamiScopes(u).length ? [MY_TATAMI] : []),
+    ...(dojoAdminOf(u).length ? [MY_DOJO] : []),
+  ];
+  const org = hasOrganizations(u) ? [ORGANIZATION] : [];
+  const claims = canReviewClaims(u) ? [CLAIMS] : [];
+  const admin = isAdmin ? [ADMIN, ...(paymentsOn ? [PAYMENTS] : [])] : [];
+  return [...mine, ...base, ...org, ...claims, ...admin];
+}
+
 const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(() => [
   { mode: 'light', label: $localize`:@@menu.claro:Claro`, icon: 'sun' },
   { mode: 'dark', label: $localize`:@@menu.oscuro:Oscuro`, icon: 'moon' },
@@ -154,6 +173,7 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
     </header>
 
     <main class="main">
+      <!-- Aviso «tu plan vence»: solo con los cobros activos (la lista queda vacía si no). -->
       @for (a of alerts(); track a.subscription_id) {
         <div class="plan-alert no-print" [class.grace]="a.in_grace" role="status">
           <span>{{ alertMessage(a) }}</span>
@@ -648,30 +668,28 @@ export class Shell {
   readonly themes = THEMES;
   /** Dónde está abierto el menú de usuario: barra lateral, barra superior (celular) o cerrado. */
   readonly menuOpen = signal<'side' | 'top' | null>(null);
-  readonly items = computed(() => {
-    const u = this.auth.user();
-    if (isCompetitorOnly(u)) return [MY_PROFILES];
-    const staff = isStaff(u);
-    const base = NAV.filter((it) => staff || !it.staff);
-    const mine = [
-      ...(tatamiScopes(u).length ? [MY_TATAMI] : []),
-      ...(dojoAdminOf(u).length ? [MY_DOJO] : []),
-    ];
-    const org = hasOrganizations(u) ? [ORGANIZATION] : [];
-    const claims = canReviewClaims(u) ? [CLAIMS] : [];
-    return [...mine, ...base, ...org, ...claims, ...(this.auth.isAdmin() ? [ADMIN, PAYMENTS] : [])];
-  });
+  /** Cobros activos en el servidor: sin ellos no hay menú «Pagos» ni avisos de vencimiento. */
+  readonly payments = inject(PaymentsService);
+  readonly items = computed(() =>
+    menuItems(this.auth.user(), this.auth.isAdmin(), this.payments.enabled()),
+  );
   readonly competitorOnly = computed(() => isCompetitorOnly(this.auth.user()));
   /** Planes por vencer o en gracia de las organizaciones que administra (o de su cuenta). */
   readonly alerts = signal<BillingAlert[]>([]);
   private readonly api = inject(ApiService);
   private readonly loadAlerts = effect(() => {
-    if (!this.auth.user()) return;
+    if (!this.auth.user() || !this.payments.enabled()) {
+      this.alerts.set([]);
+      return;
+    }
     this.api.get<BillingAlert[]>('/billing/alerts').subscribe({
       next: (a) => this.alerts.set(a),
       error: () => this.alerts.set([]),
     });
   });
+  constructor() {
+    this.payments.load().subscribe();
+  }
   alertMessage(a: BillingAlert): string {
     return alertText(a);
   }

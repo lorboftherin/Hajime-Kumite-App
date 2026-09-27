@@ -23,6 +23,9 @@ from app.services import gateway_http
 from tests.api.test_organizaciones import as_user, org_with_owner
 from tests.api.test_permissions import login_as
 
+# Los cobros vienen apagados (HAJIME_PAYMENTS_ENABLED=false): aquí se prueba su código.
+pytestmark = pytest.mark.usefixtures("cobros_activos")
+
 MP_SECRET = "secreto-de-prueba"
 CULQI_WEBHOOK = "clave-aviso"
 

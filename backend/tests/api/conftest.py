@@ -32,6 +32,17 @@ def client():
     engine.dispose()
 
 
+@pytest.fixture()
+def cobros_activos(monkeypatch):
+    """Enciende los cobros (HAJIME_PAYMENTS_ENABLED): vienen apagados por defecto.
+
+    Las pruebas del código de cobros (pasarelas, checkout, cupones, comprobantes,
+    correos, enforced) la piden explícitamente."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "payments_enabled", True)
+
+
 _clock = itertools.count()
 _births = itertools.count()
 

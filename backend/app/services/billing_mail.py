@@ -16,6 +16,9 @@ una vez al día: lo llama el despachador de correo y
 ``python -m app.billing_reminders``. Cada aviso se reserva con un UPDATE
 condicional sobre ``subscriptions.reminder_key``, así que no se repite aunque
 corran varios procesos a la vez.
+
+Con los cobros apagados (``HAJIME_PAYMENTS_ENABLED=false``) no se envía ninguno:
+ni avisos de vencimiento ni correos de pago.
 """
 
 from __future__ import annotations
@@ -97,6 +100,9 @@ def _soles(cents: int) -> str:
 
 
 def _send(db: Session, sub: Subscription, rendered: mail.Rendered, kind: str) -> int:
+    if not entitlements.payments_enabled():
+        log.info("Cobros apagados: no se envía el aviso %s de la suscripción %s", kind, sub.id)
+        return 0
     to = recipients(db, sub)
     for addr in to:
         mail.enqueue(db, addr, rendered, kind=kind)
@@ -232,7 +238,12 @@ def reminder_for(sub: Subscription, now: datetime) -> tuple[str, int] | None:
 
 
 def send_reminders(db: Session, now: datetime | None = None) -> int:
-    """Encola los avisos de vencimiento que tocan hoy. Devuelve cuántos avisos se encolaron."""
+    """Encola los avisos de vencimiento que tocan hoy. Devuelve cuántos avisos se encolaron.
+
+    Con los cobros apagados no encola nada (ni reserva el aviso: al activarlos
+    sale el que toque ese día)."""
+    if not entitlements.payments_enabled():
+        return 0
     now = now or utcnow()
     horizon = now + timedelta(days=8)
     grace_from = now - timedelta(days=get_settings().billing_grace_days + 1)

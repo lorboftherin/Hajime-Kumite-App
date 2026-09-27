@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { adminGuard, authGuard } from './core/auth.guard';
 import { AuthService } from './core/auth.service';
+import { paymentsGuard } from './core/payments';
 import { homePath } from './core/roles';
 import { mesaPendingGuard } from './features/mesa/mesa-pending.guard';
 import { Shell } from './layout/shell';
@@ -239,12 +240,15 @@ export const routes: Routes = [
       {
         // Pago con Culqi Checkout (el script de Culqi se carga solo en esta página).
         path: 'pago/culqi/:id',
+        // Con los cobros apagados (core/payments.ts), las rutas de pago llevan al inicio.
+        canActivate: [paymentsGuard],
         loadComponent: () => import('./features/billing/culqi-page').then((m) => m.CulqiPage),
         title: () => $localize`:@@rutas.pago-hajime:Pago · Hajime`,
       },
       ...(['exito', 'pendiente', 'error'] as const).map((result) => ({
         // Retorno de la pasarela (Mercado Pago vuelve a estas URL).
         path: `pago/${result}`,
+        canActivate: [paymentsGuard],
         data: { result },
         loadComponent: () =>
           import('./features/billing/payment-result').then((m) => m.PaymentResultPage),
@@ -252,7 +256,7 @@ export const routes: Routes = [
       })),
       {
         path: 'pagos',
-        canActivate: [adminGuard],
+        canActivate: [adminGuard, paymentsGuard],
         loadComponent: () =>
           import('./features/billing/payments-admin').then((m) => m.PaymentsAdminPage),
         title: () => $localize`:@@rutas.pagos-hajime:Pagos · Hajime`,
