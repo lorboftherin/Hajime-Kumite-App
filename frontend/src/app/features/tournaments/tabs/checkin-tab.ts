@@ -193,7 +193,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = lista(() => [
                       [class.shu]="!r.weigh_in_resolved"
                       [class.nezumi]="r.weigh_in_resolved"
                     >
-                      <ng-container i18n="@@torneo.acreditacion.pasado-bajo-peso">{r.weigh_in_result, select, over {Pasado de peso} other {Bajo el peso}}@if (r.weigh_in_resolved) { · aceptado}</ng-container>
+                      <ng-container i18n="@@torneo.acreditacion.pasado-bajo-peso">@if (r.weigh_in_result === 'over') {Pasado de peso} @else {Bajo el peso}@if (r.weigh_in_resolved) { · aceptado}</ng-container>
                     </span>
                   } @else if (r.weigh_in_result === 'ok') {
                     <span i18n="@@torneo.acreditacion.peso-ok" class="badge matcha">Peso OK</span>

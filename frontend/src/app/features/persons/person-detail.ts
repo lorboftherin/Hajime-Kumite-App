@@ -531,7 +531,7 @@ export class PersonDetailPage {
   async removeRole(r: RoleOut): Promise<void> {
     const ok = await this.dialog.confirm({
       title: $localize`:@@persona.quitar-rol:Quitar rol`,
-      message: $localize`:@@persona.quitara-rol:Se quitará el rol "${this.roleLabel[r.role] ?? r.role}:valor:" (${this.scopeText(r)}:scopeText:).`,
+      message: $localize`:@@persona.quitara-rol:Se quitará el rol "${this.roleLabel[r.role] ?? r.role}:rol:" (${this.scopeText(r)}:alcance:).`,
       danger: true,
       confirmText: $localize`:@@persona.quitar-2:Quitar`,
     });

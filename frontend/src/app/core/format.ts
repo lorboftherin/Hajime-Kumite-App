@@ -385,7 +385,7 @@ export const AUDIT_ENTITY: Record<string, string> = etiquetas(() => ({
   import: $localize`:@@auditoria.entidad.importacion:Importación`,
   user: $localize`:@@auditoria.entidad.usuario:Usuario`,
   kata_performance: $localize`:@@auditoria.entidad.ejecucion-kata:Ejecución de kata`,
-  template: $localize`:@@auditoria.entidad.plantilla-2:<ng-container i18n="@@auditoria.entidad.plantilla">Plantilla</ng-container>`,
+  template: $localize`:@@auditoria.entidad.plantilla:Plantilla`,
   team: $localize`:@@auditoria.entidad.equipo:Equipo`,
   referee_assignment: $localize`:@@auditoria.entidad.asignacion-arbitro:Asignación de árbitro`,
   tatami: 'Tatami',

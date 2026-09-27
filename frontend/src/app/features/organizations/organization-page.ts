@@ -725,7 +725,7 @@ export class OrganizationPage {
     if (!o) return;
     const ok = await this.dialog.confirm({
       title: $localize`:@@organizacion.quitar-miembro:Quitar miembro`,
-      message: $localize`:@@organizacion.dejara-ver-administrar-torneos:${m.display_name || m.username}:valor: dejará de ver y administrar los torneos de ${o.name}:name:.`,
+      message: $localize`:@@organizacion.dejara-ver-administrar-torneos:${m.display_name || m.username}:miembro: dejará de ver y administrar los torneos de ${o.name}:name:.`,
       confirmText: $localize`:@@organizacion.quitar-2:Quitar`,
       danger: true,
     });
@@ -757,7 +757,10 @@ export class OrganizationPage {
   async markPaid(s: Subscription, period: 'month' | 'year'): Promise<void> {
     const reference = await this.dialog.prompt({
       title: $localize`:@@organizacion.confirmar-pago:Confirmar pago`,
-      message: $localize`:@@organizacion.suscripcion-quedara-activa-mas:La suscripción ${s.plan_name}:plan_name: quedará activa ${period === 'year' ? 'un año' : 'un mes'}:valor: más.`,
+      message:
+        period === 'year'
+          ? $localize`:@@organizacion.suscripcion-activa-ano-mas:La suscripción ${s.plan_name}:plan: quedará activa un año más.`
+          : $localize`:@@organizacion.suscripcion-activa-mes-mas:La suscripción ${s.plan_name}:plan: quedará activa un mes más.`,
       label: $localize`:@@organizacion.referencia-pago-operacion-yape:Referencia del pago (operación, Yape…)`,
       minLength: 0,
       confirmText: $localize`:@@organizacion.marcar-pagado:Marcar pagado`,

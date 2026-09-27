@@ -34,7 +34,7 @@ const FORM = etiquetas(
         <div class="head">
           <div>
             <h3 i18n="@@persona.estadisticas.perfil-deportivo-2">Perfil deportivo</h3>
-            <p i18n="@@persona.estadisticas.kumite-torneos-oficiales" class="muted small">Kumite en torneos oficiales · {s.tournaments, plural, =1 {1 torneo} other {{{ s.tournaments }} torneos}}</p>
+            <p i18n="@@persona.estadisticas.kumite-torneos-oficiales" class="muted small">{s.tournaments, plural, =1 {Kumite en torneos oficiales · 1 torneo} other {Kumite en torneos oficiales · {{ s.tournaments }} torneos}}</p>
           </div>
           @if (s.form.length) {
             <div i18n-aria-label="@@persona.estadisticas.ultimos-combates" class="form" aria-label="Últimos combates">

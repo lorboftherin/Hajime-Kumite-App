@@ -663,7 +663,7 @@ export class SummaryTab {
     } else {
       const ok = await this.dialog.confirm({
         title: tr.label,
-        message: $localize`:@@torneo.resumen.torneo-pasara:El torneo pasará a "${TOURNAMENT_STATUS[tr.to]}:valor:".`,
+        message: $localize`:@@torneo.resumen.torneo-pasara:El torneo pasará a "${TOURNAMENT_STATUS[tr.to]}:estado:".`,
         danger: tr.danger,
         confirmText: tr.label,
       });

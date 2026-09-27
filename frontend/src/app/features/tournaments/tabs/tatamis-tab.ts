@@ -82,9 +82,9 @@ interface TatamiView {
       </section>
     }
     @if (!planning() && unassignedWithBracket() > 0) {
-      <div i18n="@@torneo.tatamis.tatami-combates-no-aparecen" class="alert warn small">
-        {unassignedWithBracket(), plural, =1 {1 categoría con llave no tiene} other {{{ unassignedWithBracket() }} categorías con llave no tienen}} tatami: sus combates no aparecen en ninguna cola.
-        <button class="btn sm" (click)="planning.set(true)">Organizar colas</button>
+      <div class="alert warn small">
+        <ng-container i18n="@@torneo.tatamis.tatami-combates-no-aparecen">{unassignedWithBracket(), plural, =1 {1 categoría con llave no tiene tatami: sus combates no aparecen en ninguna cola.} other {{{ unassignedWithBracket() }} categorías con llave no tienen tatami: sus combates no aparecen en ninguna cola.}}</ng-container>
+        <button i18n="@@torneo.tatamis.organizar-colas" class="btn sm" (click)="planning.set(true)">Organizar colas</button>
       </div>
     }
 
@@ -132,7 +132,7 @@ interface TatamiView {
             <div class="plan-col">
               <h3>
                 {{ t.name || 'Tatami ' + t.number }}
-                <span i18n="@@torneo.tatamis.aprox" class="muted small">· {queueTotal(t.id), plural, =1 {1 combate} other {{{ queueTotal(t.id) }} combates}} aprox.</span>
+                <span class="muted small">· <ng-container i18n="@@torneo.tatamis.aprox">{queueTotal(t.id), plural, =1 {1 combate aprox.} other {{{ queueTotal(t.id) }} combates aprox.}}</ng-container></span>
                 @if (dirty().has(t.id)) {
                   <span i18n="@@torneo.tatamis.sin-guardar" class="badge yamabuki">sin guardar</span>
                 }
@@ -534,7 +534,7 @@ export class TatamisTab {
     const res = await this.mut.patch<Tatami>(
       `/tatamis/${t.id}`,
       { planned_start: value || null },
-      { success: value ? $localize`:@@torneo.tatamis.inicio-guardado:Inicio de ${t.name || 'Tatami ' + t.number}:valor: guardado` : $localize`:@@torneo.tatamis.hora-inicio-quitada:Hora de inicio quitada` },
+      { success: value ? $localize`:@@torneo.tatamis.inicio-guardado:Inicio de ${t.name || 'Tatami ' + t.number}:tatami: guardado` : $localize`:@@torneo.tatamis.hora-inicio-quitada:Hora de inicio quitada` },
     );
     if (res) this.load();
   }

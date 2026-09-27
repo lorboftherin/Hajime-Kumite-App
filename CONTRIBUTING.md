@@ -54,6 +54,7 @@ python scripts/exportar_openapi.py --check
 
 # Frontend (en frontend/)
 npm run lint
+npm run i18n:check          # textos de la interfaz traducidos (docs/idiomas.md)
 npx ng test --watch=false
 npm run format:check
 npx ng build
@@ -63,6 +64,26 @@ python scripts/version.py --check
 shellcheck -x -P SCRIPTDIR infra/azure/*.sh scripts/*.sh   # si tocaste scripts
 bash scripts/humo-contenedor.sh "$(docker build -q .)"     # si tocaste Dockerfile o el arranque
 ```
+
+## Textos de la interfaz (idiomas)
+
+La interfaz está en español (es-PE), inglés y portugués de Brasil con un solo
+build. **Todo texto nuevo que vea el usuario va marcado para traducir**: `i18n`
+(o `i18n-<atributo>`) en las plantillas y `$localize` en TypeScript, siempre con
+un ID estable y con sentido (`@@mesa.hajime`, `@@torneo.resumen.iniciar-torneo`).
+Después:
+
+```bash
+cd frontend
+npm run i18n:extract   # actualiza src/locale/messages.json y dice qué falta
+# agrega la traducción de cada ID nuevo en src/locale/en.json y pt-BR.json
+npm run i18n:check     # lo mismo que CI: falla si falta un ID o un marcador
+```
+
+No traduzcas los términos de karate (hajime, yame, senshu, hantei, kiken,
+shikkaku, ippon, waza-ari, yuko, chui, hansoku, kata, kumite, tatami, dojo,
+sensei). Nada de `$localize` a nivel de módulo (ESLint lo impide): se evalúa
+antes de cargar las traducciones. Detalle y glosario en `docs/idiomas.md`.
 
 ## Cambios en la base de datos
 

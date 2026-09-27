@@ -67,9 +67,7 @@ import { Icon } from '../../shared/icon';
             </div>
           </form>
           @if (following()) {
-            <p i18n="@@avisos.ajustes.cuenta-sigues-este-dispositivo" class="small muted">
-              Con tu cuenta sigues {following(), plural, =1 {1 perfil o dojo} other {{{ following() }} perfiles o dojos}} en este dispositivo.
-            </p>
+            <p i18n="@@avisos.ajustes.cuenta-sigues-este-dispositivo" class="small muted">{following(), plural, =1 {Con tu cuenta sigues 1 perfil o dojo en este dispositivo.} other {Con tu cuenta sigues {{ following() }} perfiles o dojos en este dispositivo.}}</p>
           }
           <button i18n="@@avisos.ajustes.dejar-recibir-avisos-este" class="btn ghost danger" type="button" (click)="off()" [disabled]="busy()">
             Dejar de recibir avisos en este dispositivo

@@ -27,9 +27,9 @@ import { PageHead } from '../../shared/page-head';
           @if (config(); as c) {
             <span i18n="@@cobro.admin.pasarela">Pasarela: {{ provider(c.provider) }}</span>
             <span i18n="@@cobro.admin.comprobantes"
-              >Comprobantes: {c.invoicing, select, nubefact {Nubefact} other {desactivados}}</span
+              >Comprobantes: @if (c.invoicing === 'nubefact') {Nubefact} @else {desactivados}</span
             >
-            <span i18n="@@cobro.admin.modo">Modo: {c.mode, select, enforced {cobro activo} other {marcha blanca}}</span>
+            <span i18n="@@cobro.admin.modo">Modo: @if (c.mode === 'enforced') {cobro activo} @else {marcha blanca}</span>
           }
         </div>
       </app-page-head>

@@ -119,7 +119,7 @@ import { MutationService } from '../../core/mutation.service';
             <label class="check">
               <input type="checkbox" name="consent" [(ngModel)]="consent" />
               <span i18n="@@cuenta.reclamo.como-autorizo-publicacion">
-                Como {relation(), select, parent {padre o madre} other {apoderado}}, autorizo la
+                Como @if (relation() === 'parent') {padre o madre} @else {apoderado}, autorizo la
                 publicación de sus resultados deportivos y el uso de sus datos en estadísticas de
                 Hajime, como se explica en Privacidad.
               </span>

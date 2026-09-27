@@ -201,7 +201,7 @@ interface WalkoverResult {
           }
           <div class="form-actions">
             <button i18n="@@torneo.inscripciones.cerrar" class="btn" (click)="regOpen.set(false)">Cerrar</button>
-            <button i18n="@@torneo.inscripciones.inscribir-2" class="btn primary" [disabled]="!chosen().size || busy()" (click)="register()">Inscribir en {chosen().size, plural, =1 {1 categoría} other {{{ chosen().size }} categorías}}</button>
+            <button i18n="@@torneo.inscripciones.inscribir-2" class="btn primary" [disabled]="!chosen().size || busy()" (click)="register()">{chosen().size, plural, =1 {Inscribir en 1 categoría} other {Inscribir en {{ chosen().size }} categorías}}</button>
           </div>
         }
       </app-modal>

@@ -243,9 +243,7 @@ interface Pick {
                     class="btn primary"
                     (click)="submit()"
                     [disabled]="!ready().length || busy()"
-                  >
-                    {ready().length, plural, =1 {Enviar 1 inscripción} other {Enviar {{ ready().length }} inscripciones}}
-                  </button>
+                  >{ready().length, plural, =1 {Enviar 1 inscripción} other {Enviar {{ ready().length }} inscripciones}}</button>
                 </div>
               }
             }

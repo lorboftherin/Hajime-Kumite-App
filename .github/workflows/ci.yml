@@ -119,6 +119,10 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: ESLint (angular-eslint)
         run: npm run lint
+      - name: Traducciones completas (en, pt-BR)
+        # Falla si messages.json no está al día o si a un idioma le falta un
+        # texto o no respeta sus marcadores. Ver docs/idiomas.md.
+        run: npm run i18n:check
       - name: Pruebas unitarias (Vitest)
         run: npx ng test --watch=false
       - name: Compilar

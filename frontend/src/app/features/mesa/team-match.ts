@@ -45,7 +45,7 @@ interface DraftRow {
                   <span class="n">{{ d.wins.aka }}</span><span class="dash">–</span><span class="n">{{ d.wins.ao }}</span>
                 </div>
                 <span i18n="@@mesa.equipos.victorias-2" class="tsub">victorias</span>
-                <span class="tsub"><ng-container i18n="@@mesa.equipos.puntos">puntos {{ d.points.aka }}–{{ d.points.ao }}</ng-container>@if (d.draws) {<ng-container i18n="@@mesa.equipos.n-empates"> · {d.draws, plural, =1 {1 empate} other {{{ d.draws }} empates}} </ng-container>}</span>
+                <span class="tsub"><ng-container i18n="@@mesa.equipos.puntos">puntos {{ d.points.aka }}–{{ d.points.ao }}</ng-container>@if (d.draws) { · <ng-container i18n="@@mesa.equipos.n-empates">{d.draws, plural, =1 {1 empate} other {{{ d.draws }} empates}}</ng-container>}</span>
               </div>
             }
           }

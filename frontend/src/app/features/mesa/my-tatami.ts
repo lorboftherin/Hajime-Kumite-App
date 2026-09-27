@@ -45,7 +45,7 @@ interface View {
             @if (next(q); as it) {
               <a class="go" [routerLink]="['/mesa', it.match.id]" [queryParams]="{ tatami: q.tatami.id }">
                 <span i18n="@@mesa.mi-tatami.curso-siguiente" class="go-kicker">{it.match.status, select, in_progress {Combate en curso} other {Siguiente combate}}</span>
-                <span i18n="@@mesa.mi-tatami.abrir-curso-siguiente" class="go-main">{it.match.status, select, in_progress {Abrir combate en curso} other {Abrir siguiente combate}} →</span>
+                <span class="go-main"><ng-container i18n="@@mesa.mi-tatami.abrir-curso-siguiente">{it.match.status, select, in_progress {Abrir combate en curso} other {Abrir siguiente combate}}</ng-container> →</span>
                 <span class="go-sub"><span class="num">{{ it.number }}</span> · {{ it.category_name }}@if (it.eta && it.match.status !== 'in_progress') { · ≈ {{ hour(it.eta) }}}</span>
                 <span class="go-vs">
                   <span class="aka">{{ pname(q, it.match.aka_registration_id) }}</span>

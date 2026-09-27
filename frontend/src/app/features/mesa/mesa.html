@@ -22,16 +22,16 @@
     </div>
     <div class="conn" role="status" aria-live="polite">
       @if (stuck()) {
-        <span i18n="@@mesa.evento-bloqueado" class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i>Evento bloqueado · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}</span>
+        <span class="pill shu" [title]="stuckText()"><i aria-hidden="true"></i><ng-container i18n="@@mesa.evento-bloqueado">{pending().length, plural, =1 {Evento bloqueado · 1 pendiente} other {Evento bloqueado · {{ pending().length }} pendientes}}</ng-container></span>
         <button i18n="@@mesa.reintentar" i18n-title="@@mesa.reintentar-evento-bloqueado" class="hbtn" (click)="retryNow()" title="Reintentar el evento bloqueado">Reintentar</button>
         <button i18n="@@mesa.descartar-este-evento" class="hbtn danger" (click)="discardStuck()">Descartar este evento</button>
       } @else if (authBlocked()) {
-        <button i18n="@@mesa.sesion-vencida" i18n-title="@@mesa.reintentar-ahora" class="pill shu breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sesión vencida · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}
+        <button i18n-title="@@mesa.reintentar-ahora" class="pill shu breathe" (click)="retryNow()" title="Reintentar ahora">
+          <i aria-hidden="true"></i><ng-container i18n="@@mesa.sesion-vencida">{pending().length, plural, =1 {Sesión vencida · 1 pendiente} other {Sesión vencida · {{ pending().length }} pendientes}}</ng-container>
         </button>
       } @else if (noSignal()) {
-        <button i18n="@@mesa.sin-conexion" i18n-title="@@mesa.reintentar-ahora" class="pill yamabuki breathe" (click)="retryNow()" title="Reintentar ahora">
-          <i aria-hidden="true"></i>Sin conexión · {pending().length, plural, =1 {1 pendiente} other {{{ pending().length }} pendientes}}
+        <button i18n-title="@@mesa.reintentar-ahora" class="pill yamabuki breathe" (click)="retryNow()" title="Reintentar ahora">
+          <i aria-hidden="true"></i><ng-container i18n="@@mesa.sin-conexion">{pending().length, plural, =1 {Sin conexión · 1 pendiente} other {Sin conexión · {{ pending().length }} pendientes}}</ng-container>
         </button>
       } @else if (pending().length) {
         <span i18n="@@mesa.enviando" class="pill nezumi"><i aria-hidden="true"></i>Enviando {{ pending().length }}…</span>
@@ -72,13 +72,13 @@
   }
   @if (readOnly()) {
     <div class="notice ai readonly-note" role="status">
-      <span><ng-container i18n="@@mesa.solo-lectura-mesa-este-combate"><strong>Solo lectura.</strong> La mesa de este combate la lleva {{ ownerText() }}; aquí ves el marcador en vivo.</ng-container>@if (pending().length) {<ng-container i18n="@@mesa.esta-tablet-tiene-sin-enviar"> Esta tablet tiene {pending().length, plural, =1 {1 evento} other {{{ pending().length }} eventos}} sin enviar: se enviarán si tomas la mesa. </ng-container>}</span>
+      <span><ng-container i18n="@@mesa.solo-lectura-mesa-este-combate"><strong>Solo lectura.</strong> La mesa de este combate la lleva {{ ownerText() }}; aquí ves el marcador en vivo.</ng-container>@if (pending().length) { <ng-container i18n="@@mesa.esta-tablet-tiene-sin-enviar">{pending().length, plural, =1 {Esta tablet tiene 1 evento sin enviar: se enviarán si tomas la mesa.} other {Esta tablet tiene {{ pending().length }} eventos sin enviar: se enviarán si tomas la mesa.}}</ng-container>}</span>
       <button i18n="@@mesa.tomar-mesa" class="qbtn primary" [disabled]="taking()" (click)="takeTable()">Tomar la mesa</button>
     </div>
   }
   @if (finishQueued(); as fq) {
     <div i18n="@@mesa.cierre-cola-anota-resultado" class="notice yamabuki" role="status">
-      <strong>Cierre en cola:</strong> {fq.body.winner, select, draw {hikiwake (empate)} aka {gana AKA} other {gana AO}}.
+      <strong>Cierre en cola:</strong>@if (fq.body.winner === 'draw') { hikiwake (empate)} @else if (fq.body.winner === 'aka') { gana AKA} @else { gana AO}.
       Anota el resultado en la planilla; el combate se cerrará cuando vuelva la señal.
     </div>
   }
@@ -87,7 +87,7 @@
       <form (ngSubmit)="relogin()">
         <div class="relogin-head">
           <strong i18n="@@mesa.inicia-sesion-para-seguir" id="relogin-title">Inicia sesión para seguir enviando</strong>
-          <span i18n="@@mesa.sesion-vencio-mesa-sigue-abierta">La sesión venció. La mesa sigue abierta y {pending().length, plural, =0 {no se perdió nada} =1 {la cola (1 evento) se conserva} other {la cola ({{ pending().length }} eventos) se conserva}}.</span>
+          <span i18n="@@mesa.sesion-vencio-mesa-sigue-abierta">{pending().length, plural, =0 {La sesión venció. La mesa sigue abierta y no se perdió nada.} =1 {La sesión venció. La mesa sigue abierta y la cola (1 evento) se conserva.} other {La sesión venció. La mesa sigue abierta y la cola ({{ pending().length }} eventos) se conserva.}}</span>
         </div>
         <label class="sfield"><span i18n="@@mesa.usuario">Usuario</span><input name="u" autocomplete="username" [ngModel]="reloginUser()" (ngModelChange)="reloginUser.set($event)" required /></label>
         <label class="sfield"><span i18n="@@mesa.contrasena">Contraseña</span><input name="p" type="password" autocomplete="current-password" [ngModel]="reloginPass()" (ngModelChange)="reloginPass.set($event)" required autofocus /></label>
@@ -523,9 +523,7 @@
             El cierre queda en cola en esta tablet y se envía solo, una única vez.
           </p>
         } @else if (pending().length) {
-          <p i18n="@@mesa.hay-sin-enviar-cierre-queda-cola" class="sheet-warn">
-            Hay {pending().length, plural, =1 {1 evento} other {{{ pending().length }} eventos}} sin enviar: el cierre queda en cola y se envía después de ellos.
-          </p>
+          <p i18n="@@mesa.hay-sin-enviar-cierre-queda-cola" class="sheet-warn">{pending().length, plural, =1 {Hay 1 evento sin enviar: el cierre queda en cola y se envía después de ellos.} other {Hay {{ pending().length }} eventos sin enviar: el cierre queda en cola y se envía después de ellos.}}</p>
         }
         <div class="sheet-actions">
           <button i18n="@@mesa.volver" class="qbtn" (click)="finishOpen.set(false)">Volver</button>

@@ -259,7 +259,7 @@ import { TournamentContext } from '../tournament-context';
             </label>
           </div>
           @if (c.entrant_count) {
-            <p i18n="@@torneo.categorias.cambiar-edades-sexo-grados-peso" class="hint">Cambiar edades, sexo, grados o peso no mueve a los {c.entrant_count, plural, =1 {1 inscrito} other {{{ c.entrant_count }} inscritos}}: revisa sus inscripciones si ya no encajan.</p>
+            <p i18n="@@torneo.categorias.cambiar-edades-sexo-grados-peso" class="hint">{c.entrant_count, plural, =1 {Cambiar edades, sexo, grados o peso no mueve a los 1 inscrito: revisa sus inscripciones si ya no encajan.} other {Cambiar edades, sexo, grados o peso no mueve a los {{ c.entrant_count }} inscritos: revisa sus inscripciones si ya no encajan.}}</p>
           }
           <!-- Sección «Reglas» (docs/reglas-configurables.md): vacío = hereda del torneo.
                Sus campos van en el mismo PATCH /categories/{id} de saveEdit(). -->
