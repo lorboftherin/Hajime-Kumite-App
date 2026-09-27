@@ -6,7 +6,7 @@ vivo, estadísticas y permisos. El token público pasa a ser único (solo entre
 los que no son NULL, para SQL Server).
 
 Revision ID: 0007_vivo_compartido
-Revises: 0004
+Revises: 0006_sesiones
 Create Date: 2026-09-26 16:40:47.314142
 """
 

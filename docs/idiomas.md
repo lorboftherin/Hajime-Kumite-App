@@ -41,7 +41,7 @@ app arranca en español.
    público) guarda la preferencia **en ese dispositivo** y **recarga** la
    página. Recargar es lo más simple y seguro: todos los textos, incluidos los
    que ya se calcularon, salen en el idioma nuevo. La cola de eventos de la
-   mesa vive en IndexedDB y sobrevive a la recarga.
+   mesa vive en el almacenamiento local del navegador (`localStorage`) y sobrevive a la recarga.
 
 Los archivos de traducción viven en `frontend/src/locale/`:
 

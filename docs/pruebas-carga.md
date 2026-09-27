@@ -41,7 +41,7 @@ Peticiones por segundo y latencia mediana con 1, 16 y 64 clientes pidiendo sin p
 | Ingreso (login) | 9/s · 106 ms | 36/s · 431 ms | 35/s · 1,7 s |
 
 - El ingreso es lento a propósito: la contraseña se protege con un algoritmo
-  costoso (bcrypt), unos 100 ms por intento. Nadie entra 30 veces por segundo.
+  costoso (PBKDF2-SHA256 con iteraciones configurables en `HAJIME_PASSWORD_ITERATIONS`), unos 100 ms por intento. Nadie entra 30 veces por segundo.
 - Con los cambios de hilos y procesos, las lecturas bajo carga rinden entre 3 y
   4 veces más (llave con 16 clientes: de 33/s a 120/s).
 
@@ -143,7 +143,7 @@ de 20 s.
 - **Las mesas esperan detrás del vivo.** Cada proceso atiende 4 peticiones a
   la vez; si las 4 están calculando el vivo, el toque de la mesa espera. De ahí
   el p95 de 20–28 s en mesa con una mediana de 0,7 s.
-- **Ingreso lento bajo carga:** el login (bcrypt) pasó de 0,6 s a 4,7 s
+- **Ingreso lento bajo carga:** el login (PBKDF2, entonces con 390 000 iteraciones) pasó de 0,6 s a 4,7 s
   mientras corría la prueba: la CPU de la copia estaba saturada.
 - **Corrida 1:** tres mesas murieron a los pocos segundos porque el servidor
   devolvió una respuesta que no era JSON (página de error del gateway) y el

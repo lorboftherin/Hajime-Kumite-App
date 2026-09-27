@@ -1,7 +1,7 @@
 """mesa principal: la tablet que lleva la mesa de un combate
 
 Revision ID: 0008_mesa_principal
-Revises: 0004
+Revises: 0007_vivo_compartido
 Create Date: 2026-09-26 12:00:00
 """
 

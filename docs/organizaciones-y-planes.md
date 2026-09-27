@@ -54,7 +54,7 @@ y las funciones que incluye cada uno. Las **funciones con derecho** son:
 | `excel_import` | Importar inscripciones desde Excel | Subir el archivo |
 | `dojo_self_registration` | Autoinscripción por dojo | Abrir la inscripción en línea, generar enlaces y enviar inscripciones |
 | `plus_insights` | Análisis de Competidor Plus | (para las pantallas de Plus, por construir) |
-| `certificates` | Certificados descargables | (por construir) |
+| `certificates` | Certificados descargables | Diplomas de podio y participación (`docs/acreditacion-y-pesaje.md`) |
 
 | Plan | Para | Mensual | Anual | Funciones |
 | --- | --- | --- | --- | --- |
@@ -192,7 +192,7 @@ lista de lo que el dueño tiene que crear en cada pasarela.
    tiene llave: se informa para resolverla a mano.
 
 El aviso por correo al sensei queda para el servicio de correo:
-`self_registration.notify_registration_decision` hoy solo lo registra en el log.
+`self_registration.notify_registration_decisions` envía un correo por sensei con las aprobadas y las rechazadas con su motivo, y un aviso push a quien lo tenga activado (`docs/cuentas-y-correo.md`, `docs/avisos-push.md`).
 
 ## Pendientes
 

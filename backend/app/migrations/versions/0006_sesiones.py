@@ -1,7 +1,7 @@
 """sesiones con token de renovacion
 
 Revision ID: 0006_sesiones
-Revises: 0004
+Revises: 0005_intentos_login
 Create Date: 2026-09-26 16:39:11.509743
 """
 

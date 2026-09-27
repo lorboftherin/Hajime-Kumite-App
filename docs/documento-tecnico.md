@@ -410,10 +410,7 @@ Fuera de `config.py`, el contenedor lee `HAJIME_WORKERS` (2),
 | `HAJIME_NUBEFACT_URL`, `HAJIME_NUBEFACT_TOKEN` | — | Nubefact (**secretos**) |
 | `HAJIME_NUBEFACT_SERIE_BOLETA` / `_FACTURA` | `BBB1` / `FFF1` | Series |
 | `HAJIME_NUBEFACT_SERIE_NC_BOLETA` / `_NC_FACTURA` | `BBB1` / `FFF1` | Series de notas de crédito |
-
-`HAJIME_PAYMENTS_ENABLED` (interruptor general de cobros, apagado por
-defecto) lo agrega otro trabajo en curso; en este commit no existe todavía en
-`config.py` (sección 9.14).
+| `HAJIME_PAYMENTS_ENABLED` | `false` | Interruptor general de cobros. Apagado: el modo efectivo es siempre `marcha_blanca` (nunca 402) y las rutas de cobro responden 404 `PAYMENTS_DISABLED` (sección 9.14) |
 
 ---
 
@@ -1018,8 +1015,6 @@ flowchart LR
   se guarda por combate en `localStorage` (`PENDING_KEY_PREFIX`) y sobrevive a
   recargas y a un cambio de idioma. El cierre del combate también puede quedar
   en cola (`enqueueFinish`). Política en `retryDecision` y `retryDelay`.
-  `docs/idiomas.md` dice que la cola vive en IndexedDB; el código usa
-  `localStorage`.
 - **`foldClock`**: pliega los eventos pendientes sobre el ancla del reloj del
   servidor con las mismas reglas que `compute_scoreboard` del backend (en
   tiempo efectivo, un punto pausa el reloj).
@@ -1252,13 +1247,20 @@ Qué existe (`docs/cobros.md`):
 Por qué hoy no cobra nada: `HAJIME_BILLING_MODE=marcha_blanca` (nada exige
 plan), `HAJIME_PAYMENT_PROVIDER=manual` (sin pasarela), `HAJIME_INVOICING_PROVIDER=none`
 (sin comprobantes), y en marcha blanca no se envían recordatorios de cobro.
-Otro trabajo en curso agrega el interruptor general `HAJIME_PAYMENTS_ENABLED`,
-**apagado por defecto**, para que con él apagado todo funcione como marcha
-blanca aunque alguien configure una pasarela; en este commit aún no existe.
+Además, el interruptor general `HAJIME_PAYMENTS_ENABLED` está **apagado por
+defecto** (`config.py`, `services/entitlements.py`): el modo efectivo es siempre
+`marcha_blanca` aunque se configure `enforced` (se registra un aviso al
+arrancar y nunca hay 402); las rutas de checkout, prueba gratis, cancelación,
+cargo, reembolso, comprobantes, cupones y webhooks responden 404
+`PAYMENTS_DISABLED` (dependencia `COBROS` en `api/routers/billing.py`); los
+correos y recordatorios de cobro no salen; y el frontend (`core/payments.ts`)
+oculta «Pagos», «Suscribirse», los datos fiscales y el aviso de vencimiento.
+Siguen disponibles la consulta de planes y la asignación manual de planes por
+el Admin, que no cobra nada. Detalle en `docs/cobros.md`.
 
 Cómo se activaría (pasos de `docs/acciones-del-duenio.md`, «Cobros»):
 
-1. Encender `HAJIME_PAYMENTS_ENABLED` cuando exista.
+1. Encender `HAJIME_PAYMENTS_ENABLED=true`.
 2. Elegir pasarela, crear la cuenta de empresa y registrar la URL de avisos
    (`https://<dominio>/api/v1/payments/webhook/mercadopago` o `/culqi`);
    en Culqi, crear los planes mensuales (`HAJIME_CULQI_PLAN_IDS`).
@@ -1608,15 +1610,6 @@ roles y guion de casos difíciles es `docs/guia-prueba.md`.
 - **Monitoreo:** sin alertas de 5xx ni de latencia creadas por script; App
   Insights es opcional.
 - **Accesibilidad:** pendientes *moderate* de axe (`CONTRIBUTING.md`).
-- **Documentación desfasada detectada:** `docs/pruebas-carga.md` atribuye la
-  lentitud del login a bcrypt, pero el hash es PBKDF2 (`app/security.py`);
-  `docs/idiomas.md` dice que la cola de la mesa vive en IndexedDB, pero está en
-  `localStorage` (`mesa-logic.ts`); `docs/organizaciones-y-planes.md` dice que
-  el aviso al sensei «solo se registra en el log», pero ya se envía por correo
-  y push (`docs/cuentas-y-correo.md`, `CHANGELOG.md`); la tabla de derechos de
-  ese documento marca `certificates` como «por construir», pero los diplomas
-  ya lo verifican. `CLAUDE.md` cita «~360 pruebas, ~1:30»: hoy son 556 casos
-  y la suite tardó 3 min 28 s.
 - Pendientes menores de `docs/revision-v0.2.md` §5.2: cambiar
   `age_reference_date` con modo `date` no recalcula edades guardadas.
 

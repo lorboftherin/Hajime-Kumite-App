@@ -34,7 +34,7 @@ uno" en `Dockerfile`, despliegue en Azure Container Apps + Azure SQL
 ```bash
 # Backend (cd backend; entorno: python -m venv .venv && source .venv/bin/activate)
 pip install --require-hashes -r requirements-dev.txt && pip install --no-deps -e .
-pytest -q                                          # ~360 pruebas, ~1:30
+pytest -q                                          # ~560 pruebas, ~4 min
 pytest -q tests/domain                             # solo dominio (rápidas)
 ruff check app tests scripts && ruff format --check app tests scripts
 ruff format app tests scripts                      # formatear

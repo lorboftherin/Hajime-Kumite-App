@@ -6,7 +6,7 @@
 tipo y combate). Solo tablas nuevas: compatible con la versión anterior.
 
 Revision ID: 0015_avisos_push
-Revises: 0013_portal_publico
+Revises: 0014_pagos
 Create Date: 2026-09-26 19:09:06.545128
 """
 
