@@ -1,0 +1,18 @@
+{
+  "name": "hajime-docs-pdf",
+  "private": true,
+  "type": "module",
+  "description": "Genera los PDF del manual de usuario y del documento técnico a partir de docs/*.md",
+  "scripts": {
+    "manual": "node generar.mjs ../../docs/manual-de-usuario.md ../../docs/pdf/Hajime-Manual-de-usuario.pdf \"Manual de usuario\" \"Guía por rol para organizadores, operadores de mesa, senseis, competidores, familias y público\"",
+    "tecnico": "node generar.mjs ../../docs/documento-tecnico.md ../../docs/pdf/Hajime-Documento-tecnico.pdf \"Documento técnico\" \"Arquitectura, datos, API, seguridad, despliegue y operación de la plataforma\"",
+    "todo": "npm run manual && npm run tecnico"
+  },
+  "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/zen-kaku-gothic-new": "^5.3.0",
+    "marked": "^15.0.12",
+    "marked-gfm-heading-id": "^4.1.4",
+    "mermaid": "^11.17.2"
+  }
+}
