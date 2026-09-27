@@ -2468,7 +2468,7 @@
     "torneo.inscripciones.cerrar": "Cerrar",
     "torneo.inscripciones.inscribir-2": "{VAR_PLURAL, plural, =1 {Inscribir en 1 categoría} other {Inscribir en {INTERPOLATION} categorías}}",
     "torneo.inscripciones.editar-inscripcion-de": "Editar inscripción · {$INTERPOLATION}",
-    "torneo.inscripciones.cambiar-categoria-solo-posible": "Cambiar de categoría solo es posible mientras la categoría actual no tenga llave. Si hay advertencias (edad, grado, peso), se pedirá un motivo.",
+    "torneo.inscripciones.cambiar-categoria-con-llave": "Si la categoría ya tiene llave, la persona sale de esa llave y pasa a la de destino (si hay un lugar libre). Ese cambio, y las advertencias de edad, grado o peso, piden un motivo.",
     "torneo.inscripciones.sin-grado": "Sin grado",
     "torneo.inscripciones.cabeza-serie": "Cabeza de serie",
     "torneo.inscripciones.sin-sembrar": "Sin sembrar",

@@ -2580,7 +2580,6 @@
     "torneo.inscripciones.cabeza-serie": "Cabeça de chave",
     "torneo.inscripciones.cabeza-serie-n": "Cabeça de chave {$INTERPOLATION}",
     "torneo.inscripciones.cambiar": "Alterar",
-    "torneo.inscripciones.cambiar-categoria-solo-posible": "Mudar de categoria só é possível enquanto a categoria atual não tiver chave. Se houver avisos (idade, graduação, peso), será pedido um motivo.",
     "torneo.inscripciones.cancelar": "Cancelar",
     "torneo.inscripciones.categoria": "Categoria",
     "torneo.inscripciones.categoria-2": "Categoria",
@@ -3145,6 +3144,7 @@
     "usuarios.vincular": "Vincular",
     "usuarios.vincular-persona-de": "Vincular pessoa · {$INTERPOLATION}",
     "usuarios.vinculo-quitado": "Vínculo removido",
-    "usuarios.ya-no-admin": "Não é mais Admin"
+    "usuarios.ya-no-admin": "Não é mais Admin",
+    "torneo.inscripciones.cambiar-categoria-con-llave": "Se a categoria já tiver chave, a pessoa sai dessa chave e passa para a de destino (se houver uma vaga livre). Essa mudança, e os avisos de idade, graduação ou peso, pedem um motivo."
   }
 }

@@ -12,6 +12,10 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Manual de usuario** (`docs/manual-de-usuario.md`, por rol, con capturas nuevas en
+  `docs/manual/`) y **documento técnico** (`docs/documento-tecnico.md`), también en
+  PDF en `docs/pdf/`.
+
 - **Cobros apagados por defecto** (decisión del dueño: por ahora no se cobra).
   Nuevo interruptor `HAJIME_PAYMENTS_ENABLED` (`false` por defecto): todo queda
   permitido como en la marcha blanca aunque `HAJIME_BILLING_MODE=enforced`
@@ -147,6 +151,9 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
   traducen).
 
 ### Corregido
+
+- El diálogo «Editar inscripción» decía que no se puede cambiar de categoría con
+  llave generada; ahora explica que la persona pasa de una llave a otra con motivo.
 
 - **Mesa sin red:** el marcador se quedaba en el último valor confirmado por el
   servidor aunque el punto ya figurara «pendiente» en el historial (el

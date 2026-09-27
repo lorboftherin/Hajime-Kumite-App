@@ -2580,7 +2580,6 @@
     "torneo.inscripciones.cabeza-serie": "Seed",
     "torneo.inscripciones.cabeza-serie-n": "Seed {$INTERPOLATION}",
     "torneo.inscripciones.cambiar": "Change",
-    "torneo.inscripciones.cambiar-categoria-solo-posible": "Changing category is only possible while the current category has no bracket. If there are warnings (age, grade, weight), a reason will be requested.",
     "torneo.inscripciones.cancelar": "Cancel",
     "torneo.inscripciones.categoria": "Category",
     "torneo.inscripciones.categoria-2": "Category",
@@ -3145,6 +3144,7 @@
     "usuarios.vincular": "Link",
     "usuarios.vincular-persona-de": "Link person · {$INTERPOLATION}",
     "usuarios.vinculo-quitado": "Link removed",
-    "usuarios.ya-no-admin": "No longer an Admin"
+    "usuarios.ya-no-admin": "No longer an Admin",
+    "torneo.inscripciones.cambiar-categoria-con-llave": "If the category already has a bracket, the person leaves that bracket and moves into the destination one (if there is a free spot). That change, and any age, grade or weight warnings, require a reason."
   }
 }

@@ -386,9 +386,10 @@ interface WalkoverResult {
         title="Editar inscripción · {{ r.person_name }}"
         (closed)="editReg.set(null)"
       >
-        <p i18n="@@torneo.inscripciones.cambiar-categoria-solo-posible" class="hint"
-          >Cambiar de categoría solo es posible mientras la categoría actual no tenga llave. Si hay
-          advertencias (edad, grado, peso), se pedirá un motivo.</p
+        <p i18n="@@torneo.inscripciones.cambiar-categoria-con-llave" class="hint"
+          >Si la categoría ya tiene llave, la persona sale de esa llave y pasa a la de destino (si
+          hay un lugar libre). Ese cambio, y las advertencias de edad, grado o peso, piden un
+          motivo.</p
         >
         <form (ngSubmit)="saveEdit(r)">
           <div class="grid-2">
