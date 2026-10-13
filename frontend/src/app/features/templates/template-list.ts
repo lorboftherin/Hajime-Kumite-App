@@ -523,7 +523,7 @@ import { EditRow, blankRow, moveRow, toEditRow, toPayload, validateRows } from '
       flex-direction: column;
       gap: 0.25rem;
       position: sticky;
-      top: 1.5rem;
+      top: calc(1.5rem + var(--safe-top));
       .archived {
         margin-top: 0.75rem;
       }

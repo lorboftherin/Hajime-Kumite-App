@@ -1,6 +1,7 @@
 :host {
   display: block;
   min-height: 100vh;
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--washi);
   color: var(--sumi);
 }
@@ -17,7 +18,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  /* Pegada arriba: su fondo cubre la barra de estado del celular. */
+  padding: calc(12px + var(--safe-top)) 0 12px;
   background: color-mix(in srgb, var(--washi) 92%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--kasumi);

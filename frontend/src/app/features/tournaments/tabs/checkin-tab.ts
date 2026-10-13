@@ -599,7 +599,7 @@ const VIEWS: Array<{ value: CheckinView; label: string }> = lista(() => [
     }
     .side {
       position: sticky;
-      top: 1rem;
+      top: calc(1rem + var(--safe-top));
     }
     .catcount {
       list-style: none;

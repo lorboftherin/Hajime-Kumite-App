@@ -152,6 +152,13 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- **App de Android (y iPhone):** en teléfonos con Android 15+ y WebView reciente la
+  cabecera quedaba debajo de la barra de estado (la app se dibuja de borde a borde).
+  La interfaz reserva el espacio de la barra de estado, la muesca y la barra de
+  gestos con `--safe-top`/`--safe-bottom`/`--safe-left`/`--safe-right` en la
+  cabecera, la barra lateral, la barra inferior, la mesa, el vivo público, la
+  pantalla grande y las páginas sueltas.
+
 - El diálogo «Editar inscripción» decía que no se puede cambiar de categoría con
   llave generada; ahora explica que la persona pasa de una llave a otra con motivo.
 

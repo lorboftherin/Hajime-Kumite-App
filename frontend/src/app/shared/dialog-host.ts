@@ -198,7 +198,7 @@ import { FocusTrap } from './focus-trap';
     .toasts {
       position: fixed;
       right: 1.25rem;
-      bottom: calc(1.25rem + var(--bottom-bar-h));
+      bottom: calc(1.25rem + var(--bottom-bar-h) + var(--safe-bottom));
       z-index: 2000;
       display: flex;
       flex-direction: column;

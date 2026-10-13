@@ -97,7 +97,7 @@ import { Modal } from './modal';
     .session-warn {
       position: fixed;
       left: 50%;
-      bottom: calc(1.25rem + var(--bottom-bar-h));
+      bottom: calc(1.25rem + var(--bottom-bar-h) + var(--safe-bottom));
       transform: translateX(-50%);
       z-index: 1900;
       display: flex;

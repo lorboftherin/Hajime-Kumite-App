@@ -83,6 +83,12 @@ input:focus-visible {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  /* Barra de estado, muesca y barra de gestos (Android de borde a borde, iPhone): se dejan
+   * libres con bordes del color del encabezado, sin depender de los diseños por tamaño. */
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: var(--y-deep);
+  border-width: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
 /* ======================= Encabezado ======================= */

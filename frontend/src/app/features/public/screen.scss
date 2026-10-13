@@ -6,6 +6,8 @@
   position: fixed;
   inset: 0;
   display: block;
+  box-sizing: border-box;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: #0b0a09;
   color: #fff;
   cursor: none;

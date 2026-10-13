@@ -335,6 +335,10 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
       top: 0;
       height: 100vh;
       height: 100dvh;
+      box-sizing: border-box;
+      /* La barra de estado del celular o tablet dibuja encima: se deja su alto libre. */
+      border-top: var(--safe-top) solid transparent;
+      border-left: var(--safe-left) solid transparent;
       display: flex;
       flex-direction: column;
       padding: 1.75rem 0.9rem 1rem;
@@ -520,6 +524,9 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
     .main {
       min-width: 0;
       min-height: 100vh;
+      /* Sin cabecera (pantallas anchas): el contenido no pasa bajo la barra de estado. */
+      padding-top: var(--safe-top);
+      padding-right: var(--safe-right);
     }
     .topbar,
     .bottom-bar {
@@ -578,7 +585,9 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
         display: none;
       }
       .main {
-        padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom));
+        padding-top: 0;
+        padding-right: 0;
+        padding-bottom: calc(var(--bottom-bar-h) + var(--safe-bottom));
       }
       .topbar {
         position: sticky;
@@ -587,8 +596,10 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
         display: flex;
         align-items: center;
         justify-content: space-between;
+        box-sizing: content-box;
         height: 3.5rem;
-        padding: 0 0.75rem 0 1rem;
+        /* La barra de estado queda sobre el fondo de la cabecera, no sobre el logo. */
+        padding: var(--safe-top) calc(0.75rem + var(--safe-right)) 0 calc(1rem + var(--safe-left));
         background: color-mix(in srgb, var(--washi) 88%, transparent);
         backdrop-filter: blur(8px);
         border-bottom: 1px solid var(--kasumi);
@@ -619,8 +630,8 @@ const THEMES: Array<{ mode: ThemeMode; label: string; icon: IconName }> = lista(
         display: grid;
         grid-auto-flow: column;
         grid-auto-columns: 1fr;
-        height: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom));
-        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(var(--bottom-bar-h) + var(--safe-bottom));
+        padding-bottom: var(--safe-bottom);
         background: color-mix(in srgb, var(--kinu) 94%, transparent);
         backdrop-filter: blur(8px);
         border-top: 1px solid var(--kasumi);
