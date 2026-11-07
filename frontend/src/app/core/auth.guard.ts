@@ -16,7 +16,8 @@ export function passwordChangeRedirect(user: User | null, url: string): string |
 export const authGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (!auth.isLoggedIn()) return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+  if (!auth.isLoggedIn())
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
   const redirect = passwordChangeRedirect(auth.user(), state.url);
   if (redirect) {
     const keep = state.url && state.url !== '/' ? { returnUrl: state.url } : {};

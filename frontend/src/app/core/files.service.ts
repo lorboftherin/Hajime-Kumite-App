@@ -25,7 +25,11 @@ export class FilesService {
     }
   }
 
-  async download(path: string, filename: string, params?: Record<string, string | number | boolean>): Promise<void> {
+  async download(
+    path: string,
+    filename: string,
+    params?: Record<string, string | number | boolean>,
+  ): Promise<void> {
     try {
       const blob = await firstValueFrom(this.api.blob(path, params));
       const url = URL.createObjectURL(blob);

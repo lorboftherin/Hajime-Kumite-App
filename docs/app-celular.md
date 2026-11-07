@@ -53,6 +53,24 @@ npx cap open android          # abre Android Studio (o: cd android && ./gradlew 
 Requiere Android Studio (o el SDK de Android) y JDK 21. El proyecto Android
 está en `frontend/android/` y se versiona; lo que genera `cap sync` no.
 
+## Barra de estado y bordes de la pantalla (Android 15+ e iPhone)
+
+Desde Android 15 las apps se dibujan **de borde a borde**: el contenido llega
+hasta detrás de la barra de estado (hora, batería) y de la barra de gestos.
+Capacitor 8 deja el WebView en pantalla completa e informa el alto de esas
+barras en `--safe-area-inset-*` (y en `env(safe-area-inset-*)`); en teléfonos
+con un WebView más antiguo agrega el margen por su cuenta, por eso el problema
+solo se veía en algunos equipos.
+
+La interfaz reserva ese espacio con las variables `--safe-top`, `--safe-bottom`,
+`--safe-left` y `--safe-right` (`frontend/src/styles.scss`): la cabecera, la
+barra lateral, la barra inferior, la mesa, el vivo público, la pantalla grande y
+las páginas sueltas (ingreso, cuenta, perfil público) las usan. **Toda superficie
+nueva pegada a un borde de la pantalla debe usarlas.** Para revisarlo sin un
+teléfono: en las herramientas del navegador, vista de celular, agrega
+`:root{--safe-area-inset-top:36px;--safe-area-inset-bottom:24px}` y comprueba
+que nada quede bajo los primeros 36 px.
+
 ## 3. Publicar en las tiendas (pendiente)
 
 | Paso | Qué hace falta |
@@ -62,7 +80,10 @@ está en `frontend/android/` y se versiona; lo que genera `cap sync` no.
 | Ambas | Política de privacidad publicada (Ley 29733, menores de edad), formularios de datos (Data safety / Privacy labels), capturas de pantalla, clasificación de contenido. La app se declara para adultos (competidores mayores, padres o apoderados y dojos), no como app infantil. **Borrar la cuenta desde la app** ya existe (menú de usuario → «Borrar mi cuenta»). |
 | Cobros | Nada dentro de la app: la membresía se paga en la web (`docs/modelo-negocio.md`). |
 
-Pendiente para después: notificaciones push nativas (Firebase) y enlaces que
+Pendiente para después: notificaciones push nativas (Firebase; el camino está
+en [`avisos-push.md`](avisos-push.md), «Camino a FCM». Mientras tanto la app
+oculta la campana «Avisarme» y sugiere instalar Hajime desde el navegador, que
+sí recibe avisos Web Push) y enlaces que
 abran la app (por ejemplo, el enlace «en vivo» compartido por WhatsApp).
 
 ## Cómo está hecho
@@ -78,4 +99,5 @@ abran la app (por ejemplo, el enlace «en vivo» compartido por WhatsApp).
 - `frontend/capacitor.config.ts` y `frontend/android/`: empaquetado.
   `core/mobile.service.ts` maneja el botón «atrás» de Android.
 - `backend/app/config.py`: el CORS acepta los orígenes de Capacitor
-  (`https://localhost`, `capacitor://localhost`).
+  (`https://localhost`, `capacitor://localhost`) en `dev` y `test`. En `prod`
+  hay que declararlos en `HAJIME_CORS_ORIGINS` (ver `docs/despliegue.md`).

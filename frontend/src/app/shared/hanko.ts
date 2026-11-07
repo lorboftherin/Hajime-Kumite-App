@@ -1,6 +1,11 @@
 import { Component, computed, input } from '@angular/core';
+import { etiquetas } from '../core/i18n/etiquetas';
 
-const NAME: Record<number, string> = { 1: 'Oro', 2: 'Plata', 3: 'Bronce' };
+const NAME: Record<number, string> = etiquetas(() => ({
+  1: $localize`:@@hanko.oro:Oro`,
+  2: $localize`:@@hanko.plata:Plata`,
+  3: $localize`:@@hanko.bronce:Bronce`,
+}));
 const METAL: Record<number, string> = { 1: 'kin', 2: 'gin', 3: 'dou' };
 
 /**
@@ -19,7 +24,7 @@ const METAL: Record<number, string> = { 1: 'kin', 2: 'gin', 3: 'dou' };
         <span class="sr-only">{{ name() }}</span>
       }
     } @else if (place()) {
-      <span class="off">{{ place() }}.º</span>
+      <span i18n="@@hanko.texto" class="off">{{ place() }}.º</span>
     } @else {
       <span class="off">—</span>
     }

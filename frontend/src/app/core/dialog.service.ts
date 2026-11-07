@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { WarningItem } from './api-error';
 
-export type DialogRequest =
+/** `critical`: Escape no cierra el diálogo (hay que elegir con los botones). */
+export type DialogRequest = { critical?: boolean } & (
   | {
       kind: 'confirm';
       title: string;
@@ -33,7 +34,26 @@ export type DialogRequest =
       message: string;
       items?: string[];
       resolve: (v: boolean) => void;
-    };
+    }
+  | {
+      kind: 'choice';
+      title: string;
+      message: string;
+      items?: string[];
+      choices: DialogChoice[];
+      cancelText?: string;
+      resolve: (v: string | null) => void;
+    }
+);
+
+/** Opción de un diálogo con varias acciones (p. ej. «Regenerar la llave» / «Dar walkover»). */
+export interface DialogChoice {
+  value: string;
+  label: string;
+  hint?: string;
+  primary?: boolean;
+  danger?: boolean;
+}
 
 type Without<T> = T extends unknown ? Omit<T, 'resolve' | 'kind'> : never;
 
@@ -65,10 +85,13 @@ export class DialogService {
   }
 
   /** Lista advertencias y pide motivo (mín. 3 caracteres). Devuelve el motivo o null. */
-  warnings(warnings: WarningItem[], message = 'Hay advertencias que requieren confirmación'): Promise<string | null> {
+  warnings(
+    warnings: WarningItem[],
+    message = $localize`:@@dialogo.hay-advertencias-requieren:Hay advertencias que requieren confirmación`,
+  ): Promise<string | null> {
     return this.open<string | null>({
       kind: 'warnings',
-      title: 'Advertencias',
+      title: $localize`:@@dialogo.advertencias:Advertencias`,
       message,
       warnings,
     } as DialogRequest);
@@ -76,5 +99,10 @@ export class DialogService {
 
   alert(title: string, message: string, items?: string[]): Promise<boolean> {
     return this.open<boolean>({ kind: 'alert', title, message, items } as DialogRequest);
+  }
+
+  /** Varias acciones posibles; devuelve el `value` elegido o null si se cancela. */
+  choose(opts: Without<Extract<DialogRequest, { kind: 'choice' }>>): Promise<string | null> {
+    return this.open<string | null>({ kind: 'choice', ...opts } as DialogRequest);
   }
 }

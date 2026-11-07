@@ -7,6 +7,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
+
+from .errors import DomainError
 
 # ---------------------------------------------------------------------------
 # Grados: escala ordinal. 10.º kyu = 1 … 1.er kyu = 10, 1.er dan = 11, …
@@ -18,14 +21,14 @@ _GRADE_RE = re.compile(r"^\s*(\d{1,2})\s*(kyu|dan)\s*$", re.IGNORECASE)
 def grade_to_ordinal(grade: str) -> int:
     m = _GRADE_RE.match(grade or "")
     if not m:
-        raise ValueError(f"Grado inválido: {grade!r} (use p. ej. '8 kyu' o '1 dan')")
+        raise DomainError(f"Grado inválido: {grade!r} (use p. ej. '8 kyu' o '1 dan')")
     n, kind = int(m.group(1)), m.group(2).lower()
     if kind == "kyu":
         if not 1 <= n <= 10:
-            raise ValueError("kyu debe estar entre 1 y 10")
+            raise DomainError("kyu debe estar entre 1 y 10")
         return 11 - n
     if not 1 <= n <= 10:
-        raise ValueError("dan debe estar entre 1 y 10")
+        raise DomainError("dan debe estar entre 1 y 10")
     return 10 + n
 
 
@@ -35,6 +38,54 @@ def ordinal_to_grade(o: int) -> str:
 
 def age_at(birth: date, ref: date) -> int:
     return ref.year - birth.year - ((ref.month, ref.day) < (birth.month, birth.day))
+
+
+AGE_MODES = ("date", "birth_year")
+
+
+def competition_age(birth: date, ref: date, mode: str = "date") -> int:
+    """Edad para las categorías según el modo del torneo:
+
+    * ``date`` (por defecto): edad cumplida a la fecha de referencia.
+    * ``birth_year``: año de la fecha de referencia menos año de nacimiento
+      (todos los nacidos el mismo año compiten juntos todo el año).
+    """
+    if mode == "birth_year":
+        return ref.year - birth.year
+    return age_at(birth, ref)
+
+
+# ---------------------------------------------------------------------------
+# Pesos: rango numérico a partir de la etiqueta ("-45", "+84", "45-50")
+# ---------------------------------------------------------------------------
+
+_NUM = r"(\d+(?:[.,]\d+)?)"
+_W_UNDER = re.compile(rf"^-\s*{_NUM}$")
+_W_OVER = re.compile(rf"^\+\s*{_NUM}$")
+_W_RANGE = re.compile(rf"^{_NUM}\s*-\s*{_NUM}$")
+
+
+def parse_weight_range(label: str | None) -> tuple[Decimal | None, Decimal | None]:
+    """(mínimo, máximo) en kg de una etiqueta de peso. "-45" = hasta 45;
+    "+84" = más de 84 (se guarda 84 como mínimo); "45-50" = de 45 a 50. Una
+    etiqueta que no se entiende (p. ej. "Libre") devuelve (None, None)."""
+    if not label:
+        return None, None
+    # Signos tipográficos («−45», «45–50») como el guion común.
+    txt = label.strip().lower().replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
+    txt = re.sub(r"\s*kg\s*$", "", txt)
+
+    def num(x: str) -> Decimal:
+        return Decimal(x.replace(",", "."))
+
+    if m := _W_UNDER.match(txt):
+        return None, num(m.group(1))
+    if m := _W_OVER.match(txt):
+        return num(m.group(1)), None
+    if m := _W_RANGE.match(txt):
+        lo, hi = num(m.group(1)), num(m.group(2))
+        return (lo, hi) if lo <= hi else (hi, lo)
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +120,7 @@ class Warning:
     message: str
 
 
-def registration_warnings(c: Competitor, cat: CategoryRule, ref_date: date) -> list[Warning]:
+def registration_warnings(c: Competitor, cat: CategoryRule, ref_date: date, age_mode: str = "date") -> list[Warning]:
     w: list[Warning] = []
     if cat.sex != "X" and c.sex != cat.sex:
         w.append(Warning("SEX_MISMATCH", "El sexo del competidor no coincide con la categoría"))
@@ -77,7 +128,7 @@ def registration_warnings(c: Competitor, cat: CategoryRule, ref_date: date) -> l
         if cat.age_min is not None or cat.age_max is not None:
             w.append(Warning("AGE_UNKNOWN", "Sin fecha de nacimiento: no se puede validar la edad"))
     else:
-        age = age_at(c.birth_date, ref_date)
+        age = competition_age(c.birth_date, ref_date, age_mode)
         if cat.age_min is not None and age < cat.age_min:
             w.append(Warning("AGE_BELOW_MIN", f"Edad {age} menor al mínimo {cat.age_min}"))
         if cat.age_max is not None and age > cat.age_max:
@@ -119,15 +170,25 @@ def normalize_weight(label: str) -> str:
 
 
 def suggest_categories(
-    c: Competitor, cats: list[CategoryRule], ref_date: date, modality: str | None = None
+    c: Competitor, cats: list[CategoryRule], ref_date: date, modality: str | None = None, age_mode: str = "date"
 ) -> list[CategoryRule]:
-    """Categorías sin advertencias para el competidor (el operador decide)."""
+    """Categorías sin advertencias para el competidor (el operador decide).
+
+    Si el competidor no declaró peso, el peso no se usa para sugerir: se
+    proponen las categorías compatibles en todo lo demás (quien llama avisa
+    que falta confirmar la categoría de peso).
+    """
+    ignore_weight = not c.weight_class
     return [
         cat
         for cat in cats
         if not cat.is_team
         and (modality is None or cat.modality == modality)
-        and not registration_warnings(c, cat, ref_date)
+        and not [
+            w
+            for w in registration_warnings(c, cat, ref_date, age_mode)
+            if not (ignore_weight and w.code == "WEIGHT_UNKNOWN")
+        ]
     ]
 
 

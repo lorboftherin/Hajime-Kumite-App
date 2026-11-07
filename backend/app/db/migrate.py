@@ -12,9 +12,27 @@ from sqlalchemy.engine import Engine
 BASELINE = "0001"
 # Base creada con create_all (sin Alembic): la revisión que corresponde según
 # qué tablas ya existen. La última que coincide manda.
-LEGACY_MARKERS = (("users", BASELINE), ("teams", "0002"), ("match_presence", "0004"))
+LEGACY_MARKERS = (
+    ("users", BASELINE),
+    ("teams", "0002"),
+    ("match_presence", "0004"),
+    ("login_attempts", "0005_intentos_login"),
+    ("user_sessions", "0006_sesiones"),
+    ("public_snapshots", "0007_vivo_compartido"),
+    ("organizations", "0009_organizaciones"),
+    ("category_splits", "0010_reglas_deportivas"),
+    ("outbox_emails", "0011_cuentas"),
+    ("ranking_seasons", "0012_checkin_ranking"),
+    ("payments", "0014_pagos"),
+    ("push_subscriptions", "0015_avisos_push"),
+)
 # Columnas que distinguen revisiones sin tabla nueva: (tabla, columna, revisión).
-LEGACY_COLUMNS = (("tournaments", "public_token", "0003"),)
+LEGACY_COLUMNS = (
+    ("tournaments", "public_token", "0003"),
+    ("match_presence", "is_primary", "0008_mesa_principal"),
+    ("registrations", "checkin_status", "0012_checkin_ranking"),
+    ("tournaments", "public_slug", "0013_portal_publico"),
+)
 
 
 def alembic_config() -> Config:

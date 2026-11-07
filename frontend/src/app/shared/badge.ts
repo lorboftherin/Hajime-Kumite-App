@@ -1,5 +1,11 @@
 import { Component, computed, input } from '@angular/core';
-import { CATEGORY_STATUS, IMPORT_ROW_STATUS, MATCH_STATUS, REGISTRATION_STATUS, TOURNAMENT_STATUS } from '../core/format';
+import {
+  CATEGORY_STATUS,
+  IMPORT_ROW_STATUS,
+  MATCH_STATUS,
+  REGISTRATION_STATUS,
+  TOURNAMENT_STATUS,
+} from '../core/format';
 
 const MAPS: Record<string, Record<string, string>> = {
   tournament: TOURNAMENT_STATUS,
@@ -34,6 +40,7 @@ const TONE: Record<string, string> = {
   needs_review: 'yamabuki',
   duplicate: 'yamabuki',
   error: 'shu',
+  rejected: 'shu',
 };
 
 @Component({
@@ -42,7 +49,9 @@ const TONE: Record<string, string> = {
 })
 export class StatusBadge {
   readonly status = input.required<string>();
-  readonly type = input<'tournament' | 'category' | 'match' | 'registration' | 'import'>('category');
+  readonly type = input<'tournament' | 'category' | 'match' | 'registration' | 'import'>(
+    'category',
+  );
   readonly label = computed(() => MAPS[this.type()]?.[this.status()] ?? this.status());
   readonly tone = computed(() => TONE[this.status()] ?? 'nezumi');
 }

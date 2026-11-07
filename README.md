@@ -9,6 +9,7 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 - Despliegue: [`docs/despliegue.md`](docs/despliegue.md)
 - App del celular (PWA y APK de Android): [`docs/app-celular.md`](docs/app-celular.md)
 - Modelo de negocio (freemium en tres niveles): [`docs/modelo-negocio.md`](docs/modelo-negocio.md)
+- Cómo contribuir (ramas, pruebas, migraciones, versiones): [`CONTRIBUTING.md`](CONTRIBUTING.md) · cambios por versión: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Stack
 

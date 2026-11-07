@@ -31,7 +31,10 @@ export class MutationService {
   private dialog = inject(DialogService);
   private toast = inject(ToastService);
 
-  async run<T>(send: (override?: Override) => Observable<T>, opts: MutationOptions = {}): Promise<T | undefined> {
+  async run<T>(
+    send: (override?: Override) => Observable<T>,
+    opts: MutationOptions = {},
+  ): Promise<T | undefined> {
     let override: Override | undefined;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
@@ -48,7 +51,9 @@ export class MutationService {
         }
         if (opts.onError && (await opts.onError(err))) return undefined;
         if (err.code === 'VERSION_CONFLICT') {
-          this.toast.warn('El registro fue modificado por otra persona. Se recargaron los datos; revisa y vuelve a intentar.');
+          this.toast.warn(
+            $localize`:@@cola.registro-fue-modificado-otra:El registro fue modificado por otra persona. Se recargaron los datos; revisa y vuelve a intentar.`,
+          );
           opts.onConflict?.();
           return undefined;
         }
@@ -56,20 +61,43 @@ export class MutationService {
         return undefined;
       }
     }
-    this.toast.error('Se agotaron los intentos de confirmación: el servidor sigue devolviendo advertencias. Vuelve a intentar.');
+    this.toast.error(
+      $localize`:@@cola.agotaron-intentos-confirmacion:Se agotaron los intentos de confirmación: el servidor sigue devolviendo advertencias. Vuelve a intentar.`,
+    );
     return undefined;
   }
 
   /** Atajos: el cuerpo recibe `override` automáticamente cuando el usuario acepta advertencias. */
-  post<T>(path: string, body: Record<string, unknown> = {}, opts?: MutationOptions): Promise<T | undefined> {
-    return this.run((override) => this.api.post<T>(path, override ? { ...body, override } : body), opts);
+  post<T>(
+    path: string,
+    body: Record<string, unknown> = {},
+    opts?: MutationOptions,
+  ): Promise<T | undefined> {
+    return this.run(
+      (override) => this.api.post<T>(path, override ? { ...body, override } : body),
+      opts,
+    );
   }
 
-  patch<T>(path: string, body: Record<string, unknown> = {}, opts?: MutationOptions): Promise<T | undefined> {
-    return this.run((override) => this.api.patch<T>(path, override ? { ...body, override } : body), opts);
+  patch<T>(
+    path: string,
+    body: Record<string, unknown> = {},
+    opts?: MutationOptions,
+  ): Promise<T | undefined> {
+    return this.run(
+      (override) => this.api.patch<T>(path, override ? { ...body, override } : body),
+      opts,
+    );
   }
 
-  put<T>(path: string, body: Record<string, unknown> = {}, opts?: MutationOptions): Promise<T | undefined> {
-    return this.run((override) => this.api.put<T>(path, override ? { ...body, override } : body), opts);
+  put<T>(
+    path: string,
+    body: Record<string, unknown> = {},
+    opts?: MutationOptions,
+  ): Promise<T | undefined> {
+    return this.run(
+      (override) => this.api.put<T>(path, override ? { ...body, override } : body),
+      opts,
+    );
   }
 }

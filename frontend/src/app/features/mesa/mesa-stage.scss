@@ -364,3 +364,15 @@
   }
 }
 
+/* Reglas configurables: dos escaleras de faltas y punto de oro. */
+.ladder-c2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--y-dim);
+}
+.golden {
+  color: var(--kin, #d6b25e);
+  font-weight: 700;
+}

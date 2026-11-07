@@ -272,7 +272,9 @@
   background: var(--y-panel-2);
   cursor: pointer;
   color: var(--y-text);
-  transition: opacity 200ms var(--m-ease), border-color 200ms var(--m-ease);
+  transition:
+    opacity 200ms var(--m-ease),
+    border-color 200ms var(--m-ease);
   &.on {
     border-color: var(--y-text);
   }

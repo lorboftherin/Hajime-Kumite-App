@@ -1,17 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiError } from '../../../core/api-error';
-import { ApiService } from '../../../core/api.service';
+import { ApiService, LONG_TIMEOUT_MS } from '../../../core/api.service';
 import { DialogService } from '../../../core/dialog.service';
 import { FilesService } from '../../../core/files.service';
-import { DUPLICATE_REASON, IMPORT_BATCH_STATUS, plural } from '../../../core/format';
+import { DUPLICATE_REASON, IMPORT_BATCH_STATUS } from '../../../core/format';
 import { ImportBatch, ImportRow } from '../../../core/models';
 import { MutationService } from '../../../core/mutation.service';
 import { ToastService } from '../../../core/toast.service';
 import { StatusBadge } from '../../../shared/badge';
 import { Icon } from '../../../shared/icon';
 import { TournamentContext } from '../tournament-context';
+import { lista } from '../../../core/i18n/etiquetas';
 
 interface Decision {
   action: 'create' | 'use_existing' | 'skip';
@@ -19,25 +21,80 @@ interface Decision {
   category_ids: Set<number>;
 }
 
+/** Columnas editables de una fila (mismas claves que la plantilla). */
+const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = lista(() => [
+  { key: 'nombres', label: $localize`:@@torneo.importar.nombres:Nombres` },
+  { key: 'apellidos', label: $localize`:@@torneo.importar.apellidos:Apellidos` },
+  {
+    key: 'fecha_nacimiento',
+    label: $localize`:@@torneo.importar.fecha-nacimiento:Fecha de nacimiento`,
+    placeholder: 'dd/mm/aaaa',
+  },
+  { key: 'sexo', label: $localize`:@@torneo.importar.sexo-m-f:Sexo (M/F)` },
+  { key: 'grado', label: $localize`:@@torneo.importar.grado:Grado`, placeholder: '8 kyu, 1 dan…' },
+  { key: 'categoria_peso', label: $localize`:@@torneo.importar.peso:Peso`, placeholder: '-45' },
+  { key: 'dojo', label: 'Dojo' },
+  {
+    key: 'tipo_documento',
+    label: $localize`:@@torneo.importar.tipo-documento:Tipo de documento`,
+    placeholder: 'DNI, CE, PASSPORT',
+  },
+  {
+    key: 'numero_documento',
+    label: $localize`:@@torneo.importar.numero-documento:Número de documento`,
+  },
+  {
+    key: 'modalidades',
+    label: $localize`:@@torneo.importar.modalidades:Modalidades`,
+    placeholder: 'kumite, kata',
+  },
+  {
+    key: 'rol',
+    label: $localize`:@@torneo.importar.rol:Rol`,
+    placeholder: 'competidor, árbitro, sensei',
+  },
+]);
+// Palabras que acepta la importación (el backend las lee en español): no se traducen.
+const ROLE_WORD: Record<string, string> = {
+  competitor: 'competidor',
+  referee: 'árbitro',
+  sensei: 'sensei',
+};
+
 @Component({
   selector: 'app-import-tab',
   imports: [FormsModule, StatusBadge, Icon],
   template: `
     <div class="card intro">
-      <h2>Importar inscripciones desde Excel</h2>
+      <h2 i18n="@@torneo.importar.importar-inscripciones-desde"
+        >Importar inscripciones desde Excel</h2
+      >
       <ol class="steps">
-        <li>Descarga la plantilla con columnas fijas y compártela con los dojos.</li>
-        <li>Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con error).</li>
-        <li>Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li>
+        <li i18n="@@torneo.importar.descarga-plantilla-columnas"
+          >Descarga la plantilla con columnas fijas y compártela con los dojos.</li
+        >
+        <li i18n="@@torneo.importar.sube-archivo-veras-vista-previa"
+          >Sube el archivo: verás una vista previa fila por fila (nueva, posible duplicado o con
+          error).</li
+        >
+        <li i18n="@@torneo.importar.revisa-decisiones-categorias"
+          >Revisa las decisiones y categorías sugeridas; solo al confirmar se guarda algo.</li
+        >
       </ol>
       <div class="row">
-        <button class="btn" (click)="downloadTemplate()"><app-icon name="download" /> Descargar plantilla .xlsx</button>
-        <label class="btn primary">
+        <button
+          i18n="@@torneo.importar.descargar-plantilla-xlsx"
+          class="btn"
+          (click)="downloadTemplate()"
+          ><app-icon name="download" /> Descargar plantilla .xlsx</button
+        >
+        <label i18n="@@torneo.importar.subir-archivo" class="btn primary">
           <app-icon name="upload" /> Subir archivo
           <input type="file" accept=".xlsx" hidden (change)="upload($event)" />
         </label>
         @if (uploading()) {
-          <span class="spinner"></span> <span class="small muted">Procesando…</span>
+          <span class="spinner"></span>
+          <span i18n="@@torneo.importar.procesando" class="small muted">Procesando…</span>
         }
       </div>
     </div>
@@ -45,10 +102,26 @@ interface Decision {
     @if (batch(); as b) {
       <div class="card">
         <div class="row">
-          <h2 class="grow preview-title">Vista previa <span class="muted file">{{ b.filename }}</span> <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2>
-          <span class="badge matcha">{{ plural(counts().new, 'nueva', 'nuevas') }}</span>
-          <span class="badge yamabuki">{{ plural(counts().duplicate, 'posible duplicado', 'posibles duplicados') }}</span>
-          <span class="badge shu">{{ plural(counts().error, 'con error', 'con error') }}</span>
+          <h2 i18n="@@torneo.importar.vista-previa" class="grow preview-title"
+            >Vista previa <span class="muted file">{{ b.filename }}</span>
+            <span class="badge plain">{{ batchStatusText(b.status) }}</span></h2
+          >
+          <span i18n="@@torneo.importar.n-nuevas" class="badge matcha">{counts().new, plural,
+            =1 {1 nueva}
+            other {{{ counts().new }} nuevas}
+          }</span>
+          <span
+            i18n="@@torneo.importar.n-duplicados"
+            class="badge yamabuki"
+            >{counts().duplicate, plural,
+              =1 {1 posible duplicado}
+              other {{{ counts().duplicate }} posibles duplicados}
+            }</span
+          >
+          <span i18n="@@torneo.importar.n-con-error" class="badge shu">{counts().error, plural,
+            =1 {1 con error}
+            other {{{ counts().error }} con error}
+          }</span>
         </div>
         <div class="table-wrap mt">
           <table class="table preview-table">
@@ -62,12 +135,12 @@ interface Decision {
             </colgroup>
             <thead>
               <tr>
-                <th>Fila</th>
-                <th>Persona</th>
-                <th>Dojo</th>
-                <th>Estado</th>
-                <th>Decisión</th>
-                <th>Categorías</th>
+                <th i18n="@@torneo.importar.fila">Fila</th>
+                <th i18n="@@torneo.importar.persona">Persona</th>
+                <th i18n="@@torneo.importar.dojo">Dojo</th>
+                <th i18n="@@torneo.importar.estado">Estado</th>
+                <th i18n="@@torneo.importar.decision">Decisión</th>
+                <th i18n="@@torneo.importar.categorias">Categorías</th>
               </tr>
             </thead>
             <tbody>
@@ -81,15 +154,22 @@ interface Decision {
                       <span class="badge ai">{{ role }}</span>
                     }
                     <div class="muted small">
-                      {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} · {{ r.data['grado'] || 's/g' }}
-                      @if (r.data['numero_documento']) { · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }} }
-                      @if (r.data['categoria_peso']) { · {{ r.data['categoria_peso'] }} kg }
+                      {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} ·
+                      {{ r.data['grado'] || 's/g' }}
+                      @if (r.data['numero_documento']) {
+                        · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }}
+                      }
+                      @if (r.data['categoria_peso']) {
+                        <ng-container i18n="@@torneo.importar.kg">
+                          · {{ r.data['categoria_peso'] }} kg
+                        </ng-container>
+                      }
                     </div>
                   </td>
                   <td>
                     {{ r.data['dojo'] }}
                     @if (!r.data['dojo_id'] && r.data['dojo']) {
-                      <div class="small muted">(se creará)</div>
+                      <div i18n="@@torneo.importar.creara" class="small muted">(se creará)</div>
                     }
                   </td>
                   <td>
@@ -97,31 +177,67 @@ interface Decision {
                     @for (e of r.errors; track $index) {
                       <div class="error-text">{{ e }}</div>
                     }
+                    <!-- Avisos que no impiden importar (p. ej. sin peso: confirmar la categoría de kumite). -->
+                    @for (w of r.data['avisos'] ?? []; track $index) {
+                      <div class="small warn-text">{{ w }}</div>
+                    }
+                    @if (b.status === 'preview' && editing() !== r.id) {
+                      <button
+                        class="btn sm mt-xs"
+                        [class.primary]="r.status === 'error'"
+                        [class.ghost]="r.status !== 'error'"
+                        (click)="startEdit(r)"
+                      >
+                        <ng-container i18n="@@torneo.importar.corregir-editar">{r.status, select,
+                          error {Corregir}
+                          other {Editar datos}
+                        }</ng-container>
+                      </button>
+                    }
                     @for (dup of r.duplicates; track $index) {
                       <div class="small">
                         @if (dup['person_id']) {
-                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) · {{ dupReasonText(dup['reason']) }}
+                          ≈ {{ dup['full_name'] }} (#{{ dup['person_id'] }}) ·
+                          {{ dupReasonText(dup['reason']) }}
                         } @else {
-                          ≈ fila {{ dup['row_number'] }} del mismo archivo
+                          <ng-container i18n="@@torneo.importar.fila-mismo-archivo">
+                            ≈ fila {{ dup['row_number'] }} del mismo archivo
+                          </ng-container>
                         }
                       </div>
                     }
                   </td>
                   <td>
                     @if (r.status === 'error') {
-                      <span class="muted small">Se omite</span>
+                      <span i18n="@@torneo.importar.omite" class="muted small">Se omite</span>
                     } @else if (d) {
-                      <select class="cell-input" [ngModel]="d.action" (ngModelChange)="setAction(r, $event)" aria-label="Decisión">
-                        <option value="create">Crear persona</option>
+                      <select
+                        i18n-aria-label="@@torneo.importar.decision-2"
+                        class="cell-input"
+                        [ngModel]="d.action"
+                        (ngModelChange)="setAction(r, $event)"
+                        aria-label="Decisión"
+                      >
+                        <option i18n="@@torneo.importar.crear-persona" value="create"
+                          >Crear persona</option
+                        >
                         @if (personDups(r).length) {
-                          <option value="use_existing">Usar existente</option>
+                          <option i18n="@@torneo.importar.usar-existente" value="use_existing"
+                            >Usar existente</option
+                          >
                         }
-                        <option value="skip">Omitir</option>
+                        <option i18n="@@torneo.importar.omitir" value="skip">Omitir</option>
                       </select>
                       @if (d.action === 'use_existing') {
-                        <select class="mt-xs cell-input" [ngModel]="d.person_id" (ngModelChange)="setPerson(r, $event)">
+                        <select
+                          class="mt-xs cell-input"
+                          [ngModel]="d.person_id"
+                          (ngModelChange)="setPerson(r, $event)"
+                        >
                           @for (dup of personDups(r); track dup['person_id']) {
-                            <option [ngValue]="dup['person_id']">{{ dup['full_name'] }} (#{{ dup['person_id'] }})</option>
+                            <option [ngValue]="dup['person_id']"
+                              >{{ dup['full_name'] }} (#{{ dup['person_id'] }})</option
+                            >
                           }
                         </select>
                       }
@@ -129,22 +245,96 @@ interface Decision {
                   </td>
                   <td class="small">
                     @if (d && r.status !== 'error') {
-                      @for (cid of r.suggested_category_ids; track cid) {
-                        <label class="field inline"><input type="checkbox" [checked]="d.category_ids.has(cid)" [disabled]="d.action === 'skip'" (change)="toggleCat(r, cid)" /> {{ catName(cid) }}</label>
+                      @for (cid of rowCats(r); track cid) {
+                        <label class="field inline"
+                          ><input
+                            type="checkbox"
+                            [checked]="d.category_ids.has(cid)"
+                            [disabled]="d.action === 'skip'"
+                            (change)="toggleCat(r, cid)"
+                          />
+                          {{ catName(cid) }}</label
+                        >
                       } @empty {
-                        <span class="muted">Sin sugerencias</span>
+                        <span i18n="@@torneo.importar.sin-sugerencias-elige-categoria" class="muted"
+                          >Sin sugerencias: elige una categoría.</span
+                        >
+                      }
+                      @if (d.action !== 'skip' && isCompetitor(r)) {
+                        <select
+                          class="cell-input mt-xs"
+                          [ngModel]="0"
+                          (ngModelChange)="addCat(r, $event)"
+                          [attr.aria-label]="ariaOtraCategoria(r.row_number)"
+                        >
+                          <option i18n="@@torneo.importar.otra-elegir-categoria" [ngValue]="0">
+                            @if (rowCats(r).length) {
+                              + Otra categoría…
+                            } @else {
+                              Elegir categoría…
+                            }
+                          </option>
+                          @for (c of manualCategories(); track c.id) {
+                            @if (!d.category_ids.has(c.id)) {
+                              <option [ngValue]="c.id">{{ c.name }}</option>
+                            }
+                          }
+                        </select>
                       }
                     }
                   </td>
                 </tr>
+                @if (editing() === r.id) {
+                  <tr class="edit-row">
+                    <td colspan="6">
+                      <form class="row-form" (ngSubmit)="saveRow(b, r)">
+                        <div class="row-fields">
+                          @for (f of rowFields; track f.key) {
+                            <label class="field">
+                              <span>{{ f.label }}</span>
+                              <input
+                                [name]="f.key"
+                                [(ngModel)]="rowForm[f.key]"
+                                [placeholder]="f.placeholder ?? ''"
+                              />
+                            </label>
+                          }
+                        </div>
+                        <div class="row">
+                          <button
+                            i18n="@@torneo.importar.cancelar"
+                            type="button"
+                            class="btn sm"
+                            (click)="editing.set(null)"
+                            >Cancelar</button
+                          >
+                          <button
+                            i18n="@@torneo.importar.guardar-revalidar"
+                            class="btn sm primary"
+                            [disabled]="busy()"
+                            >Guardar y revalidar</button
+                          >
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
         </div>
         @if (b.status === 'preview') {
           <div class="form-actions">
-            <button class="btn" (click)="cancel()">Cancelar importación</button>
-            <button class="btn primary" [disabled]="busy()" (click)="confirm()">Confirmar e inscribir</button>
+            <button i18n="@@torneo.importar.cancelar-importacion" class="btn" (click)="cancel()"
+              >Cancelar importación</button
+            >
+            <button
+              i18n="@@torneo.importar.confirmar-e-inscribir"
+              class="btn primary"
+              [disabled]="busy()"
+              (click)="confirm()"
+              >Confirmar e inscribir</button
+            >
           </div>
         }
       </div>
@@ -152,10 +342,12 @@ interface Decision {
 
     @if (result(); as res) {
       <div class="alert ok import-result">
-        <strong>Importación confirmada.</strong>
+        <strong i18n="@@torneo.importar.importacion-confirmada">Importación confirmada.</strong>
         <ul>
           @for (kv of resultEntries(); track kv[0]) {
-            <li>{{ resultLabel[kv[0]] ?? kv[0] }}: <strong>{{ kv[1] }}</strong></li>
+            <li
+              >{{ resultLabel[kv[0]] ?? kv[0] }}: <strong>{{ kv[1] }}</strong></li
+            >
           }
         </ul>
       </div>
@@ -174,6 +366,38 @@ interface Decision {
         font-weight: 400;
         margin: 0 0.35rem;
       }
+    }
+    /* En el celular la tabla se desplaza de lado con la fila y la persona fijas a la izquierda. */
+    .preview-table th:nth-child(-n + 2),
+    .preview-table td:nth-child(-n + 2) {
+      position: sticky;
+      z-index: 1;
+      background: var(--kinu);
+    }
+    .preview-table th:first-child,
+    .preview-table td:first-child {
+      left: 0;
+    }
+    .preview-table th:nth-child(2),
+    .preview-table td:nth-child(2) {
+      left: 3.25rem;
+      box-shadow: 1px 0 0 var(--kasumi);
+    }
+    .preview-table tr.edit-row td {
+      position: static;
+      box-shadow: none;
+      background: var(--washi);
+    }
+    .row-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-width: calc(100vw - 3rem);
+    }
+    .row-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+      gap: 0.5rem 0.75rem;
     }
     /* Anchos fijos: Persona y Categorías no se parten en muchas líneas. */
     .preview-table {
@@ -221,14 +445,21 @@ interface Decision {
   `,
 })
 export class ImportTab {
+  ariaOtraCategoria = (fila: number) =>
+    $localize`:@@torneo.importar.otra-categoria-fila:Otra categoría para la fila ${fila}:fila:`;
   /** Roles distintos de competidor (árbitro, sensei) para mostrarlos en la vista previa. */
   staffRoles(roles: unknown): string[] {
-    const label: Record<string, string> = { referee: 'Árbitro', sensei: 'Sensei' };
+    const label: Record<string, string> = {
+      referee: $localize`:@@torneo.importar.arbitro-2:Árbitro`,
+      sensei: 'Sensei',
+    };
     return Array.isArray(roles) ? roles.filter((r) => r in label).map((r) => label[r]) : [];
   }
 
   readonly ctx = inject(TournamentContext);
   private api = inject(ApiService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private files = inject(FilesService);
   private mut = inject(MutationService);
   private dialog = inject(DialogService);
@@ -240,11 +471,10 @@ export class ImportTab {
   dupReasonText(reason: unknown): string {
     return DUPLICATE_REASON[String(reason)] ?? String(reason ?? '');
   }
-  readonly plural = plural;
   readonly resultLabel: Record<string, string | undefined> = {
-    created_people: 'Personas creadas',
-    registrations: 'Inscripciones creadas',
-    skipped: 'Filas omitidas',
+    created_people: $localize`:@@torneo.importar.personas-creadas:Personas creadas`,
+    registrations: $localize`:@@torneo.importar.inscripciones-creadas:Inscripciones creadas`,
+    skipped: $localize`:@@torneo.importar.filas-omitidas:Filas omitidas`,
   };
   readonly batch = signal<ImportBatch | null>(null);
   readonly decisions = signal<Record<number, Decision>>({});
@@ -259,10 +489,91 @@ export class ImportTab {
     }
     return c;
   });
-  readonly resultEntries = computed(() => Object.entries(this.result() ?? {}).filter(([, v]) => typeof v !== 'object'));
+  readonly resultEntries = computed(() =>
+    Object.entries(this.result() ?? {}).filter(([, v]) => typeof v !== 'object'),
+  );
 
   constructor() {
     if (!this.ctx.categories().length) this.ctx.loadCategories();
+    // Al recargar la página se retoma la vista previa del lote (?lote=<id>).
+    const bid = Number(this.route.snapshot.queryParamMap.get('lote'));
+    if (bid) this.resume(bid);
+  }
+
+  private async resume(bid: number): Promise<void> {
+    try {
+      const b = await firstValueFrom(this.api.get<ImportBatch>(`/imports/${bid}`));
+      if (b.tournament_id === this.ctx.id() && b.status === 'preview') this.setBatch(b);
+      else this.setLote(null);
+    } catch {
+      this.setLote(null);
+    }
+  }
+
+  /** Guarda el lote en la URL para poder recargar sin perder la vista previa. */
+  private setLote(bid: number | null): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { lote: bid },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  // --- Corrección de filas y categoría manual ---
+  readonly rowFields = ROW_FIELDS;
+  readonly editing = signal<number | null>(null);
+  rowForm: Record<string, string> = {};
+
+  /** Categorías que se pueden elegir a mano (individuales y abiertas a inscripción). */
+  readonly manualCategories = computed(() =>
+    this.ctx.categories().filter((c) => !c.is_team && ['open', 'empty'].includes(c.status)),
+  );
+
+  isCompetitor(r: ImportRow): boolean {
+    const roles = r.data['rol'];
+    return !Array.isArray(roles) || roles.includes('competitor');
+  }
+
+  /** Sugeridas más las elegidas a mano, sin repetir. */
+  rowCats(r: ImportRow): number[] {
+    const d = this.decisions()[r.id];
+    return [...new Set([...r.suggested_category_ids, ...(d ? [...d.category_ids] : [])])];
+  }
+
+  addCat(r: ImportRow, cid: number): void {
+    if (!cid) return;
+    this.patch(r, (d) => ({ ...d, category_ids: new Set([...d.category_ids, cid]) }));
+  }
+
+  startEdit(r: ImportRow): void {
+    const text = (k: string): string => {
+      const v = r.data[k];
+      if (Array.isArray(v)) return v.map((x) => (k === 'rol' ? (ROLE_WORD[x] ?? x) : x)).join(', ');
+      return v === null || v === undefined ? '' : String(v);
+    };
+    this.rowForm = Object.fromEntries(ROW_FIELDS.map((f) => [f.key, text(f.key)]));
+    this.editing.set(r.id);
+  }
+
+  async saveRow(b: ImportBatch, r: ImportRow): Promise<void> {
+    this.busy.set(true);
+    const res = await this.mut.patch<ImportBatch>(`/imports/${b.id}/rows/${r.id}`, {
+      data: this.rowForm,
+    });
+    this.busy.set(false);
+    if (!res) return;
+    const row = res.rows.find((x) => x.id === r.id);
+    this.editing.set(null);
+    // Solo cambia la fila corregida: las decisiones de las demás se conservan.
+    this.batch.set(res);
+    if (row) this.decisions.update((all) => ({ ...all, [row.id]: this.defaultDecision(row) }));
+    this.toast.show(
+      row?.status === 'error'
+        ? $localize`:@@torneo.importar.fila-sigue-errores:Fila ${r.row_number}:row_number:: sigue con errores`
+        : $localize`:@@torneo.importar.fila-corregida:Fila ${r.row_number}:row_number: corregida`,
+      row?.status === 'error' ? 'warn' : 'ok',
+    );
   }
 
   catName(id: number): string {
@@ -285,8 +596,11 @@ export class ImportTab {
     this.uploading.set(true);
     this.result.set(null);
     try {
-      const b = await firstValueFrom(this.api.upload<ImportBatch>(`/tournaments/${this.ctx.id()}/imports`, file));
+      const b = await firstValueFrom(
+        this.api.upload<ImportBatch>(`/tournaments/${this.ctx.id()}/imports`, file),
+      );
       this.setBatch(b);
+      this.setLote(b.id);
     } catch (e) {
       this.toast.error(ApiError.from(e).fullMessage);
     } finally {
@@ -294,17 +608,19 @@ export class ImportTab {
     }
   }
 
+  private defaultDecision(r: ImportRow): Decision {
+    const dups = this.personDups(r);
+    return {
+      // Un posible duplicado de BD se propone como "usar existente"; el operador decide.
+      action: r.status === 'error' ? 'skip' : dups.length ? 'use_existing' : 'create',
+      person_id: dups[0]?.['person_id'] ?? null,
+      category_ids: new Set(r.suggested_category_ids),
+    };
+  }
+
   private setBatch(b: ImportBatch): void {
     const d: Record<number, Decision> = {};
-    for (const r of b.rows) {
-      const dups = this.personDups(r);
-      d[r.id] = {
-        // Un posible duplicado de BD se propone como "usar existente"; el operador decide.
-        action: r.status === 'error' ? 'skip' : dups.length ? 'use_existing' : 'create',
-        person_id: dups[0]?.['person_id'] ?? null,
-        category_ids: new Set(r.suggested_category_ids),
-      };
-    }
+    for (const r of b.rows) d[r.id] = this.defaultDecision(r);
     this.decisions.set(d);
     this.batch.set(b);
   }
@@ -314,7 +630,14 @@ export class ImportTab {
   }
 
   setAction(r: ImportRow, action: Decision['action']): void {
-    this.patch(r, (d) => ({ ...d, action, person_id: action === 'use_existing' ? (d.person_id ?? this.personDups(r)[0]?.['person_id']) : d.person_id }));
+    this.patch(r, (d) => ({
+      ...d,
+      action,
+      person_id:
+        action === 'use_existing'
+          ? (d.person_id ?? this.personDups(r)[0]?.['person_id'])
+          : d.person_id,
+    }));
   }
 
   setPerson(r: ImportRow, id: number): void {
@@ -345,11 +668,24 @@ export class ImportTab {
         };
       });
     this.busy.set(true);
-    const res = await this.mut.post<Record<string, unknown>>(`/imports/${b.id}/confirm`, { decisions }, { success: 'Importación confirmada' });
+    // Confirmar crea personas e inscripciones en una transacción: puede tardar más que una petición normal.
+    const res = await this.mut.run<Record<string, unknown>>(
+      (override) =>
+        this.api.post(
+          `/imports/${b.id}/confirm`,
+          override ? { decisions, override } : { decisions },
+          undefined,
+          {
+            timeoutMs: LONG_TIMEOUT_MS,
+          },
+        ),
+      { success: $localize`:@@torneo.importar.importacion-confirmada-2:Importación confirmada` },
+    );
     this.busy.set(false);
     if (res) {
       this.result.set(res);
       this.batch.set(null);
+      this.setLote(null);
       this.ctx.loadCategories();
     }
   }
@@ -357,9 +693,19 @@ export class ImportTab {
   async cancel(): Promise<void> {
     const b = this.batch();
     if (!b) return;
-    const ok = await this.dialog.confirm({ title: 'Cancelar importación', message: 'No se guardará nada de este archivo.', danger: true, confirmText: 'Cancelar importación' });
+    const ok = await this.dialog.confirm({
+      title: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`,
+      message: $localize`:@@torneo.importar.no-guardara-nada-este-archivo:No se guardará nada de este archivo.`,
+      danger: true,
+      confirmText: $localize`:@@torneo.importar.cancelar-importacion-2:Cancelar importación`,
+    });
     if (!ok) return;
-    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), { success: 'Importación cancelada' });
-    if (res !== undefined) this.batch.set(null);
+    const res = await this.mut.run(() => this.api.post(`/imports/${b.id}/cancel`, {}), {
+      success: $localize`:@@torneo.importar.importacion-cancelada:Importación cancelada`,
+    });
+    if (res !== undefined) {
+      this.batch.set(null);
+      this.setLote(null);
+    }
   }
 }

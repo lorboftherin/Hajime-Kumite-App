@@ -124,8 +124,10 @@
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
-  --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 8px 24px hsl(var(--shadow-color) / 0.07);
-  --shadow-float: 0 2px 6px hsl(var(--shadow-color) / 0.06), 0 18px 48px hsl(var(--shadow-color) / 0.16);
+  --shadow-soft:
+    0 1px 2px hsl(var(--shadow-color) / 0.04), 0 8px 24px hsl(var(--shadow-color) / 0.07);
+  --shadow-float:
+    0 2px 6px hsl(var(--shadow-color) / 0.06), 0 18px 48px hsl(var(--shadow-color) / 0.16);
 
   --sidebar-w: 248px;
   --bottom-bar-h: 0px;
@@ -191,6 +193,41 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/*
+ * Márgenes seguros: barra de estado, muesca y barra de gestos. En la app de Android
+ * (Capacitor 8, Android 15+ obliga a dibujar de borde a borde) el WebView ocupa toda la
+ * pantalla y Capacitor inyecta --safe-area-inset-*; en el navegador (iPhone, PWA) vale
+ * env(safe-area-inset-*) gracias a viewport-fit=cover. Toda superficie pegada a un borde
+ * de la pantalla debe usar estas variables.
+ */
+:root {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+
+/* Páginas que no van dentro del marco principal (ingreso, cuenta, perfil y ranking
+ * públicos…): el margen va en la propia página. La mesa, el vivo público, la pantalla
+ * grande y el overlay lo resuelven en sus estilos (fondos oscuros o cabeceras pegajosas). */
+app-root
+  > :not(
+    router-outlet,
+    app-shell,
+    app-mesa,
+    app-screen,
+    app-screen-mosaic,
+    app-overlay,
+    app-public-live,
+    app-public-directory,
+    app-public-category,
+    app-dialog-host,
+    app-session-guard
+  ) {
+  display: block;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
 html {
@@ -1063,6 +1100,27 @@ table.table {
       color: var(--sumi);
       border-bottom-color: var(--sumi);
     }
+  }
+  /* Hay más pestañas fuera de la vista: degradado en el borde y flecha (ink-tabs.ts). */
+  &.more-right::before {
+    content: '›';
+    order: 99;
+    position: sticky;
+    right: 0;
+    flex: none;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding: 0 0.2rem 0.15rem 2rem;
+    background: linear-gradient(to right, transparent, var(--washi) 65%);
+    color: var(--sumi-2);
+    font-size: 1.5rem;
+    line-height: 1;
+    pointer-events: none;
+  }
+  &.more-left {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem);
   }
   &.inked {
     a.active {

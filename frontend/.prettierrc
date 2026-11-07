@@ -8,5 +8,6 @@
         "parser": "angular"
       }
     }
-  ]
+  ],
+  "htmlWhitespaceSensitivity": "strict"
 }

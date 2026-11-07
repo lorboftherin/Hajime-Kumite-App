@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import VersionConflict, WarningsRequireOverride
 from app.db.models import AuditEntry, RuleOverride, User
+from app.services.public_snapshots import invalidate
 
 
 def snapshot(obj: Any, fields: list[str] | None = None) -> dict[str, Any]:
@@ -57,6 +58,9 @@ def audit(
             reason=reason,
         )
     )
+    # Casi toda escritura visible en el vivo público se audita con su torneo:
+    # es el punto común para invalidar la instantánea compartida.
+    invalidate(db, tournament_id)
 
 
 def check_version(obj: Any, expected: int | None, label: str) -> None:

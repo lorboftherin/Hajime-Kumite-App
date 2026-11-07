@@ -18,13 +18,24 @@ export type IconName =
   | 'close'
   | 'search'
   | 'open'
-  | 'check';
+  | 'check'
+  | 'bell'
+  | 'globe';
 
 /** Iconos de línea fina (1.6 px) en currentColor. Decorativos: el texto del botón da el nombre. */
 @Component({
   selector: 'app-icon',
   template: `
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
       @switch (name()) {
         @case ('plus') {
           <path d="M12 5v14M5 12h14" />
@@ -41,7 +52,9 @@ export type IconName =
           <path d="M12 20V9M7 14l5-5 5 5M5 4h14" />
         }
         @case ('print') {
-          <path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M7 14h10v6H7z" />
+          <path
+            d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M7 14h10v6H7z"
+          />
         }
         @case ('refresh') {
           <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4" />
@@ -58,7 +71,9 @@ export type IconName =
         }
         @case ('sun') {
           <circle cx="12" cy="12" r="3.5" />
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+          <path
+            d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"
+          />
         }
         @case ('moon') {
           <path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z" />
@@ -72,7 +87,9 @@ export type IconName =
           <path d="M10.5 12.5 19 4M16 7l2.5 2.5" />
         }
         @case ('logout') {
-          <path d="M14 4.5h3.5a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h9" />
+          <path
+            d="M14 4.5h3.5a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h9"
+          />
         }
         @case ('close') {
           <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
@@ -86,6 +103,15 @@ export type IconName =
         }
         @case ('check') {
           <path d="M5 12.5l4.5 4.5L19 7.5" />
+        }
+        @case ('bell') {
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 0 0 4 0" />
+        }
+        @case ('globe') {
+          <circle cx="12" cy="12" r="8.5" />
+          <path
+            d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5z"
+          />
         }
       }
     </svg>

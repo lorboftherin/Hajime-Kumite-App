@@ -6,10 +6,20 @@ from fastapi import APIRouter, File, Query, Response, UploadFile
 from sqlalchemy import select
 
 from app.api import schemas as s
-from app.api.deps import DB, CurrentUser, ensure_organizer
+from app.api.deps import (
+    DB,
+    AdminUser,
+    CategoryReader,
+    CurrentUser,
+    TatamiReader,
+    TournamentReader,
+    ensure_organizer,
+    readable_tournament_ids,
+)
 from app.api.errors import AppError, NotFound
 from app.db.models import Category, RefereeAssignment, Registration, Tournament
-from app.services import public, referees, teams
+from app.services import entitlements, public, referees, teams
+from app.services import organizations as orgs
 from app.services import registrations as regs
 from app.services import tournaments as svc
 from app.services.brackets import tatami_queue
@@ -23,8 +33,16 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @router.get("/tournaments", response_model=list[s.TournamentOut], tags=["tournaments"])
-def list_tournaments(db: DB, _: CurrentUser, include_test: bool = True):
+def list_tournaments(db: DB, user: CurrentUser, include_test: bool = True, organization_id: int | None = None):
+    """Solo los torneos que el usuario puede ver (todos para el Admin o un rol global)."""
     stmt = select(Tournament).order_by(Tournament.start_date.desc())
+    if organization_id is not None:
+        stmt = stmt.where(Tournament.organization_id == organization_id)
+    ids = readable_tournament_ids(db, user)
+    if ids is not None:
+        if not ids:
+            return []
+        stmt = stmt.where(Tournament.id.in_(ids))
     if not include_test:
         stmt = stmt.where(~Tournament.is_test)
     return db.scalars(stmt).all()
@@ -32,12 +50,16 @@ def list_tournaments(db: DB, _: CurrentUser, include_test: bool = True):
 
 @router.post("/tournaments", response_model=s.TournamentOut, status_code=201, tags=["tournaments"])
 def create_tournament(data: s.TournamentCreate, db: DB, user: CurrentUser):
-    ensure_organizer(db, user, None)
-    return svc.create_tournament(db, user, data)
+    """El torneo pertenece a una organización que el usuario administra (el Admin, cualquiera)."""
+    org = orgs.resolve_for_new_tournament(db, user, data.organization_id)
+    entitlements.require(db, user, org, "organize_tournaments")
+    if data.tatami_count > 1:
+        entitlements.require(db, user, org, "multi_tatami")
+    return svc.create_tournament(db, user, data.model_copy(update={"organization_id": org.id}))
 
 
 @router.get("/tournaments/{tid}", response_model=s.TournamentOut, tags=["tournaments"])
-def get_tournament(tid: int, db: DB, _: CurrentUser):
+def get_tournament(tid: int, db: DB, _: TournamentReader):
     return svc.get_tournament(db, tid)
 
 
@@ -62,16 +84,19 @@ def generate_categories(tid: int, data: s.GenerateCategoriesIn, db: DB, user: Cu
 @router.post("/tournaments/{tid}/tatamis", response_model=s.TatamiOut, status_code=201, tags=["tatamis"])
 def add_tatami(tid: int, data: s.TatamiIn, db: DB, user: CurrentUser):
     ensure_organizer(db, user, tid)
+    t = svc.get_tournament(db, tid)
+    if t.tatamis:  # el segundo tatami en adelante
+        entitlements.require_for_tournament(db, user, t, "multi_tatami")
     return svc.add_tatami(db, user, tid, data)
 
 
 @router.get("/tatamis/{tatami_id}/queue", tags=["tatamis"])
-def get_queue(tatami_id: int, db: DB, _: CurrentUser):
+def get_queue(tatami_id: int, db: DB, _: TatamiReader):
     return tatami_queue(db, tatami_id)
 
 
 @router.get("/tatamis/{tatami_id}/scoresheet.pdf", tags=["tatamis"])
-def scoresheet(tatami_id: int, db: DB, _: CurrentUser, with_results: bool = False):
+def scoresheet(tatami_id: int, db: DB, _: TatamiReader, with_results: bool = False):
     """Planilla de mesa imprimible para el registro oficial en papel (Shadow Mode)."""
     from app.services.reports import scoresheet_pdf
 
@@ -89,7 +114,7 @@ def scoresheet(tatami_id: int, db: DB, _: CurrentUser, with_results: bool = Fals
 def list_categories(
     tid: int,
     db: DB,
-    _: CurrentUser,
+    _: TournamentReader,
     status: str | None = None,
     modality: str | None = None,
     hide_empty: bool = False,
@@ -114,7 +139,7 @@ def create_category(tid: int, data: s.CategoryCreate, db: DB, user: CurrentUser)
 
 
 @router.get("/categories/{cid}", response_model=s.CategoryOut, tags=["categories"])
-def get_category(cid: int, db: DB, _: CurrentUser):
+def get_category(cid: int, db: DB, _: CategoryReader):
     return svc.category_out(db, svc.get_category(db, cid))
 
 
@@ -152,12 +177,20 @@ def unmerge(cid: int, db: DB, user: CurrentUser):
 def list_registrations(
     tid: int,
     db: DB,
-    _: CurrentUser,
+    _: TournamentReader,
     category_id: int | None = None,
     person_id: int | None = None,
     include_withdrawn: bool = True,
+    status: str | None = Query(
+        None, description="Estados separados por coma (por defecto, todos menos pending y rejected)"
+    ),
 ):
+    """Las solicitudes de autoinscripción (pending/rejected) solo salen pidiéndolas por ``status``."""
     stmt = select(Registration).where(Registration.tournament_id == tid)
+    if status:
+        stmt = stmt.where(Registration.status.in_(status.split(",")))
+    else:
+        stmt = stmt.where(Registration.status.notin_(("pending", "rejected")))
     if category_id:
         stmt = stmt.where(Registration.category_id == category_id)
     if person_id:
@@ -203,10 +236,17 @@ def withdraw(rid: int, data: s.WithdrawIn, db: DB, user: CurrentUser):
 
 
 @router.get("/tournaments/{tid}/suggestions", response_model=list[s.SuggestionOut], tags=["registrations"])
-def suggest(tid: int, person_id: int, db: DB, _: CurrentUser, modality: str | None = Query(None)):
+def suggest(
+    tid: int,
+    person_id: int,
+    db: DB,
+    _: TournamentReader,
+    modality: str | None = Query(None),
+    weight_class: str | None = Query(None),
+):
     return [
         s.SuggestionOut(category_id=c.id, name=c.name, modality=c.modality)
-        for c in regs.suggestions(db, tid, person_id, modality)
+        for c in regs.suggestions(db, tid, person_id, modality, weight_class)
     ]
 
 
@@ -214,7 +254,7 @@ def suggest(tid: int, person_id: int, db: DB, _: CurrentUser, modality: str | No
 
 
 @router.get("/tournaments/{tid}/referees", tags=["referees"])
-def list_referees(tid: int, db: DB, _: CurrentUser):
+def list_referees(tid: int, db: DB, _: TournamentReader):
     return referees.overview(db, tid)
 
 
@@ -265,10 +305,17 @@ def upload_import(tid: int, db: DB, user: CurrentUser, file: UploadFile = File(.
     # Endpoint síncrono a propósito (sección 22): corre en el pool de hilos y
     # no bloquea a las mesas mientras se procesa el Excel.
     ensure_organizer(db, user, tid)
+    entitlements.require_for_tournament(db, user, svc.get_tournament(db, tid), "excel_import")
     content = file.file.read()
     if len(content) > 5 * 1024 * 1024:
         raise AppError("El archivo supera 5 MB", code="FILE_TOO_LARGE")
     return regs.create_import_preview(db, user, tid, file.filename or "import.xlsx", content)
+
+
+@router.post("/imports/purge", tags=["imports"])
+def purge_imports(db: DB, _: AdminUser, days: int = Query(regs.IMPORT_RETENTION_DAYS, ge=1)):
+    """Borra las filas (con DNI y fechas de nacimiento) de importaciones antiguas."""
+    return regs.purge_old_imports(db, days)
 
 
 @router.get("/imports/{bid}", response_model=s.ImportBatchOut, tags=["imports"])

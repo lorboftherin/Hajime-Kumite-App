@@ -90,6 +90,75 @@ def test_upgrade_keeps_existing_data(tmp_path):
         assert conn.execute(text("SELECT count(*) FROM match_events")).scalar() == 1
         assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert "parent_match_id" in {c["name"] for c in inspect(conn).get_columns("matches")}
+        # Los torneos existentes quedan en la organización principal (0009).
+        org = conn.execute(text("SELECT organization_id FROM tournaments")).scalar()
+        assert conn.execute(text("SELECT slug FROM organizations WHERE id = :o"), {"o": org}).scalar() == "principal"
+        assert conn.execute(text("SELECT count(*) FROM plans")).scalar() == 6
+
+
+def test_weight_labels_become_numeric_ranges(tmp_path):
+    """La migración 0010 deduce el rango en kg de las etiquetas de peso existentes."""
+    from alembic import command
+    from sqlalchemy import text
+
+    from app.db.base import make_engine
+    from app.db.migrate import alembic_config
+
+    engine = make_engine(f"sqlite:///{tmp_path / 'w.db'}")
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0009_organizaciones")
+    with engine.begin() as conn:
+        tid = _fill(conn, "tournaments")
+        ids = {
+            label: _fill(conn, "categories", tournament_id=tid, weight_class=label)
+            for label in ("-45", "+84", "45-50", "Libre")
+        }
+    upgrade_database(engine)
+    with engine.connect() as conn:
+        got = {
+            label: tuple(
+                None if v is None else float(v)
+                for v in conn.execute(
+                    text("SELECT weight_min_kg, weight_max_kg FROM categories WHERE id = :i"), {"i": cid}
+                ).one()
+            )
+            for label, cid in ids.items()
+        }
+    assert got == {"-45": (None, 45.0), "+84": (84.0, None), "45-50": (45.0, 50.0), "Libre": (None, None)}
+
+
+def test_portal_publico_da_direccion_a_los_torneos_ya_publicos(tmp_path):
+    """0009: los torneos con el vivo activo reciben su dirección fija, única."""
+    from datetime import date
+
+    from alembic import command
+    from sqlalchemy import text
+
+    from app.db.base import make_engine
+    from app.db.migrate import alembic_config
+
+    engine = make_engine(f"sqlite:///{tmp_path / 'slug.db'}")
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0008_mesa_principal")
+    with engine.begin() as conn:
+        d = date(2026, 10, 17)
+        _fill(conn, "tournaments", name="Copa Perú Ñandú", start_date=d, public_token="a" * 32)
+        _fill(conn, "tournaments", name="Copa Perú Ñandú", start_date=d, public_token="b" * 32)
+        _fill(conn, "tournaments", name="Privado", start_date=d)
+        _fill(conn, "tatamis", tournament_id=1, number=1, name="Tatami 1")
+    upgrade_database(engine)
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT public_slug, timezone, match_overhead_seconds FROM tournaments ORDER BY id"))
+        assert [tuple(r) for r in rows] == [
+            ("copa-peru-nandu-2026", "America/Lima", 60),
+            ("copa-peru-nandu-2026-2", "America/Lima", 60),
+            (None, "America/Lima", 60),
+        ]
+        assert conn.execute(text("SELECT planned_start FROM tatamis")).scalar() is None
 
 
 def test_wait_for_database_retries_until_it_answers(monkeypatch):

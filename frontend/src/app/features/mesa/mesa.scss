@@ -13,7 +13,7 @@
   --y-line: #34302b;
   --y-text: var(--washi, #f5f0e6);
   --y-dim: #a79f91; /* nezumi aclarado: 6,9:1 sobre el fondo */
-  --y-faint: #7c7568;
+  --y-faint: #938c7f; /* tenue, pero ≥ 4,5:1 sobre todos los paneles de la mesa */
 
   /* Lados */
   --aka-panel: #8e2a22;
@@ -35,7 +35,13 @@
   --m-kin: var(--kin, #c9a24b);
   --m-sumi: var(--sumi, #1e1c1a);
 
-  --m-display: var(--font-display, 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif);
+  --m-display: var(
+    --font-display,
+    'Shippori Mincho B1',
+    'Hiragino Mincho ProN',
+    'Yu Mincho',
+    serif
+  );
   --m-ui: var(--font-ui, 'Zen Kaku Gothic New', system-ui, sans-serif);
   --m-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --m-ease: var(--ease, cubic-bezier(0.2, 0.7, 0.2, 1));
@@ -77,6 +83,12 @@ input:focus-visible {
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  /* Barra de estado, muesca y barra de gestos (Android de borde a borde, iPhone): se dejan
+   * libres con bordes del color del encabezado, sin depender de los diseños por tamaño. */
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: var(--y-deep);
+  border-width: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
 /* ======================= Encabezado ======================= */
@@ -386,4 +398,3 @@ button.pill {
     }
   }
 }
-

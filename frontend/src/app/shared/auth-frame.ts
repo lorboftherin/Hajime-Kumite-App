@@ -23,7 +23,9 @@ import { Enso } from './enso';
             <stop offset="0" stop-color="#fff" stop-opacity="1" />
             <stop offset="0.75" stop-color="#fff" stop-opacity="0" />
           </radialGradient>
-          <mask id="seigaiha-mask"><rect width="100%" height="100%" fill="url(#seigaiha-fade)" /></mask>
+          <mask id="seigaiha-mask">
+            <rect width="100%" height="100%" fill="url(#seigaiha-fade)" />
+          </mask>
         </defs>
         <rect width="100%" height="100%" fill="url(#seigaiha)" mask="url(#seigaiha-mask)" />
       </svg>

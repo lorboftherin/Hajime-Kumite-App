@@ -7,7 +7,13 @@ describe('ApiError', () => {
     const e = ApiError.from(
       new HttpErrorResponse({
         status: 409,
-        error: { error: { code: 'WARNINGS', message: 'Hay advertencias', details: { warnings: [{ code: 'X', message: 'm' }] } } },
+        error: {
+          error: {
+            code: 'WARNINGS',
+            message: 'Hay advertencias',
+            details: { warnings: [{ code: 'X', message: 'm' }] },
+          },
+        },
       }),
     );
     expect(e.code).toBe('WARNINGS');
@@ -23,7 +29,13 @@ describe('ApiError', () => {
     const e = ApiError.from(
       new HttpErrorResponse({
         status: 422,
-        error: { error: { code: 'VALIDATION_ERROR', message: 'Datos inválidos', details: { errors: [{ loc: ['body', 'name'], msg: 'too short' }] } } },
+        error: {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Datos inválidos',
+            details: { errors: [{ loc: ['body', 'name'], msg: 'too short' }] },
+          },
+        },
       }),
     );
     expect(e.fullMessage).toBe('Datos inválidos: name: too short');

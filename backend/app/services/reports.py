@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.api import schemas as s
 from app.db.models import Category, CategoryResult, Dojo, Match, Registration, ShadowComparison, Tournament
 from app.services.audit import audit
-from app.services.brackets import bracket_out, get_match
+from app.services.brackets import REG_LIGHT, bracket_out, get_match
 from app.services.tournaments import get_tournament
 
 PLACE_LABEL = {1: "Oro", 2: "Plata", 3: "Bronce"}
@@ -56,17 +56,23 @@ def _cell(v):
 
 
 def category_results(db: Session, tid: int) -> list[dict[str, Any]]:
+    """Podio de cada categoría del torneo con dos consultas (antes, una por categoría)."""
     cats = db.scalars(
         select(Category).where(Category.tournament_id == tid).order_by(Category.sort_order, Category.id)
     ).all()
+    by_cat: dict[int, list[tuple[CategoryResult, Registration]]] = defaultdict(list)
+    for res, reg in db.execute(
+        select(CategoryResult, Registration)
+        .join(Registration, Registration.id == CategoryResult.registration_id)
+        .join(Category, Category.id == CategoryResult.category_id)
+        .where(Category.tournament_id == tid)
+        .order_by(CategoryResult.place, CategoryResult.id)
+        .options(*REG_LIGHT)
+    ).all():
+        by_cat[res.category_id].append((res, reg))
     out = []
     for c in cats:
-        rows = db.execute(
-            select(CategoryResult, Registration)
-            .join(Registration, Registration.id == CategoryResult.registration_id)
-            .where(CategoryResult.category_id == c.id)
-            .order_by(CategoryResult.place)
-        ).all()
+        rows = by_cat[c.id]
         out.append(
             {
                 "category_id": c.id,
@@ -100,12 +106,19 @@ def medal_table(db: Session, tid: int) -> dict[str, Any]:
     for place, dojo_id in rows:
         if place in (1, 2, 3):
             tally[dojo_id][place - 1] += 1
-    dojos = {d.id: d for d in db.scalars(select(Dojo).where(Dojo.id.in_(list(tally)))).all()} if tally else {}
+    dojos = {d.id: d.name for d in db.scalars(select(Dojo).where(Dojo.id.in_(list(tally)))).all()} if tally else {}
+    return {"tournament_id": tid, "is_test": t.is_test, "rows": rank_medals(tally, dojos)}
+
+
+def rank_medals(tally: dict[int, list[int]], dojo_names: dict[int, str]) -> list[dict[str, Any]]:
+    """Medallero ordenado (oro, plata, bronce) con puesto compartido en empate.
+    ``tally``: dojo → [oros, platas, bronces]. Sin consultas: el vivo lo usa con
+    los resultados que ya cargó."""
     table = sorted(
         (
             {
                 "dojo_id": did,
-                "dojo_name": dojos[did].name,
+                "dojo_name": dojo_names[did],
                 "gold": g,
                 "silver": sv,
                 "bronze": b,
@@ -123,7 +136,7 @@ def medal_table(db: Session, tid: int) -> dict[str, Any]:
             rank = i + 1
         r["rank"] = rank
         prev = k
-    return {"tournament_id": tid, "is_test": t.is_test, "rows": table}
+    return table
 
 
 # ---------------------------------------------------------------------------
