@@ -152,6 +152,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- **CodeQL:** el análisis semanal fallaba al subir los resultados porque el repositorio
+  privado no tiene activado Code scanning; ahora los guarda como artefacto de la corrida.
 - **App de Android (y iPhone):** en teléfonos con Android 15+ y WebView reciente la
   cabecera quedaba debajo de la barra de estado (la app se dibuja de borde a borde).
   La interfaz reserva el espacio de la barra de estado, la muesca y la barra de
