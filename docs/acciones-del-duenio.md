@@ -4,6 +4,40 @@ El código, CI y los scripts ya están listos; esto requiere permisos de dueño
 en GitHub o en Azure. Hacerlo en este orden. Cada paso dice cómo comprobar que
 quedó bien.
 
+## Urgente: reactivar la suscripción de Azure (pruebas caídas)
+
+Desde el **25 de octubre de 2026** la app de pruebas no responde
+(`ERR_CONNECTION_ABORTED` en https://hajime.lorboftherin.com y también en la
+dirección directa `*.azurecontainerapps.io`). No es el dominio, el certificado
+ni el código: la suscripción «Azure subscription 1» es una **prueba gratuita
+(Free Trial) con límite de gasto** creada el 25‑09‑2026, y a los 30 días Azure
+la **deshabilitó** (`state: Disabled`). Con la suscripción deshabilitada el
+entorno de Container Apps queda suspendido (`ManagedClusterSuspended`), por
+eso la conexión se corta antes del saludo TLS. La identidad de Claude
+(`hajime-claude-code`, Colaborador) no puede reactivarla: solo el dueño de la
+cuenta.
+
+1. Portal de Azure → **Suscripciones** → «Azure subscription 1» → aviso
+   «Tu suscripción está deshabilitada» → **Actualizar suscripción** (pasar a
+   *Pago por uso*). Alternativa: **Configuración → Quitar límite de gasto**.
+   El nivel gratuito de 12 meses (hasta 2027‑10‑25) se conserva; los recursos
+   actuales de pruebas cuestan centavos al mes (base serverless gratuita,
+   Container Apps dentro de la cuota gratis).
+2. Esperar unos minutos y comprobar que la suscripción figura **Activa**:
+   `az account show --query state` → `Enabled`.
+3. Si al cabo de 10 minutos la app sigue sin responder, volver a aplicar la
+   configuración (no borra nada):
+   ```bash
+   cd Hajime-Kumite-App/infra/azure
+   bash crear-ambiente.sh test
+   ```
+   y, si el dominio no levanta, `bash conectar-dominio.sh test hajime.lorboftherin.com`.
+   *Comprobar:* `curl -s https://hajime.lorboftherin.com/health` responde 200
+   y la pantalla de ingreso carga.
+4. Para no repetirlo: crear la alerta de gasto (`PRESUPUESTO_USD` en
+   `crear-ambiente.sh` o portal → **Presupuestos**) y revisar el correo de
+   facturación: Azure avisa antes de deshabilitar.
+
 ## GitHub
 
 1. **Crear `main`** desde la rama integrada que se te indique (si no se indica

@@ -33,6 +33,15 @@ CI publica en `ghcr.io/lorboftherin/hajime-kumite-app`:
    («Probar Azure gratis»). País: **Perú**. La tarjeta es solo para verificar.
 2. La alerta de gasto se crea con el script (paso 3, `PRESUPUESTO_USD`) o a mano
    en el portal → **Presupuestos**. No es un pago: avisa por correo.
+3. **La prueba gratuita dura 30 días.** Al vencer (o al agotar el crédito),
+   Azure **deshabilita la suscripción** y suspende el entorno de Container
+   Apps: la app deja de responder en el dominio y en la dirección directa con
+   `ERR_CONNECTION_ABORTED` / «connection reset» antes del saludo TLS, y
+   `az containerapp revision list` falla con `ManagedClusterSuspended … subscription
+   has been disabled`. Se reconoce con `az account show --query state`
+   (`Disabled`). Solo el dueño puede reactivarla: portal → Suscripciones →
+   **Actualizar** a *Pago por uso* (ver `acciones-del-duenio.md`, sección
+   «Urgente»). El nivel gratuito de 12 meses sigue vigente después.
 
 ## 2. Acceso a GitHub (el repositorio es privado)
 

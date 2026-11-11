@@ -235,6 +235,13 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Operación
 
+- Documentado el fallo «la app de pruebas no abre» (`ERR_CONNECTION_ABORTED`
+  en el dominio y en la dirección directa): la suscripción Free Trial de Azure
+  se deshabilita a los 30 días y suspende el entorno de Container Apps. Cómo
+  reconocerlo (`az account show`, `ManagedClusterSuspended`) y cómo
+  reactivarla, en `docs/despliegue-azure.md` y `docs/acciones-del-duenio.md`
+  (acción del dueño: pasar la suscripción a pago por uso).
+
 - CI: job `e2e` (después de `backend` y `frontend`) con Chromium de
   Playwright; un reintento con traza y el reporte como artefacto
   `playwright-report` si falla.
