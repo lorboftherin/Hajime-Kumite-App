@@ -154,6 +154,9 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- Frontend: Angular 21.2.26 y `npm audit fix` (router con DoS en SSR,
+  GHSA-62vg-58rm-qff7 y GHSA-57xq-rjx2-v5xh; zod, undici); el job `auditoria`
+  vuelve a pasar.
 - Auditoría: `opentelemetry-api` 1.45.2 (CVE-2026-114603) con
   `azure-monitor-opentelemetry` 1.8.12 en la imagen para Azure.
 - Imagen Docker: `certifi` 2026.10.18 y `pillow` 13.0.0 en los lockfiles del
