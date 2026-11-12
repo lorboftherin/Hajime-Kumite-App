@@ -1,0 +1,48 @@
+# Hajime en Fly.io: el mismo contenedor «todo en uno» (Dockerfile) con la base
+# SQLite en un disco persistente. Una sola máquina (el disco es de la máquina):
+# desplegar con `fly deploy --ha=false`. Ver docs/despliegue-fly.md.
+
+app = "hajime-test"
+primary_region = "gru" # São Paulo, la región más cercana a Perú
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HAJIME_ENVIRONMENT = "test"
+  HAJIME_WORKERS = "2"
+  HAJIME_FORWARDED_ALLOW_IPS = "*"
+  PORT = "8000"
+  # La base y el secreto de sesiones viven en el disco persistente.
+  HAJIME_DATABASE_URL = "sqlite:////data/hajime.db"
+  HAJIME_SECRET_FILE = "/data/jwt_secret"
+
+[[mounts]]
+  source = "hajime_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Pruebas: la máquina se apaga sin uso y arranca sola con la primera visita
+  # (unos segundos). En producción: min_machines_running = 1.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 400
+
+  [[http_service.checks]]
+    grace_period = "40s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health/live"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
