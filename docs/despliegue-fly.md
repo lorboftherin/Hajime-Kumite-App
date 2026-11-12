@@ -35,13 +35,15 @@ una tendría su propia base.
 ## Despliegue automático desde GitHub
 
 El job `deploy-fly` de `.github/workflows/ci.yml` sube la imagen SQLite que CI
-ya construyó al registro de Fly y despliega. Se activa con:
+ya construyó al registro de Fly y despliega. Solo necesita el secreto; las
+variables son opcionales (por defecto la app `hajime-test` y la rama de
+pruebas escrita en el workflow):
 
 | Dónde | Nombre | Valor |
 | --- | --- | --- |
 | Settings → Secrets and variables → Actions → **Secrets** | `FLY_API_TOKEN` | Token de despliegue: en https://fly.io/dashboard → *Tokens* → *Create deploy token* para la app `hajime-test`, o `fly tokens create deploy -a hajime-test` |
-| → **Variables** | `FLY_APP` | `hajime-test` |
-| → **Variables** | `FLY_BRANCH` | Rama que se despliega en pruebas (por defecto `main`) |
+| → **Variables** (opcional) | `FLY_APP` | Otra app de Fly (por defecto `hajime-test`) |
+| → **Variables** (opcional) | `FLY_BRANCH` | Otra rama a desplegar en pruebas |
 
 ## Dominio propio
 

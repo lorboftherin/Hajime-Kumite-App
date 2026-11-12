@@ -344,13 +344,13 @@ jobs:
   deploy-fly:
     # Publica cada versión de esta rama en Fly.io (fly.toml): sube la imagen
     # SQLite ya construida al registro de Fly y despliega una sola máquina
-    # (el disco persistente es de la máquina). Se activa cuando existen la
-    # variable FLY_APP y el secreto FLY_API_TOKEN del repositorio
-    # (ver docs/despliegue-fly.md).
+    # (el disco persistente es de la máquina). Necesita el secreto
+    # FLY_API_TOKEN del repositorio; la app y la rama se pueden cambiar con las
+    # variables FLY_APP y FLY_BRANCH (ver docs/despliegue-fly.md).
     needs: [docker]
     if: >-
-      github.event_name == 'push' && vars.FLY_APP != '' &&
-      github.ref_name == (vars.FLY_BRANCH || 'main')
+      github.event_name == 'push' &&
+      github.ref_name == (vars.FLY_BRANCH || 'claude/gracious-feynman-qtapgx')
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-fly
@@ -360,8 +360,13 @@ jobs:
       packages: read
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      FLY_APP: ${{ vars.FLY_APP }}
+      FLY_APP: ${{ vars.FLY_APP || 'hajime-test' }}
     steps:
+      - name: Falta el secreto FLY_API_TOKEN
+        if: env.FLY_API_TOKEN == ''
+        run: |
+          echo "::error::Crea el secreto FLY_API_TOKEN (Settings → Secrets and variables → Actions → Secrets); ver docs/despliegue-fly.md"
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Instalar flyctl
         run: curl -L https://fly.io/install.sh | sh && echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
