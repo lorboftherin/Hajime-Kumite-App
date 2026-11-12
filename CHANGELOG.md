@@ -154,6 +154,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- Auditoría: `opentelemetry-api` 1.45.2 (CVE-2026-114603) con
+  `azure-monitor-opentelemetry` 1.8.12 en la imagen para Azure.
 - Imagen Docker: `certifi` 2026.10.18 y `pillow` 13.0.0 en los lockfiles del
   backend; eran los seis CRITICAL con arreglo que Trivy marcaba y por los que CI
   no publicaba la imagen (ni, por tanto, se podía desplegar).
