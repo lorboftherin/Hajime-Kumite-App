@@ -50,9 +50,9 @@ azure-monitor-opentelemetry==1.8.10 \
     --hash=sha256:8400df75435db66f25584bb053265b13e1f97cf42f1d1cb4851699bdec075ad2 \
     --hash=sha256:bc8207677062c4fcd8d6c12ef3dc1befb7dc229600bd4f00ff7d37b6b4ac2d63
     # via hajime-api (pyproject.toml)
-azure-monitor-opentelemetry-exporter==1.0.0b57 \
-    --hash=sha256:55c9e2ff5db5406307cfe15090c749524b53769026ec588ed96611547f53d551 \
-    --hash=sha256:7489a8a8b7a9cfcbf8476808e1921f4b646dc18aa143aa24d442d344e4d067ec
+azure-monitor-opentelemetry-exporter==1.0.0b59 \
+    --hash=sha256:0dfaec6b1aada54a4c8f4572fd1e1da67609459caf418298b5d91b4c67c0282e \
+    --hash=sha256:e831b74132fb899e640cddbb340f0fbfe11937f788715ce3f0acd120c8e91227
     # via azure-monitor-opentelemetry
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \
