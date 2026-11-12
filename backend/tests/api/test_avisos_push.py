@@ -83,6 +83,13 @@ def vapid(monkeypatch):
     monkeypatch.setattr(s, "vapid_subject", "mailto:pruebas@example.com")
     servidor = ServidorPush()
     monkeypatch.setattr(webpush, "_post", servidor)
+    # El torneo de las pruebas es del 17/10/2026 y los favoritos vencen al día
+    # siguiente: el reloj de los avisos parte de AHORA (y sigue avanzando) para
+    # que las pruebas no caduquen con el calendario real.
+    inicio = datetime.now()
+    reloj = lambda: AHORA + (datetime.now() - inicio)  # noqa: E731 - reloj simple para las pruebas
+    monkeypatch.setattr(push, "utcnow", reloj)
+    monkeypatch.setattr(push_eval, "utcnow", reloj)
     push_eval.take_pending()
     yield servidor
     push_eval.take_pending()

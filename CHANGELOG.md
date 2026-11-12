@@ -154,6 +154,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- **Pruebas de avisos push:** dependían del calendario (el torneo de prueba, del 17/10/2026,
+  ya había pasado); ahora el reloj de los avisos parte de esa fecha.
 - **CodeQL:** el análisis semanal fallaba al subir los resultados porque el repositorio
   privado no tiene activado Code scanning; ahora los guarda como artefacto de la corrida.
 - **App de Android (y iPhone):** en teléfonos con Android 15+ y WebView reciente la
