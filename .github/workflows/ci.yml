@@ -341,6 +341,44 @@ jobs:
           path: apk/*.apk
           retention-days: 30
 
+  deploy-fly:
+    # Publica cada versión de esta rama en Fly.io (fly.toml): sube la imagen
+    # SQLite ya construida al registro de Fly y despliega una sola máquina
+    # (el disco persistente es de la máquina). Se activa cuando existen la
+    # variable FLY_APP y el secreto FLY_API_TOKEN del repositorio
+    # (ver docs/despliegue-fly.md).
+    needs: [docker]
+    if: >-
+      github.event_name == 'push' && vars.FLY_APP != '' &&
+      github.ref_name == (vars.FLY_BRANCH || 'main')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-fly
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: ${{ vars.FLY_APP }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Instalar flyctl
+        run: curl -L https://fly.io/install.sh | sh && echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+      - name: Subir la imagen al registro de Fly y desplegar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ORIGEN="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):sha-${GITHUB_SHA::7}"
+          DESTINO="registry.fly.io/$FLY_APP:sha-${GITHUB_SHA::7}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          flyctl auth docker
+          docker pull -q "$ORIGEN"
+          docker tag "$ORIGEN" "$DESTINO"
+          docker push -q "$DESTINO"
+          flyctl deploy --image "$DESTINO" --ha=false --app "$FLY_APP"
+          echo "Publicado en Fly.io: https://$FLY_APP.fly.dev ($DESTINO)" >> "$GITHUB_STEP_SUMMARY"
+
   deploy-test:
     # Publica cada versión en el ambiente de pruebas de Azure: corre las
     # migraciones (job hajime-test-migrar), actualiza la app y espera a que

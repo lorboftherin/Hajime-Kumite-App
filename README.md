@@ -6,7 +6,7 @@ papel y cronómetro, y la app registra lo mismo en paralelo.
 
 - Especificación: [`docs/documento-maestro-v0.2.md`](docs/documento-maestro-v0.2.md)
 - Revisión técnica y decisiones tomadas: [`docs/revision-v0.2.md`](docs/revision-v0.2.md)
-- Despliegue: [`docs/despliegue.md`](docs/despliegue.md)
+- Despliegue: [`docs/despliegue.md`](docs/despliegue.md) · ambiente de pruebas en Fly.io: [`docs/despliegue-fly.md`](docs/despliegue-fly.md)
 - App del celular (PWA y APK de Android): [`docs/app-celular.md`](docs/app-celular.md)
 - Modelo de negocio (freemium en tres niveles): [`docs/modelo-negocio.md`](docs/modelo-negocio.md)
 - Cómo contribuir (ramas, pruebas, migraciones, versiones): [`CONTRIBUTING.md`](CONTRIBUTING.md) · cambios por versión: [`CHANGELOG.md`](CHANGELOG.md)

@@ -12,6 +12,8 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Fly.io:** `fly.toml`, job `deploy-fly` y `docs/despliegue-fly.md`: el ambiente de pruebas
+  corre en Fly.io con SQLite en disco persistente (Azure deshabilitó la suscripción).
 - **Manual de usuario** (`docs/manual-de-usuario.md`, por rol, con capturas nuevas en
   `docs/manual/`) y **documento técnico** (`docs/documento-tecnico.md`), también en
   PDF en `docs/pdf/`.
