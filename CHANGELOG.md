@@ -154,6 +154,10 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Corregido
 
+- Imagen Docker: `certifi` 2026.10.18 y `pillow` 13.0.0 en los lockfiles del
+  backend; eran los seis CRITICAL con arreglo que Trivy marcaba y por los que CI
+  no publicaba la imagen (ni, por tanto, se podía desplegar).
+
 - **Pruebas de avisos push:** dependían del calendario (el torneo de prueba, del 17/10/2026,
   ya había pasado); ahora el reloj de los avisos parte de esa fecha.
 - **CodeQL:** el análisis semanal fallaba al subir los resultados porque el repositorio
