@@ -2544,6 +2544,8 @@
     "torneo.importar.fila-mismo-archivo": " ≈ row {$INTERPOLATION} of the same file ",
     "torneo.importar.fila-sigue-errores": "Row {$row_number}: still has errors",
     "torneo.importar.filas-omitidas": "Rows skipped",
+    "torneo.importar.edad": "Age (if no birth date)",
+    "torneo.importar.anios": "{$edad} years old",
     "torneo.importar.grado": "Grade",
     "torneo.importar.guardar-revalidar": "Save and revalidate",
     "torneo.importar.importacion-cancelada": "Import cancelled",

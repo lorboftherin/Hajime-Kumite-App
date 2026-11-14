@@ -577,7 +577,9 @@ en la llave, **Más** → **Añadir a la llave…** (ver [Llaves](#llaves)).
 
 1. Pestaña **Importar Excel** → **Descargar plantilla .xlsx** y compártela con los
    dojos. Columnas: nombres, apellidos, fecha de nacimiento, sexo (M/F), grado, peso,
-   tipo y número de documento, modalidades y rol (para registrar árbitros).
+   tipo y número de documento, modalidades, rol (para registrar árbitros) y **edad**.
+   La edad se usa solo cuando no se conoce la fecha de nacimiento (las listas de los
+   dojos suelen traer «9 años»): con ella la app sugiere y valida la categoría igual.
 2. **Subir archivo**. Verás una **vista previa** fila por fila: **Nueva**, **Posible
    duplicado** o **Con error**. Todavía no se guarda nada.
 3. Revisa cada fila:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import itertools
+import re
 import zipfile
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -58,8 +59,10 @@ def rule_of(c: Category) -> CategoryRule:
     )
 
 
-def _warnings(p: Person, grade_ord: int | None, weight: str | None, c: Category, t: Tournament) -> list[dict[str, str]]:
-    comp = Competitor(p.sex, p.birth_date, grade_ord, weight)
+def _warnings(
+    p: Person, grade_ord: int | None, weight: str | None, c: Category, t: Tournament, age: int | None = None
+) -> list[dict[str, str]]:
+    comp = Competitor(p.sex, p.birth_date, grade_ord, weight, age=age)
     ws = [
         {"code": w.code, "message": w.message}
         for w in registration_warnings(comp, rule_of(c), t.age_reference_date, t.age_mode or "date")
@@ -147,12 +150,12 @@ def create_registration(
         weight_class=data.weight_class,
         age_at_reference=competition_age(p.birth_date, t.age_reference_date, t.age_mode or "date")
         if p.birth_date
-        else None,
+        else data.age,
         seed=data.seed,
         updated_by_id=user.id,
     )
     db.add(r)
-    ws = _warnings(p, grade_ord, data.weight_class, c, t) + capacity_warnings(db, c)
+    ws = _warnings(p, grade_ord, data.weight_class, c, t, data.age) + capacity_warnings(db, c)
     apply_warnings(db, user, ws, data.override.reason if data.override else None, "registration", lambda: r.id)
     db.flush()
     refresh_category_status(db, c)
@@ -303,6 +306,8 @@ COLUMNS = [
     ("categoria_peso", "Categoría de peso (p. ej. -45)"),
     ("modalidades", "Modalidades (kumite, kata)"),
     ("rol", "Rol (competidor, árbitro, sensei)"),
+    # Al final para no mover las columnas de los archivos ya repartidos.
+    ("edad", "Edad (si no hay fecha de nacimiento)"),
 ]
 
 # Rol de la fila: vacío = competidor (compatibilidad con archivos anteriores).
@@ -341,6 +346,7 @@ def excel_template() -> bytes:
             "-40",
             "kumite, kata",
             "competidor",
+            "",
         ]
     )
     dv = DataValidation(type="list", formula1='"M,F"', allow_blank=False)
@@ -355,6 +361,7 @@ def excel_template() -> bytes:
     info.append(["Modalidades: kumite, kata o ambas separadas por coma."])
     info.append(["Rol: competidor (por defecto), árbitro o sensei; puede ir más de uno separado por coma."])
     info.append(["Un árbitro no necesita dojo ni modalidades; un sensei queda registrado en su dojo."])
+    info.append(["Edad: solo si no se conoce la fecha de nacimiento; sirve para sugerir la categoría."])
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -436,6 +443,10 @@ def _validate_row(rec: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
             grade_to_ordinal(data["grado"])
         except ValueError as e:
             errors.append(str(e))
+    edad = re.sub(r"\s*a[ñn]os?\s*$", "", str(data.get("edad") or ""), flags=re.IGNORECASE).strip()
+    if edad and not (edad.isdigit() and 0 <= int(edad) <= 99):
+        errors.append("Edad inválida (un número de años)")
+    data["edad"] = int(edad) if edad.isdigit() else ""
     doc_type = str(data["tipo_documento"]).upper()
     if data["numero_documento"] and doc_type not in ("DNI", "CE", "PASSPORT", "OTHER"):
         errors.append("Tipo de documento inválido")
@@ -493,7 +504,7 @@ def create_import_preview(db: Session, user: User, tid: int, filename: str, cont
                 dups.append({"row_number": seen_in_file[key], "reason": "same_file", "score": 1.0})
             seen_in_file.setdefault(key, rec["_row"])
             grade_ord = grade_to_ordinal(data["grado"]) if data["grado"] else None
-            comp = Competitor(data["sexo"], bd, grade_ord, data["categoria_peso"] or None)
+            comp = Competitor(data["sexo"], bd, grade_ord, data["categoria_peso"] or None, age=data["edad"] or None)
             if "competitor" in data["rol"]:
                 for mod in data["modalidades"]:
                     matches = suggest_categories(comp, rules, t.age_reference_date, mod, t.age_mode or "date")
@@ -651,6 +662,7 @@ def confirm_import(db: Session, user: User, bid: int, data: s.ImportConfirm) -> 
                             category_id=cid,
                             dojo_id=dojo_id,
                             weight_class=rd["categoria_peso"] or None,
+                            age=rd.get("edad") or None,
                             override=s.Override(reason=override) if override else None,
                         ),
                         commit=False,

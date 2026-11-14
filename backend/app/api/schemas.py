@@ -572,6 +572,8 @@ class RegistrationCreate(BaseModel):
     grade: str | None = None  # por defecto, el vigente a la fecha del torneo
     weight_class: str | None = None
     seed: int | None = None
+    # Edad declarada si la persona no tiene fecha de nacimiento (listas de dojos).
+    age: int | None = Field(default=None, ge=0, le=99)
     override: Override | None = None
 
 

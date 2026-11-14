@@ -19529,6 +19529,19 @@
       ],
       "title": "Seed"
      },
+     "age": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 99.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age"
+     },
      "override": {
       "anyOf": [
        {

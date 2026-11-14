@@ -112,6 +112,16 @@ class Competitor:
     birth_date: date | None
     grade: int | None  # ordinal
     weight_class: str | None = None
+    # Edad declarada cuando no se conoce la fecha de nacimiento (las listas de
+    # los dojos suelen traer solo la edad). Si hay fecha, manda la fecha.
+    age: int | None = None
+
+
+def competitor_age(c: Competitor, ref_date: date, age_mode: str = "date") -> int | None:
+    """Edad de competencia: por la fecha de nacimiento o, si falta, la declarada."""
+    if c.birth_date is not None:
+        return competition_age(c.birth_date, ref_date, age_mode)
+    return c.age
 
 
 @dataclass(frozen=True)
@@ -124,11 +134,11 @@ def registration_warnings(c: Competitor, cat: CategoryRule, ref_date: date, age_
     w: list[Warning] = []
     if cat.sex != "X" and c.sex != cat.sex:
         w.append(Warning("SEX_MISMATCH", "El sexo del competidor no coincide con la categoría"))
-    if c.birth_date is None:
+    age = competitor_age(c, ref_date, age_mode)
+    if age is None:
         if cat.age_min is not None or cat.age_max is not None:
-            w.append(Warning("AGE_UNKNOWN", "Sin fecha de nacimiento: no se puede validar la edad"))
+            w.append(Warning("AGE_UNKNOWN", "Sin fecha de nacimiento ni edad: no se puede validar la edad"))
     else:
-        age = competition_age(c.birth_date, ref_date, age_mode)
         if cat.age_min is not None and age < cat.age_min:
             w.append(Warning("AGE_BELOW_MIN", f"Edad {age} menor al mínimo {cat.age_min}"))
         if cat.age_max is not None and age > cat.age_max:

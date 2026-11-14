@@ -444,3 +444,43 @@ def test_import_same_file_duplicate_is_skipped_with_override(client):
     assert r.status_code == 409 and r.json()["error"]["details"]["warnings"][0]["code"] == "UNRESOLVED_DUPLICATE"
     res = api.post(f"/imports/{batch['id']}/confirm", {"override": {"reason": "Fila repetida"}})
     assert res == {"created_people": 1, "registrations": 1, "skipped": 1}
+
+
+def test_import_suggests_categories_from_declared_age(client):
+    """Las listas de los dojos suelen traer solo la edad: sin fecha de
+    nacimiento, la columna «Edad» basta para sugerir y validar la categoría."""
+    api = client
+    api.dojo("Norte")
+    t = setup_tournament(api)
+    tid = t["id"]
+    kids = api.post(
+        f"/tournaments/{tid}/categories",
+        {**KUMITE, "code": "K8", "name": "Kumite 8-9 M", "age_min": 8, "age_max": 9, "weight_class": None},
+        expect=201,
+    )
+    api.post(
+        f"/tournaments/{tid}/categories",
+        {**KUMITE, "code": "K10", "name": "Kumite 10-11 M", "age_min": 10, "age_max": 11, "weight_class": None},
+        expect=201,
+    )
+    wb = Workbook()
+    ws = wb.active
+    ws.append(
+        ["dojo", "sede", "tipo", "num", "nombres", "apellidos", "nac", "sexo", "grado", "peso", "mod", "rol", "edad"]
+    )
+    ws.append(["Dojo Norte", "", "", "", "Iker", "Paz", "", "M", "9 kyu", "", "kumite", "", "9 años"])
+    ws.append(["Dojo Norte", "", "", "", "Bruno", "Paz", "", "M", "9 kyu", "", "kumite", "", "x"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    batch = api.post(
+        f"/tournaments/{tid}/imports",
+        files={"file": ("e.xlsx", buf.getvalue(), "application/octet-stream")},
+        expect=201,
+    )
+    rows = sorted(batch["rows"], key=lambda r: r["row_number"])
+    assert rows[0]["suggested_category_ids"] == [kids["id"]] and rows[0]["data"]["edad"] == 9
+    assert rows[1]["status"] == "error" and "Edad inválida" in rows[1]["errors"][0]
+    res = api.post(f"/imports/{batch['id']}/confirm", {})
+    assert res["registrations"] == 1
+    reg = next(r for r in api.get(f"/tournaments/{tid}/registrations") if r["category_id"] == kids["id"])
+    assert reg["age_at_reference"] == 9

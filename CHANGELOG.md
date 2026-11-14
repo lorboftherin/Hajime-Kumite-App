@@ -12,6 +12,11 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- Importación desde Excel: columna **Edad** (al final, opcional). Si la fila no
+  trae fecha de nacimiento, la edad declarada sirve para sugerir y validar la
+  categoría y queda como edad de referencia de la inscripción
+  (`RegistrationCreate.age`). Las listas de los dojos suelen traer solo la edad.
+
 - **Fly.io:** `fly.toml`, job `deploy-fly` y `docs/despliegue-fly.md`: el ambiente de pruebas
   corre en Fly.io con SQLite en disco persistente (Azure deshabilitó la suscripción).
 - **Manual de usuario** (`docs/manual-de-usuario.md`, por rol, con capturas nuevas en

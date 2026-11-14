@@ -30,6 +30,11 @@ const ROW_FIELDS: Array<{ key: string; label: string; placeholder?: string }> = 
     label: $localize`:@@torneo.importar.fecha-nacimiento:Fecha de nacimiento`,
     placeholder: 'dd/mm/aaaa',
   },
+  {
+    key: 'edad',
+    label: $localize`:@@torneo.importar.edad:Edad (si no hay fecha)`,
+    placeholder: '9',
+  },
   { key: 'sexo', label: $localize`:@@torneo.importar.sexo-m-f:Sexo (M/F)` },
   { key: 'grado', label: $localize`:@@torneo.importar.grado:Grado`, placeholder: '8 kyu, 1 dan…' },
   { key: 'categoria_peso', label: $localize`:@@torneo.importar.peso:Peso`, placeholder: '-45' },
@@ -154,7 +159,8 @@ const ROLE_WORD: Record<string, string> = {
                       <span class="badge ai">{{ role }}</span>
                     }
                     <div class="muted small">
-                      {{ r.data['sexo'] }} · {{ r.data['fecha_nacimiento'] || 's/f' }} ·
+                      {{ r.data['sexo'] }} ·
+                      {{ r.data['fecha_nacimiento'] || edadDeclarada(r.data['edad']) }} ·
                       {{ r.data['grado'] || 's/g' }}
                       @if (r.data['numero_documento']) {
                         · {{ r.data['tipo_documento'] }} {{ r.data['numero_documento'] }}
@@ -448,6 +454,13 @@ export class ImportTab {
   ariaOtraCategoria = (fila: number) =>
     $localize`:@@torneo.importar.otra-categoria-fila:Otra categoría para la fila ${fila}:fila:`;
   /** Roles distintos de competidor (árbitro, sensei) para mostrarlos en la vista previa. */
+  /** «9 años» cuando la fila trae edad y no fecha de nacimiento; «s/f» si no trae ninguna. */
+  edadDeclarada(edad: unknown): string {
+    return edad === '' || edad == null
+      ? 's/f'
+      : $localize`:@@torneo.importar.anios:${edad}:edad: años`;
+  }
+
   staffRoles(roles: unknown): string[] {
     const label: Record<string, string> = {
       referee: $localize`:@@torneo.importar.arbitro-2:Árbitro`,
