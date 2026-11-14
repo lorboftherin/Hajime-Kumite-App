@@ -1077,9 +1077,10 @@ export class CategoriesTab {
 
   private files = inject(FilesService);
 
+  /** Descarga (no abre pestaña): en el celular una pestaña con un PDF generado queda en blanco. */
   allBracketsPdf(): void {
-    const tid = this.ctx.tournament()?.id;
-    if (tid) this.files.open(`/tournaments/${tid}/brackets.pdf`);
+    const t = this.ctx.tournament();
+    if (t) this.files.download(`/tournaments/${t.id}/brackets.pdf`, `llaves-${t.id}.pdf`);
   }
 
   async generateAll(): Promise<void> {

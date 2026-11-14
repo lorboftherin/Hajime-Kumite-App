@@ -228,8 +228,8 @@ def bracket_pdf(db: Session, cid: int, with_results: bool = True) -> bytes:
     buf = io.BytesIO()
     page = landscape(A4)
     pdf = canvas.Canvas(buf, pagesize=page)
-    pdf.setTitle(f"Llave - {c.name if c else cid}")
-    _draw_bracket_page(pdf, bracket_out(db, cid), c, t, page, with_results)
+    pdf.setTitle(f"Llave {c.code if c else ''} - {c.name if c else cid}")
+    _draw_bracket_page(pdf, bracket_out(db, cid), c, t, page, with_results, _match_numbers(db, c))
     pdf.save()
     return buf.getvalue()
 
@@ -259,7 +259,7 @@ def brackets_pdf(db: Session, tid: int, with_results: bool = True) -> bytes:
         if len(b.participants) < 2:
             # Un solo inscrito (campeón sin pelear) o llave vacía: nada que imprimir.
             continue
-        _draw_bracket_page(pdf, b, c, t, page, with_results)
+        _draw_bracket_page(pdf, b, c, t, page, with_results, _match_numbers(db, c))
         pages += 1
     if not pages:
         pdf.setFont("Helvetica", 12)
@@ -269,6 +269,32 @@ def brackets_pdf(db: Session, tid: int, with_results: bool = True) -> bytes:
     return buf.getvalue()
 
 
+FORMAT_LABEL = {
+    "single_elimination": "Eliminación directa",
+    "round_robin": "Todos contra todos",
+    "groups_knockout": "Grupos y eliminación",
+    "kata_rounds": "Kata por rondas",
+}
+THIRD_LABEL = {
+    "two_bronzes": "dos bronces",
+    "third_place_match": "combate por el 3.er puesto",
+    "repechage": "repechaje",
+}
+
+
+def _match_numbers(db: Session, c: Category | None) -> dict[int, str]:
+    """Número de cada combate en la planilla del tatami (T1-005…), si la categoría tiene tatami."""
+    if c is None or not c.tatami_id:
+        return {}
+    from app.services.brackets import tatami_schedule
+
+    try:
+        items = tatami_schedule(db, c.tatami_id)["items"]
+    except Exception:  # noqa: BLE001 — el número es un apoyo; la llave se imprime igual
+        return {}
+    return {it["match"].id: it["number"] for it in items if it["match"].category_id == c.id}
+
+
 def _draw_bracket_page(
     pdf: canvas.Canvas,
     b: s.BracketOut,
@@ -276,40 +302,145 @@ def _draw_bracket_page(
     t: Tournament | None,
     page: tuple[float, float],
     with_results: bool,
+    numbers: dict[int, str] | None = None,
 ) -> None:
-    """Una llave en una página apaisada: cabecera, versión y el cuadro o la lista."""
+    """Una llave en una página apaisada: cabecera con el código de la categoría
+    (A7, B12…), datos del torneo y el cuadro; al pie, versión y semilla."""
     W, H = page
-    pdf.setFont("Helvetica-Bold", 14)
-    _enso(pdf, 38, H - 26, 8)
-    pdf.drawString(54, H - 30, f"{t.name if t else ''} — {c.name if c else ''}")
-    pdf.setFont("Helvetica", 8)
-    pdf.drawString(30, H - 44, f"Versión {b.version_number} · semilla {b.seed} · formato {b.format}")
+    left, right = 30, W - 30
+    code = (c.code if c else "").strip()
+    # Cabecera: código en recuadro, nombre de la categoría y torneo.
+    pdf.saveState()
+    pdf.setFillColor(SHU if (c and c.modality == "kumite") else AI)
+    pdf.roundRect(left, H - 58, 62, 34, 4, stroke=0, fill=1)
+    pdf.setFillColor(colors.white)
+    pdf.setFont("Helvetica-Bold", 20 if len(code) <= 3 else 14)
+    pdf.drawCentredString(left + 31, H - 47, code or "—")
+    pdf.restoreState()
+    pdf.setFillColor(SUMI)
+    pdf.setFont("Helvetica-Bold", 15)
+    pdf.drawString(left + 72, H - 40, (c.name if c else "")[:70])
+    pdf.setFont("Helvetica", 9)
+    pdf.setFillColor(USUZUMI)
+    partes = []
+    if t:
+        partes.append(t.name)
+        if t.start_date:
+            partes.append(t.start_date.strftime("%d/%m/%Y"))
+    if c and c.tatami_id and t:
+        tat = next((x for x in t.tatamis if x.id == c.tatami_id), None)
+        if tat:
+            partes.append(tat.name)
+    partes.append(f"{len(b.participants)} competidores")
+    fmt = FORMAT_LABEL.get(b.format, b.format)
+    if b.format == "single_elimination" and b.third_place_rule in THIRD_LABEL:
+        fmt += f" · {THIRD_LABEL[b.third_place_rule]}"
+    partes.append(fmt)
+    pdf.drawString(left + 72, H - 54, "  ·  ".join(partes)[:160])
+    _enso(pdf, right - 10, H - 42, 9)
+    pdf.setStrokeColor(KASUMI)
+    pdf.setLineWidth(1)
+    pdf.line(left, H - 66, right, H - 66)
 
     def pname(rid: int | None) -> str:
         if rid is None:
             return ""
         p = b.participants.get(rid)
-        return f"{p.name} ({p.dojo_name})" if p else str(rid)
+        return p.name if p else str(rid)
+
+    def pdojo(rid: int | None) -> str:
+        p = b.participants.get(rid) if rid is not None else None
+        return _short_dojo(p.dojo_name) if p else ""
 
     if b.format == "single_elimination":
-        _draw_elimination(pdf, b, W, H, pname, with_results)
+        _draw_elimination(pdf, b, W, H, pname, with_results, pdojo=pdojo, numbers=numbers or {})
     else:
-        _draw_list(pdf, b, H, pname, with_results)
+        _draw_list(pdf, b, H, lambda rid: f"{pname(rid)} ({pdojo(rid)})" if rid else "", with_results)
+    # Pie: trazabilidad de la versión impresa.
+    pdf.setFont("Helvetica", 7)
+    pdf.setFillColor(NEZUMI)
+    pdf.drawString(left, 22, f"Llave versión {b.version_number} · semilla {b.seed} · Hajime")
+    pdf.drawRightString(right, 22, "AKA = rojo (arriba) · AO = azul (abajo)")
+    pdf.setFillColor(colors.black)
     pdf.showPage()
 
 
-def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, pname, with_results: bool) -> None:
+def _short_dojo(name: str) -> str:
+    """«Kento Kai - San Miguel» → «KK San Miguel»: cabe en el recuadro sin perder la sede."""
+    name = (name or "").strip()
+    if " - " in name:
+        head, tail = name.split(" - ", 1)
+        initials = "".join(w[0] for w in head.split() if w[:1].isalpha()).upper()
+        return f"{initials} {tail}" if initials else tail
+    return name
+
+
+def _draw_elimination(
+    pdf: canvas.Canvas,
+    b: s.BracketOut,
+    W: float,
+    H: float,
+    pname,
+    with_results: bool,
+    pdojo=lambda rid: "",
+    numbers: dict[int, str] | None = None,
+) -> None:
+    """Cuadro clásico de torneo: cada competidor en un recuadro (franja roja
+    AKA arriba, azul AO abajo), líneas de avance hacia la derecha, número de
+    combate de la planilla y recuadro de campeón al final."""
+    numbers = numbers or {}
     main = [m for m in b.matches if m.kind == "main"]
     rounds = max((m.round for m in main), default=0)
-    top, bottom, left = H - 70, 60, 30
-    col_w = min(190, (W - 2 * left) / max(rounds + 1, 1))
+    extras = [m for m in b.matches if m.kind != "main"]
+    top, bottom, left, right = H - 80, 50 + (14 * len(extras) + 16 if extras else 0), 30, W - 30
+    gap = 28  # separación horizontal entre rondas
+    col_w = min(250, (right - left - 90) / max(rounds, 1))  # 90 pt reservados al recuadro del campeón
+    box_w = col_w - gap
     first = sorted((m for m in main if m.round == 1), key=lambda m: m.position)
-    slot_h = (top - bottom) / max(len(first) * 2, 1)
+    # Cuadros chicos (2 a 4 competidores): recuadros juntos arriba, no repartidos por toda la hoja.
+    slot_h = min(44, (top - bottom) / max(len(first) * 2, 1))
+    box_h = min(26, slot_h - 3)
+    two_lines = box_h >= 18
+    font = 8 if slot_h >= 20 else 7
     y_of: dict[str, float] = {}
-    font = 7 if len(first) > 8 else 8
-    pdf.setFont("Helvetica", font)
+
+    def box(x: float, yc: float, rid: int | None, side: str, bye: bool, seed: int | None) -> None:
+        """Recuadro de un competidor centrado en yc."""
+        y0 = yc - box_h / 2
+        pdf.setStrokeColor(KASUMI if bye else USUZUMI)
+        pdf.setLineWidth(0.8)
+        pdf.setFillColor(colors.white)
+        pdf.rect(x, y0, box_w, box_h, stroke=1, fill=1)
+        if not bye:
+            pdf.setFillColor(SHU if side == "aka" else AI)
+            pdf.rect(x, y0, 4, box_h, stroke=0, fill=1)
+        name = pname(rid)
+        if bye:
+            pdf.setFillColor(NEZUMI)
+            pdf.setFont("Helvetica-Oblique", font)
+            pdf.drawString(x + 8, yc - font / 2 + 1, "BYE (pasa directo)" if name == "" else name)
+            return
+        pdf.setFillColor(SUMI)
+        if seed is not None:
+            pdf.setFont("Helvetica", font - 1)
+            pdf.setFillColor(NEZUMI)
+            pdf.drawRightString(x - 3, yc - 2, str(seed))
+            pdf.setFillColor(SUMI)
+        pdf.setFont("Helvetica-Bold", font)
+        maxc = int(box_w / (font * 0.52))
+        if two_lines and name:
+            pdf.drawString(x + 8, yc + 1.5, name[:maxc])
+            pdf.setFont("Helvetica", font - 1.5)
+            pdf.setFillColor(USUZUMI)
+            pdf.drawString(x + 8, yc - font + 1, pdojo(rid)[:maxc])
+        elif name:
+            pdf.drawString(x + 8, yc - font / 2 + 1, f"{name} · {pdojo(rid)}"[:maxc])
+        pdf.setFillColor(colors.black)
+
+    seed_no = 0
+    labels: list[tuple[float, float, str, Any]] = []
     for r in range(1, rounds + 1):
-        x = left + (r - 1) * col_w
+        x = left + 10 + (r - 1) * col_w
         for m in sorted((m for m in main if m.round == r), key=lambda m: m.position):
             if r == 1:
                 ya = top - (2 * m.position + 0.5) * slot_h
@@ -319,50 +450,74 @@ def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, p
                 yb = y_of[f"R{r - 1}-{2 * m.position + 2}"]
             mid = (ya + yb) / 2
             y_of[m.code] = mid
-            pdf.setStrokeColor(colors.black)
-            pdf.line(x, ya, x + col_w - 10, ya)
-            pdf.line(x, yb, x + col_w - 10, yb)
-            pdf.line(x + col_w - 10, ya, x + col_w - 10, yb)
             show = with_results or r == 1
-            a = pname(m.aka_registration_id) if show else ""
-            o = pname(m.ao_registration_id) if show else ""
-            if r == 1 and m.status == "bye":
-                a = a or "— bye —"
-                o = o or "— bye —"
-            pdf.setFillColor(SHU)
-            pdf.drawString(x + 2, ya + 2, a[:40])
-            pdf.setFillColor(AI)
-            pdf.drawString(x + 2, yb + 2, o[:40])
-            pdf.setFillColor(colors.black)
-            if with_results and m.status == "finished" and m.aka_score is not None:
-                pdf.drawRightString(x + col_w - 12, mid + 2, f"{m.aka_score}-{m.ao_score}")
-            if m.status != "bye":
-                # Código del combate: el mismo que usa la planilla de mesa y la app.
-                # Debajo de la línea que sale hacia la siguiente ronda: no choca con nombres.
-                pdf.setFont("Helvetica", 6)
-                pdf.setFillColor(NEZUMI)
-                pdf.drawString(x + col_w - 7, mid - 8, m.code)
-                pdf.setFillColor(colors.black)
-                pdf.setFont("Helvetica", font)
-    x = left + rounds * col_w
+            bye = m.status == "bye"
+            a_id = m.aka_registration_id if show else None
+            o_id = m.ao_registration_id if show else None
+            sa = so = None
+            if r == 1:
+                seed_no += 1
+                sa = seed_no
+                seed_no += 1
+                so = seed_no
+            box(x, ya, a_id, "aka", bye and a_id is None, sa)
+            box(x, yb, o_id, "ao", bye and o_id is None, so)
+            # Conectores: de cada recuadro a la columna de unión y de ahí al siguiente.
+            xj = x + box_w + gap / 2
+            pdf.setStrokeColor(USUZUMI)
+            pdf.setLineWidth(0.8)
+            pdf.line(x + box_w, ya, xj, ya)
+            pdf.line(x + box_w, yb, xj, yb)
+            pdf.line(xj, ya, xj, yb)
+            pdf.line(xj, mid, x + col_w, mid)
+            if not bye:
+                labels.append((xj, mid, numbers.get(m.id, m.code), m))
+    # Resultado del combate (solo con resultados): marcador sobre la línea de avance.
+    if with_results:
+        for xj, mid, _label, m in labels:
+            if m.status == "finished" and m.aka_score is not None:
+                pdf.setFont("Helvetica-Bold", 7)
+                pdf.setFillColor(SUMI)
+                pdf.drawCentredString(xj, mid + 3, f"{m.aka_score}-{m.ao_score}")
+    pdf.setFillColor(colors.black)
+    # Campeón.
     final = next((m for m in main if m.round == rounds), None)
     if final:
-        pdf.line(x - 10, y_of[final.code], x + col_w - 20, y_of[final.code])
+        x = left + 10 + rounds * col_w
+        yc = y_of[final.code]
+        champ_w = min(200, right - x)
+        pdf.setStrokeColor(SUMI)
+        pdf.setLineWidth(1.2)
+        pdf.setFillColor(colors.HexColor("#FBF6EA"))
+        pdf.rect(x, yc - box_h / 2, champ_w, box_h, stroke=1, fill=1)
+        pdf.setFont("Helvetica", 6.5)
+        pdf.setFillColor(NEZUMI)
+        pdf.drawString(x + 4, yc + box_h / 2 + 3, "CAMPEÓN")
         if with_results and final.winner_registration_id:
-            pdf.setFont("Helvetica-Bold", font + 1)
-            pdf.drawString(x - 8, y_of[final.code] + 3, pname(final.winner_registration_id)[:40])
-    extras = [m for m in b.matches if m.kind != "main"]
-    y = bottom - 10
-    pdf.setFont("Helvetica", 8)
-    for m in extras:
-        label = "3.er puesto" if m.kind == "third_place" else f"Repechaje {m.code}"
-        aka = pname(m.aka_registration_id) or "(por definir)"
-        ao = pname(m.ao_registration_id) or "(por definir)"
-        txt = f"{label}: {aka} vs {ao}"
-        if with_results and m.winner_registration_id:
-            txt += f" → {pname(m.winner_registration_id)}"
-        pdf.drawString(left, y, txt[:150])
-        y -= 11
+            pdf.setFont("Helvetica-Bold", font)
+            pdf.setFillColor(SUMI)
+            pdf.drawString(
+                x + 5, yc - font / 2 + 1, pname(final.winner_registration_id)[: int(champ_w / (font * 0.52))]
+            )
+        pdf.setFillColor(colors.black)
+    # Terceros puestos / repechaje.
+    if extras:
+        y = bottom - 14
+        pdf.setFont("Helvetica-Bold", 8)
+        pdf.setFillColor(SUMI)
+        pdf.drawString(left, y, "Otros combates")
+        pdf.setFont("Helvetica", 8)
+        for m in extras:
+            y -= 12
+            label = "3.er puesto" if m.kind == "third_place" else f"Repechaje {m.code}"
+            aka = pname(m.aka_registration_id) or "(por definir)"
+            ao = pname(m.ao_registration_id) or "(por definir)"
+            txt = f"{label}: {aka} vs {ao}"
+            if with_results and m.winner_registration_id:
+                txt += f" → {pname(m.winner_registration_id)}"
+            pdf.setFillColor(USUZUMI)
+            pdf.drawString(left, y, txt[:160])
+        pdf.setFillColor(colors.black)
 
 
 def _draw_list(pdf: canvas.Canvas, b: s.BracketOut, H: float, pname, with_results: bool) -> None:
