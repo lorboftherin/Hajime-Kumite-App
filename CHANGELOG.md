@@ -12,6 +12,10 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- `docs/colaboradores.md` y sección «Varias personas trabajando» en
+  `CLAUDE.md`: acceso necesario, ramas y PR, y qué ambiente se puede tocar
+  (el de pruebas en línea tiene datos reales).
+
 - **PDF de las llaves** del torneo (`GET /tournaments/{id}/brackets.pdf` y botón
   en Categorías): todas las llaves en un solo archivo, una página por
   categoría, en el orden de los tatamis y de sus colas.

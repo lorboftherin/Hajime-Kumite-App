@@ -55,6 +55,10 @@ npm start                          # http://localhost:4200 (proxy de /api hacia 
 
 Capturas: [`docs/screenshots/`](docs/screenshots/).
 
+¿Te sumas al proyecto (con o sin tu propio Claude)? Lee
+[`docs/colaboradores.md`](docs/colaboradores.md): qué acceso necesitas, ramas y PR,
+y qué ambiente puedes tocar.
+
 ## Estado del MVP
 
 | Incremento | Contenido | Estado |

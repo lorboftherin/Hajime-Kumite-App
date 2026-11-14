@@ -76,4 +76,19 @@ docker build -t hajime:local . && bash scripts/humo-contenedor.sh hajime:local
 | Mesa de kumite / kata | `frontend/src/app/features/mesa/` |
 | CI, release, producción, CodeQL | `.github/workflows/` |
 | Scripts de Azure (crear, promover, rollback, respaldos) | `infra/azure/` |
-| Despliegue y acciones manuales del dueño | `docs/despliegue-azure.md`, `docs/acciones-del-duenio.md` |
+| Despliegue en pruebas (Fly.io) y acciones del dueño | `docs/despliegue-fly.md`, `docs/acciones-del-duenio.md` |
+| Trabajo de varias personas (y varios Claude) en el repo | `docs/colaboradores.md` |
+
+## Varias personas trabajando (léelo si no eres el dueño)
+
+- Trabaja en **tu propia rama** (`<tu-nombre>/<tema>`) y abre un PR a `main`.
+  Nunca hagas push a `main` ni a ramas `claude/...` de otra persona.
+- El ambiente de pruebas <https://hajime-test.fly.dev> tiene **datos reales de un
+  torneo en curso**. No corras `cargar_demo.py`, `app.seed demo`, ni borres o
+  importes nada ahí sin que el dueño lo pida. Para probar, usa tu máquina
+  (`docker compose up` o `uvicorn` + `npm start`) o las pruebas e2e.
+- No cambies `fly.toml`, el job `deploy-fly` ni la rama que se despliega
+  (`FLY_BRANCH`/`main`) sin coordinar: CI despliega solo esa rama a pruebas.
+- Antes de pedir revisión, pasa el checklist de arriba completo; el PR debe
+  dejar CI en verde (backend, frontend, e2e, auditoría, docker).
+- Detalle y contexto en `docs/colaboradores.md`.
