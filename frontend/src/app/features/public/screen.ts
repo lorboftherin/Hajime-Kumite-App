@@ -78,7 +78,7 @@ interface LadderMark {
               <div class="top">
                 <span class="clabel">AKA</span>
                 @if (!isKata()) {
-                  <span class="ladder" role="img" [attr.aria-label]="m.sanction[0] ?? ''">
+                  <span class="ladder" role="img" [attr.aria-label]="ladderLabel(0)">
                     @for (k of ladder(0); track k.abbr) {
                       <span class="mark" [class.on]="k.on" [title]="k.full"
                         ><i></i><b>{{ k.abbr }}</b></span
@@ -172,7 +172,7 @@ interface LadderMark {
               <div class="top">
                 <span class="clabel">AO</span>
                 @if (!isKata()) {
-                  <span class="ladder" role="img" [attr.aria-label]="m.sanction[1] ?? ''">
+                  <span class="ladder" role="img" [attr.aria-label]="ladderLabel(1)">
                     @for (k of ladder(1); track k.abbr) {
                       <span class="mark" [class.on]="k.on" [title]="k.full"
                         ><i></i><b>{{ k.abbr }}</b></span
@@ -265,6 +265,14 @@ export class ScreenPage {
     if (!f) return [];
     return Array.from({ length: f.judges }, (_, i) => f.votes[i] ?? null);
   });
+
+  /** Texto accesible de la escalera: «Faltas AKA: ninguna» o «Faltas AO: Chui 2». */
+  ladderLabel(side: 0 | 1): string {
+    const who = side === 0 ? 'AKA' : 'AO';
+    const nivel =
+      this.data()?.match?.sanction[side] ?? $localize`:@@publico.pantalla.sin-faltas:ninguna`;
+    return $localize`:@@publico.pantalla.faltas:Faltas ${who}:color:: ${nivel}:nivel:`;
+  }
 
   /** Escalera de faltas del lado (0 = AKA, 1 = AO): un casillero por nivel, encendidos hasta el alcanzado. */
   ladder(side: 0 | 1): LadderMark[] {

@@ -1867,6 +1867,8 @@
     "publico.pantalla.gana-aka": "AKA wins",
     "publico.pantalla.gana-ao": "AO wins",
     "publico.pantalla.banderas": "Flags",
+    "publico.pantalla.sin-faltas": "none",
+    "publico.pantalla.faltas": "{$color} penalties: {$nivel}",
     "publico.pantalla.siguiente": "Next",
     "publico.pantalla.sin-combate-curso": "No match in progress",
     "publico.pantalla.vs": "{$START_TAG_SPAN}{$INTERPOLATION}{$CLOSE_TAG_SPAN} vs {$START_TAG_SPAN_1}{$INTERPOLATION_1}{$CLOSE_TAG_SPAN}",

@@ -1845,6 +1845,8 @@
     "publico.pantalla.siguiente": "Siguiente",
     "publico.pantalla.vs": "{$START_TAG_SPAN}{$INTERPOLATION}{$CLOSE_TAG_SPAN} vs {$START_TAG_SPAN_1}{$INTERPOLATION_1}{$CLOSE_TAG_SPAN}",
     "publico.pantalla.conectando": "Conectando…",
+    "publico.pantalla.sin-faltas": "ninguna",
+    "publico.pantalla.faltas": "Faltas {$color}: {$nivel}",
     "publico.pantalla.sigue-vs": " Sigue: {$INTERPOLATION} vs {$INTERPOLATION_1} · {$INTERPOLATION_2} ",
     "publico.compartir.hajime-vivo": "{$heading} · Hajime en vivo",
     "ranking.publico.ranking": "ranking",
