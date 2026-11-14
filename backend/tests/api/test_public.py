@@ -180,3 +180,47 @@ def test_overlay_snapshot_keeps_the_clock_running(client, monkeypatch):
     assert 13.9 <= aged["match"]["elapsed"] <= 15
     still = public_snapshots.age_overlay({"match": {"running": False, "elapsed": 10.0}}, public_snapshots.utcnow())
     assert still["match"]["elapsed"] == 10.0
+
+
+def test_overlay_gives_sanction_ladder_and_kata_flags(client):
+    """La pantalla grande dibuja las faltas como casilleros (escalera completa y
+    nivel alcanzado) y, en kata por banderas, el voto de cada juez."""
+    import uuid
+    from datetime import UTC, datetime
+
+    api = client
+    t, m, tat, token = small_live(api)
+    api.event(m["id"], "start")
+    api.event(m["id"], "sanction", "aka", 2)
+    ov = api.c.get(f"/api/v1/public/{token}/tatamis/{tat}").json()["match"]
+    assert ov["modality"] == "kumite" and ov["flags"] is None
+    assert ov["sanction_levels"][:2] == ["Chui 1", "Chui 2"] and ov["sanction_index"] == [2, 0]
+    assert ov["sanction"] == ["Chui 2", None]
+
+    # Kata por banderas en el mismo tatami, después del kumite.
+    k = api.post(
+        f"/tournaments/{t['id']}/categories",
+        {
+            "code": "KF",
+            "name": "Kata banderas",
+            "modality": "kata",
+            "sex": "X",
+            "kata_method": "flags",
+            "kata_judges": 3,
+        },
+        expect=201,
+    )
+    api.patch(f"/categories/{k['id']}", {"tatami_id": tat, "version": k["version"]})
+    d = api.dojo("Sora")
+    for first in ("Ana", "Lía"):
+        register(api, t["id"], api.person(first, "Vega", d["id"])["id"], k["id"])
+    km = api.post(f"/categories/{k['id']}/bracket", {"seed": 1})["matches"][0]
+    play(api, m["id"], [("aka", 3)], "aka")
+    ov = api.c.get(f"/api/v1/public/{token}/tatamis/{tat}").json()["match"]
+    assert ov["modality"] == "kata" and ov["flags"] == {"judges": 3, "votes": []}
+    api.post(
+        f"/matches/{km['id']}/flags",
+        {"votes": ["ao", "ao", "aka"], "at": datetime.now(UTC).isoformat(), "event_id": str(uuid.uuid4())},
+    )
+    ov = api.c.get(f"/api/v1/public/{token}/tatamis/{tat}").json()["match"]
+    assert ov["flags"]["votes"] == ["ao", "ao", "aka"] and ov["winner"] == "ao"

@@ -10,9 +10,13 @@ import {
 } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { mmss } from '../../core/format';
-import { OverlayData, PublicLive } from '../../core/models';
+import { Color, OverlayData, PublicLive } from '../../core/models';
+import { sanctionAbbr } from '../mesa/mesa-logic';
 import { PublicFeed } from './feed';
 import { localeActual } from '../../core/i18n/idioma';
+
+/** Escalera por defecto si el marcador no la trae (clientes antiguos del servidor). */
+const DEFAULT_SANCTIONS = ['Chui 1', 'Chui 2', 'Chui 3', 'Hansoku-chui', 'Hansoku'];
 
 /** Pantalla encendida mientras la página está abierta (si el navegador lo permite). */
 function keepAwake(destroy: DestroyRef): void {
@@ -38,17 +42,26 @@ function keepAwake(destroy: DestroyRef): void {
   });
 }
 
+/** Casillero de la escalera de faltas (C1 · C2 · C3 · HC · H). */
+interface LadderMark {
+  abbr: string;
+  full: string;
+  on: boolean;
+}
+
 /**
- * Marcador de pantalla grande para un TV del coliseo (`/pantalla/:token/:tatami`):
- * nombres grandes, dojo, puntos, faltas, senshu y reloj que avanza localmente,
- * categoría y siguiente combate. Alto contraste, sin interacción, se adapta a
- * 16:9 y 4:3. Se actualiza por SSE (o cada segundo si no hay SSE) con el mismo
- * marcador que el overlay de transmisión.
+ * Marcador de pantalla grande para un TV del coliseo (`/pantalla/:token/:tatami`),
+ * con la disposición clásica de los tableros oficiales de kumite: AKA a la
+ * izquierda, AO a la derecha, el reloj en un panel claro al centro, los puntos
+ * enormes y las faltas como casilleros (C1 · C2 · C3 · HC · H). En kata por
+ * banderas, cada lado muestra su bandera y el voto de cada juez. Alto
+ * contraste, sin interacción, se adapta a 16:9 y 4:3. Se actualiza por SSE (o
+ * cada segundo si no hay SSE) con el mismo marcador que el overlay.
  */
 @Component({
   selector: 'app-screen',
   template: `
-    <div class="screen" role="presentation">
+    <div class="screen" role="presentation" [class.kata]="isKata()">
       @if (data(); as d) {
         <header class="head">
           <span class="tat">{{ d.tatami.name }}</span>
@@ -56,64 +69,148 @@ function keepAwake(destroy: DestroyRef): void {
             <span class="cat"
               >{{ m.category }} · <span class="num">{{ m.number }}</span></span
             >
-            <span
-              class="clock"
-              [class.run]="m.running"
-              [class.over]="remaining() <= 0 && m.status !== 'finished'"
-            >
-              @if (m.status === 'finished') {
-                <ng-container i18n="@@publico.fin">FIN</ng-container>
-              } @else {
-                {{ clockText() }}
-              }
-            </span>
-          } @else {
-            <span class="cat">{{ d.tournament }}</span>
           }
+          <span class="tour">{{ d.tournament }}</span>
         </header>
         @if (d.match; as m) {
-          @if (m.team; as t) {
-            <div class="team">
-              {{ t.aka }} <strong>{{ t.wins[0] }}–{{ t.wins[1] }}</strong> {{ t.ao }} ·
-              @if (t.extra) {
-                <ng-container i18n="@@publico.pantalla.combate-extra">combate extra</ng-container>
-              } @else {
-                <ng-container i18n="@@publico.pantalla.combate-n"
-                  >combate {{ t.bout }}</ng-container
-                >
-              }
-            </div>
-          }
-          <main class="sides">
+          <main class="board">
             <section class="side aka" [class.won]="m.winner === 'aka'">
+              <div class="top">
+                <span class="clabel">AKA</span>
+                @if (!isKata()) {
+                  <span class="ladder" role="img" [attr.aria-label]="m.sanction[0] ?? ''">
+                    @for (k of ladder(0); track k.abbr) {
+                      <span class="mark" [class.on]="k.on" [title]="k.full"
+                        ><i></i><b>{{ k.abbr }}</b></span
+                      >
+                    }
+                  </span>
+                  <span
+                    class="senshu"
+                    [class.on]="m.senshu === 'aka'"
+                    i18n="@@publico.pantalla.senshu"
+                    >先 Senshu</span
+                  >
+                }
+              </div>
               <div class="who">
                 <span class="nm">{{ m.aka?.name ?? '—' }}</span>
                 <span class="dj">{{ m.aka?.dojo }}</span>
               </div>
-              <div class="pts" data-testid="pantalla-puntos-aka">{{ m.score[0] }}</div>
-              <div class="marks">
-                @if (m.senshu === 'aka') {
-                  <span i18n="@@publico.pantalla.senshu" class="senshu">先 Senshu</span>
+              @if (isKata()) {
+                <div class="flagbox">
+                  <svg class="flag" viewBox="0 0 100 100" aria-hidden="true">
+                    <path d="M22 96V8" />
+                    <path
+                      class="cloth"
+                      d="M24 12c18-8 30 6 48 0 6-2 10 2 12 6v34c-18 8-30-6-48 0-6 2-10 1-12-4Z"
+                    />
+                  </svg>
+                  <span class="judges">
+                    @for (v of votes(); track $index) {
+                      <span class="vote" [class.aka]="v === 'aka'" [class.ao]="v === 'ao'"
+                        ><i></i><b>{{ $index + 1 }}</b></span
+                      >
+                    }
+                  </span>
+                </div>
+              } @else {
+                <div class="pts" data-testid="pantalla-puntos-aka">{{ m.score[0] }}</div>
+              }
+            </section>
+
+            <div class="center">
+              <div
+                class="clockbox"
+                [class.run]="m.running"
+                [class.over]="remaining() <= 0 && m.status !== 'finished'"
+              >
+                @if (m.status === 'finished') {
+                  <span class="digits fin" i18n="@@publico.fin">FIN</span>
+                } @else if (isKata()) {
+                  <span class="digits kata">KATA</span>
+                } @else {
+                  <span class="digits">{{ clockText() }}</span>
                 }
-                @if (m.sanction[0]) {
-                  <span class="pen">{{ m.sanction[0] }}</span>
+                <span class="state">
+                  @if (m.status === 'finished') {
+                    @if (m.winner === 'aka') {
+                      <ng-container i18n="@@publico.pantalla.gana-aka">Gana AKA</ng-container>
+                    } @else if (m.winner === 'ao') {
+                      <ng-container i18n="@@publico.pantalla.gana-ao">Gana AO</ng-container>
+                    }
+                  } @else if (isKata()) {
+                    <ng-container i18n="@@publico.pantalla.banderas">Banderas</ng-container>
+                  } @else if (m.running) {
+                    HAJIME
+                  } @else {
+                    YAME
+                  }
+                </span>
+              </div>
+              @if (m.team; as t) {
+                <div class="team">
+                  <span class="tn">{{ t.aka }}</span>
+                  <strong>{{ t.wins[0] }}–{{ t.wins[1] }}</strong>
+                  <span class="tn">{{ t.ao }}</span>
+                  <small>
+                    @if (t.extra) {
+                      <ng-container i18n="@@publico.pantalla.combate-extra"
+                        >combate extra</ng-container
+                      >
+                    } @else {
+                      <ng-container i18n="@@publico.pantalla.combate-n"
+                        >combate {{ t.bout }}</ng-container
+                      >
+                    }
+                  </small>
+                </div>
+              }
+            </div>
+
+            <section class="side ao" [class.won]="m.winner === 'ao'">
+              <div class="top">
+                <span class="clabel">AO</span>
+                @if (!isKata()) {
+                  <span class="ladder" role="img" [attr.aria-label]="m.sanction[1] ?? ''">
+                    @for (k of ladder(1); track k.abbr) {
+                      <span class="mark" [class.on]="k.on" [title]="k.full"
+                        ><i></i><b>{{ k.abbr }}</b></span
+                      >
+                    }
+                  </span>
+                  <span
+                    class="senshu"
+                    [class.on]="m.senshu === 'ao'"
+                    i18n="@@publico.pantalla.senshu"
+                    >先 Senshu</span
+                  >
                 }
               </div>
-            </section>
-            <section class="side ao" [class.won]="m.winner === 'ao'">
               <div class="who">
                 <span class="nm">{{ m.ao?.name ?? '—' }}</span>
                 <span class="dj">{{ m.ao?.dojo }}</span>
               </div>
-              <div class="pts" data-testid="pantalla-puntos-ao">{{ m.score[1] }}</div>
-              <div class="marks">
-                @if (m.senshu === 'ao') {
-                  <span i18n="@@publico.pantalla.senshu" class="senshu">先 Senshu</span>
-                }
-                @if (m.sanction[1]) {
-                  <span class="pen">{{ m.sanction[1] }}</span>
-                }
-              </div>
+              @if (isKata()) {
+                <div class="flagbox">
+                  <svg class="flag" viewBox="0 0 100 100" aria-hidden="true">
+                    <path d="M22 96V8" />
+                    <path
+                      class="cloth"
+                      d="M24 12c18-8 30 6 48 0 6-2 10 2 12 6v34c-18 8-30-6-48 0-6 2-10 1-12-4Z"
+                    />
+                  </svg>
+                  <span class="judges">
+                    @for (v of votes(); track $index) {
+                      <span class="vote" [class.aka]="v === 'aka'" [class.ao]="v === 'ao'"
+                        ><i></i><b>{{ $index + 1 }}</b></span
+                      >
+                    }
+                  </span>
+                </div>
+              } @else {
+                <div class="pts" data-testid="pantalla-puntos-ao">{{ m.score[1] }}</div>
+              }
             </section>
           </main>
         } @else {
@@ -161,6 +258,23 @@ export class ScreenPage {
     return Math.max(0, m.duration - m.elapsed - extra);
   });
   readonly clockText = computed(() => mmss(Math.ceil(this.remaining())));
+  readonly isKata = computed(() => this.data()?.match?.modality === 'kata');
+  /** Voto de cada juez (null hasta que se decide): tantos como jueces tenga la categoría. */
+  readonly votes = computed<Array<Color | null>>(() => {
+    const f = this.data()?.match?.flags;
+    if (!f) return [];
+    return Array.from({ length: f.judges }, (_, i) => f.votes[i] ?? null);
+  });
+
+  /** Escalera de faltas del lado (0 = AKA, 1 = AO): un casillero por nivel, encendidos hasta el alcanzado. */
+  ladder(side: 0 | 1): LadderMark[] {
+    const m = this.data()?.match;
+    if (!m) return [];
+    const levels = m.sanction_levels?.length ? m.sanction_levels : DEFAULT_SANCTIONS;
+    const reached =
+      m.sanction_index?.[side] ?? (m.sanction[side] ? levels.indexOf(m.sanction[side]) + 1 : 0);
+    return levels.map((full, i) => ({ abbr: sanctionAbbr(full), full, on: i < reached }));
+  }
 
   constructor() {
     const destroy = inject(DestroyRef);

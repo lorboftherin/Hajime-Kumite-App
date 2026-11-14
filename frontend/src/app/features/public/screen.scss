@@ -18,77 +18,131 @@
 }
 .screen {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  > .sides,
-  > .idle {
-    flex: 1;
-  }
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
 }
 .head {
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: 'tat clock' 'cat clock';
-  align-items: center;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
   column-gap: 2vw;
-  padding: 1.6vh 2.5vw;
+  padding: 1.4vh 2.5vw;
   background: #161412;
+  border-bottom: 0.3vh solid #2a2622;
   .tat {
-    grid-area: tat;
-    font-size: min(3.6vw, 5.6vh);
+    font-size: min(3vw, 4.6vh);
     font-weight: 800;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
   }
   .cat {
-    grid-area: cat;
     font-size: min(2.2vw, 3.4vh);
     color: #d9d1c3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     .num {
       font-family: ui-monospace, monospace;
     }
   }
-}
-.clock {
-  grid-area: clock;
-  font-size: min(9vw, 13vh);
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: #f5f0e6;
-  &.run {
-    color: #9dde6f;
-  }
-  &.over {
-    color: #ffb347;
+  .tour {
+    font-size: min(1.6vw, 2.4vh);
+    color: #9a9285;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 }
-.team {
-  padding: 0.8vh 2.5vw;
-  font-size: min(2.2vw, 3.4vh);
-  color: #efcf8c;
-  background: #1b1815;
-}
-.sides {
+
+/* ---------- Tablero: AKA | reloj | AO ---------- */
+.board {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(24vw, 30vw) minmax(0, 1fr);
   min-height: 0;
 }
 .side {
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  padding: 2.5vh 2.5vw;
+  grid-template-rows: auto auto 1fr;
+  row-gap: 1vh;
+  padding: 2vh 2.2vw 2.5vh;
   min-width: 0;
+  min-height: 0;
   &.aka {
     background: linear-gradient(160deg, #a2281f, #6a1510);
   }
   &.ao {
     background: linear-gradient(200deg, #1f4f95, #0f2952);
     text-align: right;
+    .top {
+      flex-direction: row-reverse;
+    }
   }
-  &.won .nm::after {
-    content: ' 勝';
-    font-family: var(--font-display, serif);
-    color: #ffe08a;
+  &.won {
+    box-shadow: inset 0 0 0 0.8vh #ffe08a;
+    .nm::after {
+      content: ' 勝';
+      font-family: var(--font-display, serif);
+      color: #ffe08a;
+    }
+  }
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+  min-height: min(5vw, 7vh);
+}
+.clabel {
+  font-size: min(3.2vw, 4.8vh);
+  font-weight: 900;
+  letter-spacing: 0.22em;
+}
+/* Escalera de faltas: un casillero por nivel; encendido = alcanzado. */
+.ladder {
+  display: flex;
+  gap: 0.9vw;
+  margin-inline: auto;
+}
+.mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vh;
+  i {
+    display: block;
+    width: min(2.6vw, 4vh);
+    height: min(2.6vw, 4vh);
+    border-radius: 50%;
+    border: 0.35vh solid rgba(255, 255, 255, 0.75);
+    background: rgba(0, 0, 0, 0.35);
+  }
+  b {
+    font-size: min(1.2vw, 1.9vh);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  &.on i {
+    background: #ffcf3f;
+    border-color: #fff3c4;
+    box-shadow: 0 0 1.6vh rgba(255, 207, 63, 0.9);
+  }
+  &.on b {
+    color: #fff;
+  }
+}
+.senshu {
+  padding: 0.5vh 1.2vw;
+  border-radius: 10vh;
+  font-size: min(1.6vw, 2.4vh);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border: 0.3vh solid rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.45);
+  &.on {
+    background: #ffe08a;
+    border-color: #ffe08a;
+    color: #1a1206;
   }
 }
 .who {
@@ -97,16 +151,17 @@
   min-width: 0;
 }
 .nm {
-  font-size: min(6vw, 9vh);
+  font-size: min(5.2vw, 8vh);
   font-weight: 900;
   line-height: 1.05;
+  text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .dj {
   margin-top: 0.6vh;
-  font-size: min(2.6vw, 4vh);
+  font-size: min(2.2vw, 3.4vh);
   color: rgba(255, 255, 255, 0.85);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -114,43 +169,162 @@
 }
 .pts {
   align-self: center;
-  font-size: min(22vw, 34vh);
+  justify-self: center;
+  font-size: min(26vw, 42vh);
+  font-weight: 900;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0.6vh 2vh rgba(0, 0, 0, 0.35);
+  .ao & {
+    text-align: center;
+  }
+}
+
+/* Centro: reloj en panel claro, como los tableros oficiales. */
+.center {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-content: center;
+  gap: 2vh;
+  padding: 2.5vh 1.4vw;
+  background: #0b0a09;
+  min-width: 0;
+}
+.clockbox {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1vh;
+  padding: 2vh 1vw;
+  border-radius: 2vh;
+  background: #f5f0e6;
+  color: #14110d;
+  box-shadow: inset 0 0 0 0.4vh #d9d1c3;
+  min-height: 0;
+  &.run {
+    box-shadow: inset 0 0 0 0.6vh #4caf50;
+    .state {
+      color: #2e7d32;
+    }
+  }
+  &.over {
+    box-shadow: inset 0 0 0 0.6vh #e69500;
+    .state {
+      color: #b36b00;
+    }
+  }
+}
+.digits {
+  font-size: min(9.5vw, 20vh);
   font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0.6vh 2vh rgba(0, 0, 0, 0.35);
-}
-.marks {
-  display: flex;
-  gap: 1.2vw;
-  min-height: min(5vw, 7vh);
-  align-items: center;
-  .ao & {
-    justify-content: flex-end;
+  letter-spacing: 0.02em;
+  &.fin,
+  &.kata {
+    font-size: min(7vw, 15vh);
+    letter-spacing: 0.1em;
   }
 }
-.senshu,
-.pen {
-  padding: 0.4vh 1.2vw;
-  border-radius: 1vh;
-  font-size: min(2.6vw, 4vh);
+.state {
+  font-size: min(2vw, 3.2vh);
   font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #6b6459;
+  min-height: 1.4em;
 }
-.senshu {
-  background: #ffe08a;
-  color: #1a1206;
+.team {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1vw;
+  font-size: min(1.8vw, 2.8vh);
+  color: #efcf8c;
+  text-align: center;
+  .tn {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  strong {
+    font-size: 1.4em;
+  }
+  small {
+    grid-column: 1 / -1;
+    color: #b9b1a2;
+  }
 }
-.pen {
-  background: rgba(0, 0, 0, 0.45);
-  border: 0.3vh solid #ffb347;
-  color: #ffd79a;
+
+/* Kata por banderas: bandera del lado y el voto de cada juez. */
+.flagbox {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2vh;
+  min-height: 0;
 }
+.flag {
+  width: min(22vw, 36vh);
+  height: min(22vw, 36vh);
+  fill: none;
+  stroke: #f5f0e6;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  .cloth {
+    fill: rgba(255, 255, 255, 0.92);
+    stroke: none;
+  }
+  .aka & .cloth {
+    fill: #e8463a;
+  }
+  .ao & .cloth {
+    fill: #3f82e0;
+  }
+  .won & {
+    filter: drop-shadow(0 0 2vh rgba(255, 224, 138, 0.9));
+  }
+}
+.judges {
+  display: flex;
+  gap: 1.4vw;
+}
+.vote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6vh;
+  i {
+    display: block;
+    width: min(3.2vw, 5vh);
+    height: min(3.2vw, 5vh);
+    border-radius: 50%;
+    border: 0.4vh solid rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.35);
+  }
+  b {
+    font-size: min(1.4vw, 2.2vh);
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  &.aka i {
+    background: #e8463a;
+    border-color: #ffd0cb;
+  }
+  &.ao i {
+    background: #3f82e0;
+    border-color: #cfe0ff;
+  }
+}
+
 .foot {
   display: flex;
   align-items: baseline;
   gap: 1.5vw;
-  padding: 1.6vh 2.5vw;
+  padding: 1.4vh 2.5vw;
   background: #161412;
+  border-top: 0.3vh solid #2a2622;
   font-size: min(2.4vw, 3.6vh);
   white-space: nowrap;
   overflow: hidden;
@@ -184,6 +358,17 @@
   height: 100%;
   font-size: min(4vw, 6vh);
   color: #b9b1a2;
+}
+
+/* Pantallas 4:3 o angostas: el centro cede espacio a los lados. */
+@media (max-aspect-ratio: 4/3) {
+  .board {
+    grid-template-columns: minmax(0, 1fr) minmax(22vw, 26vw) minmax(0, 1fr);
+  }
+  .nm {
+    white-space: normal;
+    font-size: min(4.6vw, 7vh);
+  }
 }
 
 /* ---------- Mosaico: todos los tatamis ---------- */

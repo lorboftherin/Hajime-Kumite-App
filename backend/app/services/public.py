@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.api import schemas as s
 from app.api.errors import Conflict, NotFound
 from app.db.base import utcnow
-from app.db.models import Category, CategoryResult, Match, Person, Registration, Tatami, Tournament, User
+from app.db.models import Category, CategoryResult, JudgeVote, Match, Person, Registration, Tatami, Tournament, User
 from app.domain.kumite import compute_scoreboard
 from app.services import entitlements, reports, schedule
 from app.services import stats as stats_svc
@@ -41,7 +41,7 @@ from app.services.brackets import (
     registrations_by_id,
     schedule_items,
 )
-from app.services.tournaments import effective_kumite_rules, get_tournament
+from app.services.tournaments import effective_kata, effective_kumite_rules, get_tournament
 
 # ---------------------------------------------------------------------------
 # Dirección fija (/t/<slug>)
@@ -396,6 +396,25 @@ def live(db: Session, token: str) -> dict[str, Any]:
     }
 
 
+RESULT_LINGER_SECONDS = 120
+
+
+def _just_finished(cats: list[Category], matches: list[Match]) -> dict[str, Any] | None:
+    """Sin combate en curso ni listo: el último terminado hace poco, para que
+    la pantalla grande mantenga el resultado mientras se arma el siguiente."""
+    limit = utcnow() - timedelta(seconds=RESULT_LINGER_SECONDS)
+    names = {c.id: c.name for c in cats}
+    done = [
+        m
+        for m in matches
+        if m.status == "finished" and m.parent_match_id is None and m.finished_at and m.finished_at >= limit
+    ]
+    if not done:
+        return None
+    m = max(done, key=lambda x: x.finished_at)
+    return {"number": m.code, "category_id": m.category_id, "category_name": names.get(m.category_id, ""), "match": m}
+
+
 def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     """Marcador del tatami para el overlay de la transmisión (OBS, vMix…)."""
     t = by_token(db, token)
@@ -404,8 +423,12 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     if tat is None or tat.tournament_id != t.id:
         raise NotFound("Tatami no encontrado")
     style = t.public_names
+    # También las categorías recién terminadas: su último combate se sigue
+    # mostrando un momento con el resultado (banderas de kata, ganador).
     cats = queue_order(
-        db.scalars(select(Category).where(Category.tatami_id == tat.id, Category.status.in_(SCHEDULED))).all()
+        db.scalars(
+            select(Category).where(Category.tatami_id == tat.id, Category.status.in_((*SCHEDULED, "finished")))
+        ).all()
     )
     matches = (
         list(db.scalars(select(Match).where(Match.category_id.in_([c.id for c in cats]), Match.is_current)).all())
@@ -415,6 +438,8 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     sched = schedule_items([tat], cats, matches)[tat.id]
     live_it = next((it for it in sched if it["match"].status == "in_progress"), None)
     it = live_it or next((it for it in sched if it["match"].status in ("ready", "needs_review")), None)
+    if it is None:
+        it = _just_finished(cats, matches)
     base = {
         "tournament": t.name,
         "tatami": {"number": tat.number, "name": tat.name},
@@ -426,7 +451,7 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
     m = it["match"]
     bout = _bouts(matches).get(m.id)
     # El siguiente combate del tatami (pantalla grande del coliseo).
-    after = sched[sched.index(it) + 1 :]
+    after = sched[sched.index(it) + 1 :] if it in sched else []
     nxt = next((x for x in after if x["match"].status in ("ready", "pending")), None)
     ids = {x for x in (m.aka_registration_id, m.ao_registration_id) if x}
     if nxt is not None:
@@ -454,15 +479,24 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
         }
         m = bout
     # Marcador desde los eventos, como la mesa (sin armar la respuesta completa de la mesa).
-    rules = effective_kumite_rules(next(c for c in cats if c.id == m.category_id), t)
+    cat = next(c for c in cats if c.id == m.category_id)
+    rules = effective_kumite_rules(cat, t)
     sb = compute_scoreboard(_domain_events(_events(db, m.id)), rules, now=utcnow())
     labels = list(rules.sanction_levels)
+    # Kata por banderas (pantalla grande): cuántos jueces y, decidido el
+    # combate, el voto de cada uno en orden.
+    flags = None
+    if cat.modality == "kata":
+        kcfg = effective_kata(cat, t)
+        votes = db.scalars(select(JudgeVote).where(JudgeVote.match_id == m.id).order_by(JudgeVote.judge_number)).all()
+        flags = {"judges": int(kcfg["judges"]), "votes": [v.color for v in votes]}
     return {
         **base,
         "match": {
             "number": it["number"],
             "code": m.code,
             "category": it["category_name"],
+            "modality": cat.modality,
             "status": m.status,
             "aka": rows.side(m, "aka"),
             "ao": rows.side(m, "ao"),
@@ -471,6 +505,10 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
                 labels[sb.sanction["aka"] - 1] if sb.sanction["aka"] else None,
                 labels[sb.sanction["ao"] - 1] if sb.sanction["ao"] else None,
             ],
+            # Escalera completa y nivel alcanzado (0 = sin falta) para dibujar casilleros.
+            "sanction_levels": labels,
+            "sanction_index": [sb.sanction["aka"], sb.sanction["ao"]],
+            "flags": flags,
             "senshu": sb.senshu,
             "elapsed": round(sb.elapsed_seconds, 1),
             "running": sb.running,

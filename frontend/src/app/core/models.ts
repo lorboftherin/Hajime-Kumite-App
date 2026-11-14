@@ -948,8 +948,15 @@ export interface OverlayData {
     status: string;
     aka: PublicSide | null;
     ao: PublicSide | null;
+    /** kumite | kata (kata en llave, por banderas). */
+    modality?: 'kumite' | 'kata';
     score: [number, number];
     sanction: [string | null, string | null];
+    /** Escalera de faltas completa y nivel alcanzado por lado (0 = sin falta). */
+    sanction_levels?: string[];
+    sanction_index?: [number, number];
+    /** Kata por banderas: jueces y, decidido el combate, el voto de cada uno. */
+    flags?: { judges: number; votes: Array<Color | null> } | null;
     senshu: Color | null;
     elapsed: number;
     running: boolean;

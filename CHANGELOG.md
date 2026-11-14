@@ -147,6 +147,15 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Cambiado
 
+- Pantalla grande del tatami (`/pantalla/:token/:tatami`) con la disposición
+  de los tableros oficiales de kumite: AKA a la izquierda y AO a la derecha,
+  reloj en panel claro al centro con HAJIME/YAME, puntos enormes, faltas como
+  casilleros C1 · C2 · C3 · HC · H y Senshu como píldora. En kata por banderas
+  muestra la bandera de cada lado y el voto de cada juez. El marcador público
+  del tatami agrega `modality`, `sanction_levels`, `sanction_index` y `flags`
+  (compatible: nada se quita) y mantiene dos minutos el último combate
+  terminado cuando no hay otro en curso.
+
 - Frontend formateado con Prettier de una vez; el job `formato` de CI pasa
   a ser obligatorio. `htmlWhitespaceSensitivity: strict` evita que Prettier
   cambie el espacio del texto de las plantillas (alteraría los textos que se
