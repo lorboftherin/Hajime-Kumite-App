@@ -256,6 +256,9 @@ def brackets_pdf(db: Session, tid: int, with_results: bool = True) -> bytes:
             b = bracket_out(db, c.id)
         except NotFound:
             continue
+        if len(b.participants) < 2:
+            # Un solo inscrito (campeón sin pelear) o llave vacía: nada que imprimir.
+            continue
         _draw_bracket_page(pdf, b, c, t, page, with_results)
         pages += 1
     if not pages:
