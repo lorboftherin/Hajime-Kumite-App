@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { DialogService } from '../../../core/dialog.service';
+import { FilesService } from '../../../core/files.service';
 import {
   ADVICE_LABEL,
   CATEGORY_STATUS,
@@ -87,6 +88,18 @@ import { TournamentContext } from '../tournament-context';
         aria-label="Recargar"
         ><app-icon name="refresh"
       /></button>
+      @if (withBracket().length) {
+        <button
+          class="btn"
+          (click)="allBracketsPdf()"
+          i18n-title="@@torneo.categorias.pdf-llaves-titulo"
+          title="Todas las llaves en un PDF, en el orden de los tatamis"
+          ><app-icon name="download" />
+          <ng-container i18n="@@torneo.categorias.pdf-llaves"
+            >PDF de las llaves ({{ withBracket().length }})</ng-container
+          ></button
+        >
+      }
       @if (pendingBrackets().length) {
         <button
           class="btn"
@@ -1057,6 +1070,17 @@ export class CategoriesTab {
   readonly pendingBrackets = computed(() =>
     this.ctx.categories().filter((c) => c.status === 'open' && c.entrant_count >= 2),
   );
+  /** Categorías que ya tienen llave (sorteada o en juego). */
+  readonly withBracket = computed(() =>
+    this.ctx.categories().filter((c) => ['ready', 'in_progress', 'finished'].includes(c.status)),
+  );
+
+  private files = inject(FilesService);
+
+  allBracketsPdf(): void {
+    const tid = this.ctx.tournament()?.id;
+    if (tid) this.files.open(`/tournaments/${tid}/brackets.pdf`);
+  }
 
   async generateAll(): Promise<void> {
     const list = this.pendingBrackets();

@@ -12,6 +12,10 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **PDF de las llaves** del torneo (`GET /tournaments/{id}/brackets.pdf` y botón
+  en Categorías): todas las llaves en un solo archivo, una página por
+  categoría, en el orden de los tatamis y de sus colas.
+
 - Importación desde Excel: columna **Edad** (al final, opcional). Si la fila no
   trae fecha de nacimiento, la edad declarada sirve para sugerir y validar la
   categoría y queda como edad de referencia de la inscripción

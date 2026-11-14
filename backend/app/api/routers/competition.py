@@ -73,6 +73,15 @@ def swap_slots(bid: int, data: s.SlotSwapIn, db: DB, user: CurrentUser):
     return svc.bracket_out(db, b.category_id)
 
 
+@router.get("/tournaments/{tid}/brackets.pdf", tags=["brackets"])
+def brackets_pdf(tid: int, db: DB, _: TournamentReader, blank: bool = False):
+    """Todas las llaves del torneo en un PDF, en el orden de los tatamis y sus colas."""
+    pdf = reports.brackets_pdf(db, tid, with_results=not blank)
+    return Response(
+        pdf, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="llaves-{tid}.pdf"'}
+    )
+
+
 @router.get("/categories/{cid}/bracket.pdf", tags=["brackets"])
 def bracket_pdf(cid: int, db: DB, _: CategoryReader, blank: bool = False):
     pdf = reports.bracket_pdf(db, cid, with_results=not blank)

@@ -702,7 +702,8 @@ nota. En la pestaña **Tatamis** se ven los árbitros de cada tatami.
 ![Llave de eliminación directa](screenshots/02-llave.png)
 
 **Generar todas de una vez:** pestaña **Categorías** → **Generar todas las llaves
-(N)**. La app muestra la lista y pide confirmación. Cada llave queda como versión
+(N)**. Con llaves ya sorteadas aparece **PDF de las llaves (N)**: todas en un
+solo archivo, una página por categoría, en el orden de los tatamis y sus colas. La app muestra la lista y pide confirmación. Cada llave queda como versión
 nueva; puedes regenerarla después.
 
 **Generar una:** **⋯** de la categoría → **Generar llave**, o abre la llave y toca

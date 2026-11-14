@@ -2425,6 +2425,8 @@
     "torneo.categorias.generar-llaves-1": "Gerar as chaves de 1 categoria com inscritos que ainda não a tem",
     "torneo.categorias.generar-llaves-n": "Gerar as chaves de {$n} categorias com inscritos que ainda não a têm",
     "torneo.categorias.generar-n-llaves": "Gerar {$n} chaves",
+    "torneo.categorias.pdf-llaves-titulo": "Todas as chaves em um PDF, na ordem dos tatamis",
+    "torneo.categorias.pdf-llaves": "PDF das chaves ({$INTERPOLATION})",
     "torneo.categorias.generar-todas-llaves": " Gerar todas as chaves ({$INTERPOLATION}) ",
     "torneo.categorias.generar-todas-llaves-2": "Gerar todas as chaves",
     "torneo.categorias.generara-llave-1": "Será gerada a chave de 1 categoria: {$categorias}. Cada uma fica como nova versão; você pode gerá-la novamente depois.",

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api import schemas as s
+from app.api.errors import NotFound
 from app.db.models import Category, CategoryResult, Dojo, Match, Registration, ShadowComparison, Tournament
 from app.services.audit import audit
 from app.services.brackets import REG_LIGHT, bracket_out, get_match
@@ -222,14 +223,59 @@ def comparison_report(db: Session, tid: int) -> dict[str, Any]:
 
 
 def bracket_pdf(db: Session, cid: int, with_results: bool = True) -> bytes:
-    b = bracket_out(db, cid)
     c = db.get(Category, cid)
     t = db.get(Tournament, c.tournament_id) if c else None
     buf = io.BytesIO()
     page = landscape(A4)
     pdf = canvas.Canvas(buf, pagesize=page)
-    W, H = page
     pdf.setTitle(f"Llave - {c.name if c else cid}")
+    _draw_bracket_page(pdf, bracket_out(db, cid), c, t, page, with_results)
+    pdf.save()
+    return buf.getvalue()
+
+
+def brackets_pdf(db: Session, tid: int, with_results: bool = True) -> bytes:
+    """Todas las llaves del torneo en un solo PDF, una página por categoría,
+    en el orden en que se compiten: por tatami y por su cola; al final las
+    categorías sin tatami. Las categorías sin llave no aparecen."""
+    from app.services.brackets import queue_order
+
+    t = get_tournament(db, tid)
+    tatami_pos = {tat.id: tat.number for tat in t.tatamis}
+    cats = queue_order(list(db.scalars(select(Category).where(Category.tournament_id == tid)).all()))
+    cats.sort(key=lambda c: tatami_pos.get(c.tatami_id, 10**6))
+    buf = io.BytesIO()
+    page = landscape(A4)
+    pdf = canvas.Canvas(buf, pagesize=page)
+    pdf.setTitle(f"Llaves - {t.name}")
+    pages = 0
+    for c in cats:
+        if c.status in ("cancelled", "merged"):
+            continue
+        try:
+            b = bracket_out(db, c.id)
+        except NotFound:
+            continue
+        _draw_bracket_page(pdf, b, c, t, page, with_results)
+        pages += 1
+    if not pages:
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(40, page[1] - 60, f"{t.name}: todavía no hay llaves generadas")
+        pdf.showPage()
+    pdf.save()
+    return buf.getvalue()
+
+
+def _draw_bracket_page(
+    pdf: canvas.Canvas,
+    b: s.BracketOut,
+    c: Category | None,
+    t: Tournament | None,
+    page: tuple[float, float],
+    with_results: bool,
+) -> None:
+    """Una llave en una página apaisada: cabecera, versión y el cuadro o la lista."""
+    W, H = page
     pdf.setFont("Helvetica-Bold", 14)
     _enso(pdf, 38, H - 26, 8)
     pdf.drawString(54, H - 30, f"{t.name if t else ''} — {c.name if c else ''}")
@@ -247,8 +293,6 @@ def bracket_pdf(db: Session, cid: int, with_results: bool = True) -> bytes:
     else:
         _draw_list(pdf, b, H, pname, with_results)
     pdf.showPage()
-    pdf.save()
-    return buf.getvalue()
 
 
 def _draw_elimination(pdf: canvas.Canvas, b: s.BracketOut, W: float, H: float, pname, with_results: bool) -> None:

@@ -5578,6 +5578,62 @@
     }
    }
   },
+  "/api/v1/tournaments/{tid}/brackets.pdf": {
+   "get": {
+    "tags": [
+     "brackets"
+    ],
+    "summary": "Brackets Pdf",
+    "description": "Todas las llaves del torneo en un PDF, en el orden de los tatamis y sus colas.",
+    "operationId": "brackets_pdf_api_v1_tournaments__tid__brackets_pdf_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     },
+     {
+      "name": "blank",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Blank"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/categories/{cid}/bracket.pdf": {
    "get": {
     "tags": [

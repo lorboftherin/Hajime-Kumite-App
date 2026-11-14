@@ -2105,6 +2105,8 @@
     "torneo.categorias.ocultar-vacias": "{$TAG_INPUT} Ocultar vacías",
     "torneo.categorias.de": "{$INTERPOLATION} de {$INTERPOLATION_1}",
     "torneo.categorias.recargar": "Recargar",
+    "torneo.categorias.pdf-llaves-titulo": "Todas las llaves en un PDF, en el orden de los tatamis",
+    "torneo.categorias.pdf-llaves": "PDF de las llaves ({$INTERPOLATION})",
     "torneo.categorias.generar-todas-llaves": " Generar todas las llaves ({$INTERPOLATION}) ",
     "torneo.categorias.categoria-manual": "{$START_TAG_APP_ICON}{$CLOSE_TAG_APP_ICON} Categoría manual",
     "torneo.categorias.n-seleccionadas": "{VAR_PLURAL, plural, =1 {{START_TAG_STRONG}1{CLOSE_TAG_STRONG} seleccionada} other {{START_TAG_STRONG}{INTERPOLATION}{CLOSE_TAG_STRONG} seleccionadas}}",

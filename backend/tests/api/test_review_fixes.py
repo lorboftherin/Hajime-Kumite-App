@@ -179,6 +179,10 @@ def test_tatami_numbering_and_scoresheet(client):
     # La numeración es estable: el siguiente combate conserva su número
     assert q2["queue"][0]["number"] != "T1-001" and q2["queue"][0]["number"].startswith("T1-")
     assert api.raw("GET", f"/categories/{c['id']}/bracket.pdf").content.startswith(b"%PDF")
+    # Todas las llaves del torneo en un solo PDF (una página por categoría con llave).
+    todas = api.raw("GET", f"/tournaments/{t['id']}/brackets.pdf")
+    assert todas.status_code == 200 and todas.content.startswith(b"%PDF")
+    assert todas.content.count(b"/Type /Page\n") + todas.content.count(b"/Type /Page>>") >= 1
 
 
 def test_scoreboard_suggests_winner_if_time_ended_now(client):

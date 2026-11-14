@@ -2425,6 +2425,8 @@
     "torneo.categorias.generar-llaves-1": "Generate the brackets of 1 category with entrants that does not have one yet",
     "torneo.categorias.generar-llaves-n": "Generate the brackets of {$n} categories with entrants that do not have one yet",
     "torneo.categorias.generar-n-llaves": "Generate {$n} brackets",
+    "torneo.categorias.pdf-llaves-titulo": "All brackets in one PDF, in tatami order",
+    "torneo.categorias.pdf-llaves": "Brackets PDF ({$INTERPOLATION})",
     "torneo.categorias.generar-todas-llaves": " Generate all brackets ({$INTERPOLATION}) ",
     "torneo.categorias.generar-todas-llaves-2": "Generate all brackets",
     "torneo.categorias.generara-llave-1": "The bracket of 1 category will be generated: {$categorias}. Each one is saved as a new version; you can regenerate it later.",
