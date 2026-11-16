@@ -12,7 +12,7 @@ COPY frontend/ ./
 RUN npx ng build --configuration production
 
 # 2) API (FastAPI) sirviendo el frontend compilado
-FROM python:3.12-slim
+FROM python:3.15-slim
 # Driver ODBC de Microsoft, solo necesario si se usa SQL Server / Azure SQL
 ARG WITH_MSSQL=false
 RUN if [ "$WITH_MSSQL" = "true" ]; then \
