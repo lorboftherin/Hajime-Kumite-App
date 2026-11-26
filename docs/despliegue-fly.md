@@ -65,10 +65,19 @@ Cambiar contraseña). Para fijar otra desde fuera:
 `fly secrets set HAJIME_ADMIN_PASSWORD=... -a hajime-test` solo sirve antes
 del primer arranque; después, usa `fly ssh console` con `app.seed admin --force`.
 
-## Producción
+## Producción y escala: base en Neon (en espera)
 
-Cuando toque: otra app (`hajime-prod`) con `min_machines_running = 1`, disco
-propio y, si el volumen de datos lo pide, PostgreSQL administrado de Fly (la
-app necesita generalizar algunos detalles hoy específicos de SQL Server; ver
-`backend/app/migrations/`). Los scripts de Azure en `infra/azure/` quedan como
-referencia histórica.
+Decisión de noviembre de 2026: se queda SQLite en el disco de Fly mientras la
+app se use en torneos propios. Antes de abrirla a otros organizadores, o al
+necesitar más de una máquina, la base pasa a **Neon** (Postgres administrado),
+y Fly sigue corriendo la app.
+
+| Qué se gana | Respaldo continuo con restauración a cualquier minuto, copias de la base en segundos para ensayar, varias máquinas de la app a la vez, mismo proveedor que las otras apps |
+| --- | --- |
+| Qué hay que hacer | Driver de Postgres (`psycopg`) en `pyproject.toml` y lockfiles, CI con un servicio Postgres que corra pruebas y `alembic check`, migrar los datos de SQLite, `HAJIME_DATABASE_URL` como secreto de Fly, `--ha` según haga falta |
+| Región | Neon en São Paulo (`aws-sa-east-1`), junto a la máquina de Fly en `gru` |
+| Cuidado | En el plan gratis Neon suspende la base tras unos minutos sin uso (arranque < 1 s); la mesa lo tolera porque reenvía los eventos en cola |
+
+Estimado: un día de trabajo. Lo específico de SQL Server en el código
+(`with_variant(..., "mssql")`) no afecta a Postgres. Los scripts de Azure en
+`infra/azure/` quedan como referencia histórica.
