@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import date
 from typing import Any
@@ -20,7 +21,7 @@ from app.db.base import utcnow
 from app.db.models import Category, DataConsent, ImportBatch, ImportRow, Match, PersonRole, Registration, Tatami, User
 from app.domain.categories import Competitor, grade_to_ordinal, suggest_categories
 from app.services import people
-from app.services.audit import audit, bump
+from app.services.audit import apply_warnings, audit, bump
 from app.services.brackets import record_finish
 from app.services.registrations import COLUMNS, _validate_row, get_batch, get_registration, rule_of
 from app.services.tournaments import entrant_counts, get_category, get_tournament
@@ -138,6 +139,108 @@ def set_tatami_queue(db: Session, user: User, tatami_id: int, category_ids: list
         )
     db.commit()
     return sorted(db.scalars(select(Category).where(Category.tatami_id == tatami_id)).all(), key=_queue_order)
+
+
+_CODE_RE = re.compile(r"^\s*([A-Za-z]+)\s*(\d+)\s*$")
+
+
+def code_order_key(c: Category) -> tuple[int, int, str, int, int]:
+    """Orden natural por código: A1, B1, A2, B2, A10, B10… (número, luego letra:
+    kata y kumite de la misma edad seguidos). Las categorías sin código con ese
+    formato van al final, en su orden previo."""
+    m = _CODE_RE.match(c.code or "")
+    if m:
+        return (0, int(m.group(2)), m.group(1).upper(), 0, c.id)
+    return (1, 0, "", c.queue_position if c.queue_position is not None else 10**6, c.id)
+
+
+def plan_tatamis(
+    db: Session,
+    user: User,
+    tid: int,
+    assignments: list[tuple[int, int | None]],
+    order: str = "code",
+    override_reason: str | None = None,
+) -> dict[str, list[int]]:
+    """Reparto de categorías entre los tatamis del torneo en una sola operación
+    (el coordinador cambia el plan justo antes de empezar). Cada categoría
+    listada pasa al tatami indicado (o queda sin tatami con ``None``); con
+    ``order="code"`` cada tatami tocado se ordena por código (A1, B1, A2…);
+    con ``"keep"`` las que llegan van al final. Advierte (no bloquea) si una
+    categoría con combates en curso cambia de tatami."""
+    get_tournament(db, tid)
+    tatamis = {t.id: t for t in db.scalars(select(Tatami).where(Tatami.tournament_id == tid)).all()}
+    ids = [cid for cid, _ in assignments]
+    if len(set(ids)) != len(ids):
+        raise InvalidState("Una categoría aparece dos veces en el reparto")
+    cats = {c.id: c for c in db.scalars(select(Category).where(Category.id.in_(ids or [0]))).all()}
+    for cid, tat_id in assignments:
+        c = cats.get(cid)
+        if c is None or c.tournament_id != tid:
+            raise NotFound(f"Categoría no encontrada en el torneo: {cid}")
+        if tat_id is not None and tat_id not in tatamis:
+            raise InvalidState("Tatami inválido para este torneo")
+        if tat_id is not None and c.status in ("merged", "cancelled"):
+            raise InvalidState(f"«{c.name}» está fusionada o cancelada: no va a un tatami")
+    moving = [(cats[cid], tat_id) for cid, tat_id in assignments if cats[cid].tatami_id != tat_id]
+    live = [c for c, _ in moving if c.status == "in_progress"]
+    if live:
+        apply_warnings(
+            db,
+            user,
+            [
+                {
+                    "code": "CATEGORY_IN_PROGRESS",
+                    "message": "Categorías con combates en curso cambian de tatami: "
+                    + ", ".join(f"{c.code} {c.name}" for c in live),
+                }
+            ],
+            override_reason,
+            "tournament",
+            lambda: tid,
+        )
+    touched = {c.tatami_id for c, _ in moving if c.tatami_id} | {t for _, t in moving if t}
+    before = {
+        t: [c.id for c in sorted(db.scalars(select(Category).where(Category.tatami_id == t)).all(), key=_queue_order)]
+        for t in touched
+    }
+    for c, tat_id in moving:
+        if tat_id is None:
+            c.tatami_id, c.queue_position = None, None
+        else:
+            # Al final de la cola destino por ahora; el orden se fija abajo.
+            c.tatami_id, c.queue_position = tat_id, 10**6 + c.id
+        bump(c, user)
+    db.flush()
+    after: dict[str, list[int]] = {}
+    for t in sorted(touched):
+        rows = list(db.scalars(select(Category).where(Category.tatami_id == t)).all())
+        rows.sort(key=code_order_key if order == "code" else _queue_order)
+        for pos, c in enumerate(rows, start=1):
+            if c.queue_position != pos:
+                c.queue_position = pos
+                bump(c, user)
+        after[str(t)] = [c.id for c in rows]
+        if before.get(t) != after[str(t)]:
+            audit(
+                db,
+                user,
+                "tatami",
+                t,
+                "queue",
+                {"categories": before.get(t, [])},
+                {"categories": after[str(t)]},
+                reason=override_reason,
+                tournament_id=tid,
+            )
+    db.commit()
+    return after
+
+
+def sort_tatami_by_code(db: Session, user: User, tatami_id: int) -> list[Category]:
+    """Ordena la cola del tatami por código (A1, B1, A2, B2…)."""
+    rows = sorted(db.scalars(select(Category).where(Category.tatami_id == tatami_id)).all(), key=code_order_key)
+    return set_tatami_queue(db, user, tatami_id, [c.id for c in rows])
 
 
 # ---------------------------------------------------------------------------
@@ -362,3 +465,112 @@ def update_import_row(db: Session, user: User, bid: int, row_id: int, changes: d
     db.commit()
     db.refresh(batch)
     return batch
+
+
+# ---------------------------------------------------------------------------
+# Inscripción tardía desde la mesa
+# ---------------------------------------------------------------------------
+
+
+def late_entry(db: Session, user: User, tatami_id: int, data: Any) -> dict[str, Any]:
+    """Alguien llega sin estar inscrito y el torneo ya corre: la mesa lo registra
+    sin salir de la mesa. Crea la persona (o usa una existente), la inscribe en
+    las categorías indicadas con la edad declarada y la mete en cada llave:
+
+    * llave con un bye libre de primera ronda → ocupa ese bye (no se mueve nadie);
+    * llave sin bye libre y sin combates iniciados → se vuelve a sortear;
+    * categoría sin llave y con dos o más inscritos → se genera la llave;
+    * llave ya empezada y sin bye libre → queda inscrito y se avisa.
+
+    Todo queda auditado con el motivo. Devuelve qué pasó en cada categoría y si
+    hay que reimprimir la llave."""
+    from app.api import schemas as s
+    from app.services import bracket_changes
+    from app.services import brackets as bsvc
+    from app.services.registrations import create_registration
+
+    tat = db.get(Tatami, tatami_id)
+    if tat is None:
+        raise NotFound("Tatami no encontrado")
+    tid = tat.tournament_id
+    reason = (data.reason or "").strip() or "Inscripción tardía en mesa"
+    if data.person_id:
+        person = people.get_person(db, data.person_id)
+    else:
+        if not (data.first_names and data.last_names and data.sex):
+            raise InvalidState("Faltan nombres, apellidos o sexo")
+        person = people.create_person(
+            db,
+            user,
+            s.PersonCreate(
+                first_names=data.first_names,
+                last_names=data.last_names,
+                sex=data.sex,
+                dojo_id=data.dojo_id,
+                grade=data.grade or None,
+                override=s.Override(reason=reason),
+            ),
+            commit=False,
+        )
+    regs: list[tuple[Category, Registration]] = []
+    for cid in data.category_ids:
+        c = get_category(db, cid)
+        if c.tournament_id != tid:
+            raise InvalidState("La categoría no pertenece al torneo")
+        r = create_registration(
+            db,
+            user,
+            tid,
+            s.RegistrationCreate(
+                person_id=person.id,
+                category_id=c.id,
+                dojo_id=data.dojo_id,
+                grade=data.grade or None,
+                age=data.age,
+                override=s.Override(reason=reason),
+            ),
+            commit=False,
+        )
+        regs.append((c, r))
+    db.flush()
+    results: list[dict[str, Any]] = []
+    regenerate: list[Category] = []
+    for c, r in regs:
+        out = {"category_id": c.id, "code": c.code, "name": c.name, "registration_id": r.id}
+        if bsvc._bracket(db, c.id) is None:
+            n = entrant_counts(db, tid).get(c.id, 0)
+            if n >= 2:
+                regenerate.append(c)
+                out["mode"] = "generated"
+            else:
+                out["mode"] = "waiting"  # único inscrito: la llave sale cuando llegue otro
+        else:
+            try:
+                res = bracket_changes.add_to_bracket(db, user, c, r, reason)
+                out["mode"] = "bye"
+                out["position"] = res.get("position")
+            except InvalidState as e:
+                if e.code == "NO_FREE_BYE" and not bsvc._started(db, c.id):
+                    regenerate.append(c)
+                    out["mode"] = "regenerated"
+                elif e.code == "NO_FREE_BYE":
+                    out["mode"] = "registered_only"
+                    out["message"] = str(e)
+                else:
+                    raise
+        out["reprint"] = out["mode"] in ("bye", "generated", "regenerated")
+        results.append(out)
+    audit(
+        db,
+        user,
+        "tatami",
+        tatami_id,
+        "late_entry",
+        after={"person_id": person.id, "results": results},
+        reason=reason,
+        tournament_id=tid,
+    )
+    db.commit()
+    for c in regenerate:
+        bsvc.generate(db, user, c.id, s.BracketGenerateIn(reason=reason, override=s.Override(reason=reason)))
+    return {"person_id": person.id, "name": f"{person.first_names} {person.last_names}", "results": results}

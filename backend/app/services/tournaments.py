@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api import schemas as s
 from app.api.errors import Forbidden, InvalidState, NotFound
@@ -648,10 +648,21 @@ def effective_third_place(c: Category, t: Tournament) -> ThirdPlaceRule:
     return ThirdPlaceRule(c.third_place_rule or t.default_third_place_rule)
 
 
-def effective_kumite_rules(c: Category, t: Tournament) -> KumiteRules:
+def effective_kumite_rules(c: Category, t: Tournament, match: Match | None = None) -> KumiteRules:
+    """Reglas de kumite de la categoría (torneo + categoría). El modo de reloj
+    puede venir del tatami (lo cambia la mesa en el momento): rige para combates
+    que aún no empiezan; un combate empezado usa el modo fijado al empezar
+    (``Match.time_mode``) y, si no tiene, el de la categoría (combates previos)."""
     cfg = {**(t.kumite_rules or {}), **(c.kumite_rules or {})}
     if c.duration_seconds:
         cfg["duration_seconds"] = c.duration_seconds
+    if match is not None and match.time_mode:
+        cfg["time_mode"] = match.time_mode
+    elif (match is None or match.started_at is None) and c.tatami_id:
+        sess = object_session(c)
+        tat = sess.get(Tatami, c.tatami_id) if sess is not None else None
+        if tat is not None and tat.time_mode:
+            cfg["time_mode"] = tat.time_mode
     return kumite_rules_from(cfg)
 
 

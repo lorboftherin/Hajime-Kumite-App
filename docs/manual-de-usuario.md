@@ -893,6 +893,32 @@ El número del combate en la app es **el mismo** de la planilla en papel.
 Si no tienes tatami asignado, verás «No tienes un tatami asignado»: pídeselo al
 organizador. Un organizador abre la mesa desde **Tatamis** → **Abrir mesa**.
 
+#### Imprevistos sin salir de la mesa
+
+En torneos chicos el plan cambia en el momento. La cuenta de mesa resuelve lo más
+común desde **Mi tatami**, sin pedirle nada al organizador (todo queda auditado):
+
+- **Reloj: Efectivo / Corrido.** Cambia el modo de tiempo de tu tatami, por
+  ejemplo corrido para recuperar retraso. Rige desde el siguiente combate que
+  empiece; el que está en curso no cambia.
+- **+ Competidor.** Alguien llega sin estar inscrito: escribe nombre, sexo, edad,
+  grado y sede. La app marca sus categorías (kata y kumite de su edad y grado) y
+  al confirmar lo inscribe y lo mete en la llave: ocupa un bye libre sin mover a
+  nadie; si la llave está llena y aún no empezó, se vuelve a sortear; si la
+  categoría tenía una sola persona, se crea la llave. El aviso dice qué llave
+  reimprimir.
+- **Organizar tatamis.** Reparte las categorías entre tatamis con reglas rápidas
+  («Hombres → Tatami 2», «Mujeres → Tatami 1», «de 13 años → Tatami 2»; la
+  primera regla que calza decide), mueve una categoría con su selector y ordena
+  con ▲ ▼. Dentro de cada tatami el orden por defecto es por código: A1, B1, A2,
+  B2… **Guardar cambios** actualiza la mesa y la planilla. El organizador llega a
+  la misma pantalla desde **Tatamis** → **Repartir tatamis**.
+
+En la mesa, el código de la categoría (A7, B12) se ve grande en la cabecera, AO va
+a la izquierda y AKA a la derecha como en los tableros oficiales (**⇄** invierte
+los lados en ese dispositivo), y en **Más** de cada lado están **No se presentó** y
+**Lesionado / abandona**. Un punto no detiene el reloj: lo detienen YAME y HAJIME.
+
 ### 5.2 Preparar la tablet
 
 1. Instala Hajime en la tablet y deja tu sesión abierta.

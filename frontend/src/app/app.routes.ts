@@ -158,6 +158,13 @@ export const routes: Routes = [
         title: () => $localize`:@@rutas.mi-tatami-hajime:Mi tatami · Hajime`,
       },
       {
+        // Repartir categorías entre tatamis: mesa u organizador del torneo.
+        path: 'organizar-tatamis/:id',
+        loadComponent: () =>
+          import('./features/mesa/organize-tatamis').then((m) => m.OrganizeTatamisPage),
+        title: () => $localize`:@@rutas.organizar-tatamis:Organizar tatamis · Hajime`,
+      },
+      {
         path: 'torneos',
         loadComponent: () =>
           import('./features/tournaments/tournament-list').then((m) => m.TournamentListPage),

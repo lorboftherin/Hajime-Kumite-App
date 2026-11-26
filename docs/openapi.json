@@ -6814,6 +6814,170 @@
     }
    }
   },
+  "/api/v1/tatamis/{tatami_id}/queue/sort-by-code": {
+   "post": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Sort Queue",
+    "description": "Ordena la cola del tatami por código de categoría (A1, B1, A2, B2…).",
+    "operationId": "sort_queue_api_v1_tatamis__tatami_id__queue_sort_by_code_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CategoryOut"
+         },
+         "title": "Response Sort Queue Api V1 Tatamis  Tatami Id  Queue Sort By Code Post"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tatamis/{tatami_id}/late-entry": {
+   "post": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Late Entry",
+    "description": "Inscribe a quien llega tarde y lo mete en la llave sin salir de la mesa\n(organizador u operador de mesa del torneo; auditado).",
+    "operationId": "late_entry_api_v1_tatamis__tatami_id__late_entry_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LateEntryIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tournaments/{tid}/tatami-plan": {
+   "put": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Tatami Plan",
+    "description": "Reparte categorías entre los tatamis en una sola operación (organizador u\noperador de mesa del torneo). Devuelve la cola resultante de cada tatami tocado.",
+    "operationId": "tatami_plan_api_v1_tournaments__tid__tatami_plan_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tid"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiPlanIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/tournaments/{tid}/readiness": {
    "get": {
     "tags": [
@@ -8596,6 +8760,64 @@
       "application/json": {
        "schema": {
         "$ref": "#/components/schemas/TatamiUpdate"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TatamiOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/tatamis/{tatami_id}/clock": {
+   "put": {
+    "tags": [
+     "tatamis"
+    ],
+    "summary": "Set Tatami Clock",
+    "description": "Tiempo efectivo o corrido en este tatami (p. ej. corrido para recuperar\nretraso). Lo decide la mesa del tatami o el organizador; rige desde el\nsiguiente combate que empiece: los empezados conservan su modo.",
+    "operationId": "set_tatami_clock_api_v1_tatamis__tatami_id__clock_put",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "tatami_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Tatami Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TatamiClockIn"
        }
       }
      }
@@ -17084,6 +17306,117 @@
     ],
     "title": "KataScoreIn"
    },
+   "LateEntryIn": {
+    "properties": {
+     "person_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Person Id"
+     },
+     "first_names": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Names"
+     },
+     "last_names": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Names"
+     },
+     "sex": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "M",
+         "F"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sex"
+     },
+     "age": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 99.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Age"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Grade"
+     },
+     "dojo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dojo Id"
+     },
+     "category_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 1,
+      "title": "Category Ids"
+     },
+     "reason": {
+      "type": "string",
+      "maxLength": 250,
+      "title": "Reason",
+      "default": ""
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_ids"
+    ],
+    "title": "LateEntryIn",
+    "description": "Inscripción tardía desde la mesa: persona nueva (o existente) en una o\nmás categorías del torneo, metida en la llave en el mismo paso."
+   },
    "LineupBoutIn": {
     "properties": {
      "aka_person_id": {
@@ -21181,6 +21514,52 @@
     ],
     "title": "SuggestionOut"
    },
+   "TatamiAssignment": {
+    "properties": {
+     "category_id": {
+      "type": "integer",
+      "title": "Category Id"
+     },
+     "tatami_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tatami Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "category_id"
+    ],
+    "title": "TatamiAssignment"
+   },
+   "TatamiClockIn": {
+    "properties": {
+     "time_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "effective",
+         "running"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Time Mode"
+     }
+    },
+    "type": "object",
+    "title": "TatamiClockIn",
+    "description": "Modo de reloj del tatami; null vuelve al del torneo o la categoría."
+   },
    "TatamiIn": {
     "properties": {
      "name": {
@@ -21219,6 +21598,21 @@
        }
       ],
       "title": "Planned Start"
+     },
+     "time_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "effective",
+         "running"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Time Mode"
      }
     },
     "type": "object",
@@ -21228,6 +21622,43 @@
      "name"
     ],
     "title": "TatamiOut"
+   },
+   "TatamiPlanIn": {
+    "properties": {
+     "assignments": {
+      "items": {
+       "$ref": "#/components/schemas/TatamiAssignment"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "title": "Assignments"
+     },
+     "order": {
+      "type": "string",
+      "enum": [
+       "code",
+       "keep"
+      ],
+      "title": "Order",
+      "default": "code"
+     },
+     "override": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Override"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "assignments"
+    ],
+    "title": "TatamiPlanIn",
+    "description": "Reparto de categorías entre tatamis. ``order=\"code\"`` ordena cada tatami\ntocado por código (A1, B1, A2…); ``\"keep\"`` deja las nuevas al final."
    },
    "TatamiQueueIn": {
     "properties": {

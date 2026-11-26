@@ -10,6 +10,9 @@ import { StatusBadge } from '../../shared/badge';
 import { Icon } from '../../shared/icon';
 import { PageHead } from '../../shared/page-head';
 import { hourText, zoneOfIso } from '../public/public-logic';
+import { MutationService } from '../../core/mutation.service';
+import { ToastService } from '../../core/toast.service';
+import { LateEntryDialog } from './late-entry';
 
 interface View {
   id: number;
@@ -23,7 +26,7 @@ interface View {
  */
 @Component({
   selector: 'app-my-tatami',
-  imports: [RouterLink, PageHead, Icon, StatusBadge],
+  imports: [RouterLink, PageHead, Icon, StatusBadge, LateEntryDialog],
   template: `
     <div class="container">
       <app-page-head i18n-title="@@mesa.mi-tatami.mi-tatami" kanji="畳" title="Mi tatami">
@@ -56,6 +59,44 @@ interface View {
                     =1 {{{ pr.done }} de 1 combate}
                     other {{{ pr.done }} de {{ pr.total }} combates}
                   }</span
+                >
+              }
+            </div>
+            <div class="tools">
+              <div
+                class="seg"
+                role="group"
+                i18n-aria-label="@@mesa.mi-tatami.reloj-tatami"
+                aria-label="Reloj del tatami"
+              >
+                <span i18n="@@mesa.mi-tatami.reloj" class="small muted">Reloj</span>
+                <button
+                  class="btn sm"
+                  [class.primary]="(q.tatami.time_mode ?? 'effective') === 'effective'"
+                  [attr.aria-pressed]="(q.tatami.time_mode ?? 'effective') === 'effective'"
+                  (click)="setClock(q, 'effective')"
+                  i18n="@@mesa.mi-tatami.efectivo"
+                  >Efectivo</button
+                >
+                <button
+                  class="btn sm"
+                  [class.primary]="q.tatami.time_mode === 'running'"
+                  [attr.aria-pressed]="q.tatami.time_mode === 'running'"
+                  (click)="setClock(q, 'running')"
+                  i18n="@@mesa.mi-tatami.corrido"
+                  >Corrido</button
+                >
+              </div>
+              @if (q.tatami.tournament_id) {
+                <button class="btn" (click)="lateFor.set(q)" data-testid="mi-tatami-tardio"
+                  ><app-icon name="plus" />
+                  <ng-container i18n="@@mesa.mi-tatami.competidor">Competidor</ng-container></button
+                >
+                <a
+                  class="btn"
+                  [routerLink]="['/organizar-tatamis', q.tatami.tournament_id]"
+                  i18n="@@mesa.mi-tatami.organizar"
+                  >Organizar tatamis</a
                 >
               }
             </div>
@@ -173,11 +214,32 @@ interface View {
           </ng-container></div
         >
       }
+      @if (lateFor(); as q) {
+        <app-late-entry
+          [tournamentId]="q.tatami.tournament_id!"
+          [tatamiId]="q.tatami.id"
+          (closed)="lateFor.set(null)"
+          (done)="lateFor.set(null); load()"
+        />
+      }
     </div>
   `,
   styles: `
     .tatami {
       max-width: 44rem;
+    }
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.9rem;
+    }
+    .seg {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-right: auto;
     }
     .t-head {
       display: flex;
@@ -229,6 +291,12 @@ interface View {
     .go-sub {
       font-size: var(--fs-14);
       opacity: 0.9;
+      .catcode {
+        background: var(--washi);
+        color: var(--sumi);
+        font-size: 1.1rem;
+        margin-right: 0.25rem;
+      }
     }
     .go-vs {
       display: flex;
@@ -310,6 +378,23 @@ interface View {
 export class MyTatamiPage {
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private mut = inject(MutationService);
+  private toast = inject(ToastService);
+  /** Tatami para el que se abre «+ Competidor» (inscripción tardía). */
+  readonly lateFor = signal<TatamiQueue | null>(null);
+
+  /** Tiempo efectivo o corrido en este tatami: rige desde el siguiente combate. */
+  async setClock(q: TatamiQueue, mode: 'effective' | 'running'): Promise<void> {
+    if ((q.tatami.time_mode ?? 'effective') === mode) return;
+    const res = await this.mut.put(`/tatamis/${q.tatami.id}/clock`, { time_mode: mode });
+    if (!res) return;
+    this.toast.ok(
+      mode === 'running'
+        ? $localize`:@@mesa.mi-tatami.reloj-corrido-ok:Tiempo corrido en este tatami desde el siguiente combate.`
+        : $localize`:@@mesa.mi-tatami.reloj-efectivo-ok:Tiempo efectivo en este tatami desde el siguiente combate.`,
+    );
+    await this.load();
+  }
 
   readonly ids = computed(() => tatamiScopes(this.auth.user()));
   readonly views = signal<View[]>([]);

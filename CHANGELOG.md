@@ -12,6 +12,21 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Agregado
 
+- **Imprevistos desde la mesa** (prueba en vivo de noviembre): la cuenta de mesa
+  resuelve sin salir de la mesa lo que antes solo podía el organizador, sin
+  roles nuevos (`is_tournament_operator`; usuarios, dojos y plantillas siguen
+  siendo del organizador):
+  - **Organizar tatamis** (`/organizar-tatamis/:id`, `PUT
+    /tournaments/{id}/tatami-plan`, `POST /tatamis/{id}/queue/sort-by-code`):
+    reglas rápidas por sexo, edad y modalidad, mover entre tatamis, ▲▼ y orden
+    por código (A1, B1, A2, B2…). Advierte si se mueve una categoría en curso.
+  - **+ Competidor** (`POST /tatamis/{id}/late-entry`): inscribe a quien llega
+    tarde con edad declarada y lo mete en la llave (bye libre, nuevo sorteo si
+    no empezó, o llave nueva).
+  - **Reloj por tatami** (`PUT /tatamis/{id}/clock`, migración
+    `0016_tiempo_por_tatami`): efectivo o corrido; rige desde el siguiente
+    combate y cada combate guarda su modo al empezar (`matches.time_mode`).
+
 - `docs/colaboradores.md` y sección «Varias personas trabajando» en
   `CLAUDE.md`: acceso necesario, ramas y PR, y qué ambiente se puede tocar
   (el de pruebas en línea tiene datos reales).

@@ -227,6 +227,28 @@ def can_operate(db: Session, user: User, tournament_id: int, tatami_id: int | No
     return is_organizer(db, user, tournament_id) or _has_role(db, user, "table_operator", tournament_id, tatami_id)
 
 
+def is_tournament_operator(db: Session, user: User, tournament_id: int) -> bool:
+    """Organizador u operador de mesa de cualquier tatami del torneo. En torneos
+    chicos la mesa resuelve imprevistos sin salir de la mesa: repartir categorías
+    entre tatamis, ordenar colas e inscribir a quien llega tarde (todo auditado).
+    Usuarios, dojos, plantillas y documentos siguen siendo del organizador."""
+    if is_organizer(db, user, tournament_id) or _has_role(db, user, "table_operator", tournament_id):
+        return True
+    tatamis = [
+        r.scope_id for r in roles_of(db, user) if r.role == "table_operator" and r.scope_type == "tatami" and r.scope_id
+    ]
+    if not tatamis:
+        return False
+    return bool(
+        db.scalar(select(Tatami.id).where(Tatami.id.in_(tatamis), Tatami.tournament_id == tournament_id).limit(1))
+    )
+
+
+def ensure_tournament_operator(db: Session, user: User, tournament_id: int) -> None:
+    if not is_tournament_operator(db, user, tournament_id):
+        raise Forbidden("No eres organizador ni operador de mesa de este torneo")
+
+
 def can_view_documents(db: Session, user: User) -> bool:
     """Sección 11: solo Admin Global y organizadores ven documentos y fecha de nacimiento."""
     return is_staff(db, user)

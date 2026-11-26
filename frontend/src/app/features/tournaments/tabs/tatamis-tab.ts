@@ -64,6 +64,16 @@ interface TatamiView {
           }
         </ng-container>
       </button>
+      @if (ctx.tournament(); as t) {
+        <a
+          class="btn"
+          [routerLink]="['/organizar-tatamis', t.id]"
+          i18n="@@torneo.tatamis.repartir"
+          i18n-title="@@torneo.tatamis.repartir-titulo"
+          title="Repartir categorías entre tatamis con reglas (sexo, edad, modalidad) y ordenar por código"
+          >Repartir tatamis</a
+        >
+      }
       <button
         class="btn"
         (click)="toggleScheduling()"

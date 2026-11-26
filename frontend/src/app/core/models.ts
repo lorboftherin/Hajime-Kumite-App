@@ -207,6 +207,7 @@ export interface Tatami {
   name: string;
   /** Hora planificada de inicio, en la hora local del torneo («2026-10-17T09:00:00»). */
   planned_start?: string | null;
+  time_mode?: 'effective' | 'running' | null;
 }
 
 export interface Tournament {
@@ -585,7 +586,15 @@ export interface QueueItem {
 }
 
 export interface TatamiQueue {
-  tatami: { id: number; name: string; number: number; planned_start?: string | null };
+  tatami: {
+    id: number;
+    name: string;
+    number: number;
+    planned_start?: string | null;
+    /** Reloj propio del tatami (lo cambia la mesa); null = el del torneo. */
+    time_mode?: 'effective' | 'running' | null;
+    tournament_id?: number;
+  };
   current: QueueItem | null;
   queue: QueueItem[];
   participants: Record<string, Participant>;

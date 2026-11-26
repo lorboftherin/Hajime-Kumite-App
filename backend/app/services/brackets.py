@@ -1287,7 +1287,7 @@ def _ctx(db: Session, m: Match) -> tuple[Category, Tournament]:
 
 def scoreboard(db: Session, m: Match) -> s.ScoreboardOut:
     c, t = _ctx(db, m)
-    rules = effective_kumite_rules(c, t)
+    rules = effective_kumite_rules(c, t, m)
     rows = _events(db, m.id)
     sb = compute_scoreboard(_domain_events(rows), rules, now=utcnow())
     time_over = is_time_over(sb, rules)
@@ -1432,7 +1432,7 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
             raise InvalidState("Valor de punto inválido")
     if data.type == "golden_point":
         c, t = _ctx(db, m)
-        rules = effective_kumite_rules(c, t)
+        rules = effective_kumite_rules(c, t, m)
         sb0 = compute_scoreboard(_domain_events(_events(db, mid)), rules, now=_naive_utc(data.at))
         ws = []
         if rules.tie_rule != TieRule.GOLDEN_POINT:
@@ -1462,6 +1462,9 @@ def add_event(db: Session, user: User, mid: int, data: s.EventIn) -> tuple[s.Sco
         )
     )
     if m.started_at is None:
+        # Fija el modo de reloj vigente (el del tatami si la mesa lo cambió).
+        c0, t0 = _ctx(db, m)
+        m.time_mode = effective_kumite_rules(c0, t0, m).time_mode.value
         m.started_at = _naive_utc(data.at)
     c = get_category(db, m.category_id)
     if m.status == "ready":
@@ -1546,7 +1549,7 @@ def finish(db: Session, user: User, mid: int, data: s.FinishIn) -> tuple[s.Score
             raise InvalidState(
                 "El combate extra no puede terminar empatado: decide por hantei", code="EXTRA_BOUT_NEEDS_HANTEI"
             )
-    rules = effective_kumite_rules(c, t)
+    rules = effective_kumite_rules(c, t, m)
     rows = _events(db, m.id)
     sb = compute_scoreboard(_domain_events(rows), rules)
     method = "draw" if draw else data.method
@@ -2081,7 +2084,14 @@ def tatami_queue(db: Session, tatami_id: int) -> dict[str, Any]:
     for q in queue:
         q["eta"] = etas.get(q["match"].id)
     return {
-        "tatami": {"id": tat.id, "name": tat.name, "number": tat.number, "planned_start": tat.planned_start},
+        "tatami": {
+            "id": tat.id,
+            "name": tat.name,
+            "number": tat.number,
+            "planned_start": tat.planned_start,
+            "time_mode": tat.time_mode,
+            "tournament_id": tat.tournament_id,
+        },
         "current": current,
         "queue": queue,
         "participants": {k: v.model_dump() for k, v in parts.items()},

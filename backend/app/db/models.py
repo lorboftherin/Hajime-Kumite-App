@@ -557,6 +557,10 @@ class Tatami(Base, Timestamped):
     # Hora planificada de inicio, en la hora local del torneo (``Tournament.timezone``),
     # sin zona: es lo que el organizador escribe («sábado 9:00»).
     planned_start: Mapped[datetime | None] = mapped_column(DateTime().with_variant(DATETIME2(), "mssql"), nullable=True)
+    # Modo de reloj de este tatami («effective» | «running»); None = el del torneo o
+    # la categoría. Lo cambia la mesa en el momento (p. ej. tiempo corrido para
+    # recuperar retraso); rige desde el siguiente combate que empiece.
+    time_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
     tournament: Mapped[Tournament] = relationship(back_populates="tatamis")
 
 
@@ -845,6 +849,9 @@ class Match(Base, Timestamped, Versioned):
     started_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True)  # False si su versión de llave fue reemplazada
+    # Modo de reloj fijado al empezar el combate (el del tatami en ese momento):
+    # cambiar el tatami después no reinterpreta combates ya empezados.
+    time_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
     # Kumite por equipos: cada combate individual ("bout" o "bout_extra") cuelga
     # del enfrentamiento entre equipos y guarda qué integrante peleó por cada lado.
     parent_match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), nullable=True, index=True)

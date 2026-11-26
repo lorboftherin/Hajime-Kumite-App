@@ -480,7 +480,7 @@ def overlay(db: Session, token: str, tatami_id: int) -> dict[str, Any]:
         m = bout
     # Marcador desde los eventos, como la mesa (sin armar la respuesta completa de la mesa).
     cat = next(c for c in cats if c.id == m.category_id)
-    rules = effective_kumite_rules(cat, t)
+    rules = effective_kumite_rules(cat, t, m)
     sb = compute_scoreboard(_domain_events(_events(db, m.id)), rules, now=utcnow())
     labels = list(rules.sanction_levels)
     # Kata por banderas (pantalla grande): cuántos jueces y, decidido el

@@ -487,6 +487,8 @@ class TatamiOut(ORM):
     number: int
     name: str
     planned_start: datetime | None = None  # hora local del torneo, sin zona
+    # Modo de reloj propio del tatami (efectivo/corrido); None = el del torneo o la categoría.
+    time_mode: Literal["effective", "running"] | None = None
 
 
 class TournamentOut(ORM):
@@ -545,6 +547,12 @@ class TatamiUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=60)
     # Hora local del torneo («2026-10-17T09:00»); null la quita.
     planned_start: datetime | None = None
+
+
+class TatamiClockIn(BaseModel):
+    """Modo de reloj del tatami; null vuelve al del torneo o la categoría."""
+
+    time_mode: Literal["effective", "running"] | None = None
 
 
 class StatusChange(BaseModel):
@@ -725,6 +733,21 @@ class BracketGenerateIn(BaseModel):
     # Acreditación: retira antes de sortear a los marcados ausentes («No se presentó»).
     exclude_absent: bool = False
     override: Override | None = None
+
+
+class LateEntryIn(BaseModel):
+    """Inscripción tardía desde la mesa: persona nueva (o existente) en una o
+    más categorías del torneo, metida en la llave en el mismo paso."""
+
+    person_id: int | None = None
+    first_names: str | None = Field(default=None, max_length=120)
+    last_names: str | None = Field(default=None, max_length=120)
+    sex: Literal["M", "F"] | None = None
+    age: int | None = Field(default=None, ge=0, le=99)
+    grade: str | None = Field(default=None, max_length=20)
+    dojo_id: int | None = None
+    category_ids: list[int] = Field(min_length=1, max_length=4)
+    reason: str = Field(default="", max_length=250)
 
 
 class BracketEntrantIn(BaseModel):

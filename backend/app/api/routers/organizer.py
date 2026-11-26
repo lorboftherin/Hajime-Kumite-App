@@ -3,13 +3,13 @@ previa al inicio y corrección de filas de importación."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.api import schemas as s
-from app.api.deps import DB, CurrentUser, ensure_organizer
+from app.api.deps import DB, CurrentUser, ensure_organizer, ensure_tournament_operator
 from app.api.errors import NotFound
 from app.db.models import Tatami
 from app.services import organizer
@@ -27,6 +27,20 @@ class TatamiQueueIn(BaseModel):
     """Orden completo de la cola: categorías del tatami, de la primera a la última."""
 
     category_ids: list[int] = Field(max_length=500)
+
+
+class TatamiAssignment(BaseModel):
+    category_id: int
+    tatami_id: int | None = None  # None = sin tatami
+
+
+class TatamiPlanIn(BaseModel):
+    """Reparto de categorías entre tatamis. ``order="code"`` ordena cada tatami
+    tocado por código (A1, B1, A2…); ``"keep"`` deja las nuevas al final."""
+
+    assignments: list[TatamiAssignment] = Field(max_length=500)
+    order: Literal["code", "keep"] = "code"
+    override: s.Override | None = None
 
 
 class ImportRowUpdate(BaseModel):
@@ -49,10 +63,49 @@ def set_queue(tatami_id: int, data: TatamiQueueIn, db: DB, user: CurrentUser):
     tat = db.get(Tatami, tatami_id)
     if tat is None:
         raise NotFound("Tatami no encontrado")
-    ensure_organizer(db, user, tat.tournament_id)
+    ensure_tournament_operator(db, user, tat.tournament_id)
     cats = organizer.set_tatami_queue(db, user, tatami_id, data.category_ids)
     counts = tsvc.entrant_counts(db, tat.tournament_id)
     return [tsvc.category_out(db, c, counts.get(c.id, 0)) for c in cats]
+
+
+@router.post("/tatamis/{tatami_id}/queue/sort-by-code", response_model=list[s.CategoryOut], tags=["tatamis"])
+def sort_queue(tatami_id: int, db: DB, user: CurrentUser):
+    """Ordena la cola del tatami por código de categoría (A1, B1, A2, B2…)."""
+    tat = db.get(Tatami, tatami_id)
+    if tat is None:
+        raise NotFound("Tatami no encontrado")
+    ensure_tournament_operator(db, user, tat.tournament_id)
+    cats = organizer.sort_tatami_by_code(db, user, tatami_id)
+    counts = tsvc.entrant_counts(db, tat.tournament_id)
+    return [tsvc.category_out(db, c, counts.get(c.id, 0)) for c in cats]
+
+
+@router.post("/tatamis/{tatami_id}/late-entry", tags=["tatamis"])
+def late_entry(tatami_id: int, data: s.LateEntryIn, db: DB, user: CurrentUser):
+    """Inscribe a quien llega tarde y lo mete en la llave sin salir de la mesa
+    (organizador u operador de mesa del torneo; auditado)."""
+    tat = db.get(Tatami, tatami_id)
+    if tat is None:
+        raise NotFound("Tatami no encontrado")
+    ensure_tournament_operator(db, user, tat.tournament_id)
+    return organizer.late_entry(db, user, tatami_id, data)
+
+
+@router.put("/tournaments/{tid}/tatami-plan", tags=["tatamis"])
+def tatami_plan(tid: int, data: TatamiPlanIn, db: DB, user: CurrentUser):
+    """Reparte categorías entre los tatamis en una sola operación (organizador u
+    operador de mesa del torneo). Devuelve la cola resultante de cada tatami tocado."""
+    ensure_tournament_operator(db, user, tid)
+    queues = organizer.plan_tatamis(
+        db,
+        user,
+        tid,
+        [(a.category_id, a.tatami_id) for a in data.assignments],
+        data.order,
+        data.override.reason if data.override else None,
+    )
+    return {"queues": queues}
 
 
 @router.get("/tournaments/{tid}/readiness", tags=["tournaments"])
