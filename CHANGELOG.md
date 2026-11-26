@@ -160,6 +160,19 @@ Secciones de cada versión: **Agregado**, **Cambiado**, **Corregido**,
 
 ### Cambiado
 
+- Mesa (tras la prueba en un torneo real): el **código de la categoría**
+  (A7, B12) se ve grande en la cabecera de la mesa y en «Mi tatami», igual que
+  en la llave impresa; **AO a la izquierda y AKA a la derecha** como los
+  tableros oficiales, en la mesa y en la pantalla grande, con un botón ⇄ para
+  invertir los lados en cada dispositivo; un **punto ya no detiene el reloj**
+  (solo HAJIME y YAME lo manejan; `auto_pause_on_point` pasa a `false` por
+  defecto y se puede volver a activar por torneo o categoría); el menú de cada
+  lado queda con dos salidas claras, **«No se presentó»** (walkover) y
+  **«Lesionado / abandona»** (kiken). La descalificación sigue cubierta por
+  Hansoku en las faltas y el servidor acepta igual los eventos `shikkaku` en cola.
+- Estadísticas: el minuto de cada punto en la línea de tiempo usa la hora del
+  evento aunque el reloj siga corriendo.
+
 - Pantalla grande del tatami (`/pantalla/:token/:tatami`) con la disposición
   de los tableros oficiales de kumite: AKA a la izquierda y AO a la derecha,
   reloj en panel claro al centro con HAJIME/YAME, puntos enormes, faltas como

@@ -1,4 +1,4 @@
-<div class="mesa" [class.kata-mode]="isKata()">
+<div class="mesa" [class.kata-mode]="isKata()" [class.aka-izq]="akaLeft()">
   <!-- ============ Encabezado: identidad del combate y conexión ============ -->
   <header class="hdr">
     <a
@@ -11,6 +11,9 @@
     >
     <div class="ident">
       <span class="kj" aria-hidden="true">{{ isKata() ? '型' : '組手' }}</span>
+      @if (category()?.code; as code) {
+        <span class="catcode big" data-testid="mesa-codigo-categoria">{{ code }}</span>
+      }
       <strong class="cat" [title]="category()?.name ?? ''">{{
         category()?.name ?? txtCombate
       }}</strong>
@@ -134,6 +137,16 @@
           </div>
         }
       </div>
+      <button
+        i18n-aria-label="@@mesa.invertir-lados"
+        i18n-title="@@mesa.invertir-lados-titulo"
+        class="hbtn icon"
+        (click)="toggleSides()"
+        aria-label="Invertir lados AKA y AO"
+        title="Invertir lados: AKA (rojo) a la izquierda o a la derecha en este dispositivo"
+        data-testid="mesa-invertir-lados"
+        >⇄</button
+      >
       <button
         i18n-aria-label="@@mesa.recargar-marcador"
         i18n-title="@@mesa.recargar"
@@ -401,22 +414,18 @@
                     >
                     <hr />
                     <button
-                      i18n="@@mesa.kiken-abandona-combate"
+                      i18n="@@mesa.no-se-presento"
                       role="menuitem"
-                      (click)="rare('kiken', c)"
-                      >Kiken<small>Abandona el combate</small></button
-                    >
-                    <button
-                      i18n="@@mesa.shikkaku-descalificacion"
-                      role="menuitem"
-                      (click)="rare('shikkaku', c)"
-                      >Shikkaku<small>Descalificación</small></button
-                    >
-                    <button
-                      i18n="@@mesa.walkover-no-presenta"
-                      role="menuitem"
+                      data-testid="mesa-no-se-presento"
                       (click)="rare('walkover', c)"
-                      >Walkover<small>No se presenta</small></button
+                      >No se presentó<small>Gana el rival sin combatir</small></button
+                    >
+                    <button
+                      i18n="@@mesa.lesionado-abandona"
+                      role="menuitem"
+                      data-testid="mesa-lesionado"
+                      (click)="rare('kiken', c)"
+                      >Lesionado / abandona<small>No puede seguir; gana el rival</small></button
                     >
                   </div>
                 }

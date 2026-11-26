@@ -5,7 +5,14 @@ const MUTE_KEY = 'hajime.mesa.silencio';
 const AUTO_YAME_KEY = 'hajime.mesa.yame-automatico';
 
 /** Preferencias de la mesa guardadas en este dispositivo. */
-export const MESA_PREFS = { mute: MUTE_KEY, autoYame: AUTO_YAME_KEY } as const;
+// Lados de la mesa: por defecto AO a la izquierda y AKA a la derecha (como los
+// tableros oficiales); depende de dónde se sienta la mesa, por eso es por dispositivo.
+const AKA_LEFT_KEY = 'hajime.mesa.aka-izquierda';
+export const MESA_PREFS = {
+  mute: MUTE_KEY,
+  autoYame: AUTO_YAME_KEY,
+  akaLeft: AKA_LEFT_KEY,
+} as const;
 
 export function readFlag(key: string, fallback = false): boolean {
   try {

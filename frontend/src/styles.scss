@@ -1473,3 +1473,21 @@ ol.steps {
     background: var(--kinu);
   }
 }
+
+/* Código corto de la categoría (A7, B12): grande y en negrita, para cruzar
+   de un vistazo la app con la llave impresa. */
+.catcode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6em;
+  padding: 0.05em 0.45em;
+  border-radius: 6px;
+  background: var(--sumi);
+  color: var(--washi);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+}

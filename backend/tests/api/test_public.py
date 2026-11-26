@@ -40,7 +40,8 @@ def test_public_live_is_opt_in_minimal_and_revocable(client):
 
     tid = t["tatamis"][0]["id"]
     ov = anon.get(f"/api/v1/public/{token}/tatamis/{tid}").json()["match"]
-    assert sorted(ov["score"]) == [0, 2] and ov["running"] is False and ov["duration"] == 90
+    # El punto no detiene el reloj (solo YAME): sigue corriendo.
+    assert sorted(ov["score"]) == [0, 2] and ov["running"] is True and ov["duration"] == 90
 
     # Nombres completos si el organizador lo decide; revocar corta el enlace.
     enable(api, t["id"], names="full")
@@ -67,7 +68,7 @@ def test_overlay_follows_the_live_bout_of_a_team_match(client):
     token = enable(api, t["id"])["public_token"]
     ov = api.c.get(f"/api/v1/public/{token}/tatamis/{tat}").json()["match"]
     assert ov["team"] == {"aka": tm["aka"]["name"], "ao": tm["ao"]["name"], "wins": [1, 0], "bout": 2, "extra": False}
-    assert ov["score"] == [0, 1] and ov["aka"]["dojo"] == tm["aka"]["name"] and ov["running"] is False
+    assert ov["score"] == [0, 1] and ov["aka"]["dojo"] == tm["aka"]["name"] and ov["running"] is True
 
 
 def small_live(api):

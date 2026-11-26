@@ -47,12 +47,19 @@ def test_scoreboard_from_events_with_annulment():
         ev(6, "resume", 25),
         ev(7, "point", 30, color="aka", value=1),
     ]
-    sb = compute_scoreboard(events, KumiteRules())
+    sb = compute_scoreboard(events, KumiteRules(auto_pause_on_point=True))
     assert sb.score == {"aka": 3, "ao": 0}
     assert sb.senshu == "aka"
     assert "e4" in sb.annulled_event_ids
-    # tiempo efectivo: 0-10, 12-20 (pausa por el punto, aunque se anule), 25-30 -> 23 s
+    # con pausa por punto: 0-10, 12-20 (pausa por el punto, aunque se anule), 25-30 -> 23 s
     assert sb.elapsed_seconds == pytest.approx(23)
+
+
+def test_point_does_not_stop_clock_by_default():
+    """Por defecto el reloj solo lo manejan HAJIME (start/resume) y YAME (pause)."""
+    events = [ev(1, "start", 0), ev(2, "point", 10, color="aka", value=1), ev(3, "pause", 15)]
+    sb = compute_scoreboard(events, KumiteRules())
+    assert sb.elapsed_seconds == pytest.approx(15) and sb.running is False
 
 
 def test_annul_of_annul_restores_event():

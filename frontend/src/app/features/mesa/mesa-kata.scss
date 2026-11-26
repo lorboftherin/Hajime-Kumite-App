@@ -4,7 +4,7 @@
 .stage.kata {
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
-    'aka center ao'
+    'ao center aka'
     'judges judges judges';
   .score-box {
     min-height: 80px;

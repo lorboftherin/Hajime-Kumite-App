@@ -83,8 +83,11 @@ interface View {
                   >
                   →</span
                 >
-                <span class="go-sub"
-                  ><span class="num">{{ it.number }}</span> · {{ it.category_name }}
+                <span class="go-sub">
+                  @if (it.category_code) {
+                    <span class="catcode">{{ it.category_code }}</span>
+                  }
+                  <span class="num">{{ it.number }}</span> · {{ it.category_name }}
                   @if (it.eta && it.match.status !== 'in_progress') {
                     · ≈ {{ hour(it.eta) }}
                   }
@@ -117,6 +120,9 @@ interface View {
                       [routerLink]="['/mesa', it.match.id]"
                       [queryParams]="{ tatami: q.tatami.id }"
                     >
+                      @if (it.category_code) {
+                        <span class="catcode">{{ it.category_code }}</span>
+                      }
                       <span class="num n">{{ it.number }}</span>
                       <span class="grow">
                         <span class="cat">{{ it.category_name }}</span>

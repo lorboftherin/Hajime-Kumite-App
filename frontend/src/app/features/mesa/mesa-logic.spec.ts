@@ -97,14 +97,14 @@ describe('foldClock', () => {
     ).toEqual({ elapsed: 30, running: true });
   });
 
-  it('sin reglas asume el valor por defecto del servidor (pausa automática)', () => {
+  it('sin reglas asume el valor por defecto del servidor: el punto no para el reloj', () => {
     const c = foldClock(
       { elapsed: 0, running: true, at: t0 },
       [{ type: 'point', at: iso(t0 + 1000), value: 3 }],
       t0 + 9000,
       null,
     );
-    expect(c).toEqual({ elapsed: 1, running: false });
+    expect(c).toEqual({ elapsed: 9, running: true });
   });
 
   it('pausa, reanuda y ajusta', () => {

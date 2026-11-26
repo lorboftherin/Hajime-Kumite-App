@@ -145,6 +145,13 @@ input:focus-visible {
     color: var(--y-faint);
     font-size: 1rem;
   }
+  // Código de la categoría (A7, B12) grande: es lo que se busca en la llave impresa.
+  .catcode.big {
+    align-self: center;
+    font-size: 1.35rem;
+    background: var(--m-kin, #c9a24b);
+    color: #1a1206;
+  }
   .cat {
     font-family: var(--m-display);
     font-weight: 700;

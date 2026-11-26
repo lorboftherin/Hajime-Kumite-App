@@ -60,7 +60,9 @@ def match_facts(events: list[MatchEvent], rules: KumiteRules) -> MatchFacts:
     for i, e in enumerate(ordered):
         if e.id not in active_ids or e.type not in (EventType.POINT, EventType.SANCTION, EventType.FINISH):
             continue
-        sb = compute_scoreboard(ordered[: i + 1], rules)
+        # Reloj en el instante del evento: aunque el punto no pause el reloj, cuenta
+        # lo que corrió desde el último HAJIME hasta ese punto.
+        sb = compute_scoreboard(ordered[: i + 1], rules, now=e.at)
         value = int(e.value) if e.value is not None else None
         facts.timeline.append(
             TimelinePoint(sb.elapsed_seconds, sb.score[AKA], sb.score[AO], e.type.value, e.color, value, e.id)

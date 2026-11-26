@@ -27,7 +27,7 @@ español (p. ej. jueces de kata distintos de 3, 5 o 7).
 | --- | --- | --- | --- |
 | `duration_seconds` | segundos | 120 (o la de la categoría) | — |
 | `time_mode` | `effective` / `running` | `effective` | — |
-| `auto_pause_on_point` | sí / no | sí | — |
+| `auto_pause_on_point` | sí / no | no (el reloj lo manejan HAJIME y YAME) | — |
 | `point_values` | subconjunto de 1, 2, 3 | `[1, 2, 3]` | **Corrección:** antes se ignoraba la configuración. |
 | `lead_victory` | puntos o `null` | 8 | — |
 | `tie_rule` | `hantei` / `golden_point` / `senshu_hantei` | `hantei` | §30 empate |

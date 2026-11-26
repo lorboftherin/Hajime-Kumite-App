@@ -644,6 +644,13 @@ export class MesaPage {
     if (!this.muted()) this.testSound();
   }
 
+  /** AKA a la izquierda en este dispositivo (por defecto AO izquierda, AKA derecha). */
+  readonly akaLeft = signal(readFlag(MESA_PREFS.akaLeft));
+  toggleSides(): void {
+    this.akaLeft.update((v) => !v);
+    writeFlag(MESA_PREFS.akaLeft, this.akaLeft());
+  }
+
   toggleAutoYame(): void {
     this.autoYame.update((v) => !v);
     writeFlag(MESA_PREFS.autoYame, this.autoYame());
@@ -1235,9 +1242,9 @@ export class MesaPage {
     const who = color === 'aka' ? 'AKA' : 'AO';
     const text: Record<string, string> = {
       senshu_cancel: $localize`:@@mesa.cancelar-senshu:Cancelar el senshu de ${who}:who:`,
-      kiken: $localize`:@@mesa.abandona-kiken:${who}:who: abandona (kiken)`,
+      kiken: $localize`:@@mesa.lesionado-abandona-kiken:${who}:who: está lesionado o abandona (kiken): gana el rival`,
       shikkaku: $localize`:@@mesa.descalificado-shikkaku:${who}:who: es descalificado (shikkaku)`,
-      walkover: $localize`:@@mesa.no-presenta-walkover:${who}:who: no se presenta (walkover)`,
+      walkover: $localize`:@@mesa.no-se-presento-walkover:${who}:who: no se presentó (walkover): gana el rival`,
       hantei: $localize`:@@mesa.hantei-jueces-dan-victoria:Hantei: los jueces dan la victoria a ${who}:who:`,
     };
     const ok = await this.dialog.confirm({

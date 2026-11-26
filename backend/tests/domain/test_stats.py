@@ -24,12 +24,29 @@ def test_timeline_uses_clock_time_and_skips_annulled_points():
         ev(7, "point", 55, color="aka", value=2),
         ev(8, "finish", 60, color="aka", method="points"),
     ]
-    f = match_facts(events, RULES)
+    f = match_facts(events, KumiteRules(duration_seconds=90, auto_pause_on_point=True))
     assert [(p.type, p.aka, p.ao) for p in f.timeline] == [("point", 1, 0), ("point", 3, 0), ("finish", 3, 0)]
     # 10 s + (40-30) antes del punto anulado + (55-50) = 25 s de reloj.
     assert [p.elapsed for p in f.timeline] == [10, 25, 25]
     assert f.points["aka"] == {"yuko": 1, "waza_ari": 1, "ippon": 0}
     assert f.points["ao"]["ippon"] == 0 and f.senshu == "aka" and f.score == {"aka": 3, "ao": 0}
+
+
+def test_timeline_clock_runs_through_points_by_default():
+    """Sin pausa por punto (el valor por defecto) el minuto del punto es el del
+    reloj corriendo: solo YAME (pause) lo detiene."""
+    events = [
+        ev(1, "start", 0),
+        ev(2, "point", 10, color="aka", value=1),
+        ev(3, "pause", 12),
+        ev(4, "resume", 30),
+        ev(5, "point", 40, color="ao", value=2),
+        ev(6, "finish", 50, color="ao", method="points"),
+    ]
+    f = match_facts(events, RULES)
+    # 10 s; luego 12 + (40-30) = 22 s; cierre 12 + (50-30) = 32 s.
+    assert [p.elapsed for p in f.timeline] == [10, 22, 32]
+    assert f.elapsed == 32
 
 
 def facts(aka, ao, senshu=None, elapsed=60.0, aka_ippon=0):

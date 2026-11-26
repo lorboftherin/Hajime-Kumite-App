@@ -17,12 +17,12 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto auto auto auto auto;
     grid-template-areas:
-      'aka-top ao-top'
-      'aka-who ao-who'
-      'aka-score ao-score'
+      'ao-top aka-top'
+      'ao-who aka-who'
+      'ao-score aka-score'
       'center center'
-      'aka-points ao-points'
-      'aka-ladder ao-ladder';
+      'ao-points aka-points'
+      'ao-ladder aka-ladder';
     column-gap: 8px;
     row-gap: 6px;
     padding: 8px;
@@ -241,7 +241,7 @@
   .stage.kata {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      'aka ao'
+      'ao aka'
       'center center'
       'judges judges';
     gap: 8px;
@@ -435,5 +435,35 @@
   }
   .stage.kata .judges {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+/* ======================= Lados invertidos en este dispositivo ======================= */
+// Botón ⇄ de la cabecera: AKA a la izquierda y AO a la derecha.
+.mesa.aka-izq {
+  .stage {
+    grid-template-areas: 'aka center ao';
+  }
+  .stage.kata {
+    grid-template-areas:
+      'aka center ao'
+      'judges judges judges';
+  }
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  .mesa.aka-izq .stage:not(.kata) {
+    grid-template-areas:
+      'aka-top ao-top'
+      'aka-who ao-who'
+      'aka-score ao-score'
+      'center center'
+      'aka-points ao-points'
+      'aka-ladder ao-ladder';
+  }
+  .mesa.aka-izq .stage.kata {
+    grid-template-areas:
+      'aka ao'
+      'center center'
+      'judges judges';
   }
 }

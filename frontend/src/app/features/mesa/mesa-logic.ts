@@ -142,10 +142,13 @@ export interface ClockRules {
   auto_pause_on_point?: boolean;
 }
 
-/** Igual que el servidor: en tiempo efectivo un punto detiene el reloj. */
+/**
+ * Igual que el servidor: por defecto un punto NO detiene el reloj (el árbitro
+ * dice YAME antes de dar el punto); solo si la regla lo activa, en tiempo efectivo.
+ */
 export function autoPauseOnPoint(rules: ClockRules | null | undefined): boolean {
   const mode = rules?.time_mode ?? 'effective';
-  return mode === 'effective' && (rules?.auto_pause_on_point ?? true);
+  return mode === 'effective' && (rules?.auto_pause_on_point ?? false);
 }
 
 /**

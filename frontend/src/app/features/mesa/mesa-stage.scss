@@ -7,7 +7,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(250px, 25vw, 340px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: 'aka center ao';
+  // Como los tableros oficiales (WKF): AO a la izquierda, AKA a la derecha.
+  grid-template-areas: 'ao center aka';
   gap: 10px;
   padding: 10px 12px;
 }

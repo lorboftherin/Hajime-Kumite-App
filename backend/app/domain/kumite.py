@@ -73,7 +73,10 @@ LADDERS = ("c1", "c2")
 class KumiteRules:
     duration_seconds: int = 120
     time_mode: TimeMode = TimeMode.EFFECTIVE
-    auto_pause_on_point: bool = True
+    # Un punto no detiene el reloj: el árbitro dice YAME (pausa) antes de dar el
+    # punto y HAJIME para seguir; la mesa solo sigue esas voces. Se puede activar
+    # por torneo o categoría para quien prefiera que el punto pause el reloj.
+    auto_pause_on_point: bool = False
     point_values: tuple[int, ...] = (1, 2, 3)
     lead_victory: int | None = 8
     tie_rule: TieRule = TieRule.HANTEI

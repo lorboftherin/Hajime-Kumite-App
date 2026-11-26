@@ -577,6 +577,8 @@ export interface QueueItem {
   number: string; // T1-001: el mismo número que la planilla de mesa en papel
   category_id: number;
   category_name: string;
+  /** Código corto de la categoría (A7, B12), el mismo del papel. */
+  category_code?: string;
   match: Match;
   /** Hora estimada de inicio (ISO con la zona del torneo); solo en la cola. */
   eta?: string | null;

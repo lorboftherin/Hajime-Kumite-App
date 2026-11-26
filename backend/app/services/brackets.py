@@ -1995,6 +1995,8 @@ def schedule_items(
                     "number": f"T{number[c.tatami_id]}-{len(items) + 1:03d}",
                     "category_id": c.id,
                     "category_name": c.name,
+                    # Código corto de la categoría (A7, B12): el que se usa en papel y en la mesa.
+                    "category_code": c.code,
                     "match": m,
                 }
             )
